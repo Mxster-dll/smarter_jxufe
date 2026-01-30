@@ -1,10 +1,10 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:smarter_jxufe/QrCodeCard.dart';
 import 'icons.dart';
 import 'dart:async';
-import 'dart:convert';
-import 'package:path/path.dart' as path;
+import 'QrCode.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
@@ -82,16 +82,27 @@ class LoginPage extends StatelessWidget {
 
 class JxufeLogin {
   final Dio _dio = Dio();
-  final String baseUrl = 'https://ssl.jxufe.edu.cn';
+  static const String baseUrl = 'https://ssl.jxufe.edu.cn';
+
+  String? _execution;
+  String? _fpVisitorId;
+  Future<void>? _futureLoginPageInfo;
+
+  MfaQrCode? mqc;
+  String? state;
 
   JxufeLogin() {
     _dio.options.headers = {
       'User-Agent':
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     };
+    preloadLoginPage();
   }
 
-  Future<Map<String, String>> getLoginPage() async {
+  void preloadLoginPage() => _futureLoginPageInfo ??= _getLoginPageInfo();
+
+  /// 获取登录页的 execution 和 fpVisitorId 字段
+  Future<void> _getLoginPageInfo() async {
     try {
       final response = await _dio.get(
         '$baseUrl/cas/login',
@@ -100,161 +111,91 @@ class JxufeLogin {
         },
       );
 
-      final execution = RegExp(
-        r'name="execution" value="([^"]+)"',
-      ).firstMatch(response.data as String)?.group(1);
-      final fpVisitorId = RegExp(
-        r'name="fpVisitorId" value="([^"]+)"',
-      ).firstMatch(response.data as String)?.group(1);
+      final data = response.data as String;
 
-      return {'execution': execution ?? '', 'fpVisitorId': fpVisitorId ?? ''};
+      _execution = RegExp(
+        r'name="execution" value="([^"]+)"',
+      ).firstMatch(data)?.group(1)!;
+
+      _fpVisitorId = RegExp(
+        r'name="fpVisitorId" value="([^"]+)"',
+      ).firstMatch(data)?.group(1)!;
     } catch (e) {
       throw Exception('获取登录页面失败: $e');
     }
   }
 
-  Future<String?> mfaDetect(
-    String username,
-    String password,
-    Map<String, String> params,
-  ) async {
+  Future<bool> mfaDetect(String account, String password) async {
     try {
+      await _futureLoginPageInfo;
       final response = await _dio.post(
         '$baseUrl/cas/mfa/detect',
         data: {
-          'username': username,
+          'username': account,
           'password': password,
-          'fpVisitorId': params['fpVisitorId'],
+          // 'fpVisitorId': _fpVisitorId!,
         },
         options: Options(contentType: Headers.formUrlEncodedContentType),
       );
 
       final result = response.data as Map<String, dynamic>;
-      if (result['code'] == 0 &&
-          result['data'] != null &&
-          result['data']['need'] == true) {
-        return result['data']['state'] as String;
-      }
-      return null;
+      final data = result['data'] as Map<String, dynamic>;
+
+      if (data['need']) state = data['state'];
+
+      return data['need'];
     } catch (e) {
       throw Exception('MFA检测失败: $e');
     }
   }
 
-  Future<Map<String, dynamic>?> getQrCodeData(String state) async {
-    try {
-      final response = await _dio.get(
-        '$baseUrl/cas/mfa/initByType/qrcode',
-        queryParameters: {'state': state},
-      );
+  // Future<void> _postLoginRequests(String account, String password) async {}
 
-      final result = response.data as Map<String, dynamic>;
-      if (result['code'] == 0) {
-        return result['data'] as Map<String, dynamic>;
-      }
-      return null;
-    } catch (e) {
-      throw Exception('获取二维码数据失败: $e');
-    }
-  }
+  // Future<void> login(String account, String password) async {
+  //   try {
+  //     if (await mfaDetect(account, password)) {
+  //       final qrCodeUrl = '$baseUrl/cas/mfa/initByType/qrcode';
+  //       final mqc = this.mqc = MfaQrCode(qrCodeUrl, state!);
 
-  Future<String?> getQrCodeImage(Map<String, dynamic> qrCodeData) async {
-    try {
-      String? qrCodeUrl = qrCodeData['qrCode']?['scanQrcode'] as String?;
+  //       await mqc.init();
+  //       mqc.data;
+  //     }
 
-      if (qrCodeUrl == null || qrCodeUrl.isEmpty) {
-        final attestServer = qrCodeData['attestServerUrl'] as String?;
-        final gid = qrCodeData['gid'] as String?;
+  //     _postLoginRequests(account, password);
+  //   } catch (e) {
+  //     rethrow;
+  //   }
+  // }
 
-        if (attestServer != null && gid != null) {
-          final sendUrl = '$attestServer/api/guard/qrcode/send';
-          final response = await _dio.post(sendUrl, data: {'gid': gid});
+  //   Future<Uint8List?> loginAndGetQrCodeData(
+  //     String account,
+  //     String password,
+  //   ) async {
+  //     try {
+  //       // 发送2FA检测请求
+  //       if (!await mfaDetect(account, password)) {
+  //         throw Exception('不需要2FA验证');
+  //       }
 
-          final result = response.data as Map<String, dynamic>;
-          if (result['code'] == 0) {
-            qrCodeUrl = result['data']?['scanQrcode'] as String?;
-          }
-        }
-      }
+  //       // if (!await mfaDetect(username, password)) return null;
 
-      return qrCodeUrl;
-    } catch (e) {
-      throw Exception('获取二维码图片失败: $e');
-    }
-  }
+  //       // 获取二维码数据
+  //       final qrCodeUrl = '$baseUrl/cas/mfa/initByType/qrcode';
+  //       final mqc = this.mqc = MfaQrCode(qrCodeUrl, state!);
 
-  Future<Uint8List?> downloadQrCode(String qrCodeUrl) async {
-    try {
-      // 确保URL完整
-      String fullUrl = qrCodeUrl;
-      if (qrCodeUrl.startsWith('/')) {
-        fullUrl = '$baseUrl$qrCodeUrl';
-      }
-
-      final response = await _dio.get(
-        fullUrl,
-        options: Options(responseType: ResponseType.bytes),
-      );
-
-      if (response.statusCode == 200) {
-        return response.data as Uint8List;
-      }
-      return null;
-    } catch (e) {
-      throw Exception('下载二维码失败: $e');
-    }
-  }
-
-  Future<Map<String, dynamic>> loginAndGetQrCodeData(
-    String username,
-    String password,
-  ) async {
-    try {
-      // 获取登录页面参数
-      final params = await getLoginPage();
-
-      // 发送2FA检测请求
-      final state = await mfaDetect(username, password, params);
-      if (state == null) {
-        throw Exception('不需要2FA验证或检测失败');
-      }
-
-      // 获取二维码数据
-      final qrCodeData = await getQrCodeData(state);
-      if (qrCodeData == null) {
-        throw Exception('获取二维码数据失败');
-      }
-
-      return qrCodeData;
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  Future<String> getQrCodeUrl(Map<String, dynamic> qrCodeData) async {
-    final qrCodeUrl = await getQrCodeImage(qrCodeData);
-    if (qrCodeUrl == null) {
-      throw Exception('获取二维码URL失败');
-    }
-
-    return qrCodeUrl;
-  }
-
-  String getGid(Map<String, dynamic> qrCodeData) {
-    return qrCodeData['gid'] as String;
-  }
+  //       await mqc.init();
+  //       return mqc.data;
+  //     } catch (e) {
+  //       rethrow;
+  //     }
+  //   }
 }
 
-// TODO 添加扫描登录
-// 提前请求资源
-// 确认码
-// 待扫描 1 SENT
-// 已扫描 8 SCANED
-// 已取消 5 CANCEL
-// 已确认 2 VALID
-// code: -1 失效 （300s)
+// INFO
 // 信任设备在第一个login请求的trustAgent字段
-// {code: 0, data: { status: 1, statusCode: "SENT"}, message: null}
+// NOTE
+// 提前请求资源
+// 多用Future字段(全面详细的管理空与Future)
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -263,44 +204,47 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _usernameController = TextEditingController();
+  final _accountController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _JxufeLogin = JxufeLogin();
+  final _loginService = JxufeLogin();
 
   bool _isLoading = false;
   String? _errorMessage;
   Uint8List? _qrCodeBytes;
   bool _passwordVisible = false;
+  Future<void>? loginPageInfo;
 
   // 江西财经大学主题色
-  final Color _primaryColor = const Color(0xFFC3282E);
-  final Color _secondaryColor = const Color(0xFF8B0000);
-  final Color _backgroundColor = const Color(0xFFF5F5F5);
-  final Color _inputBgColor = const Color(0xFFF8F8F8);
-  final Color _borderColor = const Color(0xFFE0E0E0);
-  final Color _textColor = const Color(0xFF333333);
-  final Color _hintColor = const Color(0xFF999999);
+  static const Color _primaryColor = Color(0xFFC3282E);
+  static const Color _secondaryColor = Color(0xFF8B0000);
+  static const Color _backgroundColor = Color(0xFFF5F5F5);
+  static const Color _inputBgColor = Color(0xFFF8F8F8);
+  static const Color _borderColor = Color(0xFFE0E0E0);
+  static const Color _textColor = Color(0xFF333333);
+  static const Color _hintColor = Color(0xFF999999);
 
   @override
-  void initState() {
-    super.initState();
-  }
+  void initState() => super.initState();
 
   Future<void> _handleLogin() async {
-    final username = _usernameController.text.trim();
-    final password = _passwordController.text.trim();
-
-    if (username.isEmpty) {
-      setState(() {
-        _errorMessage = '请输入校园卡号';
-      });
-      return;
-    } else if (password.isEmpty) {
-      setState(() {
-        _errorMessage = '请输入密码';
-      });
-      return;
-    }
+    // final username = _usernameController.text.trim();
+    // final password = _passwordController.text.trim();
+    //
+    // if (username.isEmpty) {
+    //   setState(() {
+    //     _errorMessage = '请输入校园卡号';
+    //   });
+    //   return;
+    // } else if (password.isEmpty) {
+    //   setState(() {
+    //     _errorMessage = '请输入密码';
+    //   });
+    //   return;
+    // }
+    var account = _accountController.text.trim();
+    var password = _passwordController.text.trim();
+    if (account.isEmpty) account = '[REDACTED_EMAIL]';
+    if (password.isEmpty) password = '[REDACTED_PWD]';
 
     setState(() {
       _isLoading = true;
@@ -309,36 +253,26 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final qrCodeData = await _JxufeLogin.loginAndGetQrCodeData(
-        username,
-        password,
-      );
+      if (await _loginService.mfaDetect(account, password)) {
+        final qrCodeUrl = '${JxufeLogin.baseUrl}/cas/mfa/initByType/qrcode';
+        final mfaQrCode = MfaQrCode(qrCodeUrl, _loginService.state!);
 
-      final qrCodeUrl = await _JxufeLogin.getQrCodeUrl(qrCodeData);
-      final gid = _JxufeLogin.getGid(qrCodeData);
+        // if (qrCodeBytes != null) {
 
-      final qrCodeBytes = await _JxufeLogin.downloadQrCode(qrCodeUrl);
-      final verifyCode = int.parse(path.basenameWithoutExtension(qrCodeUrl));
-
-      if (qrCodeBytes != null) {
-        setState(() {
-          _qrCodeBytes = qrCodeBytes;
-        });
-
-        _showQrCodeDialog(
-          qrCodeBytes,
-          verifyCode,
-          '安全验证',
-          '当前登录环境异常，需通过安全验证确认是本人操作',
-          '使用微信或者企业微信扫一扫完成验证',
+        QrCodeCard.showQrCodeDialog(
+          context,
+          mfaQrCode,
+          title: '安全验证',
+          info: '当前登录环境异常，需通过安全验证确认是本人操作',
         );
-
-        QRCodePoller().startPolling(gid);
-      } else {
-        setState(() {
-          _errorMessage = '获取二维码失败';
-        });
+        await mfaQrCode.init();
       }
+
+      // } else {
+      //   setState(() {
+      //     _errorMessage = '获取二维码失败';
+      //   });
+      // }
     } catch (e) {
       setState(() {
         _errorMessage = '登录失败: $e';
@@ -502,7 +436,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: TextField(
-                            controller: _usernameController,
+                            controller: _accountController,
                             decoration: InputDecoration(
                               hintText: '请输入校园卡号',
                               hintStyle: TextStyle(color: _hintColor),
@@ -656,7 +590,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                             _buildOtherLoginIcon(
                               Icons.wechat,
-                              Color(0xFF14c468),
+                              const Color(0xFF14c468),
                               onTap: () {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
@@ -671,7 +605,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                             _buildOtherLoginIcon(
                               ExpandIcons.wecon,
-                              Color(0xFF73A9EC),
+                              const Color(0xFF73A9EC),
                               onTap: () {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
@@ -700,7 +634,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         color: _borderColor,
                         margin: const EdgeInsets.only(bottom: 16),
                       ),
-                      Text(
+                      const Text(
                         'Copyright© 2026 All right reserved.',
                         style: TextStyle(fontSize: 12, color: _hintColor),
                       ),
@@ -715,119 +649,92 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Dialog _buildQrCodeDialog(
-    Uint8List qrCodeBytes,
-    int verifyCode,
-    String title,
-    String info,
-    String tips,
-  ) {
-    return Dialog(
-      backgroundColor: Colors.transparent, // 透明背景
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20), // 左右边距
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(0x26),
-              blurRadius: 30,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                margin: const EdgeInsets.only(bottom: 20),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: _primaryColor,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Icon(
-                        Icons.qr_code_scanner,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: _textColor,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      info,
-                      style: TextStyle(fontSize: 13, color: _hintColor),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
+  // Dialog _buildQrCodeDialog(QrCode qrCode, String title, String info) {
+  //   return Dialog(
+  //     backgroundColor: Colors.transparent,
+  //     insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+  //     child: Container(
+  //       decoration: BoxDecoration(
+  //         color: Colors.white,
+  //         borderRadius: BorderRadius.circular(12),
+  //         boxShadow: [
+  //           BoxShadow(
+  //             color: Colors.black.withAlpha(0x26),
+  //             blurRadius: 30,
+  //             offset: const Offset(0, 10),
+  //           ),
+  //         ],
+  //       ),
+  //       child: Padding(
+  //         padding: const EdgeInsets.all(24),
+  //         child: Column(
+  //           mainAxisSize: MainAxisSize.min,
+  //           children: [
+  //             Container(
+  //               margin: const EdgeInsets.only(bottom: 20),
+  //               child: Column(
+  //                 children: [
+  //                   Container(
+  //                     width: 40,
+  //                     height: 40,
+  //                     decoration: BoxDecoration(
+  //                       color: _primaryColor,
+  //                       borderRadius: BorderRadius.circular(20),
+  //                     ),
+  //                     child: const Icon(
+  //                       Icons.qr_code_scanner,
+  //                       color: Colors.white,
+  //                       size: 24,
+  //                     ),
+  //                   ),
 
-              // 二维码卡片
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: _inputBgColor,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: _borderColor),
-                ),
-                child: Column(
-                  children: [
-                    Image.memory(
-                      _qrCodeBytes!,
-                      height: 200,
-                      width: 200,
-                      fit: BoxFit.contain,
-                    ),
+  //                   const SizedBox(height: 12),
 
-                    const SizedBox(height: 16),
+  //                   Text(
+  //                     title,
+  //                     style: TextStyle(
+  //                       fontSize: 18,
+  //                       fontWeight: FontWeight.bold,
+  //                       color: _textColor,
+  //                     ),
+  //                   ),
 
-                    Text(
-                      tips,
-                      style: TextStyle(fontSize: 13, color: _hintColor),
-                    ),
-                  ],
-                ),
-              ),
+  //                   const SizedBox(height: 8),
 
-              const SizedBox(height: 20),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  //                   Text(
+  //                     info,
+  //                     style: TextStyle(fontSize: 13, color: _hintColor),
+  //                     textAlign: TextAlign.center,
+  //                   ),
+  //                 ],
+  //               ),
+  //             ),
 
-  void _showQrCodeDialog(
-    Uint8List qrCodeBytes,
-    int verifyCode,
-    String title,
-    String info,
-    String tips,
-  ) {
-    showDialog(
-      context: context,
-      barrierColor: Colors.black.withAlpha(0x1A), // 半透明背景
-      barrierDismissible: true, // 点击背景关闭
-      builder: (context) =>
-          _buildQrCodeDialog(qrCodeBytes, verifyCode, title, info, tips),
-    );
-  }
+  //             // 二维码卡片
+  //             qrCode.buildQrCodeCard(
+  //               backgroundColor: _inputBgColor,
+  //               borderColor: _borderColor,
+  //               tipsColor: _hintColor,
+  //             ),
+
+  //             const SizedBox(height: 20),
+  //           ],
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
+
+  // void _showQrCodeDialog(
+  //   QrCode qrcode, {
+  //   required String title,
+  //   required String info,
+  // }) => showDialog(
+  //   context: context,
+  //   barrierColor: Colors.black.withAlpha(0x1A), // 半透明背景
+  //   barrierDismissible: true, // 点击背景关闭
+  //   builder: (context) => _buildQrCodeDialog(qrcode, title, info),
+  // );
 
   Widget _buildOtherLoginIcon(
     IconData icon,
@@ -879,175 +786,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
-    _usernameController.dispose();
+    _accountController.dispose();
     _passwordController.dispose();
     super.dispose();
-  }
-}
-
-/// 二维码状态枚举
-enum QRCodeStatus {
-  pendingScan(1, 'SENT', '待扫描'),
-  scanned(8, 'SCANED', '已扫描'), // SCANED是一个官方的拼写错误，请不要修改它为SCANNED
-  canceled(5, 'CANCEL', '手机端已拒绝'),
-  confirmed(2, 'VALID', '手机端已确认');
-
-  final int status;
-  final String statusCode;
-  final String description;
-
-  const QRCodeStatus(this.status, this.statusCode, this.description);
-
-  static QRCodeStatus? fromValue(int status) {
-    for (var value in values) {
-      if (value.status == status) return value;
-    }
-    return null;
-  }
-}
-
-/// 二维码轮询服务
-class QRCodePoller {
-  // 单例模式
-  static final QRCodePoller _instance = QRCodePoller._internal();
-  factory QRCodePoller() => _instance;
-  QRCodePoller._internal();
-
-  static const String _baseUrl = 'https://ssl.jxufe.edu.cn';
-  static const String _statusPath = '/attest/api/guard/qrcode/status';
-
-  // 使用 Dio 实例
-  final Dio _dio = Dio();
-
-  Timer? _pollingTimer;
-  bool _isPolling = false;
-  CancelToken? _cancelToken;
-
-  /// 配置 Dio 请求头
-  void _configureDio() {
-    _dio.options.baseUrl = _baseUrl;
-    _dio.options.headers = {
-      'Accept': 'application/json, text/javascript, */*; q=0.01',
-      'Accept-Encoding': 'gzip, deflate, br, zstd',
-      'Accept-Language': 'zh-CN,zh;q=0.9',
-      'Connection': 'keep-alive',
-      'Content-Type': 'application/json; charset=UTF-8',
-      // 'Cookie':
-      //     'Hm_lvt_d605d8df6bf5ca8a54fe078683196518=1769601206; '
-      //     'HMACCOUNT=95DD7CFF9EC39F39; '
-      //     'Hm_lpvt_d605d8df6bf5ca8a54fe078683196518=1769601426',
-      'Host': 'ssl.jxufe.edu.cn',
-      'Origin': 'https://ssl.jxufe.edu.cn',
-      'Referer':
-          'https://ssl.jxufe.edu.cn/cas/login?service=http%3A%2F%2Fehall.jxufe.edu.cn%2Famp-auth-adapter%2FloginSuccess%3FsessionToken%3D0b0f3d2b6be14bd0b3c1ecc955bdb832',
-      'Sec-Fetch-Dest': 'empty',
-      'Sec-Fetch-Mode': 'cors',
-      'Sec-Fetch-Site': 'same-origin',
-      'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0',
-      'X-Requested-With': 'XMLHttpRequest',
-      'sec-ch-ua':
-          '"Not(A:Brand";v="8", "Chromium";v="144", "Microsoft Edge";v="144"',
-      'sec-ch-ua-mobile': '?0',
-    };
-  }
-
-  void startPolling(String gid) {
-    if (_isPolling) {
-      print('轮询已在运行中');
-      return;
-    }
-
-    _isPolling = true;
-    _cancelToken = CancelToken();
-    print('开始轮询，gid: $gid');
-
-    // 配置 Dio
-    _configureDio();
-
-    // 开始轮询
-    _pollingTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      if (!_isPolling) {
-        timer.cancel();
-        return;
-      }
-      _checkStatus(gid);
-    });
-
-    // 立即执行第一次请求
-    _checkStatus(gid);
-  }
-
-  /// 停止轮询
-  void stopPolling() {
-    _isPolling = false;
-    _pollingTimer?.cancel();
-    _pollingTimer = null;
-    _cancelToken?.cancel('用户停止轮询');
-    _cancelToken = null;
-    print('轮询已停止');
-  }
-
-  /// 检查二维码状态
-  Future<void> _checkStatus(String gid) async {
-    try {
-      final response = await _dio.post(
-        _statusPath,
-        data: {'gid': gid},
-        cancelToken: _cancelToken,
-      );
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = response.data;
-        final code = data['code'] as int;
-
-        // 二维码失效
-        if (code == -1) {
-          print('二维码已失效');
-          stopPolling();
-          return;
-        }
-
-        // 正常状态
-        if (code == 0 && data['data'] != null) {
-          final Map<String, dynamic> statusData = data['data'];
-          final int status = statusData['status'];
-          final String statusCode = statusData['statusCode'];
-
-          final qrStatus = QRCodeStatus.fromValue(status);
-          if (qrStatus != null) {
-            // 输出状态日志
-            print(
-              '二维码状态: ${qrStatus.description} '
-              '(status: $status, statusCode: $statusCode)',
-            );
-
-            // 如果是确认或取消状态，停止轮询
-            if (qrStatus == QRCodeStatus.confirmed ||
-                qrStatus == QRCodeStatus.canceled) {
-              print('二维码最终状态: ${qrStatus.description}，停止轮询');
-              stopPolling();
-            }
-          } else {
-            print('未知状态: status=$status, statusCode=$statusCode');
-          }
-        }
-      }
-    } on DioException catch (e) {
-      if (e.type == DioExceptionType.cancel) return;
-
-      print('轮询请求异常: ${e.message}');
-    } catch (e) {
-      print('轮询请求异常: $e');
-    }
-  }
-
-  /// 检查是否在轮询中
-  bool get isPolling => _isPolling;
-
-  /// 清理资源
-  void dispose() {
-    stopPolling();
-    _dio.close();
   }
 }
