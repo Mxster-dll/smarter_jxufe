@@ -1,0 +1,60 @@
+import 'dart:async';
+import 'dart:typed_data';
+import 'package:rxdart/rxdart.dart';
+
+import 'package:smarter_jxufe/QrCode/QrCodeStatus.dart';
+import 'package:smarter_jxufe/Services/MfaService.dart';
+
+abstract class QrCode {
+  late String id;
+  String? verifyCode;
+  late Uint8List img;
+
+  final BehaviorSubject<QrCodeStatus> _stateSubject =
+      BehaviorSubject<QrCodeStatus>.seeded(QrCodeStatus.loading);
+  Stream<QrCodeStatus> get stateStream => _stateSubject.stream;
+
+  set status(QrCodeStatus status) => _stateSubject.add(status);
+  QrCodeStatus get status => _stateSubject.value;
+
+  Future<void> refresh();
+
+  // 轮询相关
+  Timer? _pollingTimer;
+  final int pollingInterval = 1500;
+
+  Future<void> _pollStatus();
+
+  Future<void> startPolling() async {
+    _pollingTimer = Timer.periodic(
+      Duration(milliseconds: pollingInterval),
+      (_) => _pollStatus(),
+    );
+  }
+
+  void stopPolling() {
+    _pollingTimer?.cancel();
+    _pollingTimer = null;
+  }
+
+  void dispose() {
+    stopPolling();
+    _stateSubject.close();
+  }
+}
+
+class MfaQrCode extends QrCode {
+  final MfaService _loginService;
+
+  MfaQrCode(this._loginService);
+
+  @override
+  Future<void> refresh() => _loginService.refreshQrCode();
+
+  @override
+  Future<void> _pollStatus() async {
+    status = await _loginService.pollStatus();
+
+    if (status.isFinal) stopPolling();
+  }
+}

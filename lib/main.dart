@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'Grades.dart';
-import 'login.dart';
+import 'package:smarter_jxufe/LoginPage.dart';
 
 void main() => runApp(const SmarterJxUFE());
 
@@ -11,6 +10,7 @@ class SmarterJxUFE extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: '智慧尼采',
       theme: ThemeData(
         colorScheme: .fromSeed(
