@@ -49,24 +49,26 @@ class MfaService {
 
     await _initQrCode();
 
-    // TODO 让关闭 dialog  停止轮询
+    qrCode.startPolling();
     QrCodeCard.showQrCodeDialog(
       context,
       qrCode,
       title: '安全验证',
       info: '当前登录环境异常，需通过安全验证确认是本人操作',
     );
+
     await _fetchQrCode();
-    await _downloadQrCode();
-    qrCode.startPolling();
+    return _downloadQrCode();
   }
 
   Future<void> refreshQrCode() async {
     await detectMfa();
+
     await _initQrCode();
     qrCode.startPolling();
+
     await _fetchQrCode();
-    await _downloadQrCode();
+    return _downloadQrCode();
   }
 
   /// qrcode: 获取 attestServerUrl 和 gid

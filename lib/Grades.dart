@@ -1,14 +1,6 @@
-import 'dart:convert';
 import 'package:dio/dio.dart';
-import 'package:dio_cookie_manager/dio_cookie_manager.dart';
-import 'package:cookie_jar/cookie_jar.dart';
-import 'package:html/parser.dart' as parser;
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as path;
 import 'package:flutter/material.dart';
 import 'package:fast_gbk/fast_gbk.dart';
-// import 'log.dart';
-import 'package:html/dom.dart' hide Text;
 import 'package:html/parser.dart' show parse;
 
 class GradesPage extends StatefulWidget {
@@ -20,7 +12,7 @@ class GradesPage extends StatefulWidget {
 }
 
 class _GradesPageState extends State<GradesPage> {
-  String t = "未初始化";
+  String t = '未初始化';
   List<Widget> cc = [];
   List<List<String>> td = [];
   final Map<String, String> headers = {
@@ -66,12 +58,12 @@ class _GradesPageState extends State<GradesPage> {
   Widget build(BuildContext context) {
     // String response = await sendRequest(headers, formData);
     cc = [
-      ElevatedButton(child: Text("POST"), onPressed: () => showScore()),
+      ElevatedButton(child: Text('POST'), onPressed: () => showScore()),
       Text(t, style: Theme.of(context).textTheme.headlineLarge),
       TableWidget(tableData: td),
     ];
     setState(() {
-      t = "${cc.length}";
+      t = '${cc.length}';
     });
     return Scaffold(body: Column(children: cc));
   }
@@ -85,7 +77,7 @@ class _GradesPageState extends State<GradesPage> {
       //   t = response;
       cc.add(TableWidget(tableData: td));
       //   cc.add(Text(response, style: Theme.of(context).textTheme.headlineLarge));
-      t = "${cc.length}";
+      t = '${cc.length}';
     });
   }
 
