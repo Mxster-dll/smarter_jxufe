@@ -1,5 +1,8 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:smarter_jxufe/QrCode/QrCode.dart';
+import 'package:smarter_jxufe/design/JxufeTheme.dart';
 
 enum QrCodeStatus {
   loading(false), // 包括未初始化状态
@@ -8,11 +11,12 @@ enum QrCodeStatus {
   cancelled(true), // 手机端已取消
   authorized(true), // 手机端已确认
   expired(true),
-  error(false);
+  error(true);
 
   const QrCodeStatus(this.isFinal);
 
   final bool isFinal;
+  bool get isNotFinal => !isFinal;
 }
 
 abstract class QrCodeDisplayStrategy {
@@ -24,7 +28,9 @@ class LoadingDisplayStrategy implements QrCodeDisplayStrategy {
   SizedBox buildWidget(BuildContext context, QrCode qrCode) => SizedBox(
     width: 200,
     height: 200,
-    child: Center(child: CircularProgressIndicator()),
+    child: Center(
+      child: CircularProgressIndicator(color: JxufeTheme.primaryColor),
+    ),
   );
 }
 
@@ -102,15 +108,29 @@ class CancelledDisplayStrategy implements QrCodeDisplayStrategy {
 
 class ExpiredDisplayStrategy implements QrCodeDisplayStrategy {
   @override
-  Widget buildWidget(BuildContext context, QrCode qrCode) => Column(
-    mainAxisAlignment: MainAxisAlignment.center,
+  Widget buildWidget(BuildContext context, QrCode qrCode) => Stack(
+    alignment: Alignment.center,
     children: [
-      const Icon(Icons.refresh, color: Colors.grey, size: 64),
-      const SizedBox(height: 16),
-      Text('二维码已失效', style: Theme.of(context).textTheme.headlineSmall),
-      const SizedBox(height: 8),
-      // TODO 修改 refresh 按钮的样式
-      ElevatedButton(onPressed: qrCode.refresh, child: const Text('刷新二维码')),
+      ImageFiltered(
+        imageFilter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+        child: Opacity(
+          opacity: 0.5,
+          child: Image.memory(
+            qrCode.img,
+            height: 200,
+            width: 200,
+            fit: BoxFit.contain,
+          ),
+        ),
+      ),
+
+      Column(
+        children: [
+          const Icon(Icons.refresh, color: JxufeTheme.secondaryColor, size: 64),
+          const SizedBox(height: 16),
+          Text('二维码已失效', style: Theme.of(context).textTheme.headlineSmall),
+        ],
+      ),
     ],
   );
 }
@@ -123,8 +143,6 @@ class ErrorDisplayStrategy implements QrCodeDisplayStrategy {
       const Icon(Icons.error_outline, color: Colors.red, size: 64),
       const SizedBox(height: 16),
       Text('二维码请求出错', style: Theme.of(context).textTheme.headlineSmall),
-      const SizedBox(height: 8),
-      ElevatedButton(onPressed: qrCode.refresh, child: const Text('请重试')),
     ],
   );
 }

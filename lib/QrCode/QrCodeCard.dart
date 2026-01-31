@@ -131,25 +131,47 @@ class _QrCodeState extends State<QrCodeCard> {
         return Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: JxufeTheme.inputBgColor,
+            color: Colors.white,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: JxufeTheme.borderColor),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withAlpha(51),
-                blurRadius: 10,
-                spreadRadius: 2,
-              ),
-            ],
+            // boxShadow: [
+            //   BoxShadow(
+            //     color: Colors.grey.withAlpha(51),
+            //     blurRadius: 10,
+            //     spreadRadius: 2,
+            //   ),
+            // ],
           ),
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            child: KeyedSubtree(
-              key: ValueKey(state),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minWidth: 200, minHeight: 200),
-                child: strategy.buildWidget(context, qrCode),
-              ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minWidth: 200, minHeight: 200),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child: KeyedSubtree(
+                    key: ValueKey(state),
+                    child: strategy.buildWidget(context, qrCode),
+                  ),
+                ),
+
+                if (qrCode.status.isFinal) const SizedBox(height: 12),
+
+                if (qrCode.status.isFinal)
+                  OutlinedButton(
+                    onPressed: qrCode.refresh,
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(
+                        color: JxufeTheme.secondaryColor,
+                        width: 1,
+                      ),
+                    ),
+                    child: const Text(
+                      '刷新',
+                      style: TextStyle(color: JxufeTheme.secondaryColor),
+                    ),
+                  ),
+              ],
             ),
           ),
         );
