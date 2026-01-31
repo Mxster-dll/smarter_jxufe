@@ -17,7 +17,7 @@ class SmarterJxUFE extends StatelessWidget {
           seedColor: const Color.fromARGB(255, 0, 140, 255),
         ),
       ),
-      //   home: MyHomePage(title: "demo"),
+      //   home: MyHomePage(title: 'demo'),
       home: LoginScreen(),
       // home: const HomePage(title: '智慧尼采 SmarterJxUFE'),
       // home: GradesPage(title: '智慧尼采 SmarterJxUFE'),
@@ -49,8 +49,8 @@ class _HomePageState extends State<HomePage> {
                 ElevatedButton(
                   child: Column(
                     children: [
-                      //   Image(image: AssetImage("images/学业成绩.png"), width: 100),
-                      Text("学业成绩"),
+                      //   Image(image: AssetImage('images/学业成绩.png'), width: 100),
+                      Text('学业成绩'),
                     ],
                   ),
                   onPressed: () {},

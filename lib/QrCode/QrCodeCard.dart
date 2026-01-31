@@ -16,8 +16,8 @@ class QrCodeCard extends StatefulWidget {
   static void showQrCodeDialog(
     BuildContext context,
     QrCode qrcode, {
-    required String title,
-    required String info,
+    String title = '',
+    String info = '',
   }) async {
     await showDialog(
       context: context,
