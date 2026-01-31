@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
 import 'package:smarter_jxufe/design/JxufeTheme.dart';
@@ -79,8 +80,6 @@ class LoginPage extends StatelessWidget {
   }
 }
 
-// TODO
-// 轮询异常显示
 // INFO
 // 信任设备在第一个login请求的trustAgent字段
 class LoginScreen extends StatefulWidget {
@@ -91,6 +90,9 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final Dio _dio = Dio();
+  late final MfaService _mfaService = MfaService(_dio);
+
   final _accountController = TextEditingController();
   final _passwordController = TextEditingController();
 
@@ -122,14 +124,15 @@ class _LoginScreenState extends State<LoginScreen> {
     if (account.isEmpty) account = '[REDACTED_EMAIL]';
     if (password.isEmpty) password = '[REDACTED_PWD]';
 
+    _mfaService.set(account, password);
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
-      MfaService mfaService = MfaService(account, password);
-      await mfaService.process(context);
+      await _mfaService.process(context);
     } catch (e) {
       setState(() {
         _errorMessage = '登录失败: $e';

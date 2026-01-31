@@ -63,7 +63,7 @@ class ScanLoginService {
   }
 
   static const _statusMap = {
-    1: QrCodeStatus.pending,
+    // 1: 待扫描
     2: QrCodeStatus.scanned,
     3: QrCodeStatus.authorized,
     4: QrCodeStatus.cancelled,

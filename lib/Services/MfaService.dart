@@ -9,17 +9,68 @@ import 'package:smarter_jxufe/Log.dart';
 
 class MfaService {
   static const baseUrl = 'https://ssl.jxufe.edu.cn';
-  final Dio _dio = Dio();
+  final Dio _dio;
 
-  final String _account;
-  final String _password;
+  late String _account;
+  late String _password;
 
   late MfaQrCode qrCode;
-  String? _stateParam; // 一次性产物
+  String? _stateParam;
   late String _attestServer;
   late String _qrCodeImgUrl;
 
-  MfaService(this._account, this._password);
+  MfaService(Dio? dio) : _dio = dio ?? Dio();
+
+  void set(String account, String password) {
+    _account = account;
+    _password = password;
+  }
+
+  Future<void> process(BuildContext context) async {
+    if (!await detectMfa()) return;
+
+    qrCode = MfaQrCode(this);
+    await _initQrCode();
+
+    qrCode.startPolling();
+    QrCodeCard.showQrCodeDialog(
+      context,
+      qrCode,
+      title: '安全验证',
+      info: '当前登录环境异常，需通过安全验证确认是本人操作',
+    );
+
+    await _fetchQrCode();
+    await _downloadQrCode();
+  }
+
+  Future<void> refreshQrCode() async {
+    qrCode.status = QrCodeStatus.loading;
+    qrCode.stopPolling();
+
+    final t1 = DateTime.now();
+
+    await detectMfa();
+    final t2 = DateTime.now();
+
+    await _initQrCode();
+    qrCode.startPolling();
+    final t3 = DateTime.now();
+
+    await _fetchQrCode();
+    final t4 = DateTime.now();
+
+    await _downloadQrCode();
+    final t5 = DateTime.now();
+
+    print("""${t5.difference(t1).inMilliseconds}ms
+
+    detectMfa:\t ${t2.difference(t1).inMilliseconds}ms
+    initQrCode:\t ${t3.difference(t2).inMilliseconds}ms
+    fetchQrCode:\t ${t4.difference(t3).inMilliseconds}ms
+    downloadQrCode:\t ${t5.difference(t4).inMilliseconds}ms
+      """);
+  }
 
   /// detect: 获取 mfa 状态
   Future<bool> detectMfa() async {
@@ -44,37 +95,9 @@ class MfaService {
     }
   }
 
-  Future<void> process(BuildContext context) async {
-    if (!await detectMfa()) return;
-
-    await _initQrCode();
-
-    qrCode.startPolling();
-    QrCodeCard.showQrCodeDialog(
-      context,
-      qrCode,
-      title: '安全验证',
-      info: '当前登录环境异常，需通过安全验证确认是本人操作',
-    );
-
-    await _fetchQrCode();
-    return _downloadQrCode();
-  }
-
-  Future<void> refreshQrCode() async {
-    await detectMfa();
-
-    await _initQrCode();
-    qrCode.startPolling();
-
-    await _fetchQrCode();
-    return _downloadQrCode();
-  }
-
   /// qrcode: 获取 attestServerUrl 和 gid
   /// 必须要先调用 detectMfa 获取 _stateParam
   Future<void> _initQrCode() async {
-    qrCode = MfaQrCode(this);
     try {
       final response = await _dio.get(
         '$baseUrl/cas/mfa/initByType/qrcode',
@@ -130,34 +153,34 @@ class MfaService {
     }
   }
 
-  // final Map<String, dynamic> _headers = {
-  //   'Accept': 'application/json, text/javascript, */*; q=0.01',
-  //   'Accept-Encoding': 'gzip, deflate, br, zstd',
-  //   'Accept-Language': 'zh-CN,zh;q=0.9',
-  //   'Connection': 'keep-alive',
-  //   'Content-Type': 'application/json; charset=UTF-8',
-  //   // Cookie根据实际情况可能需要动态设置
-  //   // 'Cookie': 'Hm_lvt_d605d8df6bf5ca8a54fe078683196518=1769601206; '
-  //   //     'HMACCOUNT=95DD7CFF9EC39F39; '
-  //   //     'Hm_lpvt_d605d8df6bf5ca8a54fe078683196518=1769601426',
-  //   'Host': 'ssl.jxufe.edu.cn',
-  //   'Origin': 'https://ssl.jxufe.edu.cn',
-  //   'Referer':
-  //       'https://ssl.jxufe.edu.cn/cas/login?service=http%3A%2F%2Fehall.jxufe.edu.cn%2Famp-auth-adapter%2FloginSuccess%3FsessionToken%3D0b0f3d2b6be14bd0b3c1ecc955bdb832',
-  //   'Sec-Fetch-Dest': 'empty',
-  //   'Sec-Fetch-Mode': 'cors',
-  //   'Sec-Fetch-Site': 'same-origin',
-  //   'User-Agent':
-  //       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0',
-  //   'X-Requested-With': 'XMLHttpRequest',
-  //   'sec-ch-ua':
-  //       '"Not(A:Brand";v="8", "Chromium";v="144", "Microsoft Edge";v="144"',
-  //   'sec-ch-ua-mobile': '?0',
-  // };
+  final Map<String, dynamic> _headers = {
+    'Accept': 'application/json, text/javascript, */*; q=0.01',
+    'Accept-Encoding': 'gzip, deflate, br, zstd',
+    'Accept-Language': 'zh-CN,zh;q=0.9',
+    'Connection': 'keep-alive',
+    'Content-Type': 'application/json; charset=UTF-8',
+    // Cookie根据实际情况可能需要动态设置
+    // 'Cookie': 'Hm_lvt_d605d8df6bf5ca8a54fe078683196518=1769601206; '
+    //     'HMACCOUNT=95DD7CFF9EC39F39; '
+    //     'Hm_lpvt_d605d8df6bf5ca8a54fe078683196518=1769601426',
+    'Host': 'ssl.jxufe.edu.cn',
+    'Origin': 'https://ssl.jxufe.edu.cn',
+    'Referer':
+        'https://ssl.jxufe.edu.cn/cas/login?service=http%3A%2F%2Fehall.jxufe.edu.cn%2Famp-auth-adapter%2FloginSuccess%3FsessionToken%3D0b0f3d2b6be14bd0b3c1ecc955bdb832',
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Site': 'same-origin',
+    'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0',
+    'X-Requested-With': 'XMLHttpRequest',
+    'sec-ch-ua':
+        '"Not(A:Brand";v="8", "Chromium";v="144", "Microsoft Edge";v="144"',
+    'sec-ch-ua-mobile': '?0',
+  };
 
   /// status: 轮询状态
   /// 必须要先调用 _initQrCode 获取 attestServerUrl 和 qrCode.id
-  Future<QrCodeStatus> pollStatus() async {
+  Future<QrCodeStatus?> pollStatus() async {
     try {
       final response = await _dio.post(
         '$_attestServer/api/guard/qrcode/status',
@@ -177,20 +200,24 @@ class MfaService {
   }
 
   static const statusCodeMap = {
+    0: 'INIT',
     1: 'SENT',
-    8: 'SCANED',
-    5: 'CANCEL',
     2: 'VALID',
+    5: 'CANCEL',
+    8: 'SCANED',
+    9: 'EXPIRED',
   };
 
   static const _statusMap = {
-    1: QrCodeStatus.pending,
-    8: QrCodeStatus.scanned,
-    5: QrCodeStatus.cancelled,
+    0: QrCodeStatus.loading,
+    // 1: 待扫描
     2: QrCodeStatus.authorized,
+    5: QrCodeStatus.cancelled,
+    8: QrCodeStatus.scanned,
+    9: QrCodeStatus.expired,
   };
 
-  QrCodeStatus _extractStatus(Map<String, dynamic> responseBody) {
+  QrCodeStatus? _extractStatus(Map<String, dynamic> responseBody) {
     if (responseBody['code'] as int == -1) return QrCodeStatus.expired;
 
     final data = responseBody['data'] as Map<String, dynamic>;
@@ -199,10 +226,10 @@ class MfaService {
 
     if (statusCodeMap[status] != statusCode) {
       throw Exception(
-        '意外的 status: $status, statusCode: $statusCode (应为 ${statusCodeMap[status]})',
+        '意外的 status: $status, statusCode: $statusCode (应为 ${statusCodeMap[status]})\n$responseBody',
       );
     }
 
-    return _statusMap[status]!;
+    return _statusMap[status];
   }
 }

@@ -11,15 +11,17 @@ abstract class QrCode {
   String? verifyCode;
   late Uint8List img;
 
-  final BehaviorSubject<QrCodeStatus> _stateSubject =
+  final BehaviorSubject<QrCodeStatus> stateSubject =
       BehaviorSubject<QrCodeStatus>.seeded(QrCodeStatus.loading);
-  Stream<QrCodeStatus> get stateStream => _stateSubject.stream;
+  Stream<QrCodeStatus> get stateStream => stateSubject.stream;
 
-  set status(QrCodeStatus status) {
-    if (!_stateSubject.isClosed) _stateSubject.add(status);
+  set status(QrCodeStatus? status) {
+    if (!stateSubject.isClosed && status != null) {
+      stateSubject.add(status);
+    }
   }
 
-  QrCodeStatus get status => _stateSubject.value;
+  QrCodeStatus get status => stateSubject.value;
 
   Future<void> refresh();
 
@@ -27,7 +29,7 @@ abstract class QrCode {
   Timer? _pollingTimer;
   final int pollingInterval = 1500;
 
-  Future<void> _pollStatus();
+  Future<void> _pollStatus(); // TODO 轮询异常的判断和提示
 
   Future<void> startPolling() async {
     _pollingTimer = Timer.periodic(
@@ -43,7 +45,7 @@ abstract class QrCode {
 
   void dispose() {
     stopPolling();
-    _stateSubject.close();
+    stateSubject.close();
   }
 }
 
@@ -53,7 +55,7 @@ class MfaQrCode extends QrCode {
   MfaQrCode(this._loginService);
 
   @override
-  Future<void> refresh() => _loginService.refreshQrCode();
+  Future<void> refresh() async => await _loginService.refreshQrCode();
 
   @override
   Future<void> _pollStatus() async {
