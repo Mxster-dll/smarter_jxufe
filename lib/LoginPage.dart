@@ -1,10 +1,9 @@
-import 'dart:typed_data';
-import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
-import 'package:smarter_jxufe/QrCodeCard.dart';
-import 'icons.dart';
 import 'dart:async';
-import 'QrCode.dart';
+import 'package:flutter/material.dart';
+
+import 'package:smarter_jxufe/design/JxufeTheme.dart';
+import 'package:smarter_jxufe/design/Icons.dart';
+import 'package:smarter_jxufe/Services/MfaService.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
@@ -80,122 +79,10 @@ class LoginPage extends StatelessWidget {
   }
 }
 
-class JxufeLogin {
-  final Dio _dio = Dio();
-  static const String baseUrl = 'https://ssl.jxufe.edu.cn';
-
-  String? _execution;
-  String? _fpVisitorId;
-  Future<void>? _futureLoginPageInfo;
-
-  MfaQrCode? mqc;
-  String? state;
-
-  JxufeLogin() {
-    _dio.options.headers = {
-      'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    };
-    preloadLoginPage();
-  }
-
-  void preloadLoginPage() => _futureLoginPageInfo ??= _getLoginPageInfo();
-
-  /// 获取登录页的 execution 和 fpVisitorId 字段
-  Future<void> _getLoginPageInfo() async {
-    try {
-      final response = await _dio.get(
-        '$baseUrl/cas/login',
-        queryParameters: {
-          'service': 'http://ehall.jxufe.edu.cn/amp-auth-adapter/loginSuccess',
-        },
-      );
-
-      final data = response.data as String;
-
-      _execution = RegExp(
-        r'name="execution" value="([^"]+)"',
-      ).firstMatch(data)?.group(1)!;
-
-      _fpVisitorId = RegExp(
-        r'name="fpVisitorId" value="([^"]+)"',
-      ).firstMatch(data)?.group(1)!;
-    } catch (e) {
-      throw Exception('获取登录页面失败: $e');
-    }
-  }
-
-  Future<bool> mfaDetect(String account, String password) async {
-    try {
-      await _futureLoginPageInfo;
-      final response = await _dio.post(
-        '$baseUrl/cas/mfa/detect',
-        data: {
-          'username': account,
-          'password': password,
-          // 'fpVisitorId': _fpVisitorId!,
-        },
-        options: Options(contentType: Headers.formUrlEncodedContentType),
-      );
-
-      final result = response.data as Map<String, dynamic>;
-      final data = result['data'] as Map<String, dynamic>;
-
-      if (data['need']) state = data['state'];
-
-      return data['need'];
-    } catch (e) {
-      throw Exception('MFA检测失败: $e');
-    }
-  }
-
-  // Future<void> _postLoginRequests(String account, String password) async {}
-
-  // Future<void> login(String account, String password) async {
-  //   try {
-  //     if (await mfaDetect(account, password)) {
-  //       final qrCodeUrl = '$baseUrl/cas/mfa/initByType/qrcode';
-  //       final mqc = this.mqc = MfaQrCode(qrCodeUrl, state!);
-
-  //       await mqc.init();
-  //       mqc.data;
-  //     }
-
-  //     _postLoginRequests(account, password);
-  //   } catch (e) {
-  //     rethrow;
-  //   }
-  // }
-
-  //   Future<Uint8List?> loginAndGetQrCodeData(
-  //     String account,
-  //     String password,
-  //   ) async {
-  //     try {
-  //       // 发送2FA检测请求
-  //       if (!await mfaDetect(account, password)) {
-  //         throw Exception('不需要2FA验证');
-  //       }
-
-  //       // if (!await mfaDetect(username, password)) return null;
-
-  //       // 获取二维码数据
-  //       final qrCodeUrl = '$baseUrl/cas/mfa/initByType/qrcode';
-  //       final mqc = this.mqc = MfaQrCode(qrCodeUrl, state!);
-
-  //       await mqc.init();
-  //       return mqc.data;
-  //     } catch (e) {
-  //       rethrow;
-  //     }
-  //   }
-}
-
+// TODO
+// 轮询异常显示
 // INFO
 // 信任设备在第一个login请求的trustAgent字段
-// NOTE
-// 提前请求资源
-// 多用Future字段(全面详细的管理空与Future)
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -206,22 +93,11 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _accountController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _loginService = JxufeLogin();
 
   bool _isLoading = false;
   String? _errorMessage;
-  Uint8List? _qrCodeBytes;
   bool _passwordVisible = false;
   Future<void>? loginPageInfo;
-
-  // 江西财经大学主题色
-  static const Color _primaryColor = Color(0xFFC3282E);
-  static const Color _secondaryColor = Color(0xFF8B0000);
-  static const Color _backgroundColor = Color(0xFFF5F5F5);
-  static const Color _inputBgColor = Color(0xFFF8F8F8);
-  static const Color _borderColor = Color(0xFFE0E0E0);
-  static const Color _textColor = Color(0xFF333333);
-  static const Color _hintColor = Color(0xFF999999);
 
   @override
   void initState() => super.initState();
@@ -249,30 +125,11 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
-      _qrCodeBytes = null;
     });
 
     try {
-      if (await _loginService.mfaDetect(account, password)) {
-        final qrCodeUrl = '${JxufeLogin.baseUrl}/cas/mfa/initByType/qrcode';
-        final mfaQrCode = MfaQrCode(qrCodeUrl, _loginService.state!);
-
-        // if (qrCodeBytes != null) {
-
-        QrCodeCard.showQrCodeDialog(
-          context,
-          mfaQrCode,
-          title: '安全验证',
-          info: '当前登录环境异常，需通过安全验证确认是本人操作',
-        );
-        await mfaQrCode.init();
-      }
-
-      // } else {
-      //   setState(() {
-      //     _errorMessage = '获取二维码失败';
-      //   });
-      // }
+      MfaService mfaService = MfaService(account, password);
+      await mfaService.process(context);
     } catch (e) {
       setState(() {
         _errorMessage = '登录失败: $e';
@@ -287,7 +144,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _backgroundColor,
+      backgroundColor: JxufeTheme.backgroundColor,
       body: Stack(
         children: [
           // 背景装饰元素
@@ -298,13 +155,14 @@ class _LoginScreenState extends State<LoginScreen> {
               width: 150,
               height: 150,
               decoration: BoxDecoration(
-                color: _primaryColor.withAlpha(0x1A),
+                color: JxufeTheme.primaryColor.withAlpha(26),
                 borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(100),
                 ),
               ),
             ),
           ),
+
           Positioned(
             bottom: 0,
             left: 0,
@@ -312,7 +170,7 @@ class _LoginScreenState extends State<LoginScreen> {
               width: 100,
               height: 100,
               decoration: BoxDecoration(
-                color: _primaryColor.withAlpha(0x1A),
+                color: JxufeTheme.primaryColor.withAlpha(26),
                 borderRadius: const BorderRadius.only(
                   topRight: Radius.circular(100),
                 ),
@@ -337,7 +195,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             width: 50,
                             height: 50,
                             decoration: BoxDecoration(
-                              color: _primaryColor,
+                              color: JxufeTheme.primaryColor,
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: const Icon(
@@ -355,7 +213,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 style: TextStyle(
                                   fontSize: 22,
                                   fontWeight: FontWeight.bold,
-                                  color: _textColor,
+                                  color: JxufeTheme.textColor,
                                   height: 1.2,
                                 ),
                               ),
@@ -363,7 +221,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 'Jiangxi University of Finance and Economics',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: _hintColor,
+                                  color: JxufeTheme.hintColor,
                                 ),
                               ),
                             ],
@@ -375,7 +233,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       // 分割线
                       Container(
                         height: 1,
-                        color: _borderColor,
+                        color: JxufeTheme.borderColor,
                         margin: const EdgeInsets.symmetric(horizontal: 20),
                       ),
                       const SizedBox(height: 24),
@@ -393,7 +251,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withAlpha(0x1A),
+                        color: Colors.black.withAlpha(26),
                         blurRadius: 20,
                         offset: const Offset(0, 4),
                       ),
@@ -412,7 +270,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 width: 4,
                                 height: 18,
                                 decoration: BoxDecoration(
-                                  color: _primaryColor,
+                                  color: JxufeTheme.primaryColor,
                                   borderRadius: BorderRadius.circular(2),
                                 ),
                               ),
@@ -422,7 +280,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: _textColor,
+                                  color: JxufeTheme.textColor,
                                 ),
                               ),
                             ],
@@ -432,14 +290,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         // 用户名输入框
                         Container(
                           decoration: BoxDecoration(
-                            color: _inputBgColor,
+                            color: JxufeTheme.inputBgColor,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: TextField(
                             controller: _accountController,
                             decoration: InputDecoration(
                               hintText: '请输入校园卡号',
-                              hintStyle: TextStyle(color: _hintColor),
+                              hintStyle: TextStyle(color: JxufeTheme.hintColor),
                               border: InputBorder.none,
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 16,
@@ -447,10 +305,10 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               prefixIcon: Icon(
                                 Icons.person_outline,
-                                color: _primaryColor.withAlpha(0x60),
+                                color: JxufeTheme.primaryColor.withAlpha(96),
                               ),
                             ),
-                            style: TextStyle(color: _textColor),
+                            style: TextStyle(color: JxufeTheme.textColor),
                             keyboardType: TextInputType.text,
                           ),
                         ),
@@ -459,14 +317,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         // 密码输入框
                         Container(
                           decoration: BoxDecoration(
-                            color: _inputBgColor,
+                            color: JxufeTheme.inputBgColor,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: TextField(
                             controller: _passwordController,
                             decoration: InputDecoration(
                               hintText: '请输入登录密码',
-                              hintStyle: TextStyle(color: _hintColor),
+                              hintStyle: TextStyle(color: JxufeTheme.hintColor),
                               border: InputBorder.none,
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 16,
@@ -474,14 +332,14 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               prefixIcon: Icon(
                                 Icons.lock_outline,
-                                color: _primaryColor.withAlpha(0x60),
+                                color: JxufeTheme.primaryColor.withAlpha(96),
                               ),
                               suffixIcon: IconButton(
                                 icon: Icon(
                                   _passwordVisible
                                       ? Icons.visibility_outlined
                                       : Icons.visibility_off_outlined,
-                                  color: _hintColor,
+                                  color: JxufeTheme.hintColor,
                                 ),
                                 onPressed: () {
                                   setState(() {
@@ -490,7 +348,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 },
                               ),
                             ),
-                            style: TextStyle(color: _textColor),
+                            style: TextStyle(color: JxufeTheme.textColor),
                             obscureText: !_passwordVisible,
                             onSubmitted: (_) => _handleLogin(),
                           ),
@@ -503,17 +361,17 @@ class _LoginScreenState extends State<LoginScreen> {
                             padding: const EdgeInsets.all(12),
                             margin: const EdgeInsets.only(bottom: 8),
                             decoration: BoxDecoration(
-                              color: _primaryColor.withAlpha(0x14),
+                              color: JxufeTheme.primaryColor.withAlpha(20),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color: _primaryColor.withAlpha(0x33),
+                                color: JxufeTheme.primaryColor.withAlpha(51),
                               ),
                             ),
                             child: Row(
                               children: [
                                 Icon(
                                   Icons.error_outline,
-                                  color: _primaryColor,
+                                  color: JxufeTheme.primaryColor,
                                   size: 18,
                                 ),
                                 const SizedBox(width: 8),
@@ -521,7 +379,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   child: Text(
                                     _errorMessage!,
                                     style: TextStyle(
-                                      color: _primaryColor,
+                                      color: JxufeTheme.primaryColor,
                                       fontSize: 13,
                                     ),
                                   ),
@@ -539,7 +397,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: ElevatedButton(
                             onPressed: _isLoading ? null : _handleLogin,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: _primaryColor,
+                              backgroundColor: JxufeTheme.primaryColor,
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(25),
@@ -567,6 +425,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                           ),
                         ),
+
                         const SizedBox(height: 24),
 
                         // 其他登录方式图标
@@ -575,12 +434,12 @@ class _LoginScreenState extends State<LoginScreen> {
                           children: [
                             _buildOtherLoginIcon(
                               Icons.qr_code,
-                              _primaryColor,
+                              JxufeTheme.primaryColor,
                               onTap: () {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: const Text('暂未开放扫描二维码登录登录'),
-                                    backgroundColor: _primaryColor,
+                                    backgroundColor: JxufeTheme.primaryColor,
                                   ),
                                 );
                               },
@@ -595,7 +454,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: const Text('暂未开放微信登录'),
-                                    backgroundColor: _primaryColor,
+                                    backgroundColor: JxufeTheme.primaryColor,
                                   ),
                                 );
                               },
@@ -610,7 +469,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: const Text('暂未开放企业微信登录'),
-                                    backgroundColor: _primaryColor,
+                                    backgroundColor: JxufeTheme.primaryColor,
                                   ),
                                 );
                               },
@@ -622,7 +481,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
 
-                Spacer(),
+                const Spacer(),
 
                 // 底部信息
                 Container(
@@ -631,12 +490,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     children: [
                       Container(
                         height: 1,
-                        color: _borderColor,
+                        color: JxufeTheme.borderColor,
                         margin: const EdgeInsets.only(bottom: 16),
                       ),
                       const Text(
                         'Copyright© 2026 All right reserved.',
-                        style: TextStyle(fontSize: 12, color: _hintColor),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: JxufeTheme.hintColor,
+                        ),
                       ),
                     ],
                   ),
@@ -648,93 +510,6 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
-
-  // Dialog _buildQrCodeDialog(QrCode qrCode, String title, String info) {
-  //   return Dialog(
-  //     backgroundColor: Colors.transparent,
-  //     insetPadding: const EdgeInsets.symmetric(horizontal: 20),
-  //     child: Container(
-  //       decoration: BoxDecoration(
-  //         color: Colors.white,
-  //         borderRadius: BorderRadius.circular(12),
-  //         boxShadow: [
-  //           BoxShadow(
-  //             color: Colors.black.withAlpha(0x26),
-  //             blurRadius: 30,
-  //             offset: const Offset(0, 10),
-  //           ),
-  //         ],
-  //       ),
-  //       child: Padding(
-  //         padding: const EdgeInsets.all(24),
-  //         child: Column(
-  //           mainAxisSize: MainAxisSize.min,
-  //           children: [
-  //             Container(
-  //               margin: const EdgeInsets.only(bottom: 20),
-  //               child: Column(
-  //                 children: [
-  //                   Container(
-  //                     width: 40,
-  //                     height: 40,
-  //                     decoration: BoxDecoration(
-  //                       color: _primaryColor,
-  //                       borderRadius: BorderRadius.circular(20),
-  //                     ),
-  //                     child: const Icon(
-  //                       Icons.qr_code_scanner,
-  //                       color: Colors.white,
-  //                       size: 24,
-  //                     ),
-  //                   ),
-
-  //                   const SizedBox(height: 12),
-
-  //                   Text(
-  //                     title,
-  //                     style: TextStyle(
-  //                       fontSize: 18,
-  //                       fontWeight: FontWeight.bold,
-  //                       color: _textColor,
-  //                     ),
-  //                   ),
-
-  //                   const SizedBox(height: 8),
-
-  //                   Text(
-  //                     info,
-  //                     style: TextStyle(fontSize: 13, color: _hintColor),
-  //                     textAlign: TextAlign.center,
-  //                   ),
-  //                 ],
-  //               ),
-  //             ),
-
-  //             // 二维码卡片
-  //             qrCode.buildQrCodeCard(
-  //               backgroundColor: _inputBgColor,
-  //               borderColor: _borderColor,
-  //               tipsColor: _hintColor,
-  //             ),
-
-  //             const SizedBox(height: 20),
-  //           ],
-  //         ),
-  //       ),
-  //     ),
-  //   );
-  // }
-
-  // void _showQrCodeDialog(
-  //   QrCode qrcode, {
-  //   required String title,
-  //   required String info,
-  // }) => showDialog(
-  //   context: context,
-  //   barrierColor: Colors.black.withAlpha(0x1A), // 半透明背景
-  //   barrierDismissible: true, // 点击背景关闭
-  //   builder: (context) => _buildQrCodeDialog(qrcode, title, info),
-  // );
 
   Widget _buildOtherLoginIcon(
     IconData icon,
@@ -756,16 +531,16 @@ class _LoginScreenState extends State<LoginScreen> {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: hovering ? color : _inputBgColor,
+                color: hovering ? color : JxufeTheme.inputBgColor,
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                  color: hovering ? color : _borderColor,
+                  color: hovering ? color : JxufeTheme.borderColor,
                   width: hovering ? 2 : 1,
                 ),
                 boxShadow: hovering
                     ? [
                         BoxShadow(
-                          color: color.withAlpha(0x4D),
+                          color: color.withAlpha(77),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
