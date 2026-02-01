@@ -15,7 +15,7 @@ class MfaService {
   late String _password;
 
   late MfaQrCode qrCode;
-  String? _stateParam;
+  String? mfaState;
   late String _attestServer;
   late String _qrCodeImgUrl;
 
@@ -63,7 +63,7 @@ class MfaService {
     await _downloadQrCode();
     final t5 = DateTime.now();
 
-    print("""${t5.difference(t1).inMilliseconds}ms
+    logInfo("""${t5.difference(t1).inMilliseconds}ms
 
     detectMfa:\t ${t2.difference(t1).inMilliseconds}ms
     initQrCode:\t ${t3.difference(t2).inMilliseconds}ms
@@ -81,6 +81,7 @@ class MfaService {
           'username': _account,
           'password': _password,
           // 'fpVisitorId': _fpVisitorId!,
+          // 'fpVisitorId': d1692c113a6579952b0270a150073e0b,
         },
         options: Options(contentType: Headers.formUrlEncodedContentType),
       );
@@ -88,7 +89,7 @@ class MfaService {
       final result = response.data as Map<String, dynamic>;
       final data = result['data'] as Map<String, dynamic>;
 
-      _stateParam = data['state'] as String;
+      mfaState = data['state'] as String;
       return data['need'] as bool;
     } catch (e) {
       throw Exception('MFA检测失败: $e');
@@ -101,7 +102,7 @@ class MfaService {
     try {
       final response = await _dio.get(
         '$baseUrl/cas/mfa/initByType/qrcode',
-        queryParameters: {'state': _stateParam},
+        queryParameters: {'state': mfaState},
       );
 
       final result = response.data as Map<String, dynamic>;
@@ -127,7 +128,7 @@ class MfaService {
       final data = result['data'] as Map<String, dynamic>;
 
       qrCode.verifyCode = data['callbackCode'] as String;
-      _qrCodeImgUrl = data['scanQrcode'] as String;
+      qrCode.imgUrl = data['scanQrcode'] as String;
     } catch (e) {
       throw Exception('获取二维码信息失败: $e');
     }
@@ -138,12 +139,12 @@ class MfaService {
   Future<void> _downloadQrCode() async {
     try {
       final response = await _dio.get(
-        _qrCodeImgUrl,
+        qrCode.imgUrl,
         options: Options(responseType: ResponseType.bytes),
       );
 
       if (response.statusCode != 200) {
-        throw Exception('连接错误${response.statusCode}: $_qrCodeImgUrl');
+        throw Exception('连接错误${response.statusCode}: ${qrCode.imgUrl}');
       }
 
       qrCode.img = response.data as Uint8List;

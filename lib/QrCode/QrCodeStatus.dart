@@ -35,7 +35,10 @@ class LoadingDisplayStrategy implements QrCodeDisplayStrategy {
 }
 
 class PendingDisplayStrategy implements QrCodeDisplayStrategy {
-  static const hints = {MfaQrCode: '使用微信或者企业微信扫一扫完成验证'};
+  static const hints = {
+    MfaQrCode: '使用微信或者企业微信扫一扫完成验证',
+    LoginQrCode: '使用微信或者企业微信扫一扫登录',
+  };
 
   @override
   Widget buildWidget(BuildContext context, QrCode qrCode) {
