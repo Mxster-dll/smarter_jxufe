@@ -32,71 +32,74 @@ class QrCodeCard extends StatefulWidget {
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(38),
-              blurRadius: 30,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                margin: const EdgeInsets.only(bottom: 20),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: JxufeTheme.primaryColor,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Icon(
-                        Icons.qr_code_scanner,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: JxufeTheme.textColor,
-                      ),
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    Text(
-                      info,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: JxufeTheme.hintColor,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minWidth: 360),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(38),
+                blurRadius: 30,
+                offset: const Offset(0, 10),
               ),
-
-              // 二维码卡片
-              QrCodeCard(qrCode),
-
-              const SizedBox(height: 20),
             ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(bottom: 20),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: JxufeTheme.primaryColor,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Icon(
+                          Icons.qr_code_scanner,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: JxufeTheme.textColor,
+                        ),
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      Text(
+                        info,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: JxufeTheme.hintColor,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+
+                // 二维码卡片
+                QrCodeCard(qrCode),
+
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         ),
       ),

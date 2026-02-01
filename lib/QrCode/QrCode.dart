@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:typed_data';
+import 'package:dio/dio.dart';
 import 'package:rxdart/rxdart.dart';
 
 import 'package:smarter_jxufe/QrCode/QrCodeStatus.dart';
@@ -9,6 +10,7 @@ import 'package:smarter_jxufe/Services/ScanLoginService.dart';
 abstract class QrCode {
   late String id;
   String? verifyCode;
+  late String imgUrl;
   late Uint8List img;
 
   final BehaviorSubject<QrCodeStatus> stateSubject =

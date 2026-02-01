@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:smarter_jxufe/Services/LoginService.dart';
+import 'package:smarter_jxufe/Services/ScanLoginService.dart';
 
 import 'package:smarter_jxufe/design/JxufeTheme.dart';
 import 'package:smarter_jxufe/design/Icons.dart';
@@ -92,6 +94,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final Dio _dio = Dio();
   late final MfaService _mfaService = MfaService(_dio);
+  late final ScanLoginService _scanLoginService = ScanLoginService();
 
   final _accountController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -438,14 +441,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             _buildOtherLoginIcon(
                               Icons.qr_code,
                               JxufeTheme.primaryColor,
-                              onTap: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: const Text('暂未开放扫描二维码登录登录'),
-                                    backgroundColor: JxufeTheme.primaryColor,
-                                  ),
-                                );
-                              },
+                              onTap: () => _scanLoginService.process(context),
                             ),
 
                             const SizedBox(width: 32),
