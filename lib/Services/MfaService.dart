@@ -7,29 +7,29 @@ import 'package:smarter_jxufe/QrCode/QrCodeCard.dart';
 import 'package:smarter_jxufe/QrCode/QrCodeStatus.dart';
 import 'package:smarter_jxufe/Log.dart';
 
-class MfaService {
+class MfaService extends QrCodeNetworkService {
   static const baseUrl = 'https://ssl.jxufe.edu.cn';
+
   final Dio _dio;
+  MfaService([Dio? dio]) : _dio = dio ?? Dio();
 
   late String _account;
   late String _password;
 
-  late MfaQrCode qrCode;
+  late QrCode qrCode;
   String? mfaState;
   late String _attestServer;
-  late String _qrCodeImgUrl;
-
-  MfaService(Dio? dio) : _dio = dio ?? Dio();
 
   void set(String account, String password) {
     _account = account;
     _password = password;
   }
 
+  @override
   Future<void> process(BuildContext context) async {
     if (!await detectMfa()) return;
 
-    qrCode = MfaQrCode(this);
+    qrCode = QrCode(this);
     await _initQrCode();
 
     qrCode.startPolling();
@@ -44,6 +44,7 @@ class MfaService {
     await _downloadQrCode();
   }
 
+  @override
   Future<void> refreshQrCode() async {
     qrCode.status = QrCodeStatus.loading;
     qrCode.stopPolling();
@@ -181,6 +182,7 @@ class MfaService {
 
   /// status: 轮询状态
   /// 必须要先调用 _initQrCode 获取 attestServerUrl 和 qrCode.id
+  @override
   Future<QrCodeStatus?> pollStatus() async {
     try {
       final response = await _dio.post(

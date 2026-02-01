@@ -2,6 +2,8 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:smarter_jxufe/QrCode/QrCode.dart';
+import 'package:smarter_jxufe/Services/MfaService.dart';
+import 'package:smarter_jxufe/Services/ScanLogin.dart';
 import 'package:smarter_jxufe/design/JxufeTheme.dart';
 
 enum QrCodeStatus {
@@ -36,13 +38,13 @@ class LoadingDisplayStrategy implements QrCodeDisplayStrategy {
 
 class PendingDisplayStrategy implements QrCodeDisplayStrategy {
   static const hints = {
-    MfaQrCode: '使用微信或者企业微信扫一扫完成验证',
-    LoginQrCode: '使用微信或者企业微信扫一扫登录',
+    MfaService: '使用微信或者企业微信扫一扫完成验证',
+    ScanLogin: '使用微信或者企业微信扫一扫登录',
   };
 
   @override
   Widget buildWidget(BuildContext context, QrCode qrCode) {
-    final String? hint = hints[qrCode.runtimeType];
+    final String? hint = hints[qrCode.networkService.runtimeType];
     final bool showHint = hint != null && hint.isNotEmpty;
 
     return Column(

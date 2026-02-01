@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:smarter_jxufe/Services/LoginService.dart';
-import 'package:smarter_jxufe/Services/ScanLoginService.dart';
+import 'package:smarter_jxufe/Services/JxufeLogin.dart';
+import 'package:smarter_jxufe/Services/ScanLogin.dart';
 
 import 'package:smarter_jxufe/design/JxufeTheme.dart';
 import 'package:smarter_jxufe/design/Icons.dart';
@@ -94,7 +94,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final Dio _dio = Dio();
   late final MfaService _mfaService = MfaService(_dio);
-  late final ScanLoginService _scanLoginService = ScanLoginService();
+  late final ScanLogin _scanLoginService = ScanLogin();
 
   final _accountController = TextEditingController();
   final _passwordController = TextEditingController();
