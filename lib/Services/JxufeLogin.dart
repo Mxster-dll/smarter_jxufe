@@ -53,12 +53,9 @@ import 'dart:async';
 //     }
 //   }
 // }
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:cookie_jar/cookie_jar.dart';
-import 'package:pointycastle/pointycastle.dart';
 import 'package:smarter_jxufe/Services/MfaService.dart';
 
 // 使用您的日志类
@@ -75,7 +72,7 @@ enum LoginState {
   networkError,
 }
 
-class LoginService {
+class JxufeLogin {
   // 状态管理
   LoginState _state = LoginState.idle;
   String _errorMessage = '';
@@ -104,7 +101,7 @@ class LoginService {
   String? get captchaImageUrl => _captchaImageUrl;
   Map<String, String> get cookies => {}; // 需要从_cookieJar获取
 
-  LoginService(MfaService mfaService)
+  JxufeLogin(MfaService mfaService)
     : _dio = Dio(BaseOptions(baseUrl: 'https://ssl.jxufe.edu.cn')),
       _cookieJar = CookieJar(),
       _mfaService = mfaService {

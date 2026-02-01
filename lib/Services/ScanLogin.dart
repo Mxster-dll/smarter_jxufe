@@ -7,11 +7,13 @@ import 'package:smarter_jxufe/QrCode/QrCode.dart';
 import 'package:smarter_jxufe/QrCode/QrCodeCard.dart';
 import 'package:smarter_jxufe/QrCode/QrCodeStatus.dart';
 
-class ScanLoginService {
+class ScanLogin extends QrCodeNetworkService {
   static const baseUrl = 'https://ssl.jxufe.edu.cn';
-  final Dio _dio = Dio();
 
-  late LoginQrCode qrCode;
+  final Dio _dio;
+  ScanLogin([Dio? dio]) : _dio = dio ?? Dio();
+
+  late QrCode qrCode;
   late String _pollingCookie;
 
   String _getQrCodeId() {
@@ -20,7 +22,7 @@ class ScanLoginService {
   }
 
   Future<void> process(BuildContext context) async {
-    qrCode = LoginQrCode(this);
+    qrCode = QrCode(this);
 
     qrCode.id = _getQrCodeId();
     qrCode.imgUrl = '$baseUrl/qr/qrcode?r=${qrCode.id}';
