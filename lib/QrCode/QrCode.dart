@@ -19,7 +19,7 @@ class QrCode {
   late String imgUrl;
   late Uint8List img;
 
-  QrCode(this.networkService);
+  QrCode(this.networkService, [this.pollingInterval = 1500]);
 
   final BehaviorSubject<QrCodeStatus> stateSubject =
       BehaviorSubject<QrCodeStatus>.seeded(QrCodeStatus.loading);
@@ -31,13 +31,16 @@ class QrCode {
     }
   }
 
+  bool get isLoading => status == QrCodeStatus.loading;
+  bool get isPending => status == QrCodeStatus.pending;
+
   QrCodeStatus get status => stateSubject.value;
 
   Future<void> refresh() async => await networkService.refreshQrCode();
 
   // 轮询相关
-  Timer? _pollingTimer;
-  final int pollingInterval = 1500;
+  Timer? _pollingTimer; // BUG 存在Timer在程序结束后未关闭
+  final int pollingInterval;
 
   // TODO 轮询异常的判断和提示
   Future<void> _pollStatus() async {
@@ -46,7 +49,7 @@ class QrCode {
     if (status.isFinal) stopPolling();
   }
 
-  Future<void> startPolling() async {
+  void startPolling() {
     _pollingTimer = Timer.periodic(
       Duration(milliseconds: pollingInterval),
       (_) => _pollStatus(),
