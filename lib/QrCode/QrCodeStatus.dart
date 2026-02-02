@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:smarter_jxufe/QrCode/QrCode.dart';
 import 'package:smarter_jxufe/Services/MfaService.dart';
 import 'package:smarter_jxufe/Services/ScanLogin.dart';
+import 'package:smarter_jxufe/Services/WechatLogin.dart';
 import 'package:smarter_jxufe/design/JxufeTheme.dart';
 
 enum QrCodeStatus {
@@ -27,19 +28,15 @@ abstract class QrCodeDisplayStrategy {
 
 class LoadingDisplayStrategy implements QrCodeDisplayStrategy {
   @override
-  SizedBox buildWidget(BuildContext context, QrCode qrCode) => SizedBox(
-    width: 200,
-    height: 200,
-    child: Center(
-      child: CircularProgressIndicator(color: JxufeTheme.primaryColor),
-    ),
-  );
+  buildWidget(BuildContext context, QrCode qrCode) =>
+      CircularProgressIndicator(color: JxufeTheme.primaryColor);
 }
 
 class PendingDisplayStrategy implements QrCodeDisplayStrategy {
   static const hints = {
     MfaService: '使用微信或者企业微信扫一扫完成验证',
     ScanLogin: '使用微信或者企业微信扫一扫登录',
+    WeChatLogin: '使用微信扫一扫登录',
   };
 
   @override
@@ -49,7 +46,7 @@ class PendingDisplayStrategy implements QrCodeDisplayStrategy {
 
     return Column(
       children: [
-        Image.memory(qrCode.img, height: 200, width: 200, fit: BoxFit.contain),
+        const SizedBox(width: 200, height: 200),
 
         if (showHint) const SizedBox(height: 16),
 
@@ -113,29 +110,11 @@ class CancelledDisplayStrategy implements QrCodeDisplayStrategy {
 
 class ExpiredDisplayStrategy implements QrCodeDisplayStrategy {
   @override
-  Widget buildWidget(BuildContext context, QrCode qrCode) => Stack(
-    alignment: Alignment.center,
+  Widget buildWidget(BuildContext context, QrCode qrCode) => Column(
     children: [
-      ImageFiltered(
-        imageFilter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-        child: Opacity(
-          opacity: 0.5,
-          child: Image.memory(
-            qrCode.img,
-            height: 200,
-            width: 200,
-            fit: BoxFit.contain,
-          ),
-        ),
-      ),
-
-      Column(
-        children: [
-          const Icon(Icons.refresh, color: JxufeTheme.secondaryColor, size: 64),
-          const SizedBox(height: 16),
-          Text('二维码已失效', style: Theme.of(context).textTheme.headlineSmall),
-        ],
-      ),
+      const Icon(Icons.refresh, color: JxufeTheme.secondaryColor, size: 64),
+      const SizedBox(height: 16),
+      Text('二维码已失效', style: Theme.of(context).textTheme.headlineSmall),
     ],
   );
 }

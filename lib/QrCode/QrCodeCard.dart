@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 import 'package:smarter_jxufe/QrCode/QrCode.dart';
@@ -125,6 +127,7 @@ class _QrCodeState extends State<QrCodeCard> {
 
   @override
   Widget build(BuildContext context) {
+    const double sideLength = 200;
     return StreamBuilder<QrCodeStatus>(
       stream: qrCode.stateStream,
       builder: (context, snapshot) {
@@ -146,7 +149,10 @@ class _QrCodeState extends State<QrCodeCard> {
             // ],
           ),
           child: ConstrainedBox(
-            constraints: BoxConstraints(minWidth: 200, minHeight: 200),
+            constraints: BoxConstraints(
+              minWidth: sideLength,
+              minHeight: sideLength,
+            ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -154,7 +160,39 @@ class _QrCodeState extends State<QrCodeCard> {
                   duration: const Duration(milliseconds: 200),
                   child: KeyedSubtree(
                     key: ValueKey(state),
-                    child: strategy.buildWidget(context, qrCode),
+                    child: Stack(
+                      alignment: Alignment.topCenter,
+                      children: [
+                        if (!qrCode.isLoading)
+                          ImageFiltered(
+                            imageFilter: ImageFilter.blur(
+                              sigmaX: qrCode.isPending ? 0 : 5,
+                              sigmaY: qrCode.isPending ? 0 : 5,
+                            ),
+                            child: Opacity(
+                              opacity: qrCode.isPending ? 1 : 0.5,
+                              child: Image.memory(
+                                qrCode.img,
+                                height: sideLength,
+                                width: sideLength,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          ),
+
+                        ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minWidth: sideLength,
+                            minHeight: sideLength,
+                          ),
+                          child: Center(
+                            widthFactor: 1,
+                            heightFactor: 1,
+                            child: strategy.buildWidget(context, qrCode),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
 
