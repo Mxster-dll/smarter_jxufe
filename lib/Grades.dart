@@ -1,10 +1,14 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:fast_gbk/fast_gbk.dart';
 import 'package:html/parser.dart' show parse;
+import 'package:html/dom.dart' as dom;
+import 'Services/ImsService.dart';
 
 class GradesPage extends StatefulWidget {
-  GradesPage({Key? key, required this.title}) : super(key: key);
+  const GradesPage({super.key, required this.title});
   final String title;
 
   @override
@@ -12,83 +16,77 @@ class GradesPage extends StatefulWidget {
 }
 
 class _GradesPageState extends State<GradesPage> {
-  String t = '未初始化';
-  List<Widget> cc = [];
-  List<List<String>> td = [];
-  final Map<String, String> headers = {
-    'Accept':
-        'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-    'Accept-Encoding': 'gzip, deflate, br, zstd',
-    'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
-    'Access-Control-Allow-Origin': 'https://jwxt.jxufe.edu.cn',
-    'Cache-Control': 'max-age=0',
-    'Connection': 'keep-alive',
-    'Content-Type': 'application/x-www-form-urlencoded',
-    'Cookie': 'JSESSIONID=EA0D54F37FB528165114D1BF79A056B3',
-    'Origin': 'https://jwxt.jxufe.edu.cn',
-    'Referer':
-        'https://jwxt.jxufe.edu.cn/student/xscj.jqchjpm10421.html?menucode=S40309',
-    'Sec-Fetch-Dest': 'iframe',
-    'Sec-Fetch-Mode': 'navigate',
-    'Sec-Fetch-Site': 'same-origin',
-    'Sec-Fetch-User': '?1',
-    'Upgrade-Insecure-Requests': '1',
-    'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0',
-    'sec-ch-ua':
-        '"Not(A:Brand";v="8", "Chromium";v="144", "Microsoft Edge";v="144"',
-    'sec-ch-ua-mobile': '?0',
-    'sec-ch-ua-platform': '"Windows"',
-  };
+  // late Map<String, String> headers = {
+  //   'Accept':
+  //       'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+  //   'Accept-Encoding': 'gzip, deflate, br, zstd',
+  //   'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
+  //   'Access-Control-Allow-Origin': 'https://jwxt.jxufe.edu.cn',
+  //   'Cache-Control': 'max-age=0',
+  //   'Connection': 'keep-alive',
+  //   'Content-Type': 'application/x-www-form-urlencoded',
+  //   'Cookie': 'JSESSIONID=$jSessionId',
+  //   'Origin': 'https://jwxt.jxufe.edu.cn',
+  //   'Referer':
+  //       'https://jwxt.jxufe.edu.cn/student/xscj.jqchjpm10421.html?menucode=S40309',
+  //   'Sec-Fetch-Dest': 'iframe',
+  //   'Sec-Fetch-Mode': 'navigate',
+  //   'Sec-Fetch-Site': 'same-origin',
+  //   'Sec-Fetch-User': '?1',
+  //   'Upgrade-Insecure-Requests': '1',
+  //   'User-Agent':
+  //       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0',
+  //   'sec-ch-ua':
+  //       '"Not(A:Brand";v="8", "Chromium";v="144", "Microsoft Edge";v="144"',
+  //   'sec-ch-ua-mobile': '?0',
+  //   'sec-ch-ua-platform': '"Windows"',
+  // };
 
-  Map<String, int> jqlx = {
-    '课程加权(所有学年)': 1,
-    '课程加权（上学年）': 2,
-    '课程加权（上学期）': 3,
-    '毕业加权': 5,
-    '辅修加权': 6,
-    '推免加权': 7,
-  };
-
-  final Map<String, String> formData = {
-    'jqlx': '1',
-    'menucode_current': 'S40309',
-  };
   @override
   Widget build(BuildContext context) {
-    // String response = await sendRequest(headers, formData);
-    cc = [
-      ElevatedButton(child: Text('POST'), onPressed: () => showScore()),
-      Text(t, style: Theme.of(context).textTheme.headlineLarge),
-      TableWidget(tableData: td),
-    ];
-    setState(() {
-      t = '${cc.length}';
-    });
-    return Scaffold(body: Column(children: cc));
+    return FutureBuilder<Widget>(
+      future: buildPage(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return CircularProgressIndicator(); // 加载中
+        } else if (snapshot.hasError) {
+          return Text('错误：${snapshot.error}'); // 出错
+        } else {
+          return Scaffold(body: snapshot.data!); // 成功
+        }
+      },
+    );
   }
 
-  void showScore() async {
-    // 设置请求体
-
-    String response = await sendRequest(headers, formData);
-    setState(() {
-      td = extractTableDataWithSpans(response);
-      //   t = response;
-      cc.add(TableWidget(tableData: td));
-      //   cc.add(Text(response, style: Theme.of(context).textTheme.headlineLarge));
-      t = '${cc.length}';
-    });
+  Future<Center> buildPage() async {
+    return Center(child: Column(children: [await buildWeightedScoreCard()]));
   }
 
-  List<List<String>> extractTableDataWithSpans(String htmlString) {
-    final document = parse(htmlString);
+  Future<Widget> buildWeightedScoreCard() async {
+    // 从统一门户获取的gid_参数（需替换为实际值）
+    final gid =
+        'S3lvSGM0NjRtSEtYcGhMcjZ2byszZnlGU0VkeXdGSTNOdllhckgyQVRaVnhhNi8zTUxRQ2hvWjhDbmlodWo1d0lVNGRzbDdqZ3hXU2FJYmxrK054TlE9PQ';
+
+    final service = ImsService(gid: gid);
+
+    await service.fetchJSessionId();
+
+    final String? html = await service.getGrade();
+    if (html == null) return Text('空的响应体');
+
+    final document = parse(html);
     final tables = document.getElementsByTagName('table');
 
-    if (tables.isEmpty) throw Exception('HTML中没有找到table元素');
-    if (tables.length > 1) throw Exception('期望只有一个table，但找到了${tables.length}个');
+    if (tables.length != 1) {
+      return Text('期望有1个 table，但找到了${tables.length}个 table');
+    }
 
-    final table = tables[0];
+    final tableData = extractTableDataWithSpans(tables[0]);
+
+    return TableWidget(tableData: tableData);
+  }
+
+  List<List<String>> extractTableDataWithSpans(dom.Element table) {
     final rows = table.querySelectorAll('tr');
 
     // 首先，计算表格的最大列数，同时收集每个单元格的跨度信息
@@ -101,7 +99,7 @@ class _GradesPageState extends State<GradesPage> {
       int colCount = 0;
 
       for (final cell in cells) {
-        final text = cell.text?.trim() ?? '';
+        final text = cell.text.trim();
         final rowspan = int.tryParse(cell.attributes['rowspan'] ?? '1') ?? 1;
         final colspan = int.tryParse(cell.attributes['colspan'] ?? '1') ?? 1;
         rawRow.add({'text': text, 'rowspan': rowspan, 'colspan': colspan});
@@ -183,8 +181,7 @@ class _GradesPageState extends State<GradesPage> {
     final dio = Dio(options);
 
     // 设置请求 URL
-    const String url =
-        'https://jwxt.jxufe.edu.cn/student/xscj.jqchjpm_data10421.jsp';
+    const String url = '/student/xscj.jqchjpm_data10421.jsp';
 
     try {
       // 发送 POST 请求
@@ -222,15 +219,15 @@ class TableWidget extends StatelessWidget {
   final List<List<String>> tableData;
   final bool firstRowIsHeader;
   final Map<int, TableColumnWidth>? columnWidths;
-  final double minColumnWidth; // 新增：最小列宽
-  final double maxColumnWidth; // 新增：最大列宽
+  final double minColumnWidth;
+  final double maxColumnWidth;
 
   TableWidget({
     required this.tableData,
     this.firstRowIsHeader = true,
     this.columnWidths,
-    this.minColumnWidth = 120.0, // 默认最小120
-    this.maxColumnWidth = 300.0, // 默认最大300
+    this.minColumnWidth = 120.0,
+    this.maxColumnWidth = 300.0,
   });
 
   @override
