@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:smarter_jxufe/Services/JxufeLogin.dart';
 import 'package:smarter_jxufe/Services/ScanLogin.dart';
+import 'package:smarter_jxufe/Services/WechatLogin.dart';
 
 import 'package:smarter_jxufe/design/JxufeTheme.dart';
 import 'package:smarter_jxufe/design/Icons.dart';
@@ -94,7 +95,8 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final Dio _dio = Dio();
   late final MfaService _mfaService = MfaService(_dio);
-  late final ScanLogin _scanLoginService = ScanLogin();
+  late final ScanLogin _scanLoginService = ScanLogin(_dio);
+  late final WeChatLogin _wechatLoginService = WeChatLogin();
 
   final _accountController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -205,7 +207,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: const Icon(
-                              Icons.school,
+                              Icons.school_rounded,
                               color: Colors.white,
                               size: 30,
                             ),
@@ -310,7 +312,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 vertical: 18,
                               ),
                               prefixIcon: Icon(
-                                Icons.person_outline,
+                                Icons.person_outline_rounded,
                                 color: JxufeTheme.primaryColor.withAlpha(96),
                               ),
                             ),
@@ -337,7 +339,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 vertical: 18,
                               ),
                               prefixIcon: Icon(
-                                Icons.lock_outline,
+                                Icons.lock_outline_rounded,
                                 color: JxufeTheme.primaryColor.withAlpha(96),
                               ),
                               suffixIcon: IconButton(
@@ -376,7 +378,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: Row(
                               children: [
                                 Icon(
-                                  Icons.error_outline,
+                                  Icons.error_outline_rounded,
                                   color: JxufeTheme.primaryColor,
                                   size: 18,
                                 ),
@@ -439,7 +441,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             _buildOtherLoginIcon(
-                              Icons.qr_code,
+                              Icons.qr_code_rounded,
                               JxufeTheme.primaryColor,
                               onTap: () => _scanLoginService.process(context),
                             ),
@@ -449,14 +451,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             _buildOtherLoginIcon(
                               Icons.wechat,
                               const Color(0xFF14c468),
-                              onTap: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: const Text('暂未开放微信登录'),
-                                    backgroundColor: JxufeTheme.primaryColor,
-                                  ),
-                                );
-                              },
+                              onTap: () => _wechatLoginService.process(context),
                             ),
 
                             const SizedBox(width: 32),

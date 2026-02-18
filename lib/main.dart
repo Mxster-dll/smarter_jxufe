@@ -1,8 +1,11 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
-import 'package:smarter_jxufe/LoginPage.dart';
+import 'Grades.dart';
 
-void main() => runApp(const SmarterJxUFE());
+void main() async {
+  runApp(const SmarterJxUFE());
+}
 
 class SmarterJxUFE extends StatelessWidget {
   const SmarterJxUFE({super.key});
@@ -18,9 +21,9 @@ class SmarterJxUFE extends StatelessWidget {
         ),
       ),
       //   home: MyHomePage(title: 'demo'),
-      home: LoginScreen(),
+      //   home: LoginScreen(),
       // home: const HomePage(title: '智慧尼采 SmarterJxUFE'),
-      // home: GradesPage(title: '智慧尼采 SmarterJxUFE'),
+      home: GradesPage(title: '智慧尼采 SmarterJxUFE'),
     );
   }
 }
@@ -63,3 +66,30 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
+// lib/main.dart
+// import 'package:flutter/material.dart';
+// import 'package:smarter_jxufe/pages/login_page.dart';
+
+// void main() {
+//   runApp(JxufeAuthApp());
+// }
+
+// class JxufeAuthApp extends StatelessWidget {
+//   @override
+//   Widget build(BuildContext context) {
+//     return MaterialApp(
+//       title: '江西财经大学统一身份认证',
+//       theme: ThemeData(
+//         primaryColor: Color(0xFFC3282E),
+//         fontFamily: 'Microsoft YaHei',
+//         scaffoldBackgroundColor: Colors.white,
+//         appBarTheme: AppBarTheme(
+//           backgroundColor: Color(0xFFC3282E),
+//           elevation: 0,
+//         ),
+//       ),
+//       home: LoginPage(),
+//       debugShowCheckedModeBanner: false,
+//     );
+//   }
+// }
