@@ -1,83 +1,102 @@
-import 'dart:convert';
-
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:fast_gbk/fast_gbk.dart';
 import 'package:html/parser.dart' show parse;
 import 'package:html/dom.dart' as dom;
-import 'Services/ImsService.dart';
+import '../Services/GradeService.dart';
 
 class GradesPage extends StatefulWidget {
-  const GradesPage({super.key, required this.title});
-  final String title;
+  const GradesPage({super.key});
 
   @override
-  _GradesPageState createState() => _GradesPageState();
+  GradesPageState createState() => GradesPageState();
 }
 
-class _GradesPageState extends State<GradesPage> {
-  // late Map<String, String> headers = {
-  //   'Accept':
-  //       'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-  //   'Accept-Encoding': 'gzip, deflate, br, zstd',
-  //   'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
-  //   'Access-Control-Allow-Origin': 'https://jwxt.jxufe.edu.cn',
-  //   'Cache-Control': 'max-age=0',
-  //   'Connection': 'keep-alive',
-  //   'Content-Type': 'application/x-www-form-urlencoded',
-  //   'Cookie': 'JSESSIONID=$jSessionId',
-  //   'Origin': 'https://jwxt.jxufe.edu.cn',
-  //   'Referer':
-  //       'https://jwxt.jxufe.edu.cn/student/xscj.jqchjpm10421.html?menucode=S40309',
-  //   'Sec-Fetch-Dest': 'iframe',
-  //   'Sec-Fetch-Mode': 'navigate',
-  //   'Sec-Fetch-Site': 'same-origin',
-  //   'Sec-Fetch-User': '?1',
-  //   'Upgrade-Insecure-Requests': '1',
-  //   'User-Agent':
-  //       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0',
-  //   'sec-ch-ua':
-  //       '"Not(A:Brand";v="8", "Chromium";v="144", "Microsoft Edge";v="144"',
-  //   'sec-ch-ua-mobile': '?0',
-  //   'sec-ch-ua-platform': '"Windows"',
-  // };
+class GradesPageState extends State<GradesPage> {
+  late Future<Widget> _futureTable;
+  late final GradeService gradeService;
+  WeightedType _weightedType = WeightedType.courseAll;
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<Widget>(
-      future: buildPage(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return CircularProgressIndicator(); // 加载中
-        } else if (snapshot.hasError) {
-          return Text('错误：${snapshot.error}'); // 出错
-        } else {
-          return Scaffold(body: snapshot.data!); // 成功
-        }
-      },
+    return Scaffold(
+      body: Center(
+        child: Column(
+          children: [
+            DropdownButton<WeightedType>(
+              value: _weightedType,
+              isExpanded: false,
+              icon: const Icon(Icons.arrow_drop_down, color: Colors.grey),
+              elevation: 8,
+              dropdownColor: Colors.white,
+              style: const TextStyle(color: Colors.black87, fontSize: 16),
+              // 选中项的下划线样式（默认有下划线，可设为SizedBox.shrink()隐藏）
+              underline: Container(height: 1, color: Colors.grey[200]),
+              onChanged: (WeightedType? value) async {
+                if (value == null) throw Exception('value == null');
+
+                setState(() {
+                  _weightedType = value;
+                  _futureTable = buildWeightedScoreCard();
+                });
+
+                await _futureTable;
+              },
+              items: WeightedType.values
+                  .map(
+                    (WeightedType wt) => DropdownMenuItem<WeightedType>(
+                      value: wt,
+                      child: Text(wt.name),
+                    ),
+                  )
+                  .toList(),
+            ),
+            FutureBuilder<Widget>(
+              future: _futureTable,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator()); // 加载中
+                } else if (snapshot.hasError) {
+                  return Text('错误：${snapshot.error}'); // 出错
+                } else {
+                  return snapshot.data!; // 成功
+                }
+              },
+            ),
+            ElevatedButton(
+              child: Text('刷新'),
+              onPressed: () async {
+                setState(() {
+                  _futureTable = buildWeightedScoreCard();
+                });
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  Future<Center> buildPage() async {
-    return Center(child: Column(children: [await buildWeightedScoreCard()]));
-  }
+  @override
+  void initState() {
+    super.initState();
 
-  Future<Widget> buildWeightedScoreCard() async {
     // 从统一门户获取的gid_参数（需替换为实际值）
     final gid =
         'S3lvSGM0NjRtSEtYcGhMcjZ2byszZnlGU0VkeXdGSTNOdllhckgyQVRaVnhhNi8zTUxRQ2hvWjhDbmlodWo1d0lVNGRzbDdqZ3hXU2FJYmxrK054TlE9PQ';
 
-    final service = ImsService(gid: gid);
+    gradeService = GradeService(gid: gid);
 
-    await service.fetchJSessionId();
+    _futureTable = buildWeightedScoreCard();
+  }
 
-    final String? html = await service.getGrade();
+  Future<Widget> buildWeightedScoreCard() async {
+    final String? html = await gradeService.getWeightedGrade(_weightedType);
     if (html == null) return Text('空的响应体');
 
     final document = parse(html);
     final tables = document.getElementsByTagName('table');
 
     if (tables.length != 1) {
+      print(html);
       return Text('期望有1个 table，但找到了${tables.length}个 table');
     }
 
@@ -165,53 +184,6 @@ class _GradesPageState extends State<GradesPage> {
     }
 
     return result;
-  }
-
-  Future<String> sendRequest(
-    Map<String, String> headers,
-    Map<String, String> formData,
-  ) async {
-    BaseOptions options = BaseOptions();
-    options.responseDecoder =
-        (
-          List<int> responseBytes,
-          RequestOptions options,
-          ResponseBody responseBody,
-        ) => gbk.decode(responseBytes);
-    final dio = Dio(options);
-
-    // 设置请求 URL
-    const String url = '/student/xscj.jqchjpm_data10421.jsp';
-
-    try {
-      // 发送 POST 请求
-      final response = await dio.post(
-        url,
-        data: formData,
-        options: Options(
-          headers: headers,
-          // 响应类型设为纯文本，如果是JSON可以改为ResponseType.json
-          responseType: ResponseType.plain,
-          contentType: Headers.formUrlEncodedContentType,
-        ),
-      );
-
-      return response.data as String;
-    } catch (error) {
-      // 错误处理
-      if (error is DioException) {
-        print('请求错误: ${error.message}');
-        if (error.response != null) {
-          print('响应状态码: ${error.response!.statusCode}');
-          print('响应数据: ${error.response!.data}');
-        }
-        return error.message as String;
-      } else {
-        print('其他错误: $error');
-      }
-
-      rethrow;
-    }
   }
 }
 
