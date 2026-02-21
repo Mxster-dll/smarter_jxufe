@@ -1,6 +1,5 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
+
 import 'package:smarter_jxufe/QrCode/QrCode.dart';
 import 'package:smarter_jxufe/Services/MfaService.dart';
 import 'package:smarter_jxufe/Services/ScanLogin.dart';
@@ -131,24 +130,15 @@ class ErrorDisplayStrategy implements QrCodeDisplayStrategy {
   );
 }
 
-// 策略工厂
 class QrCodeDisplayStrategyFactory {
-  static QrCodeDisplayStrategy createStrategy(QrCodeStatus status) {
-    switch (status) {
-      case QrCodeStatus.loading:
-        return LoadingDisplayStrategy();
-      case QrCodeStatus.pending:
-        return PendingDisplayStrategy();
-      case QrCodeStatus.scanned:
-        return ScannedDisplayStrategy();
-      case QrCodeStatus.authorized:
-        return AuthorizedDisplayStrategy();
-      case QrCodeStatus.cancelled:
-        return CancelledDisplayStrategy();
-      case QrCodeStatus.expired:
-        return ExpiredDisplayStrategy();
-      case QrCodeStatus.error:
-        return ErrorDisplayStrategy();
-    }
-  }
+  static QrCodeDisplayStrategy createStrategy(QrCodeStatus status) =>
+      switch (status) {
+        QrCodeStatus.loading => LoadingDisplayStrategy(),
+        QrCodeStatus.pending => PendingDisplayStrategy(),
+        QrCodeStatus.scanned => ScannedDisplayStrategy(),
+        QrCodeStatus.authorized => AuthorizedDisplayStrategy(),
+        QrCodeStatus.cancelled => CancelledDisplayStrategy(),
+        QrCodeStatus.expired => ExpiredDisplayStrategy(),
+        QrCodeStatus.error => ErrorDisplayStrategy(),
+      };
 }

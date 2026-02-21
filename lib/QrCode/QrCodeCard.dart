@@ -1,3 +1,4 @@
+import 'dart:nativewrappers/_internal/vm/lib/ffi_allocation_patch.dart';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -6,6 +7,7 @@ import 'package:smarter_jxufe/QrCode/QrCode.dart';
 import 'package:smarter_jxufe/QrCode/QrCodeStatus.dart';
 import 'package:smarter_jxufe/design/JxufeTheme.dart';
 
+// BUG 如果点击微信登录（其他也一样）选项过快，可能导致两个dialog被显示
 class QrCodeCard extends StatefulWidget {
   final String tips;
   final QrCode qrCode;
@@ -65,7 +67,7 @@ class QrCodeCard extends StatefulWidget {
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: const Icon(
-                          Icons.qr_code_scanner,
+                          Icons.qr_code_scanner_rounded,
                           color: Colors.white,
                           size: 24,
                         ),
