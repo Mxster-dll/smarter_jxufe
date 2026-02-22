@@ -68,8 +68,8 @@ class GradesPageState extends State<GradesPage> {
     // 从统一门户获取的gid_参数（需替换为实际值）
     final gid =
         'S3lvSGM0NjRtSEtYcGhMcjZ2byszZnlGU0VkeXdGSTNOdllhckgyQVRaVnhhNi8zTUxRQ2hvWjhDbmlodWo1d0lVNGRzbDdqZ3hXU2FJYmxrK054TlE9PQ';
-
     gradeService = GradeService(gid: gid);
+    gradeService.loadJSessionId();
 
     _futureWeightedText = buildWeightedGradeRank();
     _futureGradeText = buildGradeText();

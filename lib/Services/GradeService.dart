@@ -5,7 +5,9 @@ import 'package:fast_gbk/fast_gbk.dart';
 import 'package:flutter/material.dart';
 import 'package:html/parser.dart';
 import 'package:html/dom.dart' as dom;
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:smarter_jxufe/Log.dart';
 import 'package:smarter_jxufe/Services/JxufeLogin.dart';
 
 enum WeightedType {
@@ -30,26 +32,34 @@ class GradeService {
   final String gid;
 
   String? get jSessionId => _jSessionId;
-  set jSessionId(String? id) {
+  Future<void> setJSessionId(String? id) async {
     _jSessionId = id;
 
+    final pref = await SharedPreferences.getInstance();
     if (id == null) {
       _dio.options.headers.remove('Cookie');
+      pref.remove('JSESSIONID');
     } else {
       _dio.options.headers['Cookie'] = 'JSESSIONID=$id';
+      pref.setString('JSESSIONID', id);
     }
   }
 
-  void clearJSessionId() {
-    _jSessionId = null;
-    _dio.options.headers.remove('Cookie');
+  void clearJSessionId() => setJSessionId(null);
+
+  Future<void> loadJSessionId() async {
+    final pref = await SharedPreferences.getInstance();
+    _jSessionId = pref.getString('JSESSIONID');
+
+    if (_jSessionId == null) {
+      _dio.options.headers.remove('Cookie');
+    } else {
+      _dio.options.headers['Cookie'] = 'JSESSIONID=$_jSessionId';
+    }
   }
 
-  /// 构造函数
   /// [gid] 必须提供，是从统一门户跳转时携带的加密参数
-  /// [initialJSessionid] 可选，如果已有JSESSIONID可直接传入
-  GradeService({required this.gid, String? initialJSessionid}) {
-    _jSessionId = initialJSessionid;
+  GradeService({required this.gid}) {
     _dio = Dio(
       BaseOptions(
         baseUrl: 'https://jwxt.jxufe.edu.cn',
@@ -89,7 +99,6 @@ class GradeService {
     return match?.group(1)?.trim() ?? '';
   }
 
-  // TODO 可持续化 JSESSIONID
   String? getJSessionId(List<String> setCookie) {
     for (var cookie in setCookie) {
       final match = RegExp(r'JSESSIONID=([^;]+)').firstMatch(cookie);
@@ -104,13 +113,12 @@ class GradeService {
   /// 如果有 JSESSIONID 则为激活 JSESSIONID 的一步
   /// 返回当前 JSESSIONID 是否有效
   Future<bool> casLogin() async {
-    final ms = DateTime.now().millisecondsSinceEpoch;
+    final ts = DateTime.now().millisecondsSinceEpoch;
 
     final queryParameters = {
-      't_s': ms.toString(), // TODO 去掉
+      't_s': ts,
       'amp_sec_version_': '1',
-      'gid_':
-          'S3lvSGM0NjRtSEtYcGhMcjZ2byszZnlGU0VkeXdGSTNOdllhckgyQVRaVnhhNi8zTUxRQ2hvWjhDbmlodWo1d0lVNGRzbDdqZ3hXU2FJYmxrK054TlE9PQ',
+      'gid_': gid,
       'EMAP_LANG': 'zh',
       'THEME': 'cherry',
     };
@@ -126,7 +134,7 @@ class GradeService {
       final setCookie = response.headers['set-cookie'];
       if (setCookie == null) throw Exception('缺少 set-cookie');
 
-      jSessionId = getJSessionId(setCookie);
+      await setJSessionId(getJSessionId(setCookie));
       if (_jSessionId == null) throw Exception('缺少 JSESSIONID');
     } catch (e) {
       print('登录请求异常: $e\n');
@@ -146,6 +154,8 @@ class GradeService {
   }
 
   Future<WeightedGrade?> getWeightedGrade(WeightedType wt) async {
+    print(_jSessionId);
+
     if (_jSessionId == null) await fetchJSessionId();
 
     final response = await _dio.post(
@@ -163,11 +173,10 @@ class GradeService {
       throw Exception('温馨提示：凭证已失效，请重新登录!');
     }
 
-    final document = parse(html);
-    final tables = document.getElementsByTagName('table');
+    final tables = parse(html).getElementsByTagName('table');
 
     if (tables.length != 1) {
-      print(html);
+      logInfo(html);
       throw Exception('期望有1个 table，但找到了${tables.length}个 table\n $tables');
     }
 
@@ -241,16 +250,15 @@ class GradeService {
         throw Exception('温馨提示：凭证已失效，请重新登录!');
       }
 
-      final document = parse(html);
-      print(html);
-      final tables = document.querySelectorAll('table').where((table) {
+      final tables = parse(html).querySelectorAll('table').where((table) {
         final style = table.attributes['style'];
         if (style == null) return true;
 
         return !style.contains('border:none');
       }).toList();
+
       if (tables.length != 2) {
-        print(html);
+        logInfo(html);
         throw Exception('期望有2个 table，但找到了${tables.length}个 table\n $tables');
       }
 
@@ -310,7 +318,13 @@ enum SubjectCategory {
   publicMathematicsCourse,
 }
 
-class Subject {
+enum Subject {
+  advancedMathematicsI('1004701034', '高等数学I', 4.0, [
+    SubjectCategory.compulsoryCourse,
+    SubjectCategory.publicCourse2024,
+    SubjectCategory.publicMathematicsCourse,
+  ], '考试');
+
   const Subject(
     this.code,
     this.name,
@@ -322,30 +336,9 @@ class Subject {
   final String code;
   final String name;
   final double credit;
-  final String category;
+  final List<SubjectCategory> category;
   final String assessmentMethod;
 }
-// enum Subject {
-//   advancedMathematicsI('1004701034', '高等数学I', 4.0, [
-//     SubjectCategory.compulsoryCourse,
-//     SubjectCategory.publicCourse2024,
-//     SubjectCategory.publicMathematicsCourse,
-//   ], '考试');
-
-//   const Subject(
-//     this.code,
-//     this.name,
-//     this.credit,
-//     this.category,
-//     this.assessmentMethod,
-//   );
-
-//   final String code;
-//   final String name;
-//   final double credit;
-//   final List<SubjectCategory> category;
-//   final String assessmentMethod;
-// }
 
 class WeightedGrade {
   final String grade;
