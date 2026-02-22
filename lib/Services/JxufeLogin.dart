@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'dart:async';
+import 'package:smarter_jxufe/Log.dart';
 
 class LoginService {
   final Dio _dio = Dio(
@@ -62,32 +63,36 @@ class LoginService {
       'https://ssl.jxufe.edu.cn/cas/login?service=https%3A%2F%2Fjwxt.jxufe.edu.cn%2F%2Fjxcjcaslogin',
       options: Options(
         headers: {
-          'Host': ' ssl.jxufe.edu.cn',
-          'Connection': ' keep-alive',
-          'Upgrade-Insecure-Requests': ' 1',
+          'Host': 'ssl.jxufe.edu.cn',
+          'Connection': 'keep-alive',
+          'Upgrade-Insecure-Requests': '1',
           'User-Agent':
-              ' Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0',
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0',
           'Accept':
-              ' text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-          'Sec-Fetch-Site': ' cross-site',
-          'Sec-Fetch-Mode': ' navigate',
-          'Sec-Fetch-User': ' ?1',
-          'Sec-Fetch-Dest': ' document',
+              'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+          'Sec-Fetch-Site': 'cross-site',
+          'Sec-Fetch-Mode': 'navigate',
+          'Sec-Fetch-User': '?1',
+          'Sec-Fetch-Dest': 'document',
           'sec-ch-ua':
-              ' "Not:A-Brand";v="99", "Microsoft Edge";v="145", "Chromium";v="145"',
-          'sec-ch-ua-mobile': ' ?0',
-          'sec-ch-ua-platform': ' "Windows"',
-          'Referer': ' http://ehall.jxufe.edu.cn/',
-          'Accept-Encoding': ' gzip, deflate, br, zstd',
-          'Accept-Language': ' zh-CN,zh;q=0.9',
+              '"Not:A-Brand";v="99", "Microsoft Edge";v="145", "Chromium";v="145"',
+          'sec-ch-ua-mobile': '?0',
+          'sec-ch-ua-platform': '"Windows"',
+          'Referer': 'http://ehall.jxufe.edu.cn/',
+          'Accept-Encoding': 'gzip, deflate, br, zstd',
+          'Accept-Language': 'zh-CN,zh;q=0.9',
           'Cookie':
-              'SESSION=8ed936f8-80ef-4b42-8120-2e4b89c6dd8b; TGC=TGT-401385-gc71ogs-gE0cb0yjK3-6QDy7pfR-wzKqLBkkiXKZOd0mSF-L4QooU7OLAFWFnrVq7Bkcas-server-webapp-5cd8d94d94-5dl6h; Hm_lvt_d605d8df6bf5ca8a54fe078683196518=1771389576; Hm_lpvt_d605d8df6bf5ca8a54fe078683196518=1771389576; HMACCOUNT=899E8D2617D3B83A',
+              'SESSION=979e7f6a-63d2-4925-b455-f003a591eef0; TGC=TGT-402578-xKwxgJ8CFXI3oQdd3tAF-KgrZCvqRYZ5a1dMPhPe676NmKd4LZmKyyHfLvPvgNoIwqwcas-server-webapp-5cd8d94d94-pj62b; Hm_lvt_d605d8df6bf5ca8a54fe078683196518=1771127564,1771203749,1771585681,1771635526; HMACCOUNT=FF9688FA59688706; Hm_lpvt_d605d8df6bf5ca8a54fe078683196518=1771693408',
         },
         followRedirects: false,
       ),
     );
 
-    return response.headers.value('location') as String;
+    final location = response.headers.value('location');
+    if (location == null) throw Exception('location == null\n${response.data}');
+    // 这里报错要考虑是不是统一登录的 Cookie 过期了
+
+    return location;
   }
 }
 // import 'package:flutter/material.dart';
