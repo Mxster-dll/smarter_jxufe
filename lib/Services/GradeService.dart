@@ -1,7 +1,8 @@
 import 'dart:convert';
-
 import 'package:dio/dio.dart';
 import 'package:fast_gbk/fast_gbk.dart';
+import 'package:html/parser.dart';
+import 'package:html/dom.dart' as dom;
 
 import 'package:smarter_jxufe/Services/JxufeLogin.dart';
 
@@ -126,7 +127,7 @@ class GradeService {
       jSessionId = getJSessionId(setCookie);
       if (_jSessionId == null) throw Exception('缺少 JSESSIONID');
     } catch (e) {
-      print('登录请求异常: $e');
+      print('登录请求异常: $e\n');
     }
 
     return false;
@@ -142,31 +143,46 @@ class GradeService {
     await _dio.get(url);
   }
 
-  Future<String?> getWeightedGrade(WeightedType wt, {int depth = 1}) async {
+  Future<WeightedGrade?> getWeightedGrade(WeightedType wt) async {
     if (_jSessionId == null) await fetchJSessionId();
 
-    try {
-      final response = await _dio.post(
-        '/student/xscj.jqchjpm_data10421.jsp',
-        data: {'jqlx': wt.id, 'menucode_current': 'S40309'},
-        options: Options(
-          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        ),
-      );
+    final response = await _dio.post(
+      '/student/xscj.jqchjpm_data10421.jsp',
+      data: {'jqlx': wt.id, 'menucode_current': 'S40309'},
+      options: Options(
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      ),
+    );
 
-      if (response.data.toString().contains('温馨提示：凭证已失效，请重新登录!')) {
-        if (depth > 1) throw Exception('尝试失败');
-
-        clearJSessionId();
-        return getWeightedGrade(wt, depth: 2);
-      }
-
-      return response.data;
-    } catch (e) {
-      print('查询成绩异常: $e');
-      return null;
+    final String? html = response.data;
+    if (html == null) throw Exception('空的响应体');
+    if (html.contains('没有检索到记录!')) throw Exception('没有检索到记录!');
+    if (html.contains('温馨提示：凭证已失效，请重新登录!')) {
+      throw Exception('温馨提示：凭证已失效，请重新登录!');
     }
+
+    final document = parse(html);
+    final tables = document.getElementsByTagName('table');
+    // TODO 这里可能不止一个 table, 大概率是因为选项也是 table
+
+    if (tables.length != 1) {
+      print(html);
+      throw Exception('期望有1个 table，但找到了${tables.length}个 table\n $tables');
+    }
+
+    List<List<String>> m = toMatrix(tables[0]);
+    return WeightedGrade.fromMap(Map.fromIterables(m[0], m[1]));
   }
+
+  List<List<String>> toMatrix(dom.Element table) => table
+      .querySelectorAll('tr')
+      .map(
+        (dom.Element row) => row
+            .querySelectorAll('th, td')
+            .map((dom.Element cell) => cell.text)
+            .toList(),
+      )
+      .toList();
 
   final sem2xq = {
     SemesterType.first: '0',
@@ -175,67 +191,107 @@ class GradeService {
   };
 
   Future<String?> getGrade({
-    int depth = 1,
     required TimeLimit timeLimit, // 这个应该可以通过其他参数自适应
-    // ysyx: yscj,
-    // zx: 1,
-    // fx: 1,
-    // rxnj: 2025,
-    // nj: 2025,
-    // btnExport: %B5%BC%B3%F6,
+    required bool showRawGrade,
+    required bool selectMajor,
+    required bool selectMinor,
+    bool onlyNotPassed = false,
     SemesterType? semType,
     AcademicYear? year,
-    // ysyxS: on,
-    // sjxzS: on,
-    // zxC: on,
-    // fxC: on,
-    // xsjd: 1,
-    // menucode_current: S40303,
   }) async {
+    await Future.delayed(Duration(milliseconds: 1000));
     if (_jSessionId == null) await fetchJSessionId();
 
     try {
       final response = await _dio.post(
-        '/student/xscj.jqchjpm_data10421.jsp',
+        '/student/xscj.stuckcj_data10421.jsp',
         data: {
-          'sjxz': timeLimit.name, // 时间限制
-          'ysyx': 'yscj',
-          'zx': '1',
-          'fx': '1',
-          'rxnj': '2025',
-          'nj': '2025',
+          'sjxz': timeLimit.value, // 时间限制
+          'ysyx': showRawGrade ? 'yscj' : 'yxcj', // 原始有效 原始成绩 有效成绩
+          'zx': selectMajor ? 1 : 0, // 主修
+          'fx': selectMinor ? 1 : 0, // 辅修
+          if (selectMajor) 'zxC': 'on', // ？？
+          if (selectMinor) 'fxC': 'on', // ？？
+          if (onlyNotPassed) 'xwtg': 1, // 限未通过
+          'rxnj': '2025', // TODO 待实现获取功能
+          'nj': '2025', // TODO 待实现获取功能
           'btnExport': '%B5%BC%B3%F6',
-          'xn': ?year, // 学年下界
-          'xn1': year?.nextYear ?? AcademicYear.thisYear, // 学年上界
+          'xn': ?year?.year, // 学年下界
+          'xn1': year?.nextYear.year ?? AcademicYear.thisYear.year, // 学年上界
           'xq': ?sem2xq[semType], // 学期
           'ysyxS': 'on',
           'sjxzS': 'on',
-          'zxC': 'on',
-          'fxC': 'on',
           'xsjd': '1',
           'menucode_current': 'S40303',
         },
         options: Options(
-          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Referer':
+                'https://jwxt.jxufe.edu.cn/student/xscj.stuckcj.jsp?menucode=S40303',
+          },
         ),
       );
 
-      if (response.data.toString().contains('温馨提示：凭证已失效，请重新登录!')) {
-        if (depth > 1) throw Exception('尝试失败');
+      final String? html = response.data;
+      if (html == null) throw Exception('空的响应体');
+      if (html.contains('没有检索到记录!')) throw Exception('没有检索到记录!');
+      if (html.contains('温馨提示：凭证已失效，请重新登录!')) {
+        throw Exception('温馨提示：凭证已失效，请重新登录!');
       }
-
+      print(html);
       return response.data;
     } catch (e) {
-      print('查询成绩异常: $e');
-      return null;
+      return '查询成绩异常: $e\n';
     }
   }
+}
+
+class WeightedGrade {
+  final String grade;
+  final int classRank, majorRank, gradeRank;
+
+  WeightedGrade(this.grade, this.classRank, this.majorRank, this.gradeRank);
+
+  static WeightedGrade fromMap(Map<String, dynamic> weightedGrade) {
+    final grade = weightedGrade['课程加权成绩'];
+    if (grade == null) throw Exception('缺少 "课程加权成绩"');
+
+    int extractRank(String key) {
+      final rankText = weightedGrade[key];
+      if (rankText == null) throw Exception('缺少 "$key"');
+
+      final rank = int.tryParse(rankText);
+      if (rank == null) throw Exception('"$key" 格式错误');
+
+      return rank;
+    }
+
+    return WeightedGrade(
+      grade,
+      extractRank('班级排名'),
+      extractRank('专业排名'),
+      extractRank('年级排名'),
+    );
+  }
+
+  @override
+  String toString() =>
+      '''
+
+::加权成绩排名::
+课程加权成绩: $grade
+班级排名: $classRank
+专业排名: $majorRank
+年级排名: $gradeRank
+
+''';
 }
 
 enum TimeLimit {
   sinceEnrollment('入学以来', 'sjxz1'),
   academicYear('学年', 'sjxz2'),
-  semester('学年', 'sjxz3');
+  semester('学期', 'sjxz3');
 
   const TimeLimit(this.name, this.value);
 
