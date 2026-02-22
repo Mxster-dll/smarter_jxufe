@@ -19,6 +19,9 @@ class GradesPageState extends State<GradesPage> {
   bool _onlyNotPassed = false;
   SemesterType? _semType = SemesterType.first;
   AcademicYear? _year = AcademicYear.thisYear;
+  int _majorMinorState = 3;
+  final mmColor = {1: Colors.blue, 2: Colors.green, 3: Colors.red};
+  final mmText = {1: '主修', 2: '辅修', 3: '主修&辅修'};
 
   late final GradeService gradeService;
 
@@ -26,28 +29,32 @@ class GradesPageState extends State<GradesPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: Column(
+        child: ListView(
           children: [
+            Row(
+              children: [
+                ElevatedButton(
+                  child: Text('刷新成绩'),
+                  onPressed: () async {
+                    setState(() {
+                      _futureWeightedText = buildWeightedGradeRank();
+                      _futureGradeText = buildGradeText();
+                    });
+                  },
+                ),
+                ElevatedButton(
+                  child: Text('刷新 Cookie'),
+                  onPressed: () async {
+                    gradeService.clearJSessionId();
+                    setState(() {
+                      _futureWeightedText = buildWeightedGradeRank();
+                      _futureGradeText = buildGradeText();
+                    });
+                  },
+                ),
+              ],
+            ),
             buildWeightedScoreCard(),
-            ElevatedButton(
-              child: Text('刷新成绩'),
-              onPressed: () async {
-                setState(() {
-                  _futureWeightedText = buildWeightedGradeRank();
-                  _futureGradeText = buildGradeText();
-                });
-              },
-            ),
-            ElevatedButton(
-              child: Text('刷新 Cookie'),
-              onPressed: () async {
-                gradeService.clearJSessionId();
-                setState(() {
-                  _futureWeightedText = buildWeightedGradeRank();
-                  _futureGradeText = buildGradeText();
-                });
-              },
-            ),
           ],
         ),
       ),
@@ -97,7 +104,7 @@ class GradesPageState extends State<GradesPage> {
         year: _year,
       );
       // final grade = null;
-      return Text(grade?.toString() ?? 'buildGradeText: 空的 grade');
+      return grade ?? Text('buildGradeText: 空的 grade');
     } catch (e) {
       return Text('getWeightedGrade 异常: $e\n');
     }
@@ -105,24 +112,6 @@ class GradesPageState extends State<GradesPage> {
 
   bool _selectMajor = true;
   bool _selectMinor = true;
-
-  void _changeMajorSelect() {
-    if (!_selectMajor || !_selectMinor) _selectMinor = true;
-
-    setState(() {
-      _selectMajor = !_selectMajor;
-      _futureGradeText = buildGradeText();
-    });
-  }
-
-  void _changeMinorSelect() {
-    if (!_selectMajor || !_selectMinor) _selectMajor = true;
-
-    setState(() {
-      _selectMinor = !_selectMinor;
-      _futureGradeText = buildGradeText();
-    });
-  }
 
   Widget buildWeightedScoreCard() {
     return Center(
@@ -140,6 +129,8 @@ class GradesPageState extends State<GradesPage> {
               if (value == null) throw Exception('value == null');
 
               setState(() {
+                if (_weightedType == value) return;
+
                 _weightedType = value;
                 _futureWeightedText = buildWeightedGradeRank();
               });
@@ -165,103 +156,118 @@ class GradesPageState extends State<GradesPage> {
               }
             },
           ),
-          DropdownButton<TimeLimit>(
-            value: _timeLimit,
-            icon: const Icon(Icons.arrow_drop_down, color: Colors.grey),
-            dropdownColor: Colors.white,
-            focusColor: Colors.white,
-            style: const TextStyle(color: Colors.black87, fontSize: 16),
-            underline: const SizedBox.shrink(), // 隐藏下划线
-            onChanged: (TimeLimit? value) async {
-              if (value == null) throw Exception('value == null');
+          Row(
+            children: [
+              AcademicYearPicker(
+                1976,
+                DateTime.now().year,
+                onChanged: (int value) => {
+                  setState(() {
+                    if (_year?.year == value) return;
 
-              setState(() {
-                _timeLimit = value;
-                _futureGradeText = buildGradeText();
-              });
-            },
-            items: TimeLimit.values
-                .map(
-                  (TimeLimit tl) => DropdownMenuItem<TimeLimit>(
-                    value: tl,
-                    child: Text(tl.name),
-                  ),
-                )
-                .toList(),
-          ),
-          DropdownButton<SemesterType>(
-            value: _semType,
-            icon: const Icon(Icons.arrow_drop_down, color: Colors.grey),
-            dropdownColor: Colors.white,
-            focusColor: Colors.white,
-            style: const TextStyle(color: Colors.black87, fontSize: 16),
-            underline: const SizedBox.shrink(), // 隐藏下划线
-            onChanged: (SemesterType? value) async {
-              if (value == null) throw Exception('value == null');
+                    _year = AcademicYear.of(value);
+                  }),
+                },
+              ),
+              Text('学年'),
+              SizedBox(width: 20),
+              DropdownButton<TimeLimit>(
+                value: _timeLimit,
+                icon: const Icon(Icons.arrow_drop_down, color: Colors.grey),
+                dropdownColor: Colors.white,
+                focusColor: Colors.white,
+                style: const TextStyle(color: Colors.black87, fontSize: 16),
+                underline: const SizedBox.shrink(), // 隐藏下划线
+                onChanged: (TimeLimit? value) async {
+                  if (value == null) throw Exception('value == null');
 
-              setState(() {
-                _semType = value;
-                _futureGradeText = buildGradeText();
-              });
-            },
-            items: SemesterType.values
-                .map(
-                  (SemesterType st) => DropdownMenuItem<SemesterType>(
-                    value: st,
-                    child: Text(st.name),
-                  ),
-                )
-                .toList(),
-          ),
-          AcademicYearPicker(
-            1976,
-            DateTime.now().year,
-            onChanged: (int value) => {
-              setState(() {
-                _year = AcademicYear.of(value);
-              }),
-            },
+                  setState(() {
+                    if (_timeLimit == value) return;
+
+                    _timeLimit = value;
+                    _futureGradeText = buildGradeText();
+                  });
+                },
+                items: TimeLimit.values
+                    .map(
+                      (TimeLimit tl) => DropdownMenuItem<TimeLimit>(
+                        value: tl,
+                        child: Text(tl.name),
+                      ),
+                    )
+                    .toList(),
+              ),
+              DropdownButton<SemesterType>(
+                value: _semType,
+                icon: const Icon(Icons.arrow_drop_down, color: Colors.grey),
+                dropdownColor: Colors.white,
+                focusColor: Colors.white,
+                style: const TextStyle(color: Colors.black87, fontSize: 16),
+                underline: const SizedBox.shrink(), // 隐藏下划线
+                onChanged: (SemesterType? value) async {
+                  if (value == null) throw Exception('value == null');
+
+                  setState(() {
+                    if (_semType == value) return;
+
+                    _semType = value;
+                    _futureGradeText = buildGradeText();
+                  });
+                },
+                items: SemesterType.values
+                    .map(
+                      (SemesterType st) => DropdownMenuItem<SemesterType>(
+                        value: st,
+                        child: Text(st.name),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ],
           ),
           Row(
             children: [
               ElevatedButton(
-                onPressed: _changeMajorSelect,
+                onPressed: () => {
+                  setState(() {
+                    _majorMinorState = (_majorMinorState + 1) % 3 + 1;
+                    _selectMajor = _majorMinorState & 1 == 1;
+                    _selectMinor = _majorMinorState & 10 == 1;
+                    _futureGradeText = buildGradeText();
+                  }),
+                },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _selectMajor ? Colors.green : Colors.white,
+                  backgroundColor: mmColor[_majorMinorState],
                 ),
-                child: Text('主修'),
+                child: Text(mmText[_majorMinorState] ?? ''),
               ),
               ElevatedButton(
-                onPressed: _changeMinorSelect,
+                onPressed: () => {
+                  setState(() {
+                    _showRawGrade = !_showRawGrade;
+                    _futureGradeText = buildGradeText();
+                  }),
+                },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _selectMinor ? Colors.green : Colors.white,
+                  backgroundColor: _showRawGrade ? Colors.green : Colors.red,
                 ),
-                child: Text('辅修'),
+                child: Text(_showRawGrade ? '原始成绩' : '有效成绩'),
+              ),
+              ElevatedButton(
+                onPressed: () => {
+                  setState(() {
+                    _onlyNotPassed = !_onlyNotPassed;
+                    _futureGradeText = buildGradeText();
+                  }),
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _onlyNotPassed ? Colors.green : Colors.white,
+                ),
+                child: Text(_onlyNotPassed ? '仅未通过' : '所有课程'),
               ),
             ],
           ),
-          ElevatedButton(
-            onPressed: () => {
-              setState(() {
-                _onlyNotPassed = !_onlyNotPassed;
-              }),
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _onlyNotPassed ? Colors.green : Colors.white,
-            ),
-            child: Text('仅未通过'),
-          ),
-          ElevatedButton(
-            onPressed: () => {
-              setState(() {
-                _showRawGrade = !_showRawGrade;
-              }),
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _showRawGrade ? Colors.green : Colors.red,
-            ),
-            child: Text(_showRawGrade ? '原始成绩' : '有效成绩'),
-          ),
+
           FutureBuilder<Widget>(
             future: _futureGradeText,
             builder: (context, snapshot) {
