@@ -1,6 +1,8 @@
 import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:fast_gbk/fast_gbk.dart';
+import 'package:flutter/material.dart';
 import 'package:html/parser.dart';
 import 'package:html/dom.dart' as dom;
 
@@ -163,7 +165,6 @@ class GradeService {
 
     final document = parse(html);
     final tables = document.getElementsByTagName('table');
-    // TODO 这里可能不止一个 table, 大概率是因为选项也是 table
 
     if (tables.length != 1) {
       print(html);
@@ -190,7 +191,7 @@ class GradeService {
     SemesterType.next: '2',
   };
 
-  Future<String?> getGrade({
+  Future<Widget?> getGrade({
     required TimeLimit timeLimit, // 这个应该可以通过其他参数自适应
     required bool showRawGrade,
     required bool selectMajor,
@@ -239,13 +240,112 @@ class GradeService {
       if (html.contains('温馨提示：凭证已失效，请重新登录!')) {
         throw Exception('温馨提示：凭证已失效，请重新登录!');
       }
+
+      final document = parse(html);
       print(html);
-      return response.data;
+      final tables = document.querySelectorAll('table').where((table) {
+        final style = table.attributes['style'];
+        if (style == null) return true;
+
+        return !style.contains('border:none');
+      }).toList();
+      if (tables.length != 2) {
+        print(html);
+        throw Exception('期望有2个 table，但找到了${tables.length}个 table\n $tables');
+      }
+
+      DataTable buildTable(dom.Element table) {
+        final m = toMatrix(table);
+
+        return DataTable(
+          columns: m[0].map((cell) => DataColumn(label: Text(cell))).toList(),
+          rows: m
+              .sublist(1)
+              .map(
+                (List<String> line) => DataRow(
+                  cells: line.map((cell) => DataCell(Text(cell))).toList(),
+                ),
+              )
+              .toList(),
+        );
+      }
+
+      return Column(children: [buildTable(tables[0]), buildTable(tables[1])]);
     } catch (e) {
-      return '查询成绩异常: $e\n';
+      return Text('查询成绩异常: $e\n');
     }
   }
 }
+
+class GradeTable {
+  final List<SubjectGrade> grades;
+  final double gpa;
+
+  GradeTable(this.grades, this.gpa);
+}
+
+class SubjectGrade {
+  final Subject subject;
+  final String courseNature;
+  final double score;
+  final double credit;
+  final double gradePoint;
+  final double gradePointCredit;
+  final String remark;
+
+  SubjectGrade(
+    this.subject,
+    this.courseNature,
+    this.score,
+    this.credit,
+    this.gradePoint,
+    this.gradePointCredit,
+    this.remark,
+  );
+}
+
+enum SubjectCategory {
+  compulsoryCourse,
+  publicCourse2024,
+  publicMathematicsCourse,
+}
+
+class Subject {
+  const Subject(
+    this.code,
+    this.name,
+    this.credit,
+    this.category,
+    this.assessmentMethod,
+  );
+
+  final String code;
+  final String name;
+  final double credit;
+  final String category;
+  final String assessmentMethod;
+}
+// enum Subject {
+//   advancedMathematicsI('1004701034', '高等数学I', 4.0, [
+//     SubjectCategory.compulsoryCourse,
+//     SubjectCategory.publicCourse2024,
+//     SubjectCategory.publicMathematicsCourse,
+//   ], '考试');
+
+//   const Subject(
+//     this.code,
+//     this.name,
+//     this.credit,
+//     this.category,
+//     this.assessmentMethod,
+//   );
+
+//   final String code;
+//   final String name;
+//   final double credit;
+//   final List<SubjectCategory> category;
+//   final String assessmentMethod;
+// }
 
 class WeightedGrade {
   final String grade;
@@ -318,7 +418,7 @@ class AcademicYear {
   static final Map<int, AcademicYear> _cache = {};
 
   factory AcademicYear.of(int year) {
-    if (year < 2000 || year > 2099) throw Exception('日期超限：year=$year');
+    if (year < 1976 || year > 2099) throw Exception('日期超限：year=$year');
 
     return _cache.putIfAbsent(year, () => AcademicYear._internal(year));
   }
