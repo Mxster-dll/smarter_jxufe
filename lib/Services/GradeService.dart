@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:dio/dio.dart';
 import 'package:fast_gbk/fast_gbk.dart';
 import 'package:flutter/material.dart';
@@ -10,28 +9,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smarter_jxufe/Log.dart';
 import 'package:smarter_jxufe/Services/JxufeLogin.dart';
 
-enum WeightedType {
-  courseAll('课程加权（所有学年）', 1),
-  courseLastYear('课程加权（上学年）', 2),
-  courseLastTerm('课程加权（上学期）', 3),
-  // diversion( '分流加权', 4),
-  graduate('毕业加权', 5),
-  minor('辅修加权', 6),
-  gradRec('推免加权', 7);
-
-  const WeightedType(this.name, this.id);
-
-  final String name;
-  final int id;
-}
-
 class GradeService {
   late final Dio _dio;
+  final LoginService _loginService;
 
   String? _jSessionId;
-  final String gid;
-
   String? get jSessionId => _jSessionId;
+
   Future<void> setJSessionId(String? id) async {
     _jSessionId = id;
 
@@ -58,8 +42,23 @@ class GradeService {
     }
   }
 
-  /// [gid] 必须提供，是从统一门户跳转时携带的加密参数
-  GradeService({required this.gid}) {
+  WeightedType weightedType = WeightedType.courseAll;
+  TimeLimit timeLimit = TimeLimit.semester;
+  bool showRawGrade = false;
+  bool onlyNotPassed = false;
+  SemesterType semesterType = SemesterType.first;
+  AcademicYear academicYear = AcademicYear.thisYear;
+  SubjectFilter subjectFilter = SubjectFilter.all;
+
+  bool get selectedMajor => subjectFilter != SubjectFilter.minor;
+  bool get selectedMinor => subjectFilter != SubjectFilter.major;
+
+  void nextSubjectFilter() {
+    subjectFilter = SubjectFilter
+        .values[(subjectFilter.index + 1) % SubjectFilter.values.length];
+  }
+
+  GradeService(this._loginService) {
     _dio = Dio(
       BaseOptions(
         baseUrl: 'https://jwxt.jxufe.edu.cn',
@@ -99,26 +98,14 @@ class GradeService {
     return match?.group(1)?.trim() ?? '';
   }
 
-  String? getJSessionId(List<String> setCookie) {
-    for (var cookie in setCookie) {
-      final match = RegExp(r'JSESSIONID=([^;]+)').firstMatch(cookie);
-
-      if (match != null) return match.group(1);
-    }
-
-    return null;
-  }
-
   /// 如果无 JSESSIONID 则返回 JSESSIONID
   /// 如果有 JSESSIONID 则为激活 JSESSIONID 的一步
   /// 返回当前 JSESSIONID 是否有效
   Future<bool> casLogin() async {
-    final ts = DateTime.now().millisecondsSinceEpoch;
-
     final queryParameters = {
-      't_s': ts,
+      't_s': DateTime.now().millisecondsSinceEpoch,
       'amp_sec_version_': '1',
-      'gid_': gid,
+      'gid_': _loginService.gid,
       'EMAP_LANG': 'zh',
       'THEME': 'cherry',
     };
@@ -134,10 +121,18 @@ class GradeService {
       final setCookie = response.headers['set-cookie'];
       if (setCookie == null) throw Exception('缺少 set-cookie');
 
-      await setJSessionId(getJSessionId(setCookie));
+      if (setCookie.length != 1) {
+        throw Exception(
+          '期望仅有1项 Cookie，但找到了${setCookie.length}个 Cookie\n $setCookie',
+        );
+      }
+
+      final match = RegExp(r'JSESSIONID=([^;]+)').firstMatch(setCookie.first);
+
+      await setJSessionId(match?.group(1));
       if (_jSessionId == null) throw Exception('缺少 JSESSIONID');
     } catch (e) {
-      print('登录请求异常: $e\n');
+      logError('登录请求异常: $e\n');
     }
 
     return false;
@@ -148,19 +143,16 @@ class GradeService {
 
     await casLogin();
 
-    final LoginService loginService = LoginService();
-    final url = await loginService.redirectImsUrl();
+    final url = await _loginService.redirectImsUrl();
     await _dio.get(url);
   }
 
-  Future<WeightedGrade?> getWeightedGrade(WeightedType wt) async {
-    print(_jSessionId);
-
+  Future<WeightedGrade?> getWeightedGrade() async {
     if (_jSessionId == null) await fetchJSessionId();
 
     final response = await _dio.post(
       '/student/xscj.jqchjpm_data10421.jsp',
-      data: {'jqlx': wt.id, 'menucode_current': 'S40309'},
+      data: {'jqlx': weightedType.id, 'menucode_current': 'S40309'},
       options: Options(
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
       ),
@@ -180,7 +172,7 @@ class GradeService {
       throw Exception('期望有1个 table，但找到了${tables.length}个 table\n $tables');
     }
 
-    List<List<String>> m = toMatrix(tables[0]);
+    List<List<String>> m = toMatrix(tables.first);
     return WeightedGrade.fromMap(Map.fromIterables(m[0], m[1]));
   }
 
@@ -200,15 +192,7 @@ class GradeService {
     SemesterType.next: '2',
   };
 
-  Future<Widget?> getGrade({
-    required TimeLimit timeLimit, // 这个应该可以通过其他参数自适应
-    required bool showRawGrade,
-    required bool selectMajor,
-    required bool selectMinor,
-    bool onlyNotPassed = false,
-    SemesterType? semType,
-    AcademicYear? year,
-  }) async {
+  Future<Widget?> getGrade() async {
     await Future.delayed(Duration(milliseconds: 1000));
     if (_jSessionId == null) await fetchJSessionId();
 
@@ -218,17 +202,20 @@ class GradeService {
         data: {
           'sjxz': timeLimit.value, // 时间限制
           'ysyx': showRawGrade ? 'yscj' : 'yxcj', // 原始有效 原始成绩 有效成绩
-          'zx': selectMajor ? 1 : 0, // 主修
-          'fx': selectMinor ? 1 : 0, // 辅修
-          if (selectMajor) 'zxC': 'on', // ？？
-          if (selectMinor) 'fxC': 'on', // ？？
+          'zx': selectedMajor ? 1 : 0, // 主修
+          'fx': selectedMinor ? 1 : 0, // 辅修
+          if (selectedMajor) 'zxC': 'on', // ？？
+          if (selectedMinor) 'fxC': 'on', // ？？
           if (onlyNotPassed) 'xwtg': 1, // 限未通过
           'rxnj': '2025', // TODO 待实现获取功能
           'nj': '2025', // TODO 待实现获取功能
           'btnExport': '%B5%BC%B3%F6',
-          'xn': ?year?.year, // 学年下界
-          'xn1': year?.nextYear.year ?? AcademicYear.thisYear.year, // 学年上界
-          'xq': ?sem2xq[semType], // 学期
+          if (timeLimit != TimeLimit.sinceEnrollment)
+            'xn': academicYear.year, // 学年下界
+          'xn1': timeLimit == TimeLimit.sinceEnrollment
+              ? AcademicYear.thisYear.year
+              : academicYear.nextYear.year, // 学年上界
+          if (timeLimit == TimeLimit.semester) 'xq': sem2xq[semesterType], // 学期
           'ysyxS': 'on',
           'sjxzS': 'on',
           'xsjd': '1',
@@ -278,11 +265,28 @@ class GradeService {
         );
       }
 
-      return Column(children: [buildTable(tables[0]), buildTable(tables[1])]);
+      return Column(
+        children: [buildTable(tables.first), buildTable(tables[1])],
+      );
     } catch (e) {
       return Text('查询成绩异常: $e\n');
     }
   }
+}
+
+enum WeightedType {
+  courseAll('课程加权（所有学年）', 1),
+  courseLastYear('课程加权（上学年）', 2),
+  courseLastTerm('课程加权（上学期）', 3),
+  // diversion( '分流加权', 4),
+  graduate('毕业加权', 5),
+  minor('辅修加权', 6),
+  gradRec('推免加权', 7);
+
+  const WeightedType(this.name, this.id);
+
+  final String name;
+  final int id;
 }
 
 class GradeTable {
@@ -380,6 +384,8 @@ class WeightedGrade {
 
 ''';
 }
+
+enum SubjectFilter { major, minor, all }
 
 enum TimeLimit {
   sinceEnrollment('入学以来', 'sjxz1'),

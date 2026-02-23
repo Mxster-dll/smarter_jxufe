@@ -17,7 +17,8 @@ class LoginService {
 
   late String _account;
   late String _password;
-
+  final gid =
+      'S3lvSGM0NjRtSEtYcGhMcjZ2byszZnlGU0VkeXdGSTNOdllhckgyQVRaVnhhNi8zTUxRQ2hvWjhDbmlodWo1d0lVNGRzbDdqZ3hXU2FJYmxrK054TlE9PQ';
   LoginService() {
     _dio.options.headers = {
       'User-Agent':
@@ -82,7 +83,7 @@ class LoginService {
           'Accept-Encoding': 'gzip, deflate, br, zstd',
           'Accept-Language': 'zh-CN,zh;q=0.9',
           'Cookie':
-              'SESSION=979e7f6a-63d2-4925-b455-f003a591eef0; TGC=TGT-402578-xKwxgJ8CFXI3oQdd3tAF-KgrZCvqRYZ5a1dMPhPe676NmKd4LZmKyyHfLvPvgNoIwqwcas-server-webapp-5cd8d94d94-pj62b; Hm_lvt_d605d8df6bf5ca8a54fe078683196518=1771127564,1771203749,1771585681,1771635526; HMACCOUNT=FF9688FA59688706; Hm_lpvt_d605d8df6bf5ca8a54fe078683196518=1771693408',
+              'SESSION=540bffbb-b77f-4d99-8021-e8862c2ff6ec; TGC=TGT-404405-OsVM-3wVmfsm3X2ppzPgVUeVB9E-7j6SQ2-sefDlxZcrOs7pTgV5vqoQLZpTNRkLAD4cas-server-webapp-5cd8d94d94-5dl6h; Hm_lvt_d605d8df6bf5ca8a54fe078683196518=1771203749,1771585681,1771635526,1771830355; Hm_lpvt_d605d8df6bf5ca8a54fe078683196518=1771830355; HMACCOUNT=FF9688FA59688706',
         },
         followRedirects: false,
       ),
