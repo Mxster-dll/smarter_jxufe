@@ -81,7 +81,7 @@ class ScannedDisplayStrategy implements QrCodeDisplayStrategy {
 class AuthorizedDisplayStrategy implements QrCodeDisplayStrategy {
   @override
   Widget buildWidget(BuildContext context, QrCode qrCode) => Column(
-    mainAxisAlignment: MainAxisAlignment.center,
+    mainAxisAlignment: .center,
     children: [
       const Icon(Icons.done_all, color: Colors.blue, size: 64),
       const SizedBox(height: 16),
@@ -95,7 +95,7 @@ class AuthorizedDisplayStrategy implements QrCodeDisplayStrategy {
 class CancelledDisplayStrategy implements QrCodeDisplayStrategy {
   @override
   Widget buildWidget(BuildContext context, QrCode qrCode) => Column(
-    mainAxisAlignment: MainAxisAlignment.center,
+    mainAxisAlignment: .center,
     children: [
       const Icon(Icons.cancel, color: Colors.orange, size: 64),
       const SizedBox(height: 16),
@@ -120,7 +120,7 @@ class ExpiredDisplayStrategy implements QrCodeDisplayStrategy {
 class ErrorDisplayStrategy implements QrCodeDisplayStrategy {
   @override
   Widget buildWidget(BuildContext context, QrCode qrCode) => Column(
-    mainAxisAlignment: MainAxisAlignment.center,
+    mainAxisAlignment: .center,
     children: [
       const Icon(Icons.error_outline, color: Colors.red, size: 64),
       const SizedBox(height: 16),
@@ -132,12 +132,12 @@ class ErrorDisplayStrategy implements QrCodeDisplayStrategy {
 class QrCodeDisplayStrategyFactory {
   static QrCodeDisplayStrategy createStrategy(QrCodeStatus status) =>
       switch (status) {
-        QrCodeStatus.loading => LoadingDisplayStrategy(),
-        QrCodeStatus.pending => PendingDisplayStrategy(),
-        QrCodeStatus.scanned => ScannedDisplayStrategy(),
-        QrCodeStatus.authorized => AuthorizedDisplayStrategy(),
-        QrCodeStatus.cancelled => CancelledDisplayStrategy(),
-        QrCodeStatus.expired => ExpiredDisplayStrategy(),
-        QrCodeStatus.error => ErrorDisplayStrategy(),
+        .loading => LoadingDisplayStrategy(),
+        .pending => PendingDisplayStrategy(),
+        .scanned => ScannedDisplayStrategy(),
+        .authorized => AuthorizedDisplayStrategy(),
+        .cancelled => CancelledDisplayStrategy(),
+        .expired => ExpiredDisplayStrategy(),
+        .error => ErrorDisplayStrategy(),
       };
 }

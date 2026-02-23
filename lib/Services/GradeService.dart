@@ -42,19 +42,19 @@ class GradeService {
     }
   }
 
-  WeightedType weightedType = WeightedType.courseAll;
-  TimeLimit timeLimit = TimeLimit.semester;
+  WeightedType weightedType = .courseAll;
+  TimeLimit timeLimit = .semester;
   bool showRawGrade = false;
   bool onlyNotPassed = false;
-  SemesterType semesterType = SemesterType.first;
-  AcademicYear academicYear = AcademicYear.thisYear;
-  SubjectFilter subjectFilter = SubjectFilter.all;
+  SemesterType semesterType = .first;
+  AcademicYear academicYear = .thisYear;
+  SubjectFilter subjectFilter = .all;
 
-  bool get selectedMajor => subjectFilter != SubjectFilter.minor;
-  bool get selectedMinor => subjectFilter != SubjectFilter.major;
+  bool get selectedMajor => subjectFilter != .minor;
+  bool get selectedMinor => subjectFilter != .major;
 
   void nextSubjectFilter() {
-    subjectFilter = SubjectFilter
+    subjectFilter =
         .values[(subjectFilter.index + 1) % SubjectFilter.values.length];
   }
 
@@ -210,12 +210,11 @@ class GradeService {
           'rxnj': '2025', // TODO 待实现获取功能
           'nj': '2025', // TODO 待实现获取功能
           'btnExport': '%B5%BC%B3%F6',
-          if (timeLimit != TimeLimit.sinceEnrollment)
-            'xn': academicYear.year, // 学年下界
-          'xn1': timeLimit == TimeLimit.sinceEnrollment
+          if (timeLimit != .sinceEnrollment) 'xn': academicYear.year, // 学年下界
+          'xn1': timeLimit == .sinceEnrollment
               ? AcademicYear.thisYear.year
               : academicYear.nextYear.year, // 学年上界
-          if (timeLimit == TimeLimit.semester) 'xq': sem2xq[semesterType], // 学期
+          if (timeLimit == .semester) 'xq': sem2xq[semesterType], // 学期
           'ysyxS': 'on',
           'sjxzS': 'on',
           'xsjd': '1',
@@ -324,9 +323,9 @@ enum SubjectCategory {
 
 enum Subject {
   advancedMathematicsI('1004701034', '高等数学I', 4.0, [
-    SubjectCategory.compulsoryCourse,
-    SubjectCategory.publicCourse2024,
-    SubjectCategory.publicMathematicsCourse,
+    .compulsoryCourse,
+    .publicCourse2024,
+    .publicMathematicsCourse,
   ], '考试');
 
   const Subject(
