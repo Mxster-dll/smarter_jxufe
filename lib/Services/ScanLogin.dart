@@ -21,6 +21,7 @@ class ScanLogin extends QrCodeNetworkService {
         .toString();
   }
 
+  @override
   Future<void> process(BuildContext context) async {
     qrCode = QrCode(this);
 
@@ -33,6 +34,7 @@ class ScanLogin extends QrCodeNetworkService {
     qrCode.startPolling();
   }
 
+  @override
   Future<void> refreshQrCode() async {
     qrCode.id = _getQrCodeId();
     qrCode.imgUrl = '$baseUrl/qr/qrcode?r=${qrCode.id}'; // 调试在后面加 &debug=debug
@@ -82,6 +84,7 @@ class ScanLogin extends QrCodeNetworkService {
     throw Exception('缺失轮询 Cookie: $response');
   }
 
+  @override
   Future<QrCodeStatus?> pollStatus() async {
     try {
       final response = await _dio.post(
@@ -100,17 +103,17 @@ class ScanLogin extends QrCodeNetworkService {
   }
 
   static const _statusMap = {
-    // 1: 待扫描
-    2: QrCodeStatus.scanned,
-    3: QrCodeStatus.authorized,
-    4: QrCodeStatus.cancelled,
+    // '1': 待扫描
+    '2': QrCodeStatus.scanned,
+    '3': QrCodeStatus.authorized,
+    '4': QrCodeStatus.cancelled,
   };
 
   QrCodeStatus? _extractStatus(Map<String, dynamic> responseBody) {
     if (responseBody['message'] == 'expired') return QrCodeStatus.expired;
 
     final data = responseBody['data'] as Map<String, dynamic>;
-    final status = int.parse(data['qrCode']['status']);
+    final status = data['qrCode']['status'];
 
     return _statusMap[status];
   }
