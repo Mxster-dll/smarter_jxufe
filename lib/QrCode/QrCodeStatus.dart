@@ -7,18 +7,17 @@ import 'package:smarter_jxufe/Services/WechatLogin.dart';
 import 'package:smarter_jxufe/design/JxufeTheme.dart';
 
 enum QrCodeStatus {
-  loading(false), // 包括未初始化状态
-  pending(false), // 待扫描
-  scanned(false), // 已扫描/待验证
-  cancelled(true), // 手机端已取消
-  authorized(true), // 手机端已确认
-  expired(true),
-  error(true);
+  loading, // 包括未初始化状态
+  pending, // 待扫描
+  scanned, // 已扫描/待验证
+  cancelled, // 手机端已取消
+  authorized, // 手机端已确认
+  expired, // 失效
+  error;
 
-  const QrCodeStatus(this.isFinal);
-
-  final bool isFinal;
-  bool get isNotFinal => !isFinal;
+  bool get isFinal => !isNotFinal;
+  bool get isNotFinal =>
+      this == .loading || this == .pending || this == .scanned;
 }
 
 abstract class QrCodeDisplayStrategy {
