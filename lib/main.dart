@@ -1,7 +1,6 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
-import 'Grades.dart';
+import 'package:smarter_jxufe/pages/GradePage.dart';
 
 void main() async {
   runApp(const SmarterJxUFE());
@@ -23,7 +22,7 @@ class SmarterJxUFE extends StatelessWidget {
       //   home: MyHomePage(title: 'demo'),
       //   home: LoginScreen(),
       // home: const HomePage(title: '智慧尼采 SmarterJxUFE'),
-      home: GradesPage(title: '智慧尼采 SmarterJxUFE'),
+      home: GradesPage(),
     );
   }
 }
@@ -66,7 +65,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
-// lib/main.dart
 // import 'package:flutter/material.dart';
 // import 'package:smarter_jxufe/pages/login_page.dart';
 

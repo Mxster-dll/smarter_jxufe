@@ -21,8 +21,7 @@ class QrCode {
 
   QrCode(this.networkService, [this.pollingInterval = 1500]);
 
-  final BehaviorSubject<QrCodeStatus> stateSubject =
-      BehaviorSubject<QrCodeStatus>.seeded(QrCodeStatus.loading);
+  final stateSubject = BehaviorSubject<QrCodeStatus>.seeded(.loading);
   Stream<QrCodeStatus> get stateStream => stateSubject.stream;
 
   set status(QrCodeStatus? status) {
@@ -31,8 +30,8 @@ class QrCode {
     }
   }
 
-  bool get isLoading => status == QrCodeStatus.loading;
-  bool get isPending => status == QrCodeStatus.pending;
+  bool get isLoading => status == .loading;
+  bool get isPending => status == .pending;
 
   QrCodeStatus get status => stateSubject.value;
 
@@ -50,7 +49,7 @@ class QrCode {
   }
 
   void startPolling() {
-    _pollingTimer = Timer.periodic(
+    _pollingTimer = .periodic(
       Duration(milliseconds: pollingInterval),
       (_) => _pollStatus(),
     );

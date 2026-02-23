@@ -1,6 +1,5 @@
 import 'package:dio/dio.dart';
 import 'dart:async';
-import 'package:smarter_jxufe/Log.dart';
 
 class LoginService {
   final Dio _dio = Dio(

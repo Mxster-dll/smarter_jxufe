@@ -89,7 +89,7 @@ class GradesPageState extends State<GradesPage> {
   Widget buildWeightedScoreCard() {
     return Center(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: .center,
         children: [
           DropdownButton<WeightedType>(
             value: gradeService.weightedType,
@@ -119,7 +119,7 @@ class GradesPageState extends State<GradesPage> {
           FutureBuilder<Widget>(
             future: _futureWeightedText,
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
+              if (snapshot.connectionState == .waiting) {
                 return Center(child: CircularProgressIndicator());
               } else if (snapshot.hasError) {
                 return Text('buildWeightedGradeRank 错误：\n${snapshot.error}');
@@ -245,7 +245,7 @@ class GradesPageState extends State<GradesPage> {
           FutureBuilder<Widget>(
             future: _futureGradeText,
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
+              if (snapshot.connectionState == .waiting) {
                 return Center(child: CircularProgressIndicator());
               } else if (snapshot.hasError) {
                 return Text('buildGradeText 错误：\n${snapshot.error}');
@@ -283,9 +283,9 @@ class TableWidget extends StatelessWidget {
     final columnCount = tableData.first.length;
 
     return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+      scrollDirection: .horizontal,
       child: SingleChildScrollView(
-        scrollDirection: Axis.vertical,
+        scrollDirection: .vertical,
         child: Table(
           border: TableBorder.all(color: Colors.grey[300]!),
           defaultColumnWidth: FixedColumnWidth(150.0), // 设置默认固定宽度
@@ -330,7 +330,7 @@ class TableWidget extends StatelessWidget {
           ),
           children: tableData[0].map((header) {
             return TableCell(
-              verticalAlignment: TableCellVerticalAlignment.middle,
+              verticalAlignment: .middle,
               child: Container(
                 padding: EdgeInsets.all(12),
                 constraints: BoxConstraints(minHeight: 50),
@@ -357,9 +357,9 @@ class TableWidget extends StatelessWidget {
           ),
           children: rowData.map((cell) {
             return TableCell(
-              verticalAlignment: TableCellVerticalAlignment.middle,
+              verticalAlignment: .middle,
               child: Container(
-                padding: EdgeInsets.all(10),
+                padding: .all(10),
                 constraints: BoxConstraints(minHeight: 40),
                 child: Text(cell, style: TextStyle(fontSize: 13)),
               ),
@@ -375,14 +375,14 @@ class TableWidget extends StatelessWidget {
 
 extension SubjectFilterStyle on SubjectFilter {
   String get displayText => switch (this) {
-    SubjectFilter.major => '主修',
-    SubjectFilter.minor => '辅修',
-    SubjectFilter.all => '主修&辅修',
+    .major => '主修',
+    .minor => '辅修',
+    .all => '主修&辅修',
   };
 
   Color get displayColor => switch (this) {
-    SubjectFilter.major => Colors.blue,
-    SubjectFilter.minor => Colors.green,
-    SubjectFilter.all => Colors.red,
+    .major => Colors.blue,
+    .minor => Colors.green,
+    .all => Colors.red,
   };
 }

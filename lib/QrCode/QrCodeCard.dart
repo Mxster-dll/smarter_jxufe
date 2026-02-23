@@ -34,13 +34,13 @@ class QrCodeCard extends StatefulWidget {
   static Dialog _buildQrCodeDialog(QrCode qrCode, String title, String info) {
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+      insetPadding: const .symmetric(horizontal: 20),
       child: ConstrainedBox(
         constraints: BoxConstraints(minWidth: 360),
         child: Container(
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: .circular(12),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withAlpha(38),
@@ -50,12 +50,12 @@ class QrCodeCard extends StatefulWidget {
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const .all(24),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisSize: .min,
               children: [
                 Container(
-                  margin: const EdgeInsets.only(bottom: 20),
+                  margin: const .only(bottom: 20),
                   child: Column(
                     children: [
                       Container(
@@ -63,7 +63,7 @@ class QrCodeCard extends StatefulWidget {
                         height: 40,
                         decoration: BoxDecoration(
                           color: JxufeTheme.primaryColor,
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: .circular(20),
                         ),
                         child: const Icon(
                           Icons.qr_code_scanner_rounded,
@@ -78,7 +78,7 @@ class QrCodeCard extends StatefulWidget {
                         title,
                         style: TextStyle(
                           fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: .bold,
                           color: JxufeTheme.textColor,
                         ),
                       ),
@@ -91,7 +91,7 @@ class QrCodeCard extends StatefulWidget {
                           fontSize: 13,
                           color: JxufeTheme.hintColor,
                         ),
-                        textAlign: TextAlign.center,
+                        textAlign: .center,
                       ),
                     ],
                   ),
@@ -136,10 +136,10 @@ class _QrCodeState extends State<QrCodeCard> {
         final strategy = QrCodeDisplayStrategyFactory.createStrategy(state);
 
         return Container(
-          padding: const EdgeInsets.all(20),
+          padding: const .all(20),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: .circular(12),
             border: Border.all(color: JxufeTheme.borderColor),
             // boxShadow: [
             //   BoxShadow(
@@ -155,18 +155,18 @@ class _QrCodeState extends State<QrCodeCard> {
               minHeight: sideLength,
             ),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: .center,
               children: [
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 200),
                   child: KeyedSubtree(
                     key: ValueKey(state),
                     child: Stack(
-                      alignment: Alignment.topCenter,
+                      alignment: .topCenter,
                       children: [
                         if (!qrCode.isLoading)
                           ImageFiltered(
-                            imageFilter: ImageFilter.blur(
+                            imageFilter: .blur(
                               sigmaX: qrCode.isPending ? 0 : 5,
                               sigmaY: qrCode.isPending ? 0 : 5,
                             ),
@@ -176,7 +176,7 @@ class _QrCodeState extends State<QrCodeCard> {
                                 qrCode.img,
                                 height: sideLength,
                                 width: sideLength,
-                                fit: BoxFit.contain,
+                                fit: .contain,
                               ),
                             ),
                           ),
