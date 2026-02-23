@@ -8,6 +8,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:smarter_jxufe/Log.dart';
 import 'package:smarter_jxufe/Services/JxufeLogin.dart';
+import 'package:smarter_jxufe/IMS/Subject.dart';
+import 'package:smarter_jxufe/IMS/AcademicTime.dart';
+import 'package:smarter_jxufe/IMS/Grades.dart';
 
 class GradeService {
   late final Dio _dio;
@@ -210,10 +213,10 @@ class GradeService {
           'rxnj': '2025', // TODO 待实现获取功能
           'nj': '2025', // TODO 待实现获取功能
           'btnExport': '%B5%BC%B3%F6',
-          if (timeLimit != .sinceEnrollment) 'xn': academicYear.year, // 学年下界
+          if (timeLimit != .sinceEnrollment) 'xn': academicYear.value, // 学年下界
           'xn1': timeLimit == .sinceEnrollment
-              ? AcademicYear.thisYear.year
-              : academicYear.nextYear.year, // 学年上界
+              ? AcademicYear.thisYear.value
+              : academicYear.nextYear.value, // 学年上界
           if (timeLimit == .semester) 'xq': sem2xq[semesterType], // 学期
           'ysyxS': 'on',
           'sjxzS': 'on',
@@ -271,183 +274,4 @@ class GradeService {
       return Text('查询成绩异常: $e\n');
     }
   }
-}
-
-enum WeightedType {
-  courseAll('课程加权（所有学年）', 1),
-  courseLastYear('课程加权（上学年）', 2),
-  courseLastTerm('课程加权（上学期）', 3),
-  // diversion( '分流加权', 4),
-  graduate('毕业加权', 5),
-  minor('辅修加权', 6),
-  gradRec('推免加权', 7);
-
-  const WeightedType(this.name, this.id);
-
-  final String name;
-  final int id;
-}
-
-class GradeTable {
-  final List<SubjectGrade> grades;
-  final double gpa;
-
-  GradeTable(this.grades, this.gpa);
-}
-
-class SubjectGrade {
-  final Subject subject;
-  final String courseNature;
-  final double score;
-  final double credit;
-  final double gradePoint;
-  final double gradePointCredit;
-  final String remark;
-
-  SubjectGrade(
-    this.subject,
-    this.courseNature,
-    this.score,
-    this.credit,
-    this.gradePoint,
-    this.gradePointCredit,
-    this.remark,
-  );
-}
-
-enum SubjectCategory {
-  compulsoryCourse,
-  publicCourse2024,
-  publicMathematicsCourse,
-}
-
-enum Subject {
-  advancedMathematicsI('1004701034', '高等数学I', 4.0, [
-    .compulsoryCourse,
-    .publicCourse2024,
-    .publicMathematicsCourse,
-  ], '考试');
-
-  const Subject(
-    this.code,
-    this.name,
-    this.credit,
-    this.category,
-    this.assessmentMethod,
-  );
-
-  final String code;
-  final String name;
-  final double credit;
-  final List<SubjectCategory> category;
-  final String assessmentMethod;
-}
-
-class WeightedGrade {
-  final String grade;
-  final int classRank, majorRank, gradeRank;
-
-  WeightedGrade(this.grade, this.classRank, this.majorRank, this.gradeRank);
-
-  static WeightedGrade fromMap(Map<String, dynamic> weightedGrade) {
-    final grade = weightedGrade['课程加权成绩'];
-    if (grade == null) throw Exception('缺少 "课程加权成绩"');
-
-    int extractRank(String key) {
-      final rankText = weightedGrade[key];
-      if (rankText == null) throw Exception('缺少 "$key"');
-
-      final rank = int.tryParse(rankText);
-      if (rank == null) throw Exception('"$key" 格式错误');
-
-      return rank;
-    }
-
-    return WeightedGrade(
-      grade,
-      extractRank('班级排名'),
-      extractRank('专业排名'),
-      extractRank('年级排名'),
-    );
-  }
-
-  @override
-  String toString() =>
-      '''
-
-::加权成绩排名::
-课程加权成绩: $grade
-班级排名: $classRank
-专业排名: $majorRank
-年级排名: $gradeRank
-
-''';
-}
-
-enum SubjectFilter { major, minor, all }
-
-enum TimeLimit {
-  sinceEnrollment('入学以来', 'sjxz1'),
-  academicYear('学年', 'sjxz2'),
-  semester('学期', 'sjxz3');
-
-  const TimeLimit(this.name, this.value);
-
-  final String name;
-  final String value;
-}
-
-enum SemesterType {
-  first('第一学期', 1),
-  second('第二学期', 2),
-  next('第二阶段', -1);
-
-  const SemesterType(this.name, this.code);
-
-  final String name;
-  final int code;
-}
-
-class AcademicYear {
-  final int year;
-
-  AcademicYear._internal(this.year);
-
-  static final Map<int, AcademicYear> _cache = {};
-
-  factory AcademicYear.of(int year) {
-    if (year < 1976 || year > 2099) throw Exception('日期超限：year=$year');
-
-    return _cache.putIfAbsent(year, () => AcademicYear._internal(year));
-  }
-
-  @override
-  String toString() => '$year-${year + 1}学年';
-
-  String get short {
-    final str = year.toString();
-
-    assert(str.length == 4);
-    return str.substring(str.length - 2);
-  }
-
-  static AcademicYear get thisYear => AcademicYear.of(DateTime.now().year);
-
-  AcademicYear get nextYear => AcademicYear.of(year + 1);
-  AcademicYear get lastYear => AcademicYear.of(year - 1);
-
-  AcademicYear operator +(int interval) => AcademicYear.of(year + interval);
-  AcademicYear operator -(int interval) => AcademicYear.of(year - interval);
-}
-
-class Semester {
-  final AcademicYear year;
-  final SemesterType type;
-
-  const Semester(this.year, this.type);
-
-  @override
-  String toString() => '$year${type.name}';
-
-  String get code => '${year.short}${type.code}';
 }

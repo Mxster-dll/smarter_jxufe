@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:smarter_jxufe/Services/GradeService.dart';
 import 'package:smarter_jxufe/Services/JxufeLogin.dart';
 import 'package:smarter_jxufe/Widgets/AcademicYearPicker.dart';
+import 'package:smarter_jxufe/IMS/AcademicTime.dart';
+import 'package:smarter_jxufe/IMS/Subject.dart';
+import 'package:smarter_jxufe/IMS/Grades.dart';
 
 class GradesPage extends StatefulWidget {
   const GradesPage({super.key});
@@ -134,7 +137,7 @@ class GradesPageState extends State<GradesPage> {
                 1976,
                 DateTime.now().year,
                 onChanged: (int value) {
-                  if (value == gradeService.academicYear.year) return;
+                  if (value == gradeService.academicYear.value) return;
 
                   setState(() {
                     gradeService.academicYear = AcademicYear.of(value);
@@ -257,119 +260,6 @@ class GradesPageState extends State<GradesPage> {
         ],
       ),
     );
-  }
-}
-
-class TableWidget extends StatelessWidget {
-  final List<List<String>> tableData;
-  final bool firstRowIsHeader;
-  final Map<int, TableColumnWidth>? columnWidths;
-  final double minColumnWidth;
-  final double maxColumnWidth;
-
-  const TableWidget({
-    super.key,
-    required this.tableData,
-    this.firstRowIsHeader = true,
-    this.columnWidths,
-    this.minColumnWidth = 120.0,
-    this.maxColumnWidth = 300.0,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (tableData.isEmpty) return Center(child: Text('没有表格数据'));
-
-    final columnCount = tableData.first.length;
-
-    return SingleChildScrollView(
-      scrollDirection: .horizontal,
-      child: SingleChildScrollView(
-        scrollDirection: .vertical,
-        child: Table(
-          border: TableBorder.all(color: Colors.grey[300]!),
-          defaultColumnWidth: FixedColumnWidth(150.0), // 设置默认固定宽度
-          columnWidths: columnWidths ?? _buildColumnWidths(columnCount),
-          children: _buildTableRows(),
-        ),
-      ),
-    );
-  }
-
-  Map<int, TableColumnWidth> _buildColumnWidths(int columnCount) {
-    final Map<int, TableColumnWidth> widths = {};
-
-    for (int i = 0; i < columnCount; i++) {
-      // 方案1：固定宽度
-      //   widths[i] = FixedColumnWidth(minColumnWidth);
-
-      // 方案2：根据内容自适应，但有最小宽度限制
-      widths[i] = IntrinsicColumnWidth(flex: 1);
-
-      // 方案3：弹性宽度，但限制最小宽度
-      // widths[i] = MinColumnWidth(
-      //   FixedColumnWidth(minColumnWidth),
-      //   FlexColumnWidth(1.0),
-      // );
-    }
-
-    return widths;
-  }
-
-  List<TableRow> _buildTableRows() {
-    final startRowIndex = firstRowIsHeader ? 1 : 0;
-    final List<TableRow> rows = [];
-
-    // 添加表头（如果需要）
-    if (firstRowIsHeader && tableData.isNotEmpty) {
-      rows.add(
-        TableRow(
-          decoration: BoxDecoration(
-            color: Colors.grey[100],
-            border: Border(bottom: BorderSide(color: Colors.grey[400]!)),
-          ),
-          children: tableData[0].map((header) {
-            return TableCell(
-              verticalAlignment: .middle,
-              child: Container(
-                padding: EdgeInsets.all(12),
-                constraints: BoxConstraints(minHeight: 50),
-                child: Text(
-                  header,
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      );
-    }
-
-    // 添加数据行
-    for (int i = startRowIndex; i < tableData.length; i++) {
-      final rowData = tableData[i];
-
-      rows.add(
-        TableRow(
-          decoration: BoxDecoration(
-            color: i.isEven ? Colors.white : Colors.grey[50],
-            border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
-          ),
-          children: rowData.map((cell) {
-            return TableCell(
-              verticalAlignment: .middle,
-              child: Container(
-                padding: .all(10),
-                constraints: BoxConstraints(minHeight: 40),
-                child: Text(cell, style: TextStyle(fontSize: 13)),
-              ),
-            );
-          }).toList(),
-        ),
-      );
-    }
-
-    return rows;
   }
 }
 
