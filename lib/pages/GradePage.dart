@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+
 import 'package:smarter_jxufe/Services/GradeService.dart';
+import 'package:smarter_jxufe/Services/JxufeLogin.dart';
 import 'package:smarter_jxufe/Widgets/AcademicYearPicker.dart';
 
 class GradesPage extends StatefulWidget {
@@ -11,17 +13,7 @@ class GradesPage extends StatefulWidget {
 
 class GradesPageState extends State<GradesPage> {
   late Future<Widget> _futureWeightedText;
-  WeightedType _weightedType = WeightedType.courseAll;
-
   late Future<Widget> _futureGradeText;
-  TimeLimit _timeLimit = TimeLimit.semester;
-  bool _showRawGrade = false;
-  bool _onlyNotPassed = false;
-  SemesterType? _semType = SemesterType.first;
-  AcademicYear? _year = AcademicYear.thisYear;
-  int _majorMinorState = 3;
-  final mmColor = {1: Colors.blue, 2: Colors.green, 3: Colors.red};
-  final mmText = {1: '主修', 2: '辅修', 3: '主修&辅修'};
 
   late final GradeService gradeService;
 
@@ -65,10 +57,8 @@ class GradesPageState extends State<GradesPage> {
   void initState() {
     super.initState();
 
-    // 从统一门户获取的gid_参数（需替换为实际值）
-    final gid =
-        'S3lvSGM0NjRtSEtYcGhMcjZ2byszZnlGU0VkeXdGSTNOdllhckgyQVRaVnhhNi8zTUxRQ2hvWjhDbmlodWo1d0lVNGRzbDdqZ3hXU2FJYmxrK054TlE9PQ';
-    gradeService = GradeService(gid: gid);
+    LoginService loginService = LoginService();
+    gradeService = GradeService(loginService);
     gradeService.loadJSessionId();
 
     _futureWeightedText = buildWeightedGradeRank();
@@ -77,7 +67,7 @@ class GradesPageState extends State<GradesPage> {
 
   Future<Widget> buildWeightedGradeRank() async {
     try {
-      final weightedGrade = await gradeService.getWeightedGrade(_weightedType);
+      final weightedGrade = await gradeService.getWeightedGrade();
       return Text(
         weightedGrade?.toString() ?? 'buildWeightedGradeRank: 空的 weightedGrade',
       );
@@ -88,30 +78,13 @@ class GradesPageState extends State<GradesPage> {
 
   Future<Widget> buildGradeText() async {
     try {
-      if (_timeLimit == TimeLimit.academicYear) _semType = null;
-      if (_timeLimit == TimeLimit.sinceEnrollment) {
-        _year = null;
-        _semType = null;
-      }
+      final grade = await gradeService.getGrade();
 
-      final grade = await gradeService.getGrade(
-        timeLimit: _timeLimit,
-        showRawGrade: _showRawGrade,
-        selectMajor: _selectMajor,
-        selectMinor: _selectMinor,
-        onlyNotPassed: _onlyNotPassed,
-        semType: _semType,
-        year: _year,
-      );
-      // final grade = null;
       return grade ?? Text('buildGradeText: 空的 grade');
     } catch (e) {
       return Text('getWeightedGrade 异常: $e\n');
     }
   }
-
-  bool _selectMajor = true;
-  bool _selectMinor = true;
 
   Widget buildWeightedScoreCard() {
     return Center(
@@ -119,7 +92,7 @@ class GradesPageState extends State<GradesPage> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           DropdownButton<WeightedType>(
-            value: _weightedType,
+            value: gradeService.weightedType,
             icon: const Icon(Icons.arrow_drop_down, color: Colors.grey),
             dropdownColor: Colors.white,
             focusColor: Colors.white,
@@ -127,11 +100,10 @@ class GradesPageState extends State<GradesPage> {
             underline: const SizedBox.shrink(), // 隐藏下划线
             onChanged: (WeightedType? value) async {
               if (value == null) throw Exception('value == null');
+              if (value == gradeService.weightedType) return;
 
               setState(() {
-                if (_weightedType == value) return;
-
-                _weightedType = value;
+                gradeService.weightedType = value;
                 _futureWeightedText = buildWeightedGradeRank();
               });
             },
@@ -161,18 +133,18 @@ class GradesPageState extends State<GradesPage> {
               AcademicYearPicker(
                 1976,
                 DateTime.now().year,
-                onChanged: (int value) => {
-                  setState(() {
-                    if (_year?.year == value) return;
+                onChanged: (int value) {
+                  if (value == gradeService.academicYear.year) return;
 
-                    _year = AcademicYear.of(value);
-                  }),
+                  setState(() {
+                    gradeService.academicYear = AcademicYear.of(value);
+                  });
                 },
               ),
               Text('学年'),
               SizedBox(width: 20),
               DropdownButton<TimeLimit>(
-                value: _timeLimit,
+                value: gradeService.timeLimit,
                 icon: const Icon(Icons.arrow_drop_down, color: Colors.grey),
                 dropdownColor: Colors.white,
                 focusColor: Colors.white,
@@ -180,11 +152,10 @@ class GradesPageState extends State<GradesPage> {
                 underline: const SizedBox.shrink(), // 隐藏下划线
                 onChanged: (TimeLimit? value) async {
                   if (value == null) throw Exception('value == null');
+                  if (value == gradeService.timeLimit) return;
 
                   setState(() {
-                    if (_timeLimit == value) return;
-
-                    _timeLimit = value;
+                    gradeService.timeLimit = value;
                     _futureGradeText = buildGradeText();
                   });
                 },
@@ -198,22 +169,23 @@ class GradesPageState extends State<GradesPage> {
                     .toList(),
               ),
               DropdownButton<SemesterType>(
-                value: _semType,
+                value: gradeService.semesterType,
                 icon: const Icon(Icons.arrow_drop_down, color: Colors.grey),
                 dropdownColor: Colors.white,
                 focusColor: Colors.white,
                 style: const TextStyle(color: Colors.black87, fontSize: 16),
                 underline: const SizedBox.shrink(), // 隐藏下划线
-                onChanged: (SemesterType? value) async {
-                  if (value == null) throw Exception('value == null');
+                onChanged: gradeService.timeLimit != TimeLimit.semester
+                    ? null
+                    : (SemesterType? value) async {
+                        if (value == null) throw Exception('value == null');
+                        if (value == gradeService.semesterType) return;
 
-                  setState(() {
-                    if (_semType == value) return;
-
-                    _semType = value;
-                    _futureGradeText = buildGradeText();
-                  });
-                },
+                        setState(() {
+                          gradeService.semesterType = value;
+                          _futureGradeText = buildGradeText();
+                        });
+                      },
                 items: SemesterType.values
                     .map(
                       (SemesterType st) => DropdownMenuItem<SemesterType>(
@@ -230,40 +202,42 @@ class GradesPageState extends State<GradesPage> {
               ElevatedButton(
                 onPressed: () => {
                   setState(() {
-                    _majorMinorState = (_majorMinorState + 1) % 3 + 1;
-                    _selectMajor = _majorMinorState & 1 == 1;
-                    _selectMinor = _majorMinorState & 10 == 1;
+                    gradeService.nextSubjectFilter();
                     _futureGradeText = buildGradeText();
                   }),
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: mmColor[_majorMinorState],
+                  backgroundColor: gradeService.subjectFilter.displayColor,
                 ),
-                child: Text(mmText[_majorMinorState] ?? ''),
+                child: Text(gradeService.subjectFilter.displayText),
               ),
               ElevatedButton(
                 onPressed: () => {
                   setState(() {
-                    _showRawGrade = !_showRawGrade;
+                    gradeService.showRawGrade = !gradeService.showRawGrade;
                     _futureGradeText = buildGradeText();
                   }),
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _showRawGrade ? Colors.green : Colors.red,
+                  backgroundColor: gradeService.showRawGrade
+                      ? Colors.green
+                      : Colors.red,
                 ),
-                child: Text(_showRawGrade ? '原始成绩' : '有效成绩'),
+                child: Text(gradeService.showRawGrade ? '原始成绩' : '有效成绩'),
               ),
               ElevatedButton(
                 onPressed: () => {
                   setState(() {
-                    _onlyNotPassed = !_onlyNotPassed;
+                    gradeService.onlyNotPassed = !gradeService.onlyNotPassed;
                     _futureGradeText = buildGradeText();
                   }),
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _onlyNotPassed ? Colors.green : Colors.white,
+                  backgroundColor: gradeService.onlyNotPassed
+                      ? Colors.green
+                      : Colors.white,
                 ),
-                child: Text(_onlyNotPassed ? '仅未通过' : '所有课程'),
+                child: Text(gradeService.onlyNotPassed ? '仅未通过' : '所有课程'),
               ),
             ],
           ),
@@ -293,7 +267,8 @@ class TableWidget extends StatelessWidget {
   final double minColumnWidth;
   final double maxColumnWidth;
 
-  TableWidget({
+  const TableWidget({
+    super.key,
     required this.tableData,
     this.firstRowIsHeader = true,
     this.columnWidths,
@@ -305,7 +280,7 @@ class TableWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     if (tableData.isEmpty) return Center(child: Text('没有表格数据'));
 
-    final columnCount = tableData[0].length;
+    final columnCount = tableData.first.length;
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -396,4 +371,18 @@ class TableWidget extends StatelessWidget {
 
     return rows;
   }
+}
+
+extension SubjectFilterStyle on SubjectFilter {
+  String get displayText => switch (this) {
+    SubjectFilter.major => '主修',
+    SubjectFilter.minor => '辅修',
+    SubjectFilter.all => '主修&辅修',
+  };
+
+  Color get displayColor => switch (this) {
+    SubjectFilter.major => Colors.blue,
+    SubjectFilter.minor => Colors.green,
+    SubjectFilter.all => Colors.red,
+  };
 }
