@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:smarter_jxufe/Services/JxufeLogin.dart';
-import 'package:smarter_jxufe/Services/ScanLogin.dart';
+import 'package:smarter_jxufe/services/JxufeLogin.dart';
+import 'package:smarter_jxufe/services/ScanLogin.dart';
 import 'package:smarter_jxufe/Services/WechatLogin.dart';
 
 import 'package:smarter_jxufe/design/JxufeTheme.dart';
 import 'package:smarter_jxufe/design/Icons.dart';
-import 'package:smarter_jxufe/Services/MfaService.dart';
+import 'package:smarter_jxufe/services/MfaService.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
