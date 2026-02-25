@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
 
-import 'package:smarter_jxufe/QrCode/QrCodeStatus.dart';
+import 'package:smarter_jxufe/qrCode/QrCodeStatus.dart';
 
 abstract class QrCodeNetworkService {
   Future<void> process(BuildContext context);

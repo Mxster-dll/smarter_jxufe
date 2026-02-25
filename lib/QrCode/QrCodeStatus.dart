@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import 'package:smarter_jxufe/QrCode/QrCode.dart';
-import 'package:smarter_jxufe/Services/MfaService.dart';
-import 'package:smarter_jxufe/Services/ScanLogin.dart';
+import 'package:smarter_jxufe/qrCode/QrCode.dart';
+import 'package:smarter_jxufe/services/MfaService.dart';
+import 'package:smarter_jxufe/services/ScanLogin.dart';
 import 'package:smarter_jxufe/Services/WechatLogin.dart';
 import 'package:smarter_jxufe/design/JxufeTheme.dart';
 

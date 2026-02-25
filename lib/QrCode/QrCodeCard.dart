@@ -1,9 +1,7 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
-import 'package:smarter_jxufe/QrCode/QrCode.dart';
-import 'package:smarter_jxufe/QrCode/QrCodeStatus.dart';
+import 'package:smarter_jxufe/qrCode/QrCode.dart';
+import 'package:smarter_jxufe/qrCode/QrCodeStatus.dart';
 import 'package:smarter_jxufe/design/JxufeTheme.dart';
 
 // BUG 如果点击微信登录（其他也一样）选项过快，可能导致两个dialog被显示
