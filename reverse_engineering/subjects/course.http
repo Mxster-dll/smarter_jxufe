@@ -1,0 +1,24 @@
+POST https://jwxt.jxufe.edu.cn/taglib/DataTable.jsp?tableId=2508 HTTP/1.1
+Host: jwxt.jxufe.edu.cn
+Connection: keep-alive
+Content-Length: 221
+Pragma: no-cache
+Cache-Control: no-cache
+sec-ch-ua: "Not:A-Brand";v="99", "Microsoft Edge";v="145", "Chromium";v="145"
+sec-ch-ua-mobile: ?0
+sec-ch-ua-platform: "Windows"
+Origin: https://jwxt.jxufe.edu.cn
+Content-Type: application/x-www-form-urlencoded
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Sec-Fetch-Site: same-origin
+Sec-Fetch-Mode: navigate
+Sec-Fetch-User: ?1
+Sec-Fetch-Dest: iframe
+Referer: https://jwxt.jxufe.edu.cn/student/pyfa.llkc.html?menucode=S20101
+Accept-Encoding: gzip, deflate, br, zstd
+Accept-Language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6
+Cookie: JSESSIONID=AEB0BF7F3ED47F19D8328DA4A82040E4
+
+xn=2025&xn1=2026&xq=0&_xq=%B5%DA%D2%BB%D1%A7%C6%DA&xh=&nj=2023&fxnj=&menucode=S20101&yxdm=44&zydm=4405&zyfxdm=&fxzydm=&count=1&initQry=0&nj_=2023&sel_yxb=16&sel_zy=1635&sel_zyfx=&fxzy=2344&fzyxs=zx&menucode_current=S20101
