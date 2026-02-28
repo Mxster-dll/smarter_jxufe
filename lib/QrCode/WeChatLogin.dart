@@ -1,11 +1,4 @@
-import 'dart:typed_data';
-
-import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
-import 'package:smarter_jxufe/Log.dart';
-import 'package:smarter_jxufe/qrCode/QrCode.dart';
-import 'package:smarter_jxufe/qrCode/QrCodeCard.dart';
-import 'package:smarter_jxufe/qrCode/QrCodeStatus.dart';
+part of 'QrCodeService.dart';
 
 /// 长轮询模式
 /// 超时返回 408
@@ -13,7 +6,7 @@ import 'package:smarter_jxufe/qrCode/QrCodeStatus.dart';
 /// 失效返回 402
 /// 取消返回 403
 /// 由于如果查询到状态为 403 或 404 会立即返回，但此时仍需轮询下一步状态，则需带上last字段，给出上一次查询到的状态码
-class WeChatLogin extends QrCodeNetworkService {
+final class WeChatLogin implements QrCodeNetworkService {
   static const String appid = 'wx0c8ba76c633d28f2'; // 江西财经大学认证系统在微信开放平台的 id
   static const String redirectUrl =
       'https://ssl.jxufe.edu.cn/cas/federation/federatedCallback/openweixin';

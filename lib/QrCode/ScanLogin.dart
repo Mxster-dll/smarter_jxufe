@@ -1,13 +1,6 @@
-import 'dart:math';
-import 'dart:typed_data';
-import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
+part of 'QrCodeService.dart';
 
-import 'package:smarter_jxufe/qrCode/QrCode.dart';
-import 'package:smarter_jxufe/qrCode/QrCodeCard.dart';
-import 'package:smarter_jxufe/qrCode/QrCodeStatus.dart';
-
-class ScanLogin extends QrCodeNetworkService {
+final class ScanLogin implements QrCodeNetworkService {
   static const baseUrl = 'https://ssl.jxufe.edu.cn';
 
   final Dio _dio;
