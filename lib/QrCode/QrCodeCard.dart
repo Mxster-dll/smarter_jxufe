@@ -1,11 +1,8 @@
-import 'package:flutter/material.dart';
+part of 'QrCodeService.dart';
 
-import 'package:smarter_jxufe/qrCode/QrCode.dart';
-import 'package:smarter_jxufe/qrCode/QrCodeStatus.dart';
-import 'package:smarter_jxufe/design/JxufeTheme.dart';
-
+// TODO 轮询异常的判断和提示
 // BUG 如果点击微信登录（其他也一样）选项过快，可能导致两个dialog被显示
-class QrCodeCard extends StatefulWidget {
+final class QrCodeCard extends StatefulWidget {
   final String tips;
   final QrCode qrCode;
 
@@ -108,7 +105,7 @@ class QrCodeCard extends StatefulWidget {
   }
 }
 
-class _QrCodeState extends State<QrCodeCard> {
+final class _QrCodeState extends State<QrCodeCard> {
   late final QrCode qrCode;
 
   @override

@@ -18,6 +18,8 @@ class LoginService {
   late String _password;
   final gid =
       'S3lvSGM0NjRtSEtYcGhMcjZ2byszZnlGU0VkeXdGSTNOdllhckgyQVRaVnhhNi8zTUxRQ2hvWjhDbmlodWo1d0lVNGRzbDdqZ3hXU2FJYmxrK054TlE9PQ';
+
+  // BUG 对单个账号未实现单例模式
   LoginService() {
     _dio.options.headers = {
       'User-Agent':
@@ -82,7 +84,7 @@ class LoginService {
           'Accept-Encoding': 'gzip, deflate, br, zstd',
           'Accept-Language': 'zh-CN,zh;q=0.9',
           'Cookie':
-              'SESSION=<REDACTED>; TGC=<REDACTED>; Hm_lvt_d605d8df6bf5ca8a54fe078683196518=1771203749,1771585681,1771635526,1771830355; HMACCOUNT=<REDACTED>; Hm_lpvt_d605d8df6bf5ca8a54fe078683196518=1771917574',
+              'SESSION=<REDACTED>; TGC=<REDACTED>; Hm_lvt_d605d8df6bf5ca8a54fe078683196518=1771203749,1771585681,1771635526,1771830355; HMACCOUNT=<REDACTED>; Hm_lpvt_d605d8df6bf5ca8a54fe078683196518=1771997422',
         },
         followRedirects: false,
       ),

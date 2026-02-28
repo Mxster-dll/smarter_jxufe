@@ -1,10 +1,4 @@
-import 'package:flutter/material.dart';
-
-import 'package:smarter_jxufe/qrCode/QrCode.dart';
-import 'package:smarter_jxufe/services/MfaService.dart';
-import 'package:smarter_jxufe/services/ScanLogin.dart';
-import 'package:smarter_jxufe/Services/WechatLogin.dart';
-import 'package:smarter_jxufe/design/JxufeTheme.dart';
+part of 'QrCodeService.dart';
 
 enum QrCodeStatus {
   loading, // 包括未初始化状态
@@ -20,17 +14,17 @@ enum QrCodeStatus {
       this == .loading || this == .pending || this == .scanned;
 }
 
-abstract class QrCodeDisplayStrategy {
+abstract interface class QrCodeDisplayStrategy {
   Widget buildWidget(BuildContext context, QrCode qrCode);
 }
 
-class LoadingDisplayStrategy implements QrCodeDisplayStrategy {
+final class LoadingDisplayStrategy implements QrCodeDisplayStrategy {
   @override
   buildWidget(BuildContext context, QrCode qrCode) =>
       CircularProgressIndicator(color: JxufeTheme.primaryColor);
 }
 
-class PendingDisplayStrategy implements QrCodeDisplayStrategy {
+final class PendingDisplayStrategy implements QrCodeDisplayStrategy {
   static const hints = {
     MfaService: '使用微信或者企业微信扫一扫完成验证',
     ScanLogin: '使用微信或者企业微信扫一扫登录',
@@ -58,7 +52,7 @@ class PendingDisplayStrategy implements QrCodeDisplayStrategy {
   }
 }
 
-class ScannedDisplayStrategy implements QrCodeDisplayStrategy {
+final class ScannedDisplayStrategy implements QrCodeDisplayStrategy {
   @override
   Widget buildWidget(BuildContext context, QrCode qrCode) => Column(
     mainAxisAlignment: MainAxisAlignment.center,
@@ -78,7 +72,7 @@ class ScannedDisplayStrategy implements QrCodeDisplayStrategy {
   );
 }
 
-class AuthorizedDisplayStrategy implements QrCodeDisplayStrategy {
+final class AuthorizedDisplayStrategy implements QrCodeDisplayStrategy {
   @override
   Widget buildWidget(BuildContext context, QrCode qrCode) => Column(
     mainAxisAlignment: .center,
@@ -92,7 +86,7 @@ class AuthorizedDisplayStrategy implements QrCodeDisplayStrategy {
   );
 }
 
-class CancelledDisplayStrategy implements QrCodeDisplayStrategy {
+final class CancelledDisplayStrategy implements QrCodeDisplayStrategy {
   @override
   Widget buildWidget(BuildContext context, QrCode qrCode) => Column(
     mainAxisAlignment: .center,
@@ -106,7 +100,7 @@ class CancelledDisplayStrategy implements QrCodeDisplayStrategy {
   );
 }
 
-class ExpiredDisplayStrategy implements QrCodeDisplayStrategy {
+final class ExpiredDisplayStrategy implements QrCodeDisplayStrategy {
   @override
   Widget buildWidget(BuildContext context, QrCode qrCode) => Column(
     children: [
@@ -117,7 +111,7 @@ class ExpiredDisplayStrategy implements QrCodeDisplayStrategy {
   );
 }
 
-class ErrorDisplayStrategy implements QrCodeDisplayStrategy {
+final class ErrorDisplayStrategy implements QrCodeDisplayStrategy {
   @override
   Widget buildWidget(BuildContext context, QrCode qrCode) => Column(
     mainAxisAlignment: .center,
@@ -129,7 +123,7 @@ class ErrorDisplayStrategy implements QrCodeDisplayStrategy {
   );
 }
 
-class QrCodeDisplayStrategyFactory {
+final class QrCodeDisplayStrategyFactory {
   static QrCodeDisplayStrategy createStrategy(QrCodeStatus status) =>
       switch (status) {
         .loading => LoadingDisplayStrategy(),

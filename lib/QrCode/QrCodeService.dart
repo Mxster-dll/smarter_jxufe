@@ -1,17 +1,29 @@
+library;
+
+import 'dart:math';
 import 'dart:async';
 import 'dart:typed_data';
-import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:flutter/material.dart';
 
-import 'package:smarter_jxufe/qrCode/QrCodeStatus.dart';
+import 'package:smarter_jxufe/log.dart';
+import 'package:smarter_jxufe/design/JxufeTheme.dart';
+import 'package:smarter_jxufe/login/MfaService.dart';
 
-abstract class QrCodeNetworkService {
+part 'QrCodeCard.dart';
+part 'QrCodeStatus.dart';
+part 'ScanLogin.dart';
+part 'WeChatLogin.dart';
+part 'WeComLogin.dart';
+
+abstract interface class QrCodeNetworkService {
   Future<void> process(BuildContext context);
   Future<void> refreshQrCode();
   Future<QrCodeStatus?> pollStatus();
 }
 
-class QrCode {
+final class QrCode {
   final QrCodeNetworkService networkService;
 
   late String id;
@@ -37,11 +49,9 @@ class QrCode {
 
   Future<void> refresh() async => await networkService.refreshQrCode();
 
-  // 轮询相关
   Timer? _pollingTimer; // BUG 存在Timer在程序结束后未关闭
   final int pollingInterval;
 
-  // TODO 轮询异常的判断和提示
   Future<void> _pollStatus() async {
     status = await networkService.pollStatus();
 
