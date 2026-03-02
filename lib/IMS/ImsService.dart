@@ -5,6 +5,7 @@ import 'package:get_storage/get_storage.dart';
 
 import 'package:smarter_jxufe/utils/Log.dart';
 import 'package:smarter_jxufe/login/JxufeLogin.dart';
+import 'package:smarter_jxufe/ims/SessionExpiredInterceptor.dart';
 
 // TODO 增加账号管理
 // 依据账号实现单例模式
@@ -17,7 +18,7 @@ class ImsService {
   String? _jSessionId;
   String? get jSessionId => _jSessionId;
 
-  void setJSessionId(String? id) {
+  set jSessionId(String? id) {
     _jSessionId = id;
 
     if (id == null) {
@@ -29,7 +30,7 @@ class ImsService {
     }
   }
 
-  void clearJSessionId() => setJSessionId(null);
+  void clearJSessionId() => jSessionId = null;
 
   void loadJSessionId() {
     _jSessionId = box.read('JSESSIONID');
@@ -39,6 +40,20 @@ class ImsService {
     } else {
       dio.options.headers['Cookie'] = 'JSESSIONID=$_jSessionId';
     }
+  }
+
+  Future<void> refreshJSessionId() async {
+    clearJSessionId();
+    await fetchJSessionId();
+  }
+
+  Future<void> fetchJSessionId() async {
+    if (_jSessionId != null || await casLogin()) return;
+
+    await casLogin();
+
+    final url = await _loginService.redirectImsUrl();
+    await dio.get(url);
   }
 
   // BUG 对单个账号未实现单例模式
@@ -75,6 +90,16 @@ class ImsService {
     );
 
     loadJSessionId();
+
+    dio.interceptors.add(
+      SessionExpiredInterceptor(
+        dio,
+        onSessionExpired: () async {
+          await refreshJSessionId();
+          return jSessionId;
+        },
+      ),
+    );
   }
 
   String getCharset(List<String>? vs) {
@@ -117,21 +142,12 @@ class ImsService {
 
       final match = RegExp(r'JSESSIONID=([^;]+)').firstMatch(setCookie.first);
 
-      setJSessionId(match?.group(1));
+      jSessionId = match?.group(1);
       if (_jSessionId == null) throw Exception('缺少 JSESSIONID');
     } catch (e) {
       logError('登录请求异常: $e\n');
     }
 
     return false;
-  }
-
-  Future<void> fetchJSessionId() async {
-    if (_jSessionId != null || await casLogin()) return;
-
-    await casLogin();
-
-    final url = await _loginService.redirectImsUrl();
-    await dio.get(url);
   }
 }
