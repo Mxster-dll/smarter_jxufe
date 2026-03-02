@@ -3,7 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
 import 'package:smarter_jxufe/qrCode/QrCodeService.dart';
-import 'package:smarter_jxufe/Log.dart';
+import 'package:smarter_jxufe/utils/Log.dart';
 
 final class MfaService implements QrCodeNetworkService {
   static const baseUrl = 'https://ssl.jxufe.edu.cn';
