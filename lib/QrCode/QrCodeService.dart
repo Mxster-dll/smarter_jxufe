@@ -7,7 +7,7 @@ import 'package:dio/dio.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:flutter/material.dart';
 
-import 'package:smarter_jxufe/log.dart';
+import 'package:smarter_jxufe/utils/Log.dart';
 import 'package:smarter_jxufe/design/JxufeTheme.dart';
 import 'package:smarter_jxufe/login/MfaService.dart';
 
