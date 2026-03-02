@@ -1,0 +1,24 @@
+# 校历页
+POST https://jwxt.jxufe.edu.cn/public/SchoolCalendar.show.jsp?random=0.9293691570480471 HTTP/1.1
+Host: jwxt.jxufe.edu.cn
+Connection: keep-alive
+Content-Length: 113
+Cache-Control: max-age=0
+sec-ch-ua: "Not:A-Brand";v="99", "Microsoft Edge";v="145", "Chromium";v="145"
+sec-ch-ua-mobile: ?0
+sec-ch-ua-platform: "Windows"
+Origin: https://jwxt.jxufe.edu.cn
+Content-Type: application/x-www-form-urlencoded
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Sec-Fetch-Site: same-origin
+Sec-Fetch-Mode: navigate
+Sec-Fetch-User: ?1
+Sec-Fetch-Dest: iframe
+Referer: https://jwxt.jxufe.edu.cn/public/SchoolCalendar.jsp
+Accept-Encoding: gzip, deflate, br, zstd
+Accept-Language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6
+Cookie: JSESSIONID=<REDACTED>
+
+menucode=null&xn=2015&xq_m=1&rad=2&sel_xn_xq=2016-1&btnQry=%BC%EC%CB%F7&btnPreview=%B4%F2%D3%A1&menucode_current=

@@ -84,7 +84,7 @@ class LoginService {
           'Accept-Encoding': 'gzip, deflate, br, zstd',
           'Accept-Language': 'zh-CN,zh;q=0.9',
           'Cookie':
-              'SESSION=<REDACTED>; TGC=<REDACTED>; Hm_lvt_d605d8df6bf5ca8a54fe078683196518=1771203749,1771585681,1771635526,1771830355; HMACCOUNT=<REDACTED>; Hm_lpvt_d605d8df6bf5ca8a54fe078683196518=1771997422',
+              'SESSION=<REDACTED>; Hm_lvt_d605d8df6bf5ca8a54fe078683196518=1771830355,1772075274,1772268011,1772431655; Hm_lpvt_d605d8df6bf5ca8a54fe078683196518=1772431655; HMACCOUNT=<REDACTED>',
         },
         followRedirects: false,
       ),

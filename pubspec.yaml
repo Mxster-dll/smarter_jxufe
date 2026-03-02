@@ -51,7 +51,6 @@ dependencies:
   html: ^0.15.0
   http_parser: ^4.0.2  
   http: ^1.6.0
-  get_storage: ^2.0.3
   path_provider: ^2.0.2
   path: ^1.9.0
   provider: ^6.1.1
@@ -60,9 +59,11 @@ dependencies:
   url_launcher: ^6.2.0
   qr_code_scanner: ^1.0.1
   qr_flutter: ^4.1.0
-  shared_preferences: ^2.2.0
   rxdart: ^0.28.0
   webview_flutter: ^4.4.2
+  date_type: ^1.0.1
+  get_storage: ^2.1.1
+  collection: ^1.19.1
 
 dev_dependencies:
   flutter_test:

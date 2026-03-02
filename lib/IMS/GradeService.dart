@@ -2,32 +2,34 @@ import 'package:dio/dio.dart';
 import 'package:html/parser.dart';
 import 'package:html/dom.dart' as dom;
 
-import 'package:smarter_jxufe/Log.dart';
-import 'package:smarter_jxufe/ims/Subject.dart';
+import 'package:smarter_jxufe/utils/Log.dart';
+import 'package:smarter_jxufe/ims/Course.dart';
 import 'package:smarter_jxufe/ims/AcademicTime.dart';
 import 'package:smarter_jxufe/ims/Grades.dart';
 import 'package:smarter_jxufe/ims/imsService.dart';
 
 class GradeService {
-  final ImsService _imsService;
+  late final ImsService _imsService;
 
   WeightedType weightedType = .courseAll;
   TimeLimit timeLimit = .semester;
   AcademicYear academicYear = .now;
   SemesterType semesterType = .first;
-  SubjectFilter subjectFilter = .all;
+  CourseFilter courseFilter = .all;
   bool showRawGrade = false;
   bool onlyNotPassed = false;
 
-  bool get selectedMajor => subjectFilter != .minor;
-  bool get selectedMinor => subjectFilter != .major;
+  bool get selectedMajor => courseFilter != .minor;
+  bool get selectedMinor => courseFilter != .major;
 
-  void nextSubjectFilter() {
-    subjectFilter =
-        .values[(subjectFilter.index + 1) % SubjectFilter.values.length];
+  void nextCourseFilter() {
+    courseFilter =
+        .values[(courseFilter.index + 1) % CourseFilter.values.length];
   }
 
-  GradeService(this._imsService);
+  GradeService([ImsService? imsService]) {
+    _imsService = imsService ?? ImsService();
+  }
 
   void refresh() => _imsService.clearJSessionId();
 
@@ -73,7 +75,7 @@ class GradeService {
   final sem2xq = {
     SemesterType.first: '0',
     SemesterType.second: '1',
-    SemesterType.next: '2',
+    SemesterType.short: '2',
   };
 
   Future<GradeTable?> getGrade() async {
@@ -132,11 +134,7 @@ class GradeService {
         throw Exception('期望有2个 table，但找到了${tables.length}个 table\n $tables');
       }
 
-      // final table = toMatrix(tables.first);
-      // for (final title in table.first)
-      // {
-      //   for (final )
-      // }
+      final table = toMatrix(tables.first);
 
       // DataTable buildTable(dom.Element table) {
       //   final matrix = toMatrix(table);
