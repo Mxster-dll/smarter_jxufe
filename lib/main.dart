@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:get_storage/get_storage.dart';
 
-import 'package:smarter_jxufe/pages/GradePage.dart';
+import 'package:smarter_jxufe/ims/AcademicTime.dart';
+import 'package:smarter_jxufe/ims/GradePage.dart';
 
 void main() async {
+  await GetStorage.init();
+  await CalendarService.update();
+  // CalendarService.showDurationBetweenAcademicTimes();
+
   runApp(const SmarterJxUFE());
 }
 
@@ -19,8 +25,8 @@ class SmarterJxUFE extends StatelessWidget {
           seedColor: const Color.fromARGB(255, 0, 140, 255),
         ),
       ),
-      //   home: MyHomePage(title: 'demo'),
-      //   home: LoginScreen(),
+      // home: MyHomePage(title: 'demo'),
+      // home: LoginScreen(),
       // home: const HomePage(title: '智慧尼采 SmarterJxUFE'),
       home: GradesPage(),
     );

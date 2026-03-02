@@ -1,9 +1,9 @@
-POST https://jwxt.jxufe.edu.cn/taglib/DataTable.jsp?tableId=2508 HTTP/1.1
+# 校历页
+POST https://jwxt.jxufe.edu.cn/public/SchoolCalendar.show.jsp?random=0.9293691570480471 HTTP/1.1
 Host: jwxt.jxufe.edu.cn
 Connection: keep-alive
-Content-Length: 221
-Pragma: no-cache
-Cache-Control: no-cache
+Content-Length: 113
+Cache-Control: max-age=0
 sec-ch-ua: "Not:A-Brand";v="99", "Microsoft Edge";v="145", "Chromium";v="145"
 sec-ch-ua-mobile: ?0
 sec-ch-ua-platform: "Windows"
@@ -16,9 +16,9 @@ Sec-Fetch-Site: same-origin
 Sec-Fetch-Mode: navigate
 Sec-Fetch-User: ?1
 Sec-Fetch-Dest: iframe
-Referer: https://jwxt.jxufe.edu.cn/student/pyfa.llkc.html?menucode=S20101
+Referer: https://jwxt.jxufe.edu.cn/public/SchoolCalendar.jsp
 Accept-Encoding: gzip, deflate, br, zstd
 Accept-Language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6
-Cookie: JSESSIONID=32B2C801437832117E4C994D990AFF5F
+Cookie: JSESSIONID=951F8D0935436A35523E16E1DF9E88F9
 
-nj=2023&fxnj=&menucode=S20101&yxdm=44&zydm=4405&zyfxdm=&fxzydm=&count=1&initQry=0&nj_=2023&sel_yxb=16&sel_zy=1635&sel_zyfx=&fxzy=2344&fzyxs=zx&menucode_current=S20101
+menucode=null&xn=2015&xq_m=1&rad=2&sel_xn_xq=2016-1&btnQry=%BC%EC%CB%F7&btnPreview=%B4%F2%D3%A1&menucode_current=

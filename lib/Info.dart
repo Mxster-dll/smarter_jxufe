@@ -6,7 +6,6 @@ import 'dart:ui' as ui;
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class FingerprintService {
   static final FingerprintService _instance = FingerprintService._internal();

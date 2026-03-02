@@ -1,36 +1,38 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:fast_gbk/fast_gbk.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:get_storage/get_storage.dart';
 
-import 'package:smarter_jxufe/Log.dart';
-import 'package:smarter_jxufe/services/JxufeLogin.dart';
+import 'package:smarter_jxufe/utils/Log.dart';
+import 'package:smarter_jxufe/login/JxufeLogin.dart';
 
+// TODO 增加账号管理
+// 依据账号实现单例模式
+// 默认使用当前账号创建实例
 class ImsService {
+  final box = GetStorage();
   late final Dio dio;
-  final LoginService _loginService;
+  late final LoginService _loginService;
 
   String? _jSessionId;
   String? get jSessionId => _jSessionId;
 
-  Future<void> setJSessionId(String? id) async {
+  void setJSessionId(String? id) {
     _jSessionId = id;
 
-    final pref = await SharedPreferences.getInstance();
     if (id == null) {
       dio.options.headers.remove('Cookie');
-      pref.remove('JSESSIONID');
+      box.remove('JSESSIONID');
     } else {
       dio.options.headers['Cookie'] = 'JSESSIONID=$id';
-      pref.setString('JSESSIONID', id);
+      box.write('JSESSIONID', id);
     }
   }
 
   void clearJSessionId() => setJSessionId(null);
 
-  Future<void> loadJSessionId() async {
-    final pref = await SharedPreferences.getInstance();
-    _jSessionId = pref.getString('JSESSIONID');
+  void loadJSessionId() {
+    _jSessionId = box.read('JSESSIONID');
 
     if (_jSessionId == null) {
       dio.options.headers.remove('Cookie');
@@ -39,7 +41,10 @@ class ImsService {
     }
   }
 
-  ImsService(this._loginService) {
+  // BUG 对单个账号未实现单例模式
+  ImsService([LoginService? loginService]) {
+    _loginService = loginService ?? LoginService();
+
     dio = Dio(
       BaseOptions(
         baseUrl: 'https://jwxt.jxufe.edu.cn',
@@ -68,6 +73,8 @@ class ImsService {
         validateStatus: (status) => true,
       ),
     );
+
+    loadJSessionId();
   }
 
   String getCharset(List<String>? vs) {
@@ -110,7 +117,7 @@ class ImsService {
 
       final match = RegExp(r'JSESSIONID=([^;]+)').firstMatch(setCookie.first);
 
-      await setJSessionId(match?.group(1));
+      setJSessionId(match?.group(1));
       if (_jSessionId == null) throw Exception('缺少 JSESSIONID');
     } catch (e) {
       logError('登录请求异常: $e\n');
