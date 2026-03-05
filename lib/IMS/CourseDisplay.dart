@@ -1,19 +1,25 @@
+import 'package:flutter/foundation.dart';
+
 import 'Course.dart';
 
-extension CourseCategoryDisplay on CourseCategory {
-  String get displayText => '$year$chinese';
+extension CourseCategoryDisplay on CourseMainCategory {
+  String get displayText => name;
 }
 
 extension CourseSubcategoryDisplay on CourseSubcategory {
-  String get displayText => switch (this) {
-    .publicMathematicsCourse => '',
-  };
+  String get displayText => name;
 }
 
 extension CourseRequirementDisplay on CourseRequirement {
   String get displayText => switch (this) {
     .required => '必修课',
     .elective => '选修课',
+    .restricted => '限选课',
+    .free => '任选课',
+    .excellence => '卓越型',
+    .topNotch => '拔尖型',
+    .innoEntre => '创新创业型',
+    .major => '专业方向',
   };
 }
 

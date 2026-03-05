@@ -218,3 +218,21 @@ enum TimeLimit {
   final String name;
   final String value;
 }
+
+class CreditHour {
+  final int total;
+  final int lecture;
+  final int lab;
+  final int practice;
+  final int other;
+  final double weekly;
+
+  CreditHour(
+    this.total,
+    this.lecture,
+    this.lab,
+    this.practice,
+    this.other,
+    this.weekly,
+  );
+}

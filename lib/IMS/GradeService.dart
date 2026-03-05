@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:html/parser.dart';
-import 'package:html/dom.dart' as dom;
+import 'package:smarter_jxufe/utils/Data.dart';
 
 import 'package:smarter_jxufe/utils/Log.dart';
 import 'package:smarter_jxufe/ims/Course.dart';
@@ -58,19 +58,9 @@ class GradeService {
       throw Exception('期望有1个 table，但找到了${tables.length}个 table\n $tables');
     }
 
-    List<List<String>> m = toMatrix(tables.first);
+    List<List<String>> m = tables.first.toMatrix;
     return WeightedGrade.fromMap(Map.fromIterables(m[0], m[1]));
   }
-
-  List<List<String>> toMatrix(dom.Element table) => table
-      .querySelectorAll('tr')
-      .map(
-        (dom.Element row) => row
-            .querySelectorAll('th, td')
-            .map((dom.Element cell) => cell.text)
-            .toList(),
-      )
-      .toList();
 
   final sem2xq = {
     SemesterType.first: '0',
@@ -134,7 +124,7 @@ class GradeService {
         throw Exception('期望有2个 table，但找到了${tables.length}个 table\n $tables');
       }
 
-      final table = toMatrix(tables.first);
+      final table = tables.first.toMatrix;
 
       // DataTable buildTable(dom.Element table) {
       //   final matrix = toMatrix(table);
