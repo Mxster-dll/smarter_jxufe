@@ -149,19 +149,19 @@ class CalendarService {
   static void save<T extends Serializable>(String key, List<T> data) =>
       box.write(key, data.map((e) => e.toJson()).toList());
 
-  static List<AcademicYear> loadAcademicYears() {
-    List<dynamic>? data = box.read('academicYears');
-    if (data == null) return [];
+  static List<AcademicYear> loadAcademicYears() =>
+      box
+          .read<List>('academicYears')
+          ?.map((e) => AcademicYear.fromJson(e))
+          .toList() ??
+      [];
 
-    return data.map((e) => AcademicYear.fromJson(e)).toList();
-  }
-
-  static List<AcademicPeriod> loadAcademicPeriods() {
-    List<dynamic>? data = box.read('academicPeriods');
-    if (data == null) return [];
-
-    return data.map((e) => AcademicPeriod.fromJson(e)).toList();
-  }
+  static List<AcademicPeriod> loadAcademicPeriods() =>
+      box
+          .read<List>('academicPeriods')
+          ?.map((e) => AcademicPeriod.fromJson(e))
+          .toList() ??
+      [];
 
   final Map<int, Map<int, List<Date>>> _cache = {};
 

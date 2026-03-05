@@ -33,7 +33,7 @@ class ImsService {
   void clearJSessionId() => jSessionId = null;
 
   void loadJSessionId() {
-    _jSessionId = box.read('JSESSIONID');
+    _jSessionId = box.read<String>('JSESSIONID');
 
     if (_jSessionId == null) {
       dio.options.headers.remove('Cookie');
@@ -150,4 +150,14 @@ class ImsService {
 
     return false;
   }
+
+  //   Future<Response<T>> post<T>(
+  //   String path, {
+  //   Object? data,
+  //   Map<String, dynamic>? queryParameters,
+  //   Options? options,
+  //   CancelToken? cancelToken,
+  //   void Function(int, int)? onSendProgress,
+  //   void Function(int, int)? onReceiveProgress,
+  // })
 }

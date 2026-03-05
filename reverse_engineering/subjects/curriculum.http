@@ -1,0 +1,74 @@
+@jid = 54E886E5AF98AEAA24CA9E6C85C4248B
+
+### 学院列表
+POST https://jwxt.jxufe.edu.cn/frame/droplist/getDropLists.action HTTP/1.1
+# Host: jwxt.jxufe.edu.cn
+# Connection: keep-alive
+Content-Length: 72
+# Pragma: no-cache
+# Cache-Control: no-cache
+# X-Requested-With: XMLHttpRequest
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Accept: application/json, text/javascript, */*; q=0.01
+sec-ch-ua: "Not:A-Brand";v="99", "Microsoft Edge";v="145", "Chromium";v="145"
+sec-ch-ua-mobile: ?0
+sec-ch-ua-platform: "Windows"
+# Origin: https://jwxt.jxufe.edu.cn
+# Sec-Fetch-Site: same-origin
+# Sec-Fetch-Mode: cors
+# Sec-Fetch-Dest: empty
+Content-Type: application/x-www-form-urlencoded; charset=UTF-8
+Referer: https://jwxt.jxufe.edu.cn/student/pyfa.llkc.html?menucode=S20101
+# Accept-Encoding: gzip, deflate, br, zstd
+# Accept-Language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6
+Cookie: JSESSIONID={{jid}}
+
+comboBoxName=MsYXB&paramValue=&isYXB=0&isCDDW=0&isXQ=0&isDJKSLB=0&isZY=0
+
+### 专业列表
+POST https://jwxt.jxufe.edu.cn/frame/droplist/getDropLists.action HTTP/1.1
+Content-Length: 93
+# Host: jwxt.jxufe.edu.cn
+# Connection: keep-alive
+# X-Requested-With: XMLHttpRequest
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Accept: application/json, text/javascript, */*; q=0.01
+sec-ch-ua: "Not:A-Brand";v="99", "Microsoft Edge";v="145", "Chromium";v="145"
+sec-ch-ua-mobile: ?0
+sec-ch-ua-platform: "Windows"
+# Origin: https://jwxt.jxufe.edu.cn
+# Sec-Fetch-Site: same-origin
+# Sec-Fetch-Mode: cors
+# Sec-Fetch-Dest: empty
+Content-Type: application/x-www-form-urlencoded; charset=UTF-8
+Referer: https://jwxt.jxufe.edu.cn/student/pyfa.llkc.html?menucode=S20101
+# Accept-Encoding: gzip, deflate, br, zstd
+# Accept-Language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6
+Cookie: JSESSIONID={{jid}}
+
+comboBoxName=MsYXB_Specialty&paramValue=nj%3D2025%26dwh%3D37&isYXB=0&isCDDW=0&isSXJD=0&isXQ=0
+
+### 培养方案
+
+POST https://jwxt.jxufe.edu.cn/taglib/DataTable.jsp?tableId=2508 HTTP/1.1
+# Host: jwxt.jxufe.edu.cn
+# Connection: keep-alive
+Content-Length: 178
+# Cache-Control: max-age=0
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+sec-ch-ua: "Not:A-Brand";v="99", "Microsoft Edge";v="145", "Chromium";v="145"
+sec-ch-ua-mobile: ?0
+sec-ch-ua-platform: "Windows"
+# Origin: https://jwxt.jxufe.edu.cn
+# Upgrade-Insecure-Requests: 1
+# Sec-Fetch-Site: same-origin
+# Sec-Fetch-Mode: navigate
+# Sec-Fetch-Dest: iframe
+Content-Type: application/x-www-form-urlencoded
+Referer: https://jwxt.jxufe.edu.cn/student/pyfa.llkc.html?menucode=S20101
+# Accept-Encoding: gzip, deflate, br, zstd
+# Accept-Language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6
+Cookie: JSESSIONID={{jid}}
+
+nj=2025&menucode=S20101&yxdm=44&zydm=4405&zyfxdm=&fxzydm=&count=1&initQry=0&nj_=2025&fzyxs=zx&menucode_current=S20101

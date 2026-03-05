@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get_storage/get_storage.dart';
 
 import 'package:smarter_jxufe/ims/AcademicTime.dart';
+import 'package:smarter_jxufe/ims/Course.dart';
+import 'package:smarter_jxufe/ims/CurriculumService.dart';
 import 'package:smarter_jxufe/ims/GradePage.dart';
 
 void main() async {
@@ -9,7 +11,30 @@ void main() async {
   await CalendarService.update();
   // CalendarService.showDurationBetweenAcademicTimes();
 
-  runApp(const SmarterJxUFE());
+  final cs = CurriculumService();
+  final cnt = List<int>.filled(42, 0);
+  final Map data = {};
+  // TODO 添加空标识
+  for (int i = 2025; i >= 2010; i--) {
+    data[i] = {};
+    print(i);
+    print(await cs.getMajorList(i, '02'));
+    final cl = await cs.getCollegeList();
+    for (int j = 0; j < cl.length; j++) {
+      print(cl[j]['name']!);
+      final ml = await cs.getMajorList(i, cl[j]['code']!);
+      if (ml.isNotEmpty) cnt[j]++;
+      for (final m in ml) {
+        // print(m['name']);
+        await cs.getCurriculum(i, cl[j]['code']!, m['code']!);
+      }
+    }
+  }
+
+  print(CourseBuilder.fourth);
+  print(cnt);
+
+  //   runApp(const SmarterJxUFE());
 }
 
 class SmarterJxUFE extends StatelessWidget {
