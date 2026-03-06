@@ -321,7 +321,7 @@ extension _CourseGradeShow on CourseGrade {
     '课程代码' => course.code,
     '课程名称' => course.name,
     '课程学分' => course.credit.toStringAsFixed(1),
-    '课程类别' => course.category.toString(),
+    '课程类别' => course.mainCategory.toString(),
     '考核方式' => course.assessmentMethod.toString(),
     '修读性质' => attempt.toString(),
     '成绩' => score.toStringAsFixed(1),

@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
-import 'package:html/dom.dart' as dom;
 import 'package:get_storage/get_storage.dart';
 import 'package:html/parser.dart';
+import 'package:smarter_jxufe/ims/AcademicUnit.dart';
 
 import 'package:smarter_jxufe/ims/Course.dart';
 import 'package:smarter_jxufe/ims/AcademicTime.dart';
@@ -17,34 +17,31 @@ class CurriculumService {
     _imsService = imsService ?? ImsService();
   }
 
-  Future<List> getCollegeList() async {
+  Future<List<College>> getCollegeList() async {
     await _imsService.fetchJSessionId();
 
-    try {
-      final response = await _imsService.dio.post(
-        '/frame/droplist/getDropLists.action',
-        data: {
-          'comboBoxName': 'MsYXB',
-          'paramValue': '',
-          'isYXB': 0,
-          'isCDDW': 0,
-          'isXQ': 0,
-          'isDJKSLB': 0,
-          'isZY': 0,
+    final response = await _imsService.dio.post(
+      '/frame/droplist/getDropLists.action',
+      data: {
+        'comboBoxName': 'MsYXB',
+        'paramValue': '',
+        'isYXB': 0,
+        'isCDDW': 0,
+        'isXQ': 0,
+        'isDJKSLB': 0,
+        'isZY': 0,
+      },
+      options: Options(
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          'Referer':
+              'https://jwxt.jxufe.edu.cn/student/pyfa.llkc.html?menucode=S20101',
         },
-        options: Options(
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-            'Referer':
-                'https://jwxt.jxufe.edu.cn/student/pyfa.llkc.html?menucode=S20101',
-          },
-        ),
-      );
+      ),
+    );
 
-      return response.data;
-    } catch (e) {
-      return ['getCollegeList() Error: $e'];
-    }
+    final List colleges = response.data;
+    return colleges.map((e) => College(e['code'], e['name'])).toList();
   }
 
   /// 最早 2010 年还有记录，2009 之前无记录
@@ -135,30 +132,26 @@ class CurriculumService {
     }
 
     Course lineToCourse(List<String> line) {
-      if (line[idx['课程地位']!].trim().isNotEmpty &&
-          line[idx['课程地位']!] != '主干课程') {
-        throw FormatException('未知的课程地位的值: "${line[idx['课程地位']!]}"');
-      }
+      String info(String key) => line[idx[key]!].trim();
 
       CourseBuilder builder = CourseBuilder();
 
-      builder.codeAndName = line[idx['课程']!];
-
-      builder.credit = double.parse(line[idx['学分']!]);
+      builder.codeAndName = info('课程');
+      builder.credit = double.parse(info('学分'));
       builder.creditHour = CreditHour(
-        int.parse(line[idx['总学时']!]),
-        int.parse(line[idx['讲授学时']!]),
-        int.parse(line[idx['实验学时']!]),
-        int.parse(line[idx['实践学时']!]),
-        int.parse(line[idx['其它学时']!]),
-        double.parse(line[idx['周学时']!]),
+        int.parse(info('总学时')),
+        int.parse(info('讲授学时')),
+        int.parse(info('实验学时')),
+        int.parse(info('实践学时')),
+        int.parse(info('其它学时')),
+        double.parse(info('周学时')),
       );
 
-      builder.categories = line[idx['课程类别']!];
+      builder.categories = info('课程类别');
       builder.nature = CourseNature.theory;
-      builder.importance = (line[idx['课程地位']!] == '主干课程') ? .core : .general;
-      builder.assessmentMethod = AssessmentMethod.parse(line[idx['考核方式']!]);
-      builder.identification = line[idx['标识']!];
+      builder.importance = (info('课程地位') == '主干课程') ? .core : .general;
+      builder.assessmentMethod = AssessmentMethod.parse(info('考核方式'));
+      builder.identification = info('标识');
 
       return builder.build();
     }
