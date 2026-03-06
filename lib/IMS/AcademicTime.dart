@@ -220,11 +220,7 @@ enum TimeLimit {
 }
 
 class CreditHour {
-  final int total;
-  final int lecture;
-  final int lab;
-  final int practice;
-  final int other;
+  final int total, lecture, lab, practice, other;
   final double weekly;
 
   CreditHour(

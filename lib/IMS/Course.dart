@@ -1,75 +1,4 @@
-import 'package:get_storage/get_storage.dart';
-
 import 'package:smarter_jxufe/ims/AcademicTime.dart';
-
-class CourseMainCategory {
-  static final box = GetStorage();
-  static final Map<String, CourseMainCategory> _cache = loadCache();
-
-  final String name;
-
-  const CourseMainCategory._(this.name);
-
-  factory CourseMainCategory(String name) {
-    if (!_cache.containsKey(name)) {
-      _cache[name] = CourseMainCategory._(name);
-      box.write('cache', _cache);
-    }
-
-    return _cache[name]!;
-  }
-
-  static Map<String, CourseMainCategory> loadCache() => {
-    for (final name in box.read<List<String>>('cache') ?? [])
-      name: CourseMainCategory(name),
-  };
-}
-
-class CourseSubcategory {
-  static final box = GetStorage();
-  static final Map<String, CourseSubcategory> _cache = loadCache();
-
-  final String name;
-
-  const CourseSubcategory._(this.name);
-
-  factory CourseSubcategory(String name) {
-    if (!_cache.containsKey(name)) {
-      _cache[name] = CourseSubcategory._(name);
-      box.write('cache', _cache);
-    }
-
-    return _cache[name]!;
-  }
-
-  static Map<String, CourseSubcategory> loadCache() => {
-    for (final name in box.read<List<String>>('cache') ?? [])
-      name: CourseSubcategory(name),
-  };
-}
-
-class TertiaryCategory {
-  static final box = GetStorage();
-  static final Map<String, TertiaryCategory> _cache = loadCache();
-
-  final String name;
-
-  const TertiaryCategory._(this.name);
-
-  factory TertiaryCategory(String name) {
-    if (!_cache.containsKey(name)) {
-      _cache[name] = TertiaryCategory._(name);
-      box.write('cache', _cache);
-    }
-
-    return _cache[name]!;
-  }
-
-  static Map<String, TertiaryCategory> loadCache() => {
-    for (final name in box.read<List<String>>('cache') ?? [])
-      name: TertiaryCategory(name),
-  };
-}
 
 enum CourseRequirement {
   required,
@@ -80,6 +9,17 @@ enum CourseRequirement {
   topNotch,
   innoEntre,
   major;
+
+  String get name => switch (this) {
+    .required => '必修课',
+    .elective => '选修课',
+    .restricted => '限选课',
+    .free => '任选课',
+    .excellence => '卓越型',
+    .topNotch => '拔尖型',
+    .innoEntre => '创新创业型',
+    .major => '专业方向',
+  };
 
   factory CourseRequirement.parse(String source) => switch (source) {
     '必修课' || '必修' => .required,
@@ -98,6 +38,11 @@ enum CourseNature {
   theory,
   practical;
 
+  String get name => switch (this) {
+    .theory => '理论课程',
+    .practical => '实践环节',
+  };
+
   factory CourseNature.parse(String source) => switch (source) {
     '理论课程' || '理论' => .theory,
     '实践环节' || '实践' => .practical,
@@ -108,6 +53,11 @@ enum CourseNature {
 enum CourseImportance {
   core,
   general;
+
+  String get name => switch (this) {
+    .core => '主干课程',
+    .general => '非主干课程',
+  };
 
   factory CourseImportance.parse(String source) => switch (source) {
     '主干课程' || '主干' => .core,
@@ -120,6 +70,11 @@ enum AssessmentMethod {
   exam,
   coursework;
 
+  String get name => switch (this) {
+    .exam => '考试',
+    .coursework => '考查',
+  };
+
   factory AssessmentMethod.parse(String source) => switch (source) {
     '考试' => .exam,
     '考查' => .coursework,
@@ -127,13 +82,17 @@ enum AssessmentMethod {
   };
 }
 
+/// 区别于学科，课程对于不同学生是不一样的，尤其是不同学院的学生
 class Course {
   final String code;
   final String name;
   final double credit;
   final CreditHour creditHour;
-  final CourseMainCategory category;
-  final CourseSubcategory subcategory;
+
+  final String mainCategory;
+  final String subCategory;
+  final String? tertiaryCategory;
+
   final CourseRequirement requirement;
   final CourseNature nature;
   final CourseImportance importance;
@@ -145,8 +104,9 @@ class Course {
     this.name,
     this.credit,
     this.creditHour,
-    this.category,
-    this.subcategory,
+    this.mainCategory,
+    this.subCategory,
+    this.tertiaryCategory,
     this.requirement,
     this.nature,
     this.importance,
@@ -163,8 +123,11 @@ class CourseBuilder {
   late final String name;
   late final double credit;
   late final CreditHour creditHour;
-  late final CourseMainCategory category;
-  late final CourseSubcategory subcategory;
+
+  late final String mainCategory;
+  late final String subCategory;
+  late final String? tertiaryCategory;
+
   late final CourseRequirement requirement;
   late final CourseNature nature;
   late final CourseImportance importance;
@@ -179,16 +142,13 @@ class CourseBuilder {
     name = match.group(2)!;
   }
 
-  static final fourth = [];
   set categories(String categories) {
     final parts = categories.split('/');
 
-    if (parts.length != 3) {
-      fourth.add(categories);
-    }
+    mainCategory = parts[0];
+    subCategory = parts[1];
+    tertiaryCategory = (parts.length == 4) ? parts[2] : null;
 
-    category = CourseMainCategory(parts[0]);
-    subcategory = CourseSubcategory(parts[1]);
     requirement = CourseRequirement.parse(parts.last);
   }
 
@@ -197,8 +157,9 @@ class CourseBuilder {
     name,
     credit,
     creditHour,
-    category,
-    subcategory,
+    mainCategory,
+    subCategory,
+    tertiaryCategory,
     requirement,
     nature,
     importance,
