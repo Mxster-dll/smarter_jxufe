@@ -529,4 +529,68 @@ class MajorCurriculum {
       if (!await hasYear(i)) await updateYear(i);
     }
   }
+
+  /// 根据任意组合条件查询第一个匹配的课程，若无则返回 null
+  Future<Course?> findFirstCourse(Map<String, String?> filters) async {
+    final db = await database;
+
+    String sql = 'SELECT DISTINCT c.* FROM course c';
+    List<dynamic> params = [];
+
+    final bool needMajor =
+        filters.containsKey('major') ||
+        filters.containsKey('college') ||
+        filters.containsKey('year');
+
+    if (needMajor) {
+      sql += '''
+      INNER JOIN major_course mc ON c.id = mc.course_id
+      INNER JOIN major m ON mc.major_id = m.id
+      INNER JOIN college col ON m.college_id = col.id
+      INNER JOIN year y ON col.year_id = y.id
+    ''';
+    }
+
+    List<String> conditions = [];
+
+    final courseFields = [
+      'main_category',
+      'sub_category',
+      'tertiary_category',
+      'requirement',
+      'nature',
+      'importance',
+      'assessment_method',
+      'identification',
+    ];
+    for (var field in courseFields) {
+      if (filters.containsKey(field) && filters[field] != null) {
+        conditions.add('c.$field = ?');
+        params.add(filters[field]);
+      }
+    }
+
+    if (filters.containsKey('year') && filters['year'] != null) {
+      conditions.add('y.year = ?');
+      params.add(int.parse(filters['year']!));
+    }
+    if (filters.containsKey('college') && filters['college'] != null) {
+      conditions.add('col.name = ?');
+      params.add(filters['college']);
+    }
+    if (filters.containsKey('major') && filters['major'] != null) {
+      conditions.add('m.name = ?');
+      params.add(filters['major']);
+    }
+
+    if (conditions.isNotEmpty) {
+      sql += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    sql += ' LIMIT 1';
+
+    final results = await db.rawQuery(sql, params);
+    if (results.isEmpty) return null;
+    return _courseFromMap(results.first);
+  }
 }
