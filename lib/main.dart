@@ -2,14 +2,19 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+
+import 'package:smarter_jxufe/core/HiveRegistrations.dart';
 
 import 'package:smarter_jxufe/ims/AcademicTime.dart';
-import 'package:smarter_jxufe/ims/AcademicUnit.dart';
 import 'package:smarter_jxufe/ims/CurriculumData.dart';
 import 'package:smarter_jxufe/ims/GradePage.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart' as ffi;
 
 void main() async {
+  await Hive.initFlutter();
+  await registerHiveAdapters();
+
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     ffi.sqfliteFfiInit();
     ffi.databaseFactory = ffi.databaseFactoryFfi;
@@ -23,7 +28,7 @@ void main() async {
   MajorCurriculum data = MajorCurriculum();
   data.checkUpdate();
 
-  //   runApp(const SmarterJxUFE());
+  runApp(const SmarterJxUFE());
 }
 
 class SmarterJxUFE extends StatelessWidget {
