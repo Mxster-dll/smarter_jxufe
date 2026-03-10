@@ -1,5 +1,5 @@
 import 'package:flutter/gestures.dart';
 
-class ShortLongPressGestureRecognizer extends LongPressGestureRecognizer {
-  ShortLongPressGestureRecognizer({required super.duration});
+class CustomLongPressRecognizer extends LongPressGestureRecognizer {
+  CustomLongPressRecognizer({required super.duration});
 }
