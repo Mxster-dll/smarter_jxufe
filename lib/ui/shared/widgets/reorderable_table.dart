@@ -26,6 +26,10 @@ class ReorderableTable extends StatefulWidget {
   final bool expandRowHeadersOutward;
   final bool expandColHeadersOutward;
 
+  // 单元格悬停时是否展开同行/列表头（独立控制）
+  final bool expandRowOnCellHover;
+  final bool expandColOnCellHover;
+
   // 八种颜色（可选）
   final Color? rowHeaderNormal;
   final Color? rowHeaderHighlight;
@@ -54,6 +58,8 @@ class ReorderableTable extends StatefulWidget {
     this.collapsedColHeaderHeight = 10.0,
     this.expandRowHeadersOutward = true,
     this.expandColHeadersOutward = true,
+    this.expandRowOnCellHover = true, // 默认 true 保持原行为
+    this.expandColOnCellHover = true,
     this.rowHeaderNormal,
     this.rowHeaderHighlight,
     this.colHeaderNormal,
@@ -127,30 +133,41 @@ class _ReorderableTableState extends State<ReorderableTable>
   double get _cornerWidth => widget.cellWidth;
   double get _cornerHeight => widget.cellHeight;
 
-  // 根据悬停状态计算每个行表头的宽度：只要该行被悬停就展开
+  // 根据悬停状态计算每个行表头的宽度
   double _rowHeaderWidth(int logicIdx) {
     if (!widget.showRowHeaders) return 0.0;
     if (!widget.enableRowHeaderCollapse || !widget.rowHeadersCollapsed) {
       return widget.cellWidth;
     }
+    // 如果该行被悬停，判断是否应该展开
     if (_hoveredRow == logicIdx) {
-      return widget.cellWidth;
-    } else {
-      return widget.collapsedRowHeaderWidth;
+      // 表头自身悬停：总是展开
+      if (_hoveredCol == -1) {
+        return widget.cellWidth;
+      }
+      // 单元格悬停：根据配置决定是否展开
+      if (widget.expandRowOnCellHover) {
+        return widget.cellWidth;
+      }
     }
+    return widget.collapsedRowHeaderWidth;
   }
 
-  // 根据悬停状态计算每个列表头的高度：只要该列被悬停就展开
+  // 根据悬停状态计算每个列表头的高度
   double _colHeaderHeight(int logicIdx) {
     if (!widget.showColHeaders) return 0.0;
     if (!widget.enableColHeaderCollapse || !widget.colHeadersCollapsed) {
       return widget.cellHeight;
     }
     if (_hoveredCol == logicIdx) {
-      return widget.cellHeight;
-    } else {
-      return widget.collapsedColHeaderHeight;
+      if (_hoveredRow == -1) {
+        return widget.cellHeight;
+      }
+      if (widget.expandColOnCellHover) {
+        return widget.cellHeight;
+      }
     }
+    return widget.collapsedColHeaderHeight;
   }
 
   // 左上角占位格是否显示
@@ -1144,6 +1161,11 @@ class _ReorderableTableState extends State<ReorderableTable>
     final double tableHeight =
         _cornerHeight + widget.rowHeaders.length * widget.cellHeight;
 
+    final bool useRowHeaderRoundCorners =
+        widget.enableRowHeaderCollapse && widget.rowHeadersCollapsed;
+    final bool useColHeaderRoundCorners =
+        widget.enableColHeaderCollapse && widget.colHeadersCollapsed;
+
     return AnimatedBuilder(
       animation: _highlightController,
       builder: (context, child) {
@@ -1160,7 +1182,15 @@ class _ReorderableTableState extends State<ReorderableTable>
                 curve: Curves.easeInOut,
                 width: widget.cellWidth,
                 height: widget.cellHeight,
-                color: _colHeaderHighlight,
+                decoration: BoxDecoration(
+                  color: _colHeaderHighlight,
+                  borderRadius: useColHeaderRoundCorners
+                      ? const BorderRadius.only(
+                          topLeft: Radius.circular(8),
+                          topRight: Radius.circular(8),
+                        )
+                      : null,
+                ),
                 alignment: Alignment.center,
                 child: Text(
                   widget.colHeaders[_dragOriginalIndex],
@@ -1180,14 +1210,17 @@ class _ReorderableTableState extends State<ReorderableTable>
 
           return Positioned(
             left: topLeft.dx,
-            top: tableHeight - columnHeight, // 底部对齐
+            top: tableHeight - columnHeight,
             width: widget.cellWidth,
             height: columnHeight,
             child: Material(
               elevation: elevation,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ), // 圆角阴影
               child: Container(
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -1206,7 +1239,15 @@ class _ReorderableTableState extends State<ReorderableTable>
                 curve: Curves.easeInOut,
                 width: widget.cellWidth,
                 height: widget.cellHeight,
-                color: _rowHeaderHighlight,
+                decoration: BoxDecoration(
+                  color: _rowHeaderHighlight,
+                  borderRadius: useRowHeaderRoundCorners
+                      ? const BorderRadius.only(
+                          topLeft: Radius.circular(8),
+                          bottomLeft: Radius.circular(8),
+                        )
+                      : null,
+                ),
                 alignment: Alignment.center,
                 child: Text(
                   widget.rowHeaders[_dragOriginalIndex],
@@ -1225,15 +1266,18 @@ class _ReorderableTableState extends State<ReorderableTable>
           ];
 
           return Positioned(
-            left: tableWidth - rowWidth, // 右对齐
+            left: tableWidth - rowWidth,
             top: topLeft.dy,
             width: rowWidth,
             height: widget.cellHeight,
             child: Material(
               elevation: elevation,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ), // 圆角阴影
               child: Container(
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: rowCells),
               ),
