@@ -13,6 +13,18 @@ class ReorderableTable extends StatefulWidget {
   final double cellWidth;
   final double cellHeight;
   final bool enableScrolling;
+  final bool showRowHeaders;
+  final bool showColHeaders;
+
+  // 折叠相关
+  final bool enableRowHeaderCollapse;
+  final bool enableColHeaderCollapse;
+  final bool rowHeadersCollapsed;
+  final bool colHeadersCollapsed;
+  final double collapsedRowHeaderWidth;
+  final double collapsedColHeaderHeight;
+  final bool expandRowHeadersOutward;
+  final bool expandColHeadersOutward;
 
   // 八种颜色（可选）
   final Color? rowHeaderNormal;
@@ -32,6 +44,16 @@ class ReorderableTable extends StatefulWidget {
     required this.cellWidth,
     required this.cellHeight,
     this.enableScrolling = false,
+    this.showRowHeaders = true,
+    this.showColHeaders = true,
+    this.enableRowHeaderCollapse = true,
+    this.enableColHeaderCollapse = true,
+    this.rowHeadersCollapsed = false,
+    this.colHeadersCollapsed = false,
+    this.collapsedRowHeaderWidth = 10.0,
+    this.collapsedColHeaderHeight = 10.0,
+    this.expandRowHeadersOutward = true,
+    this.expandColHeadersOutward = true,
     this.rowHeaderNormal,
     this.rowHeaderHighlight,
     this.colHeaderNormal,
@@ -71,14 +93,19 @@ class _ReorderableTableState extends State<ReorderableTable>
   int _hoveredRow = -1;
   int _hoveredCol = -1;
 
+  int _lastRowMoveDirection = 0; // 1向下，-1向上，0未知
+  int _lastColMoveDirection = 0; // 1向右，-1向左，0未知
+
   final GlobalKey _tableKey = GlobalKey();
 
-  // 记录松开时的局部坐标，用于动画完成后恢复悬停
   Offset? _lastUpLocalPos;
+  Offset? _lastHoverLocalPos;
+  int _enterMask = 0; // 1左，2右，4上，8下
 
   static const _animationDuration = Duration(milliseconds: 150);
+  static const _highlightAnimDuration = Duration(milliseconds: 200);
 
-  // 实际使用的颜色（非空）
+  // 实际使用的颜色
   late final Color _rowHeaderNormal;
   late final Color _rowHeaderHighlight;
   late final Color _colHeaderNormal;
@@ -88,12 +115,56 @@ class _ReorderableTableState extends State<ReorderableTable>
   late final Color _cellColHighlight;
   late final Color _cellNormal;
 
+  List<AnimationController> _rowHighlightControllers = [];
+  List<AnimationController> _colHighlightControllers = [];
+  List<Animation<double>> _rowHighlightAnimations = [];
+  List<Animation<double>> _colHighlightAnimations = [];
+
+  late List<GlobalKey> _rowHeaderKeys;
+  late List<GlobalKey> _colHeaderKeys;
+
+  // 固定左上角占位格尺寸
+  double get _cornerWidth => widget.cellWidth;
+  double get _cornerHeight => widget.cellHeight;
+
+  // 根据悬停状态计算每个行表头的宽度：只要该行被悬停就展开
+  double _rowHeaderWidth(int logicIdx) {
+    if (!widget.showRowHeaders) return 0.0;
+    if (!widget.enableRowHeaderCollapse || !widget.rowHeadersCollapsed) {
+      return widget.cellWidth;
+    }
+    if (_hoveredRow == logicIdx) {
+      return widget.cellWidth;
+    } else {
+      return widget.collapsedRowHeaderWidth;
+    }
+  }
+
+  // 根据悬停状态计算每个列表头的高度：只要该列被悬停就展开
+  double _colHeaderHeight(int logicIdx) {
+    if (!widget.showColHeaders) return 0.0;
+    if (!widget.enableColHeaderCollapse || !widget.colHeadersCollapsed) {
+      return widget.cellHeight;
+    }
+    if (_hoveredCol == logicIdx) {
+      return widget.cellHeight;
+    } else {
+      return widget.collapsedColHeaderHeight;
+    }
+  }
+
+  // 左上角占位格是否显示
+  bool get _showCornerPlaceholder =>
+      widget.showRowHeaders && widget.showColHeaders;
+
   @override
   void initState() {
     super.initState();
     _initColors();
     _rowOrder = List.generate(widget.rowHeaders.length, (i) => i);
     _colOrder = List.generate(widget.colHeaders.length, (i) => i);
+    _initKeys();
+    _initHighlightAnimations();
 
     _highlightController = AnimationController(
       vsync: this,
@@ -125,7 +196,7 @@ class _ReorderableTableState extends State<ReorderableTable>
           _dragOriginalIndex = -1;
           _targetLogicalIndex = -1;
         });
-        // 动画完成后恢复悬停（根据松开时的鼠标位置）
+        _initHighlightAnimations();
         if (_lastUpLocalPos != null) {
           _updateHoverFromLocalOffset(_lastUpLocalPos!);
           _lastUpLocalPos = null;
@@ -146,14 +217,102 @@ class _ReorderableTableState extends State<ReorderableTable>
     _cellNormal = widget.cellNormal ?? Colors.transparent;
   }
 
+  void _initKeys() {
+    _rowHeaderKeys = List.generate(
+      widget.showRowHeaders ? widget.rowHeaders.length : 0,
+      (i) => GlobalKey(),
+    );
+    _colHeaderKeys = List.generate(
+      widget.showColHeaders ? widget.colHeaders.length : 0,
+      (i) => GlobalKey(),
+    );
+  }
+
+  void _initHighlightAnimations() {
+    for (var c in _rowHighlightControllers) {
+      c.removeListener(_onHighlightAnimationUpdate);
+      c.dispose();
+    }
+    for (var c in _colHighlightControllers) {
+      c.removeListener(_onHighlightAnimationUpdate);
+      c.dispose();
+    }
+
+    _rowHighlightControllers = List.generate(
+      _rowOrder.length,
+      (index) =>
+          AnimationController(vsync: this, duration: _highlightAnimDuration)
+            ..value = 0.0,
+    );
+    _rowHighlightAnimations = _rowHighlightControllers
+        .map((c) => c.drive(CurveTween(curve: Curves.easeOut)))
+        .toList();
+
+    _colHighlightControllers = List.generate(
+      _colOrder.length,
+      (index) =>
+          AnimationController(vsync: this, duration: _highlightAnimDuration)
+            ..value = 0.0,
+    );
+    _colHighlightAnimations = _colHighlightControllers
+        .map((c) => c.drive(CurveTween(curve: Curves.easeOut)))
+        .toList();
+
+    for (var c in _rowHighlightControllers) {
+      c.addListener(_onHighlightAnimationUpdate);
+    }
+    for (var c in _colHighlightControllers) {
+      c.addListener(_onHighlightAnimationUpdate);
+    }
+  }
+
+  void _onHighlightAnimationUpdate() {
+    setState(() {});
+  }
+
+  void _animateRowHighlight(int newRow, int oldRow, [int direction = 0]) {
+    if (oldRow != -1 && oldRow < _rowHighlightControllers.length) {
+      _rowHighlightControllers[oldRow].animateTo(0.0);
+    }
+    if (newRow != -1 && newRow < _rowHighlightControllers.length) {
+      _rowHighlightControllers[newRow].animateTo(1.0);
+    }
+    if (direction != 0) _lastRowMoveDirection = direction;
+  }
+
+  void _animateColHighlight(int newCol, int oldCol, [int direction = 0]) {
+    if (oldCol != -1 && oldCol < _colHighlightControllers.length) {
+      _colHighlightControllers[oldCol].animateTo(0.0);
+    }
+    if (newCol != -1 && newCol < _colHighlightControllers.length) {
+      _colHighlightControllers[newCol].animateTo(1.0);
+    }
+    if (direction != 0) _lastColMoveDirection = direction;
+  }
+
   @override
   void didUpdateWidget(covariant ReorderableTable oldWidget) {
     super.didUpdateWidget(oldWidget);
     _initColors();
+    if (widget.rowHeaders.length != oldWidget.rowHeaders.length ||
+        widget.colHeaders.length != oldWidget.colHeaders.length ||
+        widget.showRowHeaders != oldWidget.showRowHeaders ||
+        widget.showColHeaders != oldWidget.showColHeaders) {
+      _initKeys();
+      _initHighlightAnimations();
+    }
   }
 
   @override
   void dispose() {
+    for (var c in _rowHighlightControllers) {
+      c.removeListener(_onHighlightAnimationUpdate);
+      c.dispose();
+    }
+    for (var c in _colHighlightControllers) {
+      c.removeListener(_onHighlightAnimationUpdate);
+      c.dispose();
+    }
     _highlightController.dispose();
     _returnAnimController.dispose();
     super.dispose();
@@ -161,14 +320,14 @@ class _ReorderableTableState extends State<ReorderableTable>
 
   int _calculateTargetIndex(Offset point, DragType type) {
     if (type == DragType.row) {
-      double y = point.dy;
-      int rowIndex = ((y - widget.cellHeight) / widget.cellHeight).floor();
+      double y = point.dy - _cornerHeight;
+      int rowIndex = (y / widget.cellHeight).floor();
       if (rowIndex < 0) return 0;
       if (rowIndex >= _rowOrder.length) return _rowOrder.length;
       return rowIndex;
     } else {
-      double x = point.dx;
-      int colIndex = ((x - widget.cellWidth) / widget.cellWidth).floor();
+      double x = point.dx - _cornerWidth;
+      int colIndex = (x / widget.cellWidth).floor();
       if (colIndex < 0) return 0;
       if (colIndex >= _colOrder.length) return _colOrder.length;
       return colIndex;
@@ -180,27 +339,28 @@ class _ReorderableTableState extends State<ReorderableTable>
     int logicalIndex,
     LongPressStartDetails details,
   ) {
+    if (type == DragType.row && !widget.showRowHeaders) return;
+    if (type == DragType.column && !widget.showColHeaders) return;
+
     final RenderBox? box =
         _tableKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null) return;
     final localPos = box.globalToLocal(details.globalPosition);
 
-    Rect originalRect;
+    // 计算当前表头的实际位置（基于修正后的对齐方式）
+    double left, top, width, height;
     if (type == DragType.row) {
-      originalRect = Rect.fromLTWH(
-        0,
-        (logicalIndex + 1) * widget.cellHeight,
-        (widget.colHeaders.length + 1) * widget.cellWidth,
-        widget.cellHeight,
-      );
+      width = _rowHeaderWidth(logicalIndex);
+      left = _cornerWidth - width; // 右对齐：左侧随宽度变化，右侧固定在 _cornerWidth
+      top = _cornerHeight + logicalIndex * widget.cellHeight;
+      height = widget.cellHeight;
     } else {
-      originalRect = Rect.fromLTWH(
-        (logicalIndex + 1) * widget.cellWidth,
-        0,
-        widget.cellWidth,
-        (widget.rowHeaders.length + 1) * widget.cellHeight,
-      );
+      width = widget.cellWidth;
+      left = _cornerWidth + logicalIndex * widget.cellWidth;
+      height = _colHeaderHeight(logicalIndex);
+      top = _cornerHeight - height; // 底部对齐：顶部随高度变化，底部固定在 _cornerHeight
     }
+    Rect originalRect = Rect.fromLTWH(left, top, width, height);
 
     final int originalIndex = type == DragType.row
         ? _rowOrder[logicalIndex]
@@ -222,6 +382,11 @@ class _ReorderableTableState extends State<ReorderableTable>
 
       _hoveredRow = -1;
       _hoveredCol = -1;
+      for (var c in _rowHighlightControllers) c.value = 0.0;
+      for (var c in _colHighlightControllers) c.value = 0.0;
+      _lastRowMoveDirection = 0;
+      _lastColMoveDirection = 0;
+      _enterMask = 0;
     });
 
     _highlightController.forward(from: 0.0);
@@ -240,11 +405,14 @@ class _ReorderableTableState extends State<ReorderableTable>
       if (_dragType == DragType.row) {
         clampedTopLeft = Offset(
           0,
-          rawTopLeft.dy.clamp(0.0, tableSize.height - widget.cellHeight),
+          rawTopLeft.dy.clamp(
+            _cornerHeight,
+            tableSize.height - widget.cellHeight,
+          ),
         );
       } else {
         clampedTopLeft = Offset(
-          rawTopLeft.dx.clamp(0.0, tableSize.width - widget.cellWidth),
+          rawTopLeft.dx.clamp(_cornerWidth, tableSize.width - widget.cellWidth),
           0,
         );
       }
@@ -268,59 +436,113 @@ class _ReorderableTableState extends State<ReorderableTable>
   }
 
   void _onHover(PointerHoverEvent event) {
-    if (!_isDragging && !_isReturning) {
-      _updateHoverFromEvent(event);
+    if (_isDragging || _isReturning) return;
+    final RenderBox? box =
+        _tableKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final localPos = box.globalToLocal(event.position);
+    Offset? moveDelta;
+    if (_lastHoverLocalPos != null) {
+      moveDelta = localPos - _lastHoverLocalPos!;
     }
+    _lastHoverLocalPos = localPos;
+    _updateHoverFromLocalOffset(localPos, moveDelta: moveDelta);
   }
 
   void _onPointerEnter(PointerEnterEvent event) {
-    if (!_isDragging && !_isReturning) {
-      _updateHoverFromEvent(event);
-    }
+    if (_isDragging || _isReturning) return;
+    final RenderBox? box =
+        _tableKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final localPos = box.globalToLocal(event.position);
+    final Size size = box.size;
+    _enterMask = 0;
+    if (localPos.dx < 0) _enterMask |= 1;
+    if (localPos.dx > size.width) _enterMask |= 2;
+    if (localPos.dy < 0) _enterMask |= 4;
+    if (localPos.dy > size.height) _enterMask |= 8;
+    _updateHoverFromLocalOffset(localPos);
   }
 
   void _onPointerExit(PointerExitEvent event) {
-    if (!_isDragging && !_isReturning) {
-      setState(() {
-        _hoveredRow = -1;
-        _hoveredCol = -1;
-      });
-    }
+    if (_isDragging || _isReturning) return;
+    setState(() {
+      _hoveredRow = -1;
+      _hoveredCol = -1;
+      for (var c in _rowHighlightControllers) c.animateTo(0.0);
+      for (var c in _colHighlightControllers) c.animateTo(0.0);
+      _lastRowMoveDirection = 0;
+      _lastColMoveDirection = 0;
+      _enterMask = 0;
+    });
   }
 
   void _onPointerUp(PointerUpEvent event) {
     if (!_isDragging || _isReturning) return;
 
-    // 记录松开时的局部坐标，用于动画完成后恢复悬停
     final RenderBox? box =
         _tableKey.currentContext?.findRenderObject() as RenderBox?;
     if (box != null) {
       _lastUpLocalPos = box.globalToLocal(event.position);
     }
 
-    _highlightController.reverse();
-
-    Offset currentTopLeft = _dragPointerLocalPosition - _dragOffset;
-    Offset targetTopLeft;
+    Offset rawTopLeft = _dragPointerLocalPosition - _dragOffset;
+    final Size tableSize = box?.size ?? Size.zero;
+    Offset currentTopLeft;
     if (_dragType == DragType.row) {
-      targetTopLeft = Offset(0, (_targetLogicalIndex + 1) * widget.cellHeight);
+      currentTopLeft = Offset(
+        0,
+        rawTopLeft.dy.clamp(
+          _cornerHeight,
+          tableSize.height - widget.cellHeight,
+        ),
+      );
     } else {
-      targetTopLeft = Offset((_targetLogicalIndex + 1) * widget.cellWidth, 0);
+      currentTopLeft = Offset(
+        rawTopLeft.dx.clamp(_cornerWidth, tableSize.width - widget.cellWidth),
+        0,
+      );
     }
 
-    final RenderBox? box2 =
-        _tableKey.currentContext?.findRenderObject() as RenderBox?;
-    if (box2 == null) return;
-    final Size tableSize = box2.size;
+    _highlightController.reverse();
+
+    final double tableWidth =
+        _cornerWidth + widget.colHeaders.length * widget.cellWidth;
+    final double tableHeight =
+        _cornerHeight + widget.rowHeaders.length * widget.cellHeight;
+
+    Offset targetTopLeft;
+    if (_dragType == DragType.row) {
+      final double rowWidth =
+          _cornerWidth + _colOrder.length * widget.cellWidth;
+      targetTopLeft = Offset(
+        tableWidth - rowWidth, // 右对齐
+        _cornerHeight + _targetLogicalIndex * widget.cellHeight,
+      );
+    } else {
+      final double columnHeight =
+          _cornerHeight + _rowOrder.length * widget.cellHeight;
+      targetTopLeft = Offset(
+        _cornerWidth + _targetLogicalIndex * widget.cellWidth,
+        tableHeight - columnHeight, // 底部对齐
+      );
+    }
+
     if (_dragType == DragType.row) {
       targetTopLeft = Offset(
-        0,
-        targetTopLeft.dy.clamp(0.0, tableSize.height - widget.cellHeight),
+        targetTopLeft.dx,
+        targetTopLeft.dy.clamp(
+          _cornerHeight,
+          tableSize.height - widget.cellHeight,
+        ),
       );
     } else {
       targetTopLeft = Offset(
-        targetTopLeft.dx.clamp(0.0, tableSize.width - widget.cellWidth),
-        0,
+        targetTopLeft.dx.clamp(
+          _cornerWidth,
+          tableSize.width - widget.cellWidth,
+        ),
+        targetTopLeft.dy,
       );
     }
 
@@ -341,97 +563,199 @@ class _ReorderableTableState extends State<ReorderableTable>
     _returnAnimController.forward(from: 0.0);
   }
 
-  void _updateHoverFromEvent(PointerEvent event) {
-    final RenderBox? box =
-        _tableKey.currentContext?.findRenderObject() as RenderBox?;
-    if (box == null) return;
-    final localPos = box.globalToLocal(event.position);
-    _updateHoverFromLocalOffset(localPos);
-  }
-
-  void _updateHoverFromLocalOffset(Offset localPos) {
+  void _updateHoverFromLocalOffset(Offset localPos, {Offset? moveDelta}) {
     final double x = localPos.dx;
     final double y = localPos.dy;
 
-    final double totalWidth = (widget.colHeaders.length + 1) * widget.cellWidth;
+    final double totalWidth =
+        _cornerWidth + widget.colHeaders.length * widget.cellWidth;
     final double totalHeight =
-        (widget.rowHeaders.length + 1) * widget.cellHeight;
+        _cornerHeight + widget.rowHeaders.length * widget.cellHeight;
 
-    // 如果鼠标移出表格，清除悬停
     if (x < 0 || x > totalWidth || y < 0 || y > totalHeight) {
       if (_hoveredRow != -1 || _hoveredCol != -1) {
+        _animateRowHighlight(-1, _hoveredRow);
+        _animateColHighlight(-1, _hoveredCol);
         setState(() {
           _hoveredRow = -1;
           _hoveredCol = -1;
         });
       }
+      _enterMask = 0;
       return;
     }
 
-    // 左上角空白区域
-    if (x < widget.cellWidth && y < widget.cellHeight) {
+    if (_showCornerPlaceholder && x < _cornerWidth && y < _cornerHeight) {
       if (_hoveredRow != -1 || _hoveredCol != -1) {
+        if (_hoveredRow != -1 && _hoveredCol == -1) {
+          _animateRowHighlight(-1, _hoveredRow, -1);
+        } else if (_hoveredCol != -1 && _hoveredRow == -1) {
+          _animateColHighlight(-1, _hoveredCol, -1);
+        } else {
+          _animateRowHighlight(-1, _hoveredRow);
+          _animateColHighlight(-1, _hoveredCol);
+        }
         setState(() {
           _hoveredRow = -1;
           _hoveredCol = -1;
         });
       }
+      _enterMask = 0;
       return;
     }
 
-    // 行表头区域（第一列，排除左上角）
-    if (x < widget.cellWidth) {
-      int row = ((y - widget.cellHeight) / widget.cellHeight).floor();
-      if (row >= 0 && row < _rowOrder.length) {
-        setState(() {
-          _hoveredRow = row;
-          _hoveredCol = -1;
-        });
-      } else if (_hoveredRow != -1 || _hoveredCol != -1) {
-        setState(() {
-          _hoveredRow = -1;
-          _hoveredCol = -1;
-        });
+    // 行表头区域：遍历所有行，检查点是否落在某个行表头内
+    if (widget.showRowHeaders) {
+      for (int logicIdx = 0; logicIdx < _rowOrder.length; logicIdx++) {
+        double width = _rowHeaderWidth(logicIdx);
+        double left = _cornerWidth - width; // 修正后的左侧
+        double top = _cornerHeight + logicIdx * widget.cellHeight;
+        double right = left + width;
+        double bottom = top + widget.cellHeight;
+        if (x >= left && x < right && y >= top && y < bottom) {
+          if (logicIdx != _hoveredRow || _hoveredCol != -1) {
+            int rowDirection = 0;
+            if (_hoveredRow == -1 && _hoveredCol == -1) {
+              rowDirection = 1;
+            } else if (_hoveredRow == -1) {
+              if (_enterMask != 0) {
+                if (_enterMask & 4 != 0)
+                  rowDirection = 1;
+                else if (_enterMask & 8 != 0)
+                  rowDirection = -1;
+              } else if (moveDelta != null) {
+                rowDirection = moveDelta.dy > 0
+                    ? 1
+                    : (moveDelta.dy < 0 ? -1 : 0);
+              }
+            } else {
+              rowDirection = logicIdx > _hoveredRow ? 1 : -1;
+            }
+            if (_hoveredCol != -1) {
+              int colDirection = 0;
+              if (_hoveredRow != -1 && _hoveredCol != -1) colDirection = -1;
+              _animateColHighlight(-1, _hoveredCol, colDirection);
+            }
+            _animateRowHighlight(logicIdx, _hoveredRow, rowDirection);
+            setState(() {
+              _hoveredRow = logicIdx;
+              _hoveredCol = -1;
+            });
+          }
+          _enterMask = 0;
+          return;
+        }
       }
-      return;
     }
 
-    // 列表头区域（第一行，排除左上角）
-    if (y < widget.cellHeight) {
-      int col = ((x - widget.cellWidth) / widget.cellWidth).floor();
-      if (col >= 0 && col < _colOrder.length) {
-        setState(() {
-          _hoveredCol = col;
-          _hoveredRow = -1;
-        });
-      } else if (_hoveredRow != -1 || _hoveredCol != -1) {
-        setState(() {
-          _hoveredRow = -1;
-          _hoveredCol = -1;
-        });
+    // 列表头区域：遍历所有列
+    if (widget.showColHeaders) {
+      for (int logicIdx = 0; logicIdx < _colOrder.length; logicIdx++) {
+        double height = _colHeaderHeight(logicIdx);
+        double left = _cornerWidth + logicIdx * widget.cellWidth;
+        double top = _cornerHeight - height; // 修正后的顶部
+        double right = left + widget.cellWidth;
+        double bottom = top + height;
+        if (x >= left && x < right && y >= top && y < bottom) {
+          if (logicIdx != _hoveredCol || _hoveredRow != -1) {
+            int colDirection = 0;
+            if (_hoveredCol == -1 && _hoveredRow == -1) {
+              colDirection = 1;
+            } else if (_hoveredCol == -1) {
+              if (_enterMask != 0) {
+                if (_enterMask & 1 != 0)
+                  colDirection = 1;
+                else if (_enterMask & 2 != 0)
+                  colDirection = -1;
+              } else if (moveDelta != null) {
+                colDirection = moveDelta.dx > 0
+                    ? 1
+                    : (moveDelta.dx < 0 ? -1 : 0);
+              }
+            } else {
+              colDirection = logicIdx > _hoveredCol ? 1 : -1;
+            }
+            if (_hoveredRow != -1) {
+              int rowDirection = 0;
+              if (_hoveredRow != -1 && _hoveredCol != -1) rowDirection = -1;
+              _animateRowHighlight(-1, _hoveredRow, rowDirection);
+            }
+            _animateColHighlight(logicIdx, _hoveredCol, colDirection);
+            setState(() {
+              _hoveredCol = logicIdx;
+              _hoveredRow = -1;
+            });
+          }
+          _enterMask = 0;
+          return;
+        }
       }
-      return;
     }
 
     // 数据单元格区域
-    int row = ((y - widget.cellHeight) / widget.cellHeight).floor();
-    int col = ((x - widget.cellWidth) / widget.cellWidth).floor();
+    int row = ((y - _cornerHeight) / widget.cellHeight).floor();
+    int col = ((x - _cornerWidth) / widget.cellWidth).floor();
     if (row >= 0 &&
         row < _rowOrder.length &&
         col >= 0 &&
         col < _colOrder.length) {
-      setState(() {
+      bool changed = false;
+      if (row != _hoveredRow) {
+        int rowDirection = 0;
+        if (_hoveredRow == -1) {
+          if (_hoveredCol != -1 && _hoveredRow == -1) {
+            rowDirection = 1;
+          } else {
+            if (_enterMask != 0) {
+              if (_enterMask & 4 != 0)
+                rowDirection = 1;
+              else if (_enterMask & 8 != 0)
+                rowDirection = -1;
+            } else if (moveDelta != null) {
+              rowDirection = moveDelta.dy > 0 ? 1 : (moveDelta.dy < 0 ? -1 : 0);
+            }
+          }
+        } else {
+          rowDirection = row > _hoveredRow ? 1 : -1;
+        }
+        _animateRowHighlight(row, _hoveredRow, rowDirection);
         _hoveredRow = row;
+        changed = true;
+      }
+      if (col != _hoveredCol) {
+        int colDirection = 0;
+        if (_hoveredCol == -1) {
+          if (_hoveredRow != -1 && _hoveredCol == -1) {
+            colDirection = 1;
+          } else {
+            if (_enterMask != 0) {
+              if (_enterMask & 1 != 0)
+                colDirection = 1;
+              else if (_enterMask & 2 != 0)
+                colDirection = -1;
+            } else if (moveDelta != null) {
+              colDirection = moveDelta.dx > 0 ? 1 : (moveDelta.dx < 0 ? -1 : 0);
+            }
+          }
+        } else {
+          colDirection = col > _hoveredCol ? 1 : -1;
+        }
+        _animateColHighlight(col, _hoveredCol, colDirection);
         _hoveredCol = col;
-      });
+        changed = true;
+      }
+      if (changed) setState(() {});
     } else {
       if (_hoveredRow != -1 || _hoveredCol != -1) {
+        _animateRowHighlight(-1, _hoveredRow);
+        _animateColHighlight(-1, _hoveredCol);
         setState(() {
           _hoveredRow = -1;
           _hoveredCol = -1;
         });
       }
     }
+    _enterMask = 0;
   }
 
   @override
@@ -445,21 +769,23 @@ class _ReorderableTableState extends State<ReorderableTable>
         onPointerUp: _onPointerUp,
         child: Container(
           key: _tableKey,
-          width: (widget.colHeaders.length + 1) * widget.cellWidth,
-          height: (widget.rowHeaders.length + 1) * widget.cellHeight,
+          width: _cornerWidth + widget.colHeaders.length * widget.cellWidth,
+          height: _cornerHeight + widget.rowHeaders.length * widget.cellHeight,
           decoration: BoxDecoration(
             border: Border.all(color: Colors.grey.shade300),
           ),
           child: Stack(
+            clipBehavior: Clip.none,
             children: [
-              // 左上角占位
-              Positioned(
-                left: 0,
-                top: 0,
-                width: widget.cellWidth,
-                height: widget.cellHeight,
-                child: Container(color: Colors.grey.shade200),
-              ),
+              // 左上角固定占位格（透明）
+              if (_showCornerPlaceholder)
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  width: _cornerWidth,
+                  height: _cornerHeight,
+                  child: Container(color: Colors.transparent),
+                ),
               ..._buildColHeaders(),
               ..._buildRowHeaders(),
               ..._buildDataCells(),
@@ -485,51 +811,30 @@ class _ReorderableTableState extends State<ReorderableTable>
     return tableContent;
   }
 
-  Color _getDataCellColor(int rowLogicIdx, int colLogicIdx) {
-    if (rowLogicIdx == _hoveredRow && colLogicIdx == _hoveredCol) {
-      return _cellHighlight;
-    } else if (rowLogicIdx == _hoveredRow) {
-      return _cellRowHighlight;
-    } else if (colLogicIdx == _hoveredCol) {
-      return _cellColHighlight;
-    }
-    return _cellNormal;
-  }
-
   List<Widget> _buildColHeaders() {
+    if (!widget.showColHeaders) return [];
+
+    // 判断是否应该应用圆角：启用了列折叠且当前处于折叠模式
+    final bool useColHeaderRoundCorners =
+        widget.enableColHeaderCollapse && widget.colHeadersCollapsed;
+
     if (_isDragging && _dragType == DragType.column) {
+      // 拖拽状态：所有列头随拖拽目标移动，根据高度决定是否显示文本，并添加淡入淡出
       return List.generate(_colOrder.length, (logicIdx) {
         final originalCol = _colOrder[logicIdx];
         int screenColIdx = logicIdx < _targetLogicalIndex
             ? logicIdx
             : logicIdx + 1;
+        final double height = _colHeaderHeight(logicIdx);
+        final double top = _cornerHeight - height;
         return AnimatedPositioned(
           key: ValueKey('col-regular-$originalCol'),
           duration: _animationDuration,
           curve: Curves.easeInOut,
-          left: (screenColIdx + 1) * widget.cellWidth,
-          top: 0,
+          left: _cornerWidth + screenColIdx * widget.cellWidth,
+          top: top,
           width: widget.cellWidth,
-          height: widget.cellHeight,
-          child: _buildHeaderCell(
-            text: widget.colHeaders[originalCol],
-            color: _hoveredCol == logicIdx
-                ? _colHeaderHighlight
-                : _colHeaderNormal,
-          ),
-        );
-      });
-    } else {
-      return List.generate(_colOrder.length, (logicIdx) {
-        final originalCol = _colOrder[logicIdx];
-        return AnimatedPositioned(
-          key: ValueKey('col-$originalCol'),
-          duration: _animationDuration,
-          curve: Curves.easeInOut,
-          left: (logicIdx + 1) * widget.cellWidth,
-          top: 0,
-          width: widget.cellWidth,
-          height: widget.cellHeight,
+          height: height,
           child: RawGestureDetector(
             gestures: {
               CustomLongPressRecognizer:
@@ -545,11 +850,93 @@ class _ReorderableTableState extends State<ReorderableTable>
                     },
                   ),
             },
-            child: _buildHeaderCell(
-              text: widget.colHeaders[originalCol],
-              color: _hoveredCol == logicIdx
-                  ? _colHeaderHighlight
-                  : _colHeaderNormal,
+            child: AnimatedContainer(
+              duration: _animationDuration,
+              curve: Curves.easeInOut,
+              width: widget.cellWidth,
+              height: height,
+              decoration: BoxDecoration(
+                color: _colHeaderNormal, // 拖拽时不高亮
+                borderRadius: useColHeaderRoundCorners
+                    ? const BorderRadius.only(
+                        topLeft: Radius.circular(8),
+                        topRight: Radius.circular(8),
+                      )
+                    : null,
+              ),
+              child: AnimatedOpacity(
+                opacity: (height == widget.cellHeight) ? 1.0 : 0.0,
+                duration: _animationDuration,
+                curve: Curves.easeOut,
+                child: Center(
+                  child: Text(
+                    widget.colHeaders[originalCol],
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      });
+    } else {
+      // 非拖拽状态：支持悬停高亮，只要该列被悬停就高亮
+      return List.generate(_colOrder.length, (logicIdx) {
+        final originalCol = _colOrder[logicIdx];
+        final double height = _colHeaderHeight(logicIdx);
+        final double top = _cornerHeight - height;
+        return AnimatedPositioned(
+          key: _colHeaderKeys.isNotEmpty ? _colHeaderKeys[logicIdx] : null,
+          duration: _animationDuration,
+          curve: Curves.easeInOut,
+          left: _cornerWidth + logicIdx * widget.cellWidth,
+          top: top,
+          width: widget.cellWidth,
+          height: height,
+          child: RawGestureDetector(
+            gestures: {
+              CustomLongPressRecognizer:
+                  GestureRecognizerFactoryWithHandlers<
+                    CustomLongPressRecognizer
+                  >(
+                    () => CustomLongPressRecognizer(
+                      duration: const Duration(milliseconds: 200),
+                    ),
+                    (instance) {
+                      instance.onLongPressStart = (details) =>
+                          _onLongPressStart(DragType.column, logicIdx, details);
+                    },
+                  ),
+            },
+            child: AnimatedContainer(
+              duration: _animationDuration,
+              curve: Curves.easeInOut,
+              width: widget.cellWidth,
+              height: height,
+              decoration: BoxDecoration(
+                color:
+                    _hoveredCol ==
+                        logicIdx // 只要该列被悬停就高亮
+                    ? _colHeaderHighlight
+                    : _colHeaderNormal,
+                borderRadius: useColHeaderRoundCorners
+                    ? const BorderRadius.only(
+                        topLeft: Radius.circular(8),
+                        topRight: Radius.circular(8),
+                      )
+                    : null,
+              ),
+              child: AnimatedOpacity(
+                opacity: (height == widget.cellHeight) ? 1.0 : 0.0,
+                duration: _animationDuration,
+                curve: Curves.easeOut,
+                child: Center(
+                  child: Text(
+                    widget.colHeaders[originalCol],
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
             ),
           ),
         );
@@ -558,47 +945,107 @@ class _ReorderableTableState extends State<ReorderableTable>
   }
 
   List<Widget> _buildRowHeaders() {
+    if (!widget.showRowHeaders) return [];
+
+    // 判断是否应该应用圆角：启用了行折叠且当前处于折叠模式
+    final bool useRowHeaderRoundCorners =
+        widget.enableRowHeaderCollapse && widget.rowHeadersCollapsed;
+
     if (_isDragging && _dragType == DragType.row) {
+      // 拖拽状态：所有行头随拖拽目标移动，根据宽度决定是否显示文本，并添加淡入淡出
       return List.generate(_rowOrder.length, (logicIdx) {
         final originalRow = _rowOrder[logicIdx];
         int screenRowIdx = logicIdx < _targetLogicalIndex
             ? logicIdx
             : logicIdx + 1;
+        final double width = _rowHeaderWidth(logicIdx);
+        final double left = _cornerWidth - width;
         return AnimatedPositioned(
           key: ValueKey('row-regular-$originalRow'),
           duration: _animationDuration,
           curve: Curves.easeInOut,
-          left: 0,
-          top: (screenRowIdx + 1) * widget.cellHeight,
-          width: widget.cellWidth,
-          height: widget.cellHeight,
-          child: _buildHeaderCell(
-            text: widget.rowHeaders[originalRow],
-            color: _hoveredRow == logicIdx
-                ? _rowHeaderHighlight
-                : _rowHeaderNormal,
-          ),
-        );
-      });
-    } else {
-      return List.generate(_rowOrder.length, (logicIdx) {
-        final originalRow = _rowOrder[logicIdx];
-        return AnimatedPositioned(
-          key: ValueKey('row-$originalRow'),
-          duration: _animationDuration,
-          curve: Curves.easeInOut,
-          left: 0,
-          top: (logicIdx + 1) * widget.cellHeight,
-          width: widget.cellWidth,
+          left: left,
+          top: _cornerHeight + screenRowIdx * widget.cellHeight,
+          width: width,
           height: widget.cellHeight,
           child: GestureDetector(
             onLongPressStart: (details) =>
                 _onLongPressStart(DragType.row, logicIdx, details),
-            child: _buildHeaderCell(
-              text: widget.rowHeaders[originalRow],
-              color: _hoveredRow == logicIdx
-                  ? _rowHeaderHighlight
-                  : _rowHeaderNormal,
+            child: AnimatedContainer(
+              duration: _animationDuration,
+              curve: Curves.easeInOut,
+              width: width,
+              height: widget.cellHeight,
+              decoration: BoxDecoration(
+                color: _rowHeaderNormal, // 拖拽时不高亮
+                borderRadius: useRowHeaderRoundCorners
+                    ? const BorderRadius.only(
+                        topLeft: Radius.circular(8),
+                        bottomLeft: Radius.circular(8),
+                      )
+                    : null,
+              ),
+              child: AnimatedOpacity(
+                opacity: (width == widget.cellWidth) ? 1.0 : 0.0,
+                duration: _animationDuration,
+                curve: Curves.easeOut,
+                child: Center(
+                  child: Text(
+                    widget.rowHeaders[originalRow],
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      });
+    } else {
+      // 非拖拽状态：支持悬停高亮，只要该行被悬停就高亮
+      return List.generate(_rowOrder.length, (logicIdx) {
+        final originalRow = _rowOrder[logicIdx];
+        final double width = _rowHeaderWidth(logicIdx);
+        final double left = _cornerWidth - width;
+        return AnimatedPositioned(
+          key: _rowHeaderKeys.isNotEmpty ? _rowHeaderKeys[logicIdx] : null,
+          duration: _animationDuration,
+          curve: Curves.easeInOut,
+          left: left,
+          top: _cornerHeight + logicIdx * widget.cellHeight,
+          width: width,
+          height: widget.cellHeight,
+          child: GestureDetector(
+            onLongPressStart: (details) =>
+                _onLongPressStart(DragType.row, logicIdx, details),
+            child: AnimatedContainer(
+              duration: _animationDuration,
+              curve: Curves.easeInOut,
+              width: width,
+              height: widget.cellHeight,
+              decoration: BoxDecoration(
+                color:
+                    _hoveredRow ==
+                        logicIdx // 只要该行被悬停就高亮
+                    ? _rowHeaderHighlight
+                    : _rowHeaderNormal,
+                borderRadius: useRowHeaderRoundCorners
+                    ? const BorderRadius.only(
+                        topLeft: Radius.circular(8),
+                        bottomLeft: Radius.circular(8),
+                      )
+                    : null,
+              ),
+              child: AnimatedOpacity(
+                opacity: (width == widget.cellWidth) ? 1.0 : 0.0,
+                duration: _animationDuration,
+                curve: Curves.easeOut,
+                child: Center(
+                  child: Text(
+                    widget.rowHeaders[originalRow],
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
             ),
           ),
         );
@@ -629,15 +1076,34 @@ class _ReorderableTableState extends State<ReorderableTable>
             key: ValueKey('data-$originalRow-$originalCol'),
             duration: _animationDuration,
             curve: Curves.easeInOut,
-            left: (screenColIdx + 1) * widget.cellWidth,
-            top: (screenRowIdx + 1) * widget.cellHeight,
+            left: _cornerWidth + screenColIdx * widget.cellWidth,
+            top: _cornerHeight + screenRowIdx * widget.cellHeight,
             width: widget.cellWidth,
             height: widget.cellHeight,
-            child: AnimatedContainer(
-              duration: _animationDuration,
-              curve: Curves.easeInOut,
-              color: _getDataCellColor(logicRow, logicCol),
-              child: widget.cells[originalRow][originalCol],
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return CustomPaint(
+                  painter: _CellBackgroundPainter(
+                    rowProgress: logicRow < _rowHighlightAnimations.length
+                        ? _rowHighlightAnimations[logicRow].value
+                        : 0.0,
+                    colProgress: logicCol < _colHighlightAnimations.length
+                        ? _colHighlightAnimations[logicCol].value
+                        : 0.0,
+                    cellWidth: constraints.maxWidth,
+                    cellHeight: constraints.maxHeight,
+                    highlightColor: _cellHighlight,
+                    rowHighlightColor: _cellRowHighlight,
+                    colHighlightColor: _cellColHighlight,
+                    normalColor: _cellNormal,
+                    isHoveredRow: _hoveredRow == logicRow,
+                    isHoveredColumn: _hoveredCol == logicCol,
+                    rowMoveDirection: _lastRowMoveDirection,
+                    colMoveDirection: _lastColMoveDirection,
+                  ),
+                  child: widget.cells[originalRow][originalCol],
+                );
+              },
             ),
           ),
         );
@@ -659,16 +1125,24 @@ class _ReorderableTableState extends State<ReorderableTable>
         if (_dragType == DragType.row) {
           topLeft = Offset(
             0,
-            topLeft.dy.clamp(0.0, tableSize.height - widget.cellHeight),
+            topLeft.dy.clamp(
+              _cornerHeight,
+              tableSize.height - widget.cellHeight,
+            ),
           );
         } else {
           topLeft = Offset(
-            topLeft.dx.clamp(0.0, tableSize.width - widget.cellWidth),
+            topLeft.dx.clamp(_cornerWidth, tableSize.width - widget.cellWidth),
             0,
           );
         }
       }
     }
+
+    final double tableWidth =
+        _cornerWidth + widget.colHeaders.length * widget.cellWidth;
+    final double tableHeight =
+        _cornerHeight + widget.rowHeaders.length * widget.cellHeight;
 
     return AnimatedBuilder(
       animation: _highlightController,
@@ -677,22 +1151,22 @@ class _ReorderableTableState extends State<ReorderableTable>
         double elevation = 2 + highlight * 10;
 
         if (_dragType == DragType.column) {
-          // 拖拽列：整列由表头 + 所有行该列的数据单元格组成
+          final double columnHeight =
+              _cornerHeight + _rowOrder.length * widget.cellHeight;
           final List<Widget> columnCells = [
-            // 表头（使用高亮色，并随动画渐变）
-            AnimatedContainer(
-              duration: _animationDuration,
-              curve: Curves.easeInOut,
-              width: widget.cellWidth,
-              height: widget.cellHeight,
-              color: _colHeaderHighlight,
-              alignment: Alignment.center,
-              child: Text(
-                widget.colHeaders[_dragOriginalIndex],
-                style: const TextStyle(fontWeight: FontWeight.bold),
+            if (widget.showColHeaders)
+              AnimatedContainer(
+                duration: _animationDuration,
+                curve: Curves.easeInOut,
+                width: widget.cellWidth,
+                height: widget.cellHeight,
+                color: _colHeaderHighlight,
+                alignment: Alignment.center,
+                child: Text(
+                  widget.colHeaders[_dragOriginalIndex],
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
-            ),
-            // 数据单元格（使用列高亮色 _cellColHighlight）
             ...List.generate(_rowOrder.length, (logicRow) {
               final originalRow = _rowOrder[logicRow];
               return Container(
@@ -706,9 +1180,9 @@ class _ReorderableTableState extends State<ReorderableTable>
 
           return Positioned(
             left: topLeft.dx,
-            top: 0,
+            top: tableHeight - columnHeight, // 底部对齐
             width: widget.cellWidth,
-            height: (widget.rowHeaders.length + 1) * widget.cellHeight,
+            height: columnHeight,
             child: Material(
               elevation: elevation,
               child: Container(
@@ -723,22 +1197,22 @@ class _ReorderableTableState extends State<ReorderableTable>
             ),
           );
         } else {
-          // 拖拽行：整行由表头 + 所有列该行的数据单元格组成
+          final double rowWidth =
+              _cornerWidth + _colOrder.length * widget.cellWidth;
           final List<Widget> rowCells = [
-            // 表头
-            AnimatedContainer(
-              duration: _animationDuration,
-              curve: Curves.easeInOut,
-              width: widget.cellWidth,
-              height: widget.cellHeight,
-              color: _rowHeaderHighlight,
-              alignment: Alignment.center,
-              child: Text(
-                widget.rowHeaders[_dragOriginalIndex],
-                style: const TextStyle(fontWeight: FontWeight.bold),
+            if (widget.showRowHeaders)
+              AnimatedContainer(
+                duration: _animationDuration,
+                curve: Curves.easeInOut,
+                width: widget.cellWidth,
+                height: widget.cellHeight,
+                color: _rowHeaderHighlight,
+                alignment: Alignment.center,
+                child: Text(
+                  widget.rowHeaders[_dragOriginalIndex],
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
-            ),
-            // 数据单元格（使用行高亮色 _cellRowHighlight）
             ...List.generate(_colOrder.length, (logicCol) {
               final originalCol = _colOrder[logicCol];
               return Container(
@@ -751,9 +1225,9 @@ class _ReorderableTableState extends State<ReorderableTable>
           ];
 
           return Positioned(
-            left: 0,
+            left: tableWidth - rowWidth, // 右对齐
             top: topLeft.dy,
-            width: (widget.colHeaders.length + 1) * widget.cellWidth,
+            width: rowWidth,
             height: widget.cellHeight,
             child: Material(
               elevation: elevation,
@@ -769,14 +1243,237 @@ class _ReorderableTableState extends State<ReorderableTable>
       },
     );
   }
+}
 
-  Widget _buildHeaderCell({required String text, required Color color}) {
-    return AnimatedContainer(
-      duration: _animationDuration,
-      curve: Curves.easeInOut,
-      decoration: BoxDecoration(color: color),
-      alignment: Alignment.center,
-      child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold)),
-    );
+// 自定义单元格背景绘制器（无圆角）
+class _CellBackgroundPainter extends CustomPainter {
+  final double rowProgress;
+  final double colProgress;
+  final double cellWidth;
+  final double cellHeight;
+  final Color highlightColor;
+  final Color rowHighlightColor;
+  final Color colHighlightColor;
+  final Color normalColor;
+  final bool isHoveredRow;
+  final bool isHoveredColumn;
+  final int rowMoveDirection;
+  final int colMoveDirection;
+
+  _CellBackgroundPainter({
+    required this.rowProgress,
+    required this.colProgress,
+    required this.cellWidth,
+    required this.cellHeight,
+    required this.highlightColor,
+    required this.rowHighlightColor,
+    required this.colHighlightColor,
+    required this.normalColor,
+    required this.isHoveredRow,
+    required this.isHoveredColumn,
+    required this.rowMoveDirection,
+    required this.colMoveDirection,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (rowProgress > 0 && colProgress > 0) {
+      canvas.drawRect(Offset.zero & size, Paint()..color = highlightColor);
+      return;
+    }
+
+    if (rowProgress > 0) {
+      double fillHeight = size.height * rowProgress;
+      Paint rowPaint = Paint()..color = rowHighlightColor;
+
+      if (isHoveredRow) {
+        if (rowMoveDirection == 1) {
+          canvas.drawRect(
+            Rect.fromLTWH(0, 0, size.width, fillHeight),
+            rowPaint,
+          );
+          if (fillHeight < size.height) {
+            canvas.drawRect(
+              Rect.fromLTWH(
+                0,
+                fillHeight,
+                size.width,
+                size.height - fillHeight,
+              ),
+              Paint()..color = normalColor,
+            );
+          }
+        } else if (rowMoveDirection == -1) {
+          canvas.drawRect(
+            Rect.fromLTWH(0, size.height - fillHeight, size.width, fillHeight),
+            rowPaint,
+          );
+          if (fillHeight < size.height) {
+            canvas.drawRect(
+              Rect.fromLTWH(0, 0, size.width, size.height - fillHeight),
+              Paint()..color = normalColor,
+            );
+          }
+        } else {
+          canvas.drawRect(
+            Rect.fromLTWH(0, 0, size.width, fillHeight),
+            rowPaint,
+          );
+          if (fillHeight < size.height) {
+            canvas.drawRect(
+              Rect.fromLTWH(
+                0,
+                fillHeight,
+                size.width,
+                size.height - fillHeight,
+              ),
+              Paint()..color = normalColor,
+            );
+          }
+        }
+      } else {
+        if (rowMoveDirection == 1) {
+          canvas.drawRect(
+            Rect.fromLTWH(0, size.height - fillHeight, size.width, fillHeight),
+            rowPaint,
+          );
+          if (fillHeight < size.height) {
+            canvas.drawRect(
+              Rect.fromLTWH(0, 0, size.width, size.height - fillHeight),
+              Paint()..color = normalColor,
+            );
+          }
+        } else if (rowMoveDirection == -1) {
+          canvas.drawRect(
+            Rect.fromLTWH(0, 0, size.width, fillHeight),
+            rowPaint,
+          );
+          if (fillHeight < size.height) {
+            canvas.drawRect(
+              Rect.fromLTWH(
+                0,
+                fillHeight,
+                size.width,
+                size.height - fillHeight,
+              ),
+              Paint()..color = normalColor,
+            );
+          }
+        } else {
+          canvas.drawRect(
+            Rect.fromLTWH(0, 0, size.width, fillHeight),
+            rowPaint,
+          );
+          if (fillHeight < size.height) {
+            canvas.drawRect(
+              Rect.fromLTWH(
+                0,
+                fillHeight,
+                size.width,
+                size.height - fillHeight,
+              ),
+              Paint()..color = normalColor,
+            );
+          }
+        }
+      }
+      return;
+    }
+
+    if (colProgress > 0) {
+      double fillWidth = size.width * colProgress;
+      Paint colPaint = Paint()..color = colHighlightColor;
+
+      if (isHoveredColumn) {
+        if (colMoveDirection == 1) {
+          canvas.drawRect(
+            Rect.fromLTWH(0, 0, fillWidth, size.height),
+            colPaint,
+          );
+          if (fillWidth < size.width) {
+            canvas.drawRect(
+              Rect.fromLTWH(fillWidth, 0, size.width - fillWidth, size.height),
+              Paint()..color = normalColor,
+            );
+          }
+        } else if (colMoveDirection == -1) {
+          canvas.drawRect(
+            Rect.fromLTWH(size.width - fillWidth, 0, fillWidth, size.height),
+            colPaint,
+          );
+          if (fillWidth < size.width) {
+            canvas.drawRect(
+              Rect.fromLTWH(0, 0, size.width - fillWidth, size.height),
+              Paint()..color = normalColor,
+            );
+          }
+        } else {
+          canvas.drawRect(
+            Rect.fromLTWH(size.width - fillWidth, 0, fillWidth, size.height),
+            colPaint,
+          );
+          if (fillWidth < size.width) {
+            canvas.drawRect(
+              Rect.fromLTWH(0, 0, size.width - fillWidth, size.height),
+              Paint()..color = normalColor,
+            );
+          }
+        }
+      } else {
+        if (colMoveDirection == 1) {
+          canvas.drawRect(
+            Rect.fromLTWH(size.width - fillWidth, 0, fillWidth, size.height),
+            colPaint,
+          );
+          if (fillWidth < size.width) {
+            canvas.drawRect(
+              Rect.fromLTWH(0, 0, size.width - fillWidth, size.height),
+              Paint()..color = normalColor,
+            );
+          }
+        } else if (colMoveDirection == -1) {
+          canvas.drawRect(
+            Rect.fromLTWH(0, 0, fillWidth, size.height),
+            colPaint,
+          );
+          if (fillWidth < size.width) {
+            canvas.drawRect(
+              Rect.fromLTWH(fillWidth, 0, size.width - fillWidth, size.height),
+              Paint()..color = normalColor,
+            );
+          }
+        } else {
+          canvas.drawRect(
+            Rect.fromLTWH(0, 0, fillWidth, size.height),
+            colPaint,
+          );
+          if (fillWidth < size.width) {
+            canvas.drawRect(
+              Rect.fromLTWH(fillWidth, 0, size.width - fillWidth, size.height),
+              Paint()..color = normalColor,
+            );
+          }
+        }
+      }
+      return;
+    }
+
+    canvas.drawRect(Offset.zero & size, Paint()..color = normalColor);
+  }
+
+  @override
+  bool shouldRepaint(covariant _CellBackgroundPainter oldDelegate) {
+    return oldDelegate.rowProgress != rowProgress ||
+        oldDelegate.colProgress != colProgress ||
+        oldDelegate.cellWidth != cellWidth ||
+        oldDelegate.cellHeight != cellHeight ||
+        oldDelegate.highlightColor != highlightColor ||
+        oldDelegate.rowHighlightColor != rowHighlightColor ||
+        oldDelegate.colHighlightColor != colHighlightColor ||
+        oldDelegate.normalColor != normalColor ||
+        oldDelegate.isHoveredRow != isHoveredRow ||
+        oldDelegate.isHoveredColumn != isHoveredColumn ||
+        oldDelegate.rowMoveDirection != rowMoveDirection ||
+        oldDelegate.colMoveDirection != colMoveDirection;
   }
 }
