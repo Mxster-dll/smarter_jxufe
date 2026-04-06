@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:smarter_jxufe/design/JxufeTheme.dart';
 import 'package:smarter_jxufe/design/Icons.dart';
 import 'package:smarter_jxufe/qrCode/QrCodeService.dart';
-import 'package:smarter_jxufe/login/MfaService.dart';
+import 'package:smarter_jxufe/old/login/MfaService.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});

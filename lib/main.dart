@@ -1,34 +1,26 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:get_storage/get_storage.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:smarter_jxufe/core/network/dio_providers.dart';
 
-import 'package:smarter_jxufe/core/HiveRegistrations.dart';
-
-import 'package:smarter_jxufe/ims/AcademicTime.dart';
-import 'package:smarter_jxufe/ims/CurriculumData.dart';
-import 'package:smarter_jxufe/ims/GradePage.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart' as ffi;
+import 'package:smarter_jxufe/core/storage/hive_initializer.dart';
+import 'package:smarter_jxufe/features/college/data/providers/college_local_datasource_provider.dart';
+import 'package:smarter_jxufe/features/ims/curriculum/presentation/curriculum_screen.dart';
 
 void main() async {
-  await Hive.initFlutter();
-  await registerHiveAdapters();
+  await HiveInitializer.init();
 
-  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-    ffi.sqfliteFfiInit();
-    ffi.databaseFactory = ffi.databaseFactoryFfi;
-  }
+  await imsService.fetchJSessionId();
 
-  await GetStorage.init();
-  // TODO 此行验证登录状态（修改密码的情况）并隔一阵子就验证密码（可选）
-  await CalendarService.update();
-  // CalendarService.showDurationBetweenAcademicTimes();
+  // final container = ProviderContainer();
+  // final value = container.read(collegeLocalDataSourceProvider);
+  // await value.clearAll();
 
-  MajorCurriculum data = MajorCurriculum();
-  data.checkUpdate();
-
-  runApp(const SmarterJxUFE());
+  // // TODO 此行验证登录状态（修改密码的情况）并隔一阵子就验证密码（可选）
+  // await CalendarService.update();
+  // // CalendarService.showDurationBetweenAcademicTimes();
+  // MajorCurriculum data = MajorCurriculum();
+  // data.checkUpdate();
+  runApp(const ProviderScope(child: SmarterJxUFE()));
 }
 
 class SmarterJxUFE extends StatelessWidget {
@@ -40,14 +32,15 @@ class SmarterJxUFE extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: '智慧尼采',
       theme: ThemeData(
-        colorScheme: .fromSeed(
+        colorScheme: ColorScheme.fromSeed(
           seedColor: const Color.fromARGB(255, 0, 140, 255),
         ),
       ),
+      home: CurriculumScreen(),
       // home: MyHomePage(title: 'demo'),
       // home: LoginScreen(),
       // home: const HomePage(title: '智慧尼采 SmarterJxUFE'),
-      home: GradesPage(),
+      // home: GradesPage(),
     );
   }
 }

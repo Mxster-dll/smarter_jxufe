@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 
 import 'package:smarter_jxufe/utils/Log.dart';
 import 'package:smarter_jxufe/design/JxufeTheme.dart';
-import 'package:smarter_jxufe/login/MfaService.dart';
+import 'package:smarter_jxufe/old/login/MfaService.dart';
 
 part 'QrCodeCard.dart';
 part 'QrCodeStatus.dart';
