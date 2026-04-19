@@ -139,8 +139,12 @@ class JiangxiFinanceLogin:
 if __name__ == "__main__":
     login = JiangxiFinanceLogin()
 
-    # 替换为你的账号密码
-    username = "[REDACTED_EMAIL]"
-    password = "[REDACTED_PWD]"
+    with open('tmp.txt', 'r', encoding='utf-8') as f:
+        lines = f.readlines()
+        if len(lines) >= 2:
+            username = lines[0].strip()   # 去除换行符
+            password = lines[1].strip()
+            qrcode_url = login.login_and_get_qrcode(username, password)
+        else:
+            print("文件行数不足2行")
 
-    qrcode_url = login.login_and_get_qrcode(username, password)
