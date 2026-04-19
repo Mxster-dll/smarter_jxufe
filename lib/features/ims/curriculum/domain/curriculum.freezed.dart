@@ -19,9 +19,9 @@ mixin _$Curriculum {
   @HiveField(0)
   int get year => throw _privateConstructorUsedError;
   @HiveField(1)
-  College get college => throw _privateConstructorUsedError;
+  String get collegeId => throw _privateConstructorUsedError;
   @HiveField(2)
-  Major get major => throw _privateConstructorUsedError;
+  String get majorId => throw _privateConstructorUsedError;
   @HiveField(3)
   List<Course> get courses => throw _privateConstructorUsedError;
   @HiveField(4)
@@ -40,8 +40,8 @@ abstract class $CurriculumCopyWith<$Res> {
   @useResult
   $Res call(
       {@HiveField(0) int year,
-      @HiveField(1) College college,
-      @HiveField(2) Major major,
+      @HiveField(1) String collegeId,
+      @HiveField(2) String majorId,
       @HiveField(3) List<Course> courses,
       @HiveField(4) DateTime? lastUpdated});
 }
@@ -60,8 +60,8 @@ class _$CurriculumCopyWithImpl<$Res, $Val extends Curriculum>
   @override
   $Res call({
     Object? year = null,
-    Object? college = null,
-    Object? major = null,
+    Object? collegeId = null,
+    Object? majorId = null,
     Object? courses = null,
     Object? lastUpdated = freezed,
   }) {
@@ -70,14 +70,14 @@ class _$CurriculumCopyWithImpl<$Res, $Val extends Curriculum>
           ? _value.year
           : year // ignore: cast_nullable_to_non_nullable
               as int,
-      college: null == college
-          ? _value.college
-          : college // ignore: cast_nullable_to_non_nullable
-              as College,
-      major: null == major
-          ? _value.major
-          : major // ignore: cast_nullable_to_non_nullable
-              as Major,
+      collegeId: null == collegeId
+          ? _value.collegeId
+          : collegeId // ignore: cast_nullable_to_non_nullable
+              as String,
+      majorId: null == majorId
+          ? _value.majorId
+          : majorId // ignore: cast_nullable_to_non_nullable
+              as String,
       courses: null == courses
           ? _value.courses
           : courses // ignore: cast_nullable_to_non_nullable
@@ -100,8 +100,8 @@ abstract class _$$CurriculumImplCopyWith<$Res>
   @useResult
   $Res call(
       {@HiveField(0) int year,
-      @HiveField(1) College college,
-      @HiveField(2) Major major,
+      @HiveField(1) String collegeId,
+      @HiveField(2) String majorId,
       @HiveField(3) List<Course> courses,
       @HiveField(4) DateTime? lastUpdated});
 }
@@ -118,8 +118,8 @@ class __$$CurriculumImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? year = null,
-    Object? college = null,
-    Object? major = null,
+    Object? collegeId = null,
+    Object? majorId = null,
     Object? courses = null,
     Object? lastUpdated = freezed,
   }) {
@@ -128,14 +128,14 @@ class __$$CurriculumImplCopyWithImpl<$Res>
           ? _value.year
           : year // ignore: cast_nullable_to_non_nullable
               as int,
-      college: null == college
-          ? _value.college
-          : college // ignore: cast_nullable_to_non_nullable
-              as College,
-      major: null == major
-          ? _value.major
-          : major // ignore: cast_nullable_to_non_nullable
-              as Major,
+      collegeId: null == collegeId
+          ? _value.collegeId
+          : collegeId // ignore: cast_nullable_to_non_nullable
+              as String,
+      majorId: null == majorId
+          ? _value.majorId
+          : majorId // ignore: cast_nullable_to_non_nullable
+              as String,
       courses: null == courses
           ? _value._courses
           : courses // ignore: cast_nullable_to_non_nullable
@@ -153,8 +153,8 @@ class __$$CurriculumImplCopyWithImpl<$Res>
 class _$CurriculumImpl implements _Curriculum {
   const _$CurriculumImpl(
       {@HiveField(0) required this.year,
-      @HiveField(1) required this.college,
-      @HiveField(2) required this.major,
+      @HiveField(1) required this.collegeId,
+      @HiveField(2) required this.majorId,
       @HiveField(3) required final List<Course> courses,
       @HiveField(4) this.lastUpdated})
       : _courses = courses;
@@ -164,10 +164,10 @@ class _$CurriculumImpl implements _Curriculum {
   final int year;
   @override
   @HiveField(1)
-  final College college;
+  final String collegeId;
   @override
   @HiveField(2)
-  final Major major;
+  final String majorId;
   final List<Course> _courses;
   @override
   @HiveField(3)
@@ -183,7 +183,7 @@ class _$CurriculumImpl implements _Curriculum {
 
   @override
   String toString() {
-    return 'Curriculum(year: $year, college: $college, major: $major, courses: $courses, lastUpdated: $lastUpdated)';
+    return 'Curriculum(year: $year, collegeId: $collegeId, majorId: $majorId, courses: $courses, lastUpdated: $lastUpdated)';
   }
 
   @override
@@ -192,15 +192,16 @@ class _$CurriculumImpl implements _Curriculum {
         (other.runtimeType == runtimeType &&
             other is _$CurriculumImpl &&
             (identical(other.year, year) || other.year == year) &&
-            (identical(other.college, college) || other.college == college) &&
-            (identical(other.major, major) || other.major == major) &&
+            (identical(other.collegeId, collegeId) ||
+                other.collegeId == collegeId) &&
+            (identical(other.majorId, majorId) || other.majorId == majorId) &&
             const DeepCollectionEquality().equals(other._courses, _courses) &&
             (identical(other.lastUpdated, lastUpdated) ||
                 other.lastUpdated == lastUpdated));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, year, college, major,
+  int get hashCode => Object.hash(runtimeType, year, collegeId, majorId,
       const DeepCollectionEquality().hash(_courses), lastUpdated);
 
   @JsonKey(ignore: true)
@@ -213,8 +214,8 @@ class _$CurriculumImpl implements _Curriculum {
 abstract class _Curriculum implements Curriculum {
   const factory _Curriculum(
       {@HiveField(0) required final int year,
-      @HiveField(1) required final College college,
-      @HiveField(2) required final Major major,
+      @HiveField(1) required final String collegeId,
+      @HiveField(2) required final String majorId,
       @HiveField(3) required final List<Course> courses,
       @HiveField(4) final DateTime? lastUpdated}) = _$CurriculumImpl;
 
@@ -223,10 +224,10 @@ abstract class _Curriculum implements Curriculum {
   int get year;
   @override
   @HiveField(1)
-  College get college;
+  String get collegeId;
   @override
   @HiveField(2)
-  Major get major;
+  String get majorId;
   @override
   @HiveField(3)
   List<Course> get courses;
