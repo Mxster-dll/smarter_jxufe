@@ -43,7 +43,7 @@ class CurriculumMapper {
         ),
         mainCategory: categories[0],
         subCategory: categories[1],
-        tertiaryCategory: categories.length > 2 ? categories[2] : null,
+        tertiaryCategory: categories.length > 3 ? categories[2] : null,
         requirement: .parse(categories.last),
         nature: .theory,
         importance: (info('课程地位') == '主干课程') ? .core : .general,
