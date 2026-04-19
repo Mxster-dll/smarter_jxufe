@@ -11,9 +11,19 @@ class CollegeLocalDataSource {
 
   CollegeLocalDataSource(this._box, this._indexBox);
 
-  Future<void> saveCollege(College college) => _box.put(college.uuid, college);
-  Future<void> saveCollegeList(List<College> colleges) =>
-      Future.wait(colleges.map(saveCollege));
+  String _indexKey(int year) => year.toString();
+
+  Future<void> saveCollege(College college, {required int year}) async {
+    await _box.put(college.uuid, college);
+
+    final uuidSet = _indexBox.get(_indexKey(year)) ?? <String>{};
+    uuidSet.add(college.uuid);
+
+    await _indexBox.put(_indexKey(year), uuidSet);
+  }
+
+  Future<void> saveCollegeList(List<College> colleges, {required int year}) =>
+      Future.wait(colleges.map((e) => saveCollege(e, year: year)));
 
   bool contains(String uuid) => _box.containsKey(uuid);
 
@@ -23,15 +33,23 @@ class CollegeLocalDataSource {
   List<College> findCollegeKnownAs(String name) =>
       _box.values.where((c) => c.isKnownAs(name)).toList();
 
-  /// 注意区分空列表与 null，前者表示该条件下无专业，后者表示本地无缓存
-  List<College>? getCollegeListIn(FunctionType function, {required int year}) =>
-      _indexBox
-          .get(year.toString())
-          ?.map(getCollegeByUuid)
-          .whereType<College>()
-          .where((e) => e.functionIdIn.containsKey(function))
-          .toList();
+  Set<String>? getCollegeUuidsIn(int year) => _indexBox.get(_indexKey(year));
 
-  Future<void> deleteCollege(String uuid) => _box.delete(uuid);
-  Future<int> clearAll() => _box.clear();
+  /// 注意区分空列表与 null，前者表示该条件下无学院，后者表示本地无缓存
+  List<College>? getCollegeListIn(FunctionType function, {required int year}) {
+    final uuids = getCollegeUuidsIn(year);
+    if (uuids == null) return null;
+    return uuids
+        .map(getCollegeByUuid)
+        .whereType<College>()
+        .where((e) => e.functionIdIn.containsKey(function))
+        .toList();
+  }
+
+  // Future<void> deleteCollege(String uuid) => _box.delete(uuid);
+
+  Future<void> clearAll() async {
+    await _box.clear();
+    await _indexBox.clear();
+  }
 }

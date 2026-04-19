@@ -11,9 +11,28 @@ class MajorLocalDataSource {
 
   MajorLocalDataSource(this._box, this._indexBox);
 
-  Future<void> saveMajor(Major major) => _box.put(major.uuid, major);
-  Future<void> saveMajorList(List<Major> majors) =>
-      Future.wait(majors.map(saveMajor));
+  String _indexKey(int year, String collegeId) => '${year}_$collegeId';
+
+  Future<void> saveMajor(
+    Major major, {
+    required int year,
+    required String collegeId,
+  }) {
+    _box.put(major.uuid, major);
+
+    final uuidSet = getMajorUuidsIn(year, collegeId) ?? <String>{};
+    uuidSet.add(major.uuid);
+
+    return _indexBox.put(_indexKey(year, collegeId), uuidSet);
+  }
+
+  Future<void> saveMajorList(
+    List<Major> majors, {
+    required int year,
+    required String collegeId,
+  }) => Future.wait(
+    majors.map((e) => saveMajor(e, year: year, collegeId: collegeId)),
+  );
 
   bool contains(String uuid) => _box.containsKey(uuid);
 
@@ -23,18 +42,24 @@ class MajorLocalDataSource {
   List<Major> findMajorKnownAs(String name) =>
       _box.values.where((c) => c.isKnownAs(name)).toList();
 
+  Set<String>? getMajorUuidsIn(int year, String collegeId) =>
+      _indexBox.get(_indexKey(year, collegeId));
+
   /// 注意区分空列表与 null，前者表示该条件下无专业，后者表示本地无缓存
   List<Major>? getMajorListIn(
     FunctionType function, {
     required int year,
     required String collegeId,
-  }) => _indexBox
-      .get('${year}_$collegeId')
+  }) => getMajorUuidsIn(year, collegeId)
       ?.map(getMajorByUuid)
       .whereType<Major>()
       .where((e) => e.functionIdIn.containsKey(function))
       .toList();
 
-  Future<void> deleteMajor(String uuid) => _box.delete(uuid);
-  Future<int> clearAll() => _box.clear();
+  // Future<void> deleteMajor(String uuid) => _box.delete(uuid);
+
+  Future<void> clearAll() async {
+    await _box.clear();
+    await _indexBox.clear();
+  }
 }
