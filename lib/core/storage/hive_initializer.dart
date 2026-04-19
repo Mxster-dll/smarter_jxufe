@@ -34,8 +34,8 @@ class HiveInitializer {
   static Future<void> _openBoxes() async {
     await Hive.openBox<Curriculum>('curriculums');
     await Hive.openBox<College>('colleges');
-    await Hive.openBox<Set<String>>('collegeIndexes');
+    await Hive.openBox<List<String>>('collegeIndexes');
     await Hive.openBox<Major>('majors');
-    await Hive.openBox<Set<String>>('majorIndexes');
+    await Hive.openBox<List<String>>('majorIndexes');
   }
 }

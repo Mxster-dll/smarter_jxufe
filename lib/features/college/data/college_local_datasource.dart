@@ -1,5 +1,4 @@
 import 'package:hive_flutter/hive_flutter.dart';
-
 import 'package:smarter_jxufe/core/function_type.dart';
 import 'package:smarter_jxufe/features/college/domain/college.dart';
 
@@ -7,7 +6,7 @@ class CollegeLocalDataSource {
   final Box<College> _box;
 
   /// 索引盒子。键为 `year`，值为学院 UUID 集合
-  final Box<Set<String>> _indexBox;
+  final Box<List<String>> _indexBox;
 
   CollegeLocalDataSource(this._box, this._indexBox);
 
@@ -16,10 +15,10 @@ class CollegeLocalDataSource {
   Future<void> saveCollege(College college, {required int year}) async {
     await _box.put(college.uuid, college);
 
-    final uuidSet = _indexBox.get(_indexKey(year)) ?? <String>{};
-    uuidSet.add(college.uuid);
+    final uuidList = _indexBox.get(_indexKey(year)) ?? <String>[];
+    if (!uuidList.contains(college.uuid)) uuidList.add(college.uuid);
 
-    await _indexBox.put(_indexKey(year), uuidSet);
+    await _indexBox.put(_indexKey(year), uuidList);
   }
 
   Future<void> saveCollegeList(List<College> colleges, {required int year}) =>
@@ -33,7 +32,7 @@ class CollegeLocalDataSource {
   List<College> findCollegeKnownAs(String name) =>
       _box.values.where((c) => c.isKnownAs(name)).toList();
 
-  Set<String>? getCollegeUuidsIn(int year) => _indexBox.get(_indexKey(year));
+  List<String>? getCollegeUuidsIn(int year) => _indexBox.get(_indexKey(year));
 
   /// 注意区分空列表与 null，前者表示该条件下无学院，后者表示本地无缓存
   List<College>? getCollegeListIn(FunctionType function, {required int year}) {

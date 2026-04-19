@@ -4,5 +4,5 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 part 'major_index_box_provider.g.dart';
 
 @riverpod
-Box<Set<String>> majorIndexBox(MajorIndexBoxRef ref) =>
-    Hive.box<Set<String>>('majorIndexes');
+Box<List<String>> majorIndexBox(MajorIndexBoxRef ref) =>
+    Hive.box<List<String>>('majorIndexes');
