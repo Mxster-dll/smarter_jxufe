@@ -7,7 +7,7 @@ part of 'college_local_datasource_provider.dart';
 // **************************************************************************
 
 String _$collegeLocalDataSourceHash() =>
-    r'6ac3df628b52ef0e0210a79f6436696b5dee3cd7';
+    r'1cd9e6520ec2d3450f3646218ac888ab29e19a1a';
 
 /// See also [collegeLocalDataSource].
 @ProviderFor(collegeLocalDataSource)
