@@ -29,6 +29,7 @@ class CurriculumViewModel extends StateNotifier<CurriculumState> {
     state = state.copyWith(isLoadingColleges: true, errorMessage: null);
     final result = await _collegeRepository.getCollegeListIn(
       .curriculum,
+      year: DateTime.now().year,
       forceRefresh: true,
     );
     result.fold(
@@ -80,9 +81,9 @@ class CurriculumViewModel extends StateNotifier<CurriculumState> {
   Future<void> _loadMajors(int year, College college) async {
     state = state.copyWith(isLoadingMajors: true, errorMessage: null);
     final result = await _majorRepository.getMajorListIn(
-      year,
-      college,
       .curriculum,
+      year: year,
+      college: college,
       forceRefresh: true,
     );
     result.fold(

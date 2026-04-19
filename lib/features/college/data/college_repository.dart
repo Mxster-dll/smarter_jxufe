@@ -1,4 +1,5 @@
 import 'package:dartz/dartz.dart';
+import 'package:uuid/uuid.dart';
 
 import 'package:smarter_jxufe/core/errors/failures.dart';
 import 'package:smarter_jxufe/core/exception/multiple_match_failure.dart';
@@ -11,7 +12,6 @@ import 'package:smarter_jxufe/features/college/domain/college_default_aliases.da
 import 'package:smarter_jxufe/features/college/domain/college_name_normalizer.dart';
 import 'package:smarter_jxufe/features/ims/curriculum/data/anti_corruption/college_mapper.dart';
 import 'package:smarter_jxufe/features/ims/curriculum/data/datasources/curriculum_college_remote_datasource.dart';
-import 'package:uuid/uuid.dart';
 
 class CollegeRepository {
   static final List<String> _whitelist = CollegeDefaultAliases
@@ -31,7 +31,10 @@ class CollegeRepository {
        _curriculumRemote = curriculumRemote,
        _collegeMapper = collegeMapper;
 
-  Future<Either<Failure, void>> syncFromSystem(FunctionType function) async {
+  Future<Either<Failure, void>> syncFromSystem(
+    FunctionType function, {
+    required int year,
+  }) async {
     try {
       final apiColleges = await switch (function) {
         .curriculum => _curriculumRemote.getCollegeList(),
@@ -58,13 +61,15 @@ class CollegeRepository {
               NoMatchFailure('没有找到名称为 "${functionCollege.name}" 的学院'),
             );
           }
-          await createCollege(functionCollege.name, {
-            function: functionCollege.code,
-          });
+          await createCollege(
+            functionCollege.name,
+            functionIds: {function: functionCollege.code},
+            year: year,
+          );
         } else {
           final college = matchList.first;
           college.functionIdIn[function] = functionCollege.code;
-          await _local.saveCollege(college);
+          await _local.saveCollege(college, year: year);
         }
       }
 
@@ -76,15 +81,19 @@ class CollegeRepository {
 
   Future<Either<Failure, List<College>>> getCollegeListIn(
     FunctionType function, {
+    required int year,
     bool forceRefresh = false,
   }) async {
     try {
-      if (!forceRefresh) return Right(_local.getCollegeList());
+      if (!forceRefresh) {
+        final cache = _local.getCollegeListIn(function, year: year);
+        if (cache != null) return Right(cache);
+      }
 
-      final syncResult = await syncFromSystem(function);
+      final syncResult = await syncFromSystem(function, year: year);
       return syncResult.fold(
         Left.new,
-        (success) => Right(_local.getCollegeList()),
+        (success) => Right(_local.getCollegeListIn(function, year: year) ?? []),
       );
     } catch (e) {
       return Left(SyncFailure('同步失败: $e'));
@@ -92,21 +101,19 @@ class CollegeRepository {
   }
 
   Future<void> createCollege(
-    String standardName, [
+    String standardName, {
     Map<FunctionType, String>? functionIds,
-  ]) {
-    College college = College(
-      newUuid(),
-      standardName,
-      functionIdIn: functionIds,
-    );
-    return _local.saveCollege(college);
-  }
-
-  String newUuid() {
-    while (true) {
-      String uuid = Uuid().v4();
-      if (!_local.contains(uuid)) return uuid;
+    required int year,
+  }) async {
+    const maxAttempts = 5;
+    for (int i = 0; i < maxAttempts; i++) {
+      final uuid = Uuid().v4();
+      if (!_local.contains(uuid)) {
+        final major = College(uuid, standardName, functionIdIn: functionIds);
+        await _local.saveCollege(major, year: year);
+      }
     }
+
+    throw Exception('生成 Uuid 失败，超过最大重试次数');
   }
 }

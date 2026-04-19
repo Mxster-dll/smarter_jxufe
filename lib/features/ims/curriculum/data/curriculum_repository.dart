@@ -63,8 +63,8 @@ class CurriculumRepository {
       final courses = _curriculumMapper.fromRows(matrix);
       final curriculum = Curriculum(
         year: year,
-        college: college,
-        major: major,
+        collegeId: college.uuid,
+        majorId: major.uuid,
         courses: courses,
       );
       _localDataSource.saveCurriculumByKey(key, curriculum);
