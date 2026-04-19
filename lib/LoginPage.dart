@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
@@ -124,8 +125,18 @@ class _LoginScreenState extends State<LoginScreen> {
     // }
     var account = _accountController.text.trim();
     var password = _passwordController.text.trim();
-    if (account.isEmpty) account = '[REDACTED_EMAIL]';
-    if (password.isEmpty) password = '[REDACTED_PWD]';
+
+    try {
+      final file = File('tmp.txt');
+      final lines = file.readAsLinesSync();
+      if (lines.length >= 2) {
+        if (account.isEmpty) account = lines[0];
+        if (password.isEmpty) password = lines[1];
+        // 使用 a 和 b
+      }
+    } catch (e) {
+      print('错误: $e');
+    }
 
     _mfaService.set(account, password);
 
