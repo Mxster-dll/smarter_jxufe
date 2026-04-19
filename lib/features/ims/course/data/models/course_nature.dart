@@ -2,6 +2,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 part 'course_nature.g.dart';
 
+/// 课程性质（理论/实践）
 @HiveType(typeId: 3, adapterName: 'CourseNatureAdapter')
 enum CourseNature {
   @HiveField(0)

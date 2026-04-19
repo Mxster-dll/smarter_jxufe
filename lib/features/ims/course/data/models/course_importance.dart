@@ -2,6 +2,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 part 'course_importance.g.dart';
 
+/// 课程地位（主干/非主干）
 @HiveType(typeId: 5, adapterName: 'CourseImportanceAdapter')
 enum CourseImportance {
   @HiveField(0)
