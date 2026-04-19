@@ -1,5 +1,4 @@
 import 'package:hive_flutter/hive_flutter.dart';
-
 import 'package:smarter_jxufe/core/function_type.dart';
 import 'package:smarter_jxufe/features/major/domain/major.dart';
 
@@ -7,7 +6,7 @@ class MajorLocalDataSource {
   final Box<Major> _box;
 
   /// 索引盒子。键为 `${year}_${collegeUuid}`，值为专业 UUID 集合
-  final Box<Set<String>> _indexBox;
+  final Box<List<String>> _indexBox;
 
   MajorLocalDataSource(this._box, this._indexBox);
 
@@ -20,10 +19,10 @@ class MajorLocalDataSource {
   }) {
     _box.put(major.uuid, major);
 
-    final uuidSet = getMajorUuidsIn(year, collegeId) ?? <String>{};
-    uuidSet.add(major.uuid);
+    final uuidList = getMajorUuidsIn(year, collegeId) ?? <String>[];
+    if (!uuidList.contains(major.uuid)) uuidList.add(major.uuid);
 
-    return _indexBox.put(_indexKey(year, collegeId), uuidSet);
+    return _indexBox.put(_indexKey(year, collegeId), uuidList);
   }
 
   Future<void> saveMajorList(
@@ -42,7 +41,7 @@ class MajorLocalDataSource {
   List<Major> findMajorKnownAs(String name) =>
       _box.values.where((c) => c.isKnownAs(name)).toList();
 
-  Set<String>? getMajorUuidsIn(int year, String collegeId) =>
+  List<String>? getMajorUuidsIn(int year, String collegeId) =>
       _indexBox.get(_indexKey(year, collegeId));
 
   /// 注意区分空列表与 null，前者表示该条件下无专业，后者表示本地无缓存
