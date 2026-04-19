@@ -2,6 +2,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 part 'course_requirement.g.dart';
 
+/// 修读性质（初修/重修）
 @HiveType(typeId: 0, adapterName: 'CourseRequirementAdapter')
 enum CourseRequirement {
   @HiveField(0)
