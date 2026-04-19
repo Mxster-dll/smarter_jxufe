@@ -114,13 +114,13 @@ class MajorRepository {
     Map<FunctionType, String>? functionIds,
     required int year,
     required String collegeId,
-  }) async {
+  }) {
     const maxAttempts = 5;
     for (int i = 0; i < maxAttempts; i++) {
       final uuid = Uuid().v4();
       if (!_local.contains(uuid)) {
         final major = Major(uuid, standardName, functionIdIn: functionIds);
-        await _local.saveMajor(major, year: year, collegeId: collegeId);
+        return _local.saveMajor(major, year: year, collegeId: collegeId);
       }
     }
 
