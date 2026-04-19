@@ -44,7 +44,7 @@ class CurriculumScreen extends ConsumerWidget {
     CurriculumViewModel viewModel,
   ) {
     return DropdownButtonFormField<int>(
-      value: state.selectedYear,
+      initialValue: state.selectedYear,
       hint: const Text('选择年份'),
       items: state.years
           .map((year) => DropdownMenuItem(value: year, child: Text('$year年')))
@@ -61,7 +61,7 @@ class CurriculumScreen extends ConsumerWidget {
       return const Center(child: CircularProgressIndicator());
     }
     return DropdownButtonFormField<College>(
-      value: state.selectedCollege,
+      initialValue: state.selectedCollege,
       hint: const Text('选择学院'),
       items: state.colleges
           .map(
@@ -91,7 +91,7 @@ class CurriculumScreen extends ConsumerWidget {
       return const Center(child: CircularProgressIndicator());
     }
     return DropdownButtonFormField<Major>(
-      value: state.selectedMajor,
+      initialValue: state.selectedMajor,
       hint: const Text('选择专业'),
       items: state.majors
           .map(
