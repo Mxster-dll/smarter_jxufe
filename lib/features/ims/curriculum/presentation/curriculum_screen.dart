@@ -91,7 +91,7 @@ class CurriculumScreen extends ConsumerWidget {
       return const Center(child: CircularProgressIndicator());
     }
     return DropdownButtonFormField<Major>(
-      initialValue: state.selectedMajor,
+      initialValue: null,
       hint: const Text('选择专业'),
       items: state.majors
           .map(

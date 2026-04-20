@@ -3,7 +3,6 @@ import 'package:smarter_jxufe/core/exception/no_match_failure.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:smarter_jxufe/core/errors/failures.dart';
-import 'package:smarter_jxufe/core/exception/multiple_match_failure.dart';
 import 'package:smarter_jxufe/core/exception/sync_failure.dart';
 import 'package:smarter_jxufe/core/function_type.dart';
 import 'package:smarter_jxufe/features/college/domain/college.dart';
@@ -44,13 +43,6 @@ class MajorRepository {
 
       for (final functionMajor in functionMajors) {
         final matchList = _local.findMajorKnownAs(functionMajor.name);
-        // if (matchList.length > 1) {
-        //   return Left(
-        //     MultipleMatchFailure(
-        //       '名称为 "${functionMajor.name}" 的专业不唯一: $matchList',
-        //     ),
-        //   );
-        // }
 
         if (matchList.isEmpty) {
           await _createMajor(
