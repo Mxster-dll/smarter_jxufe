@@ -4,7 +4,7 @@ import 'package:smarter_jxufe/features/ims/curriculum/domain/curriculum_major.da
 class MajorMapper {
   // 解析形如 "[0701001]信息与计算科学" 的字符串
   static (String, String) extractCodeAndName(String raw) {
-    final regex = RegExp(r'^\[(\d+)\](.*)$');
+    final regex = RegExp(r'^\[([A-Za-z0-9]+)\](.*)$');
     final match = regex.firstMatch(raw);
     if (match != null) {
       final unknownCode = match.group(1)!;
