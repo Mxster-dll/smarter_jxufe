@@ -6,7 +6,7 @@ import 'package:smarter_jxufe/features/ims/curriculum/presentation/curriculum_st
 import 'package:smarter_jxufe/features/ims/curriculum/presentation/curriculum_viewmodel.dart';
 import 'package:smarter_jxufe/features/ims/curriculum/presentation/curriculum_viewmodel_provider.dart';
 import 'package:smarter_jxufe/features/major/domain/major.dart';
-import 'package:smarter_jxufe/shared/widgets/reorderable_table.dart';
+import 'package:smarter_jxufe/shared/widgets/reorderable_table/reorderable_table.dart';
 
 class CurriculumScreen extends ConsumerWidget {
   const CurriculumScreen({super.key});
