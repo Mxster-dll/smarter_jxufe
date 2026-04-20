@@ -1,9 +1,9 @@
 import 'package:dartz/dartz.dart';
+import 'package:smarter_jxufe/core/exception/no_match_failure.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:smarter_jxufe/core/errors/failures.dart';
 import 'package:smarter_jxufe/core/exception/multiple_match_failure.dart';
-import 'package:smarter_jxufe/core/exception/no_match_failure.dart';
 import 'package:smarter_jxufe/core/exception/sync_failure.dart';
 import 'package:smarter_jxufe/core/function_type.dart';
 import 'package:smarter_jxufe/features/college/domain/college.dart';
@@ -25,12 +25,17 @@ class MajorRepository {
        _curriculumRemote = curriculumRemote,
        _majorMapper = majorMapper;
 
-  Future<Either<Failure, void>> syncFromSystem(
+  Future<Either<Failure, void>> _syncFromSystem(
     FunctionType function, {
     required int year,
-    required String systemId,
+    required College college,
   }) async {
     try {
+      final systemId = college.functionIdIn[FunctionType.curriculum];
+      if (systemId == null) {
+        return Left(NoMatchFailure('没有找到该学院'));
+      }
+
       final apiMajors = await switch (function) {
         .curriculum => _curriculumRemote.getMajorList(year, systemId),
       };
@@ -39,20 +44,20 @@ class MajorRepository {
 
       for (final functionMajor in functionMajors) {
         final matchList = _local.findMajorKnownAs(functionMajor.name);
-        if (matchList.length > 1) {
-          return Left(
-            MultipleMatchFailure(
-              '名称为 "${functionMajor.name}" 的专业不唯一: $matchList',
-            ),
-          );
-        }
+        // if (matchList.length > 1) {
+        //   return Left(
+        //     MultipleMatchFailure(
+        //       '名称为 "${functionMajor.name}" 的专业不唯一: $matchList',
+        //     ),
+        //   );
+        // }
 
         if (matchList.isEmpty) {
-          await createMajor(
+          await _createMajor(
             functionMajor.name,
             functionIds: {function: functionMajor.code},
             year: year,
-            collegeId: systemId,
+            college: college,
           );
         } else {
           final major = matchList.first;
@@ -88,10 +93,10 @@ class MajorRepository {
         return Left(NoMatchFailure('没有找到该学院'));
       }
 
-      final syncResult = await syncFromSystem(
+      final syncResult = await _syncFromSystem(
         function,
         year: year,
-        systemId: systemId,
+        college: college,
       );
       return syncResult.fold(
         Left.new,
@@ -109,18 +114,18 @@ class MajorRepository {
     }
   }
 
-  Future<void> createMajor(
+  Future<void> _createMajor(
     String standardName, {
     Map<FunctionType, String>? functionIds,
     required int year,
-    required String collegeId,
+    required College college,
   }) {
     const maxAttempts = 5;
     for (int i = 0; i < maxAttempts; i++) {
       final uuid = Uuid().v4();
       if (!_local.contains(uuid)) {
         final major = Major(uuid, standardName, functionIdIn: functionIds);
-        return _local.saveMajor(major, year: year, collegeId: collegeId);
+        return _local.saveMajor(major, year: year, collegeId: college.uuid);
       }
     }
 
