@@ -1,4 +1,5 @@
 import 'package:hive_flutter/hive_flutter.dart';
+
 import 'package:smarter_jxufe/core/function_type.dart';
 import 'package:smarter_jxufe/features/major/domain/major.dart';
 

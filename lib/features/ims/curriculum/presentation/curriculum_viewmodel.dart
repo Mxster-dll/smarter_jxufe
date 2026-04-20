@@ -84,7 +84,7 @@ class CurriculumViewModel extends StateNotifier<CurriculumState> {
       .curriculum,
       year: year,
       college: college,
-      forceRefresh: true,
+      forceRefresh: true, //TODO 测试时强制
     );
     result.fold(
       (failure) {
