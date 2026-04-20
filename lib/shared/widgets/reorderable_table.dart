@@ -129,16 +129,6 @@ class _ReorderableTableState extends State<ReorderableTable>
   static const _animationDuration = Duration(milliseconds: 150);
   static const _highlightAnimDuration = Duration(milliseconds: 200);
 
-  // 实际使用的颜色
-  late final Color _rowHeaderNormal;
-  late final Color _rowHeaderHighlight;
-  late final Color _colHeaderNormal;
-  late final Color _colHeaderHighlight;
-  late final Color _cellHighlight;
-  late final Color _cellRowHighlight;
-  late final Color _cellColHighlight;
-  late final Color _cellNormal;
-
   List<AnimationController> _rowHighlightControllers = [];
   List<AnimationController> _colHighlightControllers = [];
   List<Animation<double>> _rowHighlightAnimations = [];
@@ -146,6 +136,19 @@ class _ReorderableTableState extends State<ReorderableTable>
 
   late List<GlobalKey> _rowHeaderKeys;
   late List<GlobalKey> _colHeaderKeys;
+
+  // ---------- 颜色 Getter（直接从 widget 取值，无需存储状态） ----------
+  Color get _rowHeaderNormal => widget.rowHeaderNormal ?? Colors.orange[50]!;
+  Color get _rowHeaderHighlight =>
+      widget.rowHeaderHighlight ?? Colors.orange[200]!;
+  Color get _colHeaderNormal => widget.colHeaderNormal ?? Colors.green[50]!;
+  Color get _colHeaderHighlight =>
+      widget.colHeaderHighlight ?? Colors.green[200]!;
+  Color get _cellHighlight => widget.cellHighlight ?? Colors.grey.shade200;
+  Color get _cellRowHighlight => widget.cellRowHighlight ?? _cellHighlight;
+  Color get _cellColHighlight => widget.cellColHighlight ?? _cellHighlight;
+  Color get _cellNormal => widget.cellNormal ?? Colors.transparent;
+  // -------------------------------------------------------------------
 
   // 固定左上角占位格尺寸
   double get _cornerWidth => widget.cellWidth;
@@ -191,7 +194,6 @@ class _ReorderableTableState extends State<ReorderableTable>
   @override
   void initState() {
     super.initState();
-    _initColors();
     _rowOrder = List.generate(widget.rowHeaders?.length ?? 0, (i) => i);
     _colOrder = List.generate(widget.colHeaders?.length ?? 0, (i) => i);
     _initDefaultHeaders();
@@ -252,17 +254,6 @@ class _ReorderableTableState extends State<ReorderableTable>
         _returnAnimController.reset();
       }
     });
-  }
-
-  void _initColors() {
-    _rowHeaderNormal = widget.rowHeaderNormal ?? Colors.orange[50]!;
-    _rowHeaderHighlight = widget.rowHeaderHighlight ?? Colors.orange[200]!;
-    _colHeaderNormal = widget.colHeaderNormal ?? Colors.green[50]!;
-    _colHeaderHighlight = widget.colHeaderHighlight ?? Colors.green[200]!;
-    _cellHighlight = widget.cellHighlight ?? Colors.grey.shade200;
-    _cellRowHighlight = widget.cellRowHighlight ?? _cellHighlight;
-    _cellColHighlight = widget.cellColHighlight ?? _cellHighlight;
-    _cellNormal = widget.cellNormal ?? Colors.transparent;
   }
 
   void _initDefaultHeaders() {
@@ -352,7 +343,7 @@ class _ReorderableTableState extends State<ReorderableTable>
   @override
   void didUpdateWidget(covariant ReorderableTable oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _initColors();
+    // 注意：颜色值通过 getter 获取，无需手动更新
     if ((widget.rowHeaders?.length ?? 0) !=
             (oldWidget.rowHeaders?.length ?? 0) ||
         (widget.colHeaders?.length ?? 0) !=
