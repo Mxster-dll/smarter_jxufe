@@ -24,7 +24,6 @@ class CurriculumViewModel extends StateNotifier<CurriculumState> {
     _loadColleges(); // 初始化时加载学院列表
   }
 
-  // 加载学院列表
   Future<void> _loadColleges() async {
     state = state.copyWith(isLoadingColleges: true, errorMessage: null);
     final result = await _collegeRepository.getCollegeListIn(
@@ -37,7 +36,7 @@ class CurriculumViewModel extends StateNotifier<CurriculumState> {
         print("加载学院列表失败：${failure.message}");
         state = state.copyWith(
           isLoadingColleges: false,
-          errorMessage: _mapFailureToMessage(failure), // 转换失败为可读消息
+          errorMessage: _mapFailureToMessage(failure),
         );
       },
       (colleges) {
@@ -50,7 +49,6 @@ class CurriculumViewModel extends StateNotifier<CurriculumState> {
     );
   }
 
-  // 年份选择
   void onYearChanged(int? year) {
     state = state.copyWith(
       selectedYear: year,
@@ -64,7 +62,6 @@ class CurriculumViewModel extends StateNotifier<CurriculumState> {
     }
   }
 
-  // 学院选择
   void onCollegeChanged(College? college) {
     state = state.copyWith(
       selectedCollege: college,
@@ -77,7 +74,6 @@ class CurriculumViewModel extends StateNotifier<CurriculumState> {
     }
   }
 
-  // 加载专业列表
   Future<void> _loadMajors(int year, College college) async {
     state = state.copyWith(isLoadingMajors: true, errorMessage: null);
     final result = await _majorRepository.getMajorListIn(
@@ -104,7 +100,6 @@ class CurriculumViewModel extends StateNotifier<CurriculumState> {
     );
   }
 
-  // 专业选择
   void onMajorChanged(Major? major) {
     state = state.copyWith(selectedMajor: major, curriculum: null);
     if (major != null &&
