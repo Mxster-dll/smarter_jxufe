@@ -149,7 +149,7 @@ class CurriculumScreen extends ConsumerWidget {
     return ReorderableTable(
       fixedRowHeaders: true,
       colHeaders: colHeaders,
-      rowHeaders: List.generate(cells.length, (i) => i.toString()),
+      rowHeaders: List.generate(cells.length, (i) => (i + 1).toString()),
       cells: cells,
       cellWidth: cellWidth,
       cellHeight: cellHeight,
