@@ -33,7 +33,11 @@ class CurriculumScreen extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 20),
-            Expanded(child: _buildTable(state)),
+            Expanded(
+              child: RepaintBoundary(
+                child: SingleChildScrollView(child: _buildTable(state)),
+              ),
+            ),
           ],
         ),
       ),
