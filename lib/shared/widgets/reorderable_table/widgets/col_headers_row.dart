@@ -1,6 +1,5 @@
-// lib/shared/widgets/reorderable_table/widgets/col_headers_row.dart
-
 import 'package:flutter/material.dart';
+
 import 'package:smarter_jxufe/shared/gestures/custom_long_press_recognizer.dart';
 import 'package:smarter_jxufe/shared/widgets/reorderable_table/reorderable_table.dart';
 import 'package:smarter_jxufe/shared/widgets/reorderable_table/controllers/collapse_controller.dart';

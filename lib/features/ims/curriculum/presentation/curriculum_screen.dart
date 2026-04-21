@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'package:smarter_jxufe/features/college/domain/college.dart';
 import 'package:smarter_jxufe/features/ims/course/data/models/course.dart';
 import 'package:smarter_jxufe/features/ims/curriculum/presentation/curriculum_state.dart';

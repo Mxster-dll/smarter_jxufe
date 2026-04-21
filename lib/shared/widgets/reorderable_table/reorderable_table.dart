@@ -1,6 +1,5 @@
-// lib/shared/widgets/reorderable_table/reorderable_table.dart
-
 import 'package:flutter/material.dart';
+
 import 'package:smarter_jxufe/shared/widgets/reorderable_table/controllers/collapse_controller.dart';
 import 'package:smarter_jxufe/shared/widgets/reorderable_table/controllers/highlight_animation_controller.dart';
 import 'package:smarter_jxufe/shared/widgets/reorderable_table/controllers/reorder_controller.dart';

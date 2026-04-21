@@ -1,9 +1,7 @@
-// lib/shared/widgets/reorderable_table/controllers/reorder_controller.dart
-
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
-import 'package:smarter_jxufe/shared/gestures/custom_long_press_recognizer.dart';
+
 import 'package:smarter_jxufe/shared/widgets/reorderable_table/reorderable_table.dart';
 import 'package:smarter_jxufe/shared/widgets/reorderable_table/controllers/collapse_controller.dart';
 import 'package:smarter_jxufe/shared/widgets/reorderable_table/controllers/highlight_animation_controller.dart';
@@ -25,8 +23,8 @@ class ReorderController {
     _initOrders();
   }
 
-  late List<int> rowOrder;
-  late List<int> colOrder;
+  List<int> rowOrder = [];
+  List<int> colOrder = [];
 
   bool isDragging = false;
   DragType? dragType;
@@ -68,12 +66,28 @@ class ReorderController {
   bool get showColHeaders => widget.showColHeaders;
 
   void updateWidget(ReorderableTable newWidget) {
+    final oldRowCount = rowCount;
+    final oldColCount = colCount;
     widget = newWidget;
+    // 非拖拽状态下，若行列数变化，则同步顺序列表
+    if (!isDragging && !isReturning) {
+      if (oldRowCount != rowCount || oldColCount != colCount) {
+        _syncOrdersWithDimensions();
+      }
+    }
+  }
+
+  void _syncOrdersWithDimensions() {
+    if (rowOrder.length != rowCount) {
+      rowOrder = List.generate(rowCount, (i) => i);
+    }
+    if (colOrder.length != colCount) {
+      colOrder = List.generate(colCount, (i) => i);
+    }
   }
 
   void _initOrders() {
-    rowOrder = List.generate(rowCount, (i) => i);
-    colOrder = List.generate(colCount, (i) => i);
+    _syncOrdersWithDimensions();
   }
 
   void initAnimations(TickerProvider vsync) {
