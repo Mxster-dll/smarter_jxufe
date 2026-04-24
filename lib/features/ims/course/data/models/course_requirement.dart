@@ -1,9 +1,11 @@
 import 'package:hive_flutter/hive_flutter.dart';
 
+import 'package:smarter_jxufe/core/constants/hive_type_ids.dart';
+
 part 'course_requirement.g.dart';
 
 /// 修读性质（初修/重修）
-@HiveType(typeId: 0, adapterName: 'CourseRequirementAdapter')
+@HiveType(typeId: kCourseRequirementTypeId)
 enum CourseRequirement {
   @HiveField(0)
   compulsory,

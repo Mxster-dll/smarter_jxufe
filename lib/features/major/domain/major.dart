@@ -1,10 +1,11 @@
 import 'package:hive_flutter/hive_flutter.dart';
 
+import 'package:smarter_jxufe/core/constants/hive_type_ids.dart';
 import 'package:smarter_jxufe/core/function_type.dart';
 
 part 'major.g.dart';
 
-@HiveType(typeId: 10, adapterName: 'MajorAdapter')
+@HiveType(typeId: kMajorTypeId)
 class Major {
   @HiveField(0)
   final String uuid;

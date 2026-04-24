@@ -8,7 +8,7 @@ part of 'major.dart';
 
 class MajorAdapter extends TypeAdapter<Major> {
   @override
-  final int typeId = 10;
+  final int typeId = 1;
 
   @override
   Major read(BinaryReader reader) {

@@ -1,13 +1,14 @@
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'package:smarter_jxufe/core/constants/hive_type_ids.dart';
 import 'package:smarter_jxufe/features/ims/course/data/models/course.dart';
 
 part 'curriculum.freezed.dart';
 part 'curriculum.g.dart';
 
 @freezed
-@HiveType(typeId: 1, adapterName: 'CurriculumAdapter')
+@HiveType(typeId: kCurriculumTypeId)
 class Curriculum with _$Curriculum {
   const factory Curriculum({
     @HiveField(0) required int year,

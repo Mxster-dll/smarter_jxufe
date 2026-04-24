@@ -8,7 +8,7 @@ part of 'curriculum.dart';
 
 class CurriculumAdapter extends TypeAdapter<Curriculum> {
   @override
-  final int typeId = 1;
+  final int typeId = 4;
 
   @override
   Curriculum read(BinaryReader reader) {

@@ -1,9 +1,11 @@
 import 'package:hive_flutter/hive_flutter.dart';
 
+import 'package:smarter_jxufe/core/constants/hive_type_ids.dart';
+
 part 'course_importance.g.dart';
 
 /// 课程地位（主干/非主干）
-@HiveType(typeId: 5, adapterName: 'CourseImportanceAdapter')
+@HiveType(typeId: kCourseImportanceTypeId)
 enum CourseImportance {
   @HiveField(0)
   core,

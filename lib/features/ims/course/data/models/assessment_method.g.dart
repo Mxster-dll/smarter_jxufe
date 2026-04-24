@@ -8,7 +8,7 @@ part of 'assessment_method.dart';
 
 class AssessmentMethodAdapter extends TypeAdapter<AssessmentMethod> {
   @override
-  final int typeId = 4;
+  final int typeId = 6;
 
   @override
   AssessmentMethod read(BinaryReader reader) {

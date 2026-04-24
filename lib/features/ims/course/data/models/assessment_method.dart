@@ -1,9 +1,11 @@
 import 'package:hive_flutter/hive_flutter.dart';
 
+import 'package:smarter_jxufe/core/constants/hive_type_ids.dart';
+
 part 'assessment_method.g.dart';
 
 /// 考核方式
-@HiveType(typeId: 4, adapterName: 'AssessmentMethodAdapter')
+@HiveType(typeId: kAssessmentMethodTypeId)
 enum AssessmentMethod {
   @HiveField(0)
   exam,
