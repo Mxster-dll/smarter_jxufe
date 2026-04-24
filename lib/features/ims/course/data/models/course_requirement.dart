@@ -4,7 +4,8 @@ import 'package:smarter_jxufe/core/constants/hive_type_ids.dart';
 
 part 'course_requirement.g.dart';
 
-/// 修读性质（初修/重修）
+/// ### 修读性质
+/// （初修/重修）
 @HiveType(typeId: kCourseRequirementTypeId)
 enum CourseRequirement {
   @HiveField(0)

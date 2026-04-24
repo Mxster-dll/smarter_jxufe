@@ -6,19 +6,16 @@ import 'package:smarter_jxufe/core/constants/hive_type_ids.dart';
 part 'credit_hour.freezed.dart';
 part 'credit_hour.g.dart';
 
-/// 学时信息
+/// ### 学时信息
 @HiveType(typeId: kCreditHourTypeId)
 @freezed
 class CreditHour with _$CreditHour {
   const factory CreditHour({
-    @HiveField(0) required int total,
-    @HiveField(1) required int lecture,
-    @HiveField(2) required int lab,
-    @HiveField(3) required int practice,
-    @HiveField(4) required int other,
-    @HiveField(5) required double weekly,
+    @HiveField(0) required int total, // 总学时
+    @HiveField(1) required int lecture, // 讲授学时
+    @HiveField(2) @Default(0) int lab, // 实验学时
+    @HiveField(3) @Default(0) int practice, // 实践学时
+    @HiveField(4) @Default(0) int other, // 其它学时
+    @HiveField(5) required double weekly, // 周学时
   }) = _CreditHour;
-
-  factory CreditHour.fromJson(Map<String, dynamic> json) =>
-      _$CreditHourFromJson(json);
 }

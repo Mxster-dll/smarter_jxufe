@@ -4,7 +4,7 @@ import 'package:smarter_jxufe/core/constants/hive_type_ids.dart';
 
 part 'assessment_method.g.dart';
 
-/// 考核方式
+/// ### 考核方式
 @HiveType(typeId: kAssessmentMethodTypeId)
 enum AssessmentMethod {
   @HiveField(0)

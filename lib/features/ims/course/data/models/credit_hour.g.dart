@@ -54,27 +54,3 @@ class CreditHourAdapter extends TypeAdapter<CreditHour> {
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }
-
-// **************************************************************************
-// JsonSerializableGenerator
-// **************************************************************************
-
-_$CreditHourImpl _$$CreditHourImplFromJson(Map<String, dynamic> json) =>
-    _$CreditHourImpl(
-      total: (json['total'] as num).toInt(),
-      lecture: (json['lecture'] as num).toInt(),
-      lab: (json['lab'] as num).toInt(),
-      practice: (json['practice'] as num).toInt(),
-      other: (json['other'] as num).toInt(),
-      weekly: (json['weekly'] as num).toDouble(),
-    );
-
-Map<String, dynamic> _$$CreditHourImplToJson(_$CreditHourImpl instance) =>
-    <String, dynamic>{
-      'total': instance.total,
-      'lecture': instance.lecture,
-      'lab': instance.lab,
-      'practice': instance.practice,
-      'other': instance.other,
-      'weekly': instance.weekly,
-    };
