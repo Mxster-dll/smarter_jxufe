@@ -1,11 +1,13 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+import 'package:smarter_jxufe/core/constants/hive_type_ids.dart';
+
 part 'credit_hour.freezed.dart';
 part 'credit_hour.g.dart';
 
 /// 学时信息
-@HiveType(typeId: 6, adapterName: 'CreditHourAdapter')
+@HiveType(typeId: kCreditHourTypeId)
 @freezed
 class CreditHour with _$CreditHour {
   const factory CreditHour({

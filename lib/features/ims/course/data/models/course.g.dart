@@ -8,7 +8,7 @@ part of 'course.dart';
 
 class CourseAdapter extends TypeAdapter<Course> {
   @override
-  final int typeId = 2;
+  final int typeId = 9;
 
   @override
   Course read(BinaryReader reader) {
@@ -111,7 +111,7 @@ Map<String, dynamic> _$$CourseImplToJson(_$CourseImpl instance) =>
     };
 
 const _$CourseRequirementEnumMap = {
-  CourseRequirement.required: 'required',
+  CourseRequirement.compulsory: 'compulsory',
   CourseRequirement.elective: 'elective',
   CourseRequirement.restricted: 'restricted',
   CourseRequirement.free: 'free',

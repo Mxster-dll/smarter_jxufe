@@ -8,7 +8,7 @@ part of 'function_type.dart';
 
 class FunctionTypeAdapter extends TypeAdapter<FunctionType> {
   @override
-  final int typeId = 7;
+  final int typeId = 2;
 
   @override
   FunctionType read(BinaryReader reader) {

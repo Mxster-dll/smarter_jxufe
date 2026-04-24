@@ -8,7 +8,7 @@ part of 'course_importance.dart';
 
 class CourseImportanceAdapter extends TypeAdapter<CourseImportance> {
   @override
-  final int typeId = 5;
+  final int typeId = 7;
 
   @override
   CourseImportance read(BinaryReader reader) {

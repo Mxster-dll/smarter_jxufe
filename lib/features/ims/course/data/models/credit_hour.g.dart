@@ -8,7 +8,7 @@ part of 'credit_hour.dart';
 
 class CreditHourAdapter extends TypeAdapter<CreditHour> {
   @override
-  final int typeId = 6;
+  final int typeId = 8;
 
   @override
   CreditHour read(BinaryReader reader) {
