@@ -12,7 +12,7 @@ enum CourseImportance {
   @HiveField(2)
   unknown;
 
-  String get name => switch (this) {
+  String get displayName => switch (this) {
     core => '主干课程',
     general => '非主干课程',
     unknown => '未知',

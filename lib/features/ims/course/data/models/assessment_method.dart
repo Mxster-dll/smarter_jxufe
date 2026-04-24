@@ -12,7 +12,7 @@ enum AssessmentMethod {
   @HiveField(2)
   unknown;
 
-  String get name => switch (this) {
+  String get displayName => switch (this) {
     exam => '考试',
     coursework => '考查',
     unknown => '未知',

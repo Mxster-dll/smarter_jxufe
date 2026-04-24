@@ -12,7 +12,7 @@ enum CourseNature {
   @HiveField(2)
   unknown;
 
-  String get name => switch (this) {
+  String get displayName => switch (this) {
     theory => '理论课程',
     practical => '实践环节',
     unknown => '未知',

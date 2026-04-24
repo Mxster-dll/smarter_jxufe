@@ -14,7 +14,7 @@ class CourseRequirementAdapter extends TypeAdapter<CourseRequirement> {
   CourseRequirement read(BinaryReader reader) {
     switch (reader.readByte()) {
       case 0:
-        return CourseRequirement.required;
+        return CourseRequirement.compulsory;
       case 1:
         return CourseRequirement.elective;
       case 2:
@@ -32,14 +32,14 @@ class CourseRequirementAdapter extends TypeAdapter<CourseRequirement> {
       case 8:
         return CourseRequirement.unknown;
       default:
-        return CourseRequirement.required;
+        return CourseRequirement.compulsory;
     }
   }
 
   @override
   void write(BinaryWriter writer, CourseRequirement obj) {
     switch (obj) {
-      case CourseRequirement.required:
+      case CourseRequirement.compulsory:
         writer.writeByte(0);
         break;
       case CourseRequirement.elective:
