@@ -6,7 +6,7 @@ part 'course_requirement.g.dart';
 @HiveType(typeId: 0, adapterName: 'CourseRequirementAdapter')
 enum CourseRequirement {
   @HiveField(0)
-  required,
+  compulsory,
   @HiveField(1)
   elective,
   @HiveField(2)
@@ -24,8 +24,8 @@ enum CourseRequirement {
   @HiveField(8)
   unknown;
 
-  String get name => switch (this) {
-    required => '必修课',
+  String get displayName => switch (this) {
+    compulsory => '必修课',
     elective => '选修课',
     restricted => '限选课',
     free => '任选课',
@@ -37,7 +37,7 @@ enum CourseRequirement {
   };
 
   factory CourseRequirement.parse(String source) => switch (source) {
-    '必修课' || '必修' => required,
+    '必修课' || '必修' => compulsory,
     '选修课' || '选修' => elective,
     '限选课' || '限选' => restricted,
     '任选课' || '任选' => free,
