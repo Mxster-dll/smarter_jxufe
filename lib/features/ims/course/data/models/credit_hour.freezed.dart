@@ -14,10 +14,6 @@ T _$identity<T>(T value) => value;
 final _privateConstructorUsedError = UnsupportedError(
     'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
 
-CreditHour _$CreditHourFromJson(Map<String, dynamic> json) {
-  return _CreditHour.fromJson(json);
-}
-
 /// @nodoc
 mixin _$CreditHour {
   @HiveField(0)
@@ -33,7 +29,6 @@ mixin _$CreditHour {
   @HiveField(5)
   double get weekly => throw _privateConstructorUsedError;
 
-  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
   $CreditHourCopyWith<CreditHour> get copyWith =>
       throw _privateConstructorUsedError;
@@ -168,18 +163,15 @@ class __$$CreditHourImplCopyWithImpl<$Res>
 }
 
 /// @nodoc
-@JsonSerializable()
+
 class _$CreditHourImpl implements _CreditHour {
   const _$CreditHourImpl(
       {@HiveField(0) required this.total,
       @HiveField(1) required this.lecture,
-      @HiveField(2) required this.lab,
-      @HiveField(3) required this.practice,
-      @HiveField(4) required this.other,
+      @HiveField(2) this.lab = 0,
+      @HiveField(3) this.practice = 0,
+      @HiveField(4) this.other = 0,
       @HiveField(5) required this.weekly});
-
-  factory _$CreditHourImpl.fromJson(Map<String, dynamic> json) =>
-      _$$CreditHourImplFromJson(json);
 
   @override
   @HiveField(0)
@@ -188,12 +180,15 @@ class _$CreditHourImpl implements _CreditHour {
   @HiveField(1)
   final int lecture;
   @override
+  @JsonKey()
   @HiveField(2)
   final int lab;
   @override
+  @JsonKey()
   @HiveField(3)
   final int practice;
   @override
+  @JsonKey()
   @HiveField(4)
   final int other;
   @override
@@ -219,7 +214,6 @@ class _$CreditHourImpl implements _CreditHour {
             (identical(other.weekly, weekly) || other.weekly == weekly));
   }
 
-  @JsonKey(ignore: true)
   @override
   int get hashCode =>
       Object.hash(runtimeType, total, lecture, lab, practice, other, weekly);
@@ -229,26 +223,16 @@ class _$CreditHourImpl implements _CreditHour {
   @pragma('vm:prefer-inline')
   _$$CreditHourImplCopyWith<_$CreditHourImpl> get copyWith =>
       __$$CreditHourImplCopyWithImpl<_$CreditHourImpl>(this, _$identity);
-
-  @override
-  Map<String, dynamic> toJson() {
-    return _$$CreditHourImplToJson(
-      this,
-    );
-  }
 }
 
 abstract class _CreditHour implements CreditHour {
   const factory _CreditHour(
       {@HiveField(0) required final int total,
       @HiveField(1) required final int lecture,
-      @HiveField(2) required final int lab,
-      @HiveField(3) required final int practice,
-      @HiveField(4) required final int other,
+      @HiveField(2) final int lab,
+      @HiveField(3) final int practice,
+      @HiveField(4) final int other,
       @HiveField(5) required final double weekly}) = _$CreditHourImpl;
-
-  factory _CreditHour.fromJson(Map<String, dynamic> json) =
-      _$CreditHourImpl.fromJson;
 
   @override
   @HiveField(0)

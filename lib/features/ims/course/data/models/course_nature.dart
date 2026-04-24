@@ -4,7 +4,8 @@ import 'package:smarter_jxufe/core/constants/hive_type_ids.dart';
 
 part 'course_nature.g.dart';
 
-/// 课程性质（理论/实践）
+/// ### 课程性质
+/// （理论/实践）
 @HiveType(typeId: kCourseNatureTypeId)
 enum CourseNature {
   @HiveField(0)
