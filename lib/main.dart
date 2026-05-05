@@ -21,7 +21,10 @@ void main() async {
   // CalendarService.showDurationBetweenAcademicTimes();
 
   MajorCurriculum data = MajorCurriculum();
-  data.checkUpdate();
+  await data.checkUpdate();
+  // await data.printCoursesByCodeSuffix("00032");
+  await data.printInvalidCreditHourCourses();
+  // await data.findDuplicateCodesWithDifferences();
 
   //   runApp(const SmarterJxUFE());
 }

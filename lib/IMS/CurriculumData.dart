@@ -261,6 +261,86 @@ class MajorCurriculum {
     }
   }
 
+  /// 查找课程代码以指定后缀结尾的所有课程，并直接打印信息
+  Future<void> printCoursesByCodeSuffix(String suffix) async {
+    final db = await database;
+    final List<Map<String, dynamic>> results = await db.query(
+      'course',
+      where: 'code LIKE ?',
+      whereArgs: ['%$suffix'],
+    );
+    if (results.isEmpty) {
+      print('未找到课程代码以 "$suffix" 结尾的课程');
+      return;
+    }
+    print('找到 ${results.length} 门课程代码以 "$suffix" 结尾：');
+    for (var map in results) {
+      final course = _courseFromMap(map);
+      print(
+        '${course.code} | ${course.name} | 学分:${course.credit} | 类别:${course.mainCategory}/${course.subCategory}',
+      );
+    }
+  }
+
+  /// 查找所有 total != lecture+lab+practice+other 的课程并打印
+  Future<void> printInvalidCreditHourCourses() async {
+    final db = await database;
+    const sql = '''
+    SELECT * FROM course
+    WHERE total != lecture + lab + practice + other
+  ''';
+    final List<Map<String, dynamic>> results = await db.rawQuery(sql);
+
+    if (results.isEmpty) {
+      print('所有课程的学时分配均正确（total = lecture + lab + practice + other）');
+      return;
+    }
+
+    print('发现 ${results.length} 门课程学时分配异常：');
+    print(
+      'code\t| name\t| total\t| lecture\t| lab\t| practice\t| other\t| 实际总和',
+    );
+    for (final map in results) {
+      final total = map['total'] as int;
+      final lecture = map['lecture'] as int;
+      final lab = map['lab'] as int;
+      final practice = map['practice'] as int;
+      final other = map['other'] as int;
+      final sum = lecture + lab + practice + other;
+      print(
+        '${map['code']}\t| ${map['name']}\t| $total\t| $lecture\t| $lab\t| $practice\t| $other\t| $sum',
+      );
+    }
+  }
+
+  Future<void> findDuplicateCodesWithDifferences() async {
+    final majorCurriculum = MajorCurriculum();
+    final db = await majorCurriculum.database;
+
+    // 使用方案二的 SQL
+    const sql = '''
+    SELECT *
+    FROM course
+    WHERE code IN (
+      SELECT code
+      FROM course
+      GROUP BY code
+      HAVING COUNT(*) > 1
+        AND COUNT(*) != COUNT(DISTINCT name || credit || total || lecture || lab || practice || other || weekly || main_category || sub_category || coalesce(tertiary_category,'') || requirement || nature || importance || assessment_method || identification)
+    )
+    ORDER BY code, id
+  ''';
+
+    final List<Map<String, dynamic>> results = await db.rawQuery(sql);
+
+    // 打印或处理结果
+    for (var row in results) {
+      print('课程代码: ${row['code']}, 课程名称: ${row['name']}, 学分: ${row['credit']}');
+      // 可自行转换 Course 对象
+      // final course = _courseFromMap(row);
+    }
+  }
+
   // ========== 查询接口（返回 List<Course>） ==========
 
   /// 将数据库行转换为 Course 对象
@@ -525,7 +605,7 @@ class MajorCurriculum {
   }
 
   Future<void> checkUpdate() async {
-    for (int i = AcademicYear.now.value; i >= 2024; i--) {
+    for (int i = AcademicYear.now.value; i >= 2016; i--) {
       if (!await hasYear(i)) await updateYear(i);
     }
   }
