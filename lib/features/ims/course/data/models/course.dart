@@ -30,6 +30,4 @@ class Course with _$Course {
     @HiveField(11) required AssessmentMethod assessmentMethod,
     @HiveField(12) required String identification,
   }) = _Course;
-
-  factory Course.fromJson(Map<String, dynamic> json) => _$CourseFromJson(json);
 }
