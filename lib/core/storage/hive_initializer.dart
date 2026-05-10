@@ -13,7 +13,9 @@ import 'package:smarter_jxufe/features/major/domain/major.dart';
 
 class HiveInitializer {
   static Future<void> init() async {
-    await Hive.initFlutter();
+    final hiveRootPath = 'app_data';  // ⚠ 历史修复：原为绝对路径（本机痕迹已洗）；相对当前工作目录
+
+    await Hive.init(hiveRootPath);
     _registerAdapters();
     await _openBoxes();
   }
@@ -37,5 +39,6 @@ class HiveInitializer {
     await Hive.openBox<List<String>>('collegeIndexes');
     await Hive.openBox<Major>('majors');
     await Hive.openBox<List<String>>('majorIndexes');
+    await Hive.openBox<Course>('courses');
   }
 }
