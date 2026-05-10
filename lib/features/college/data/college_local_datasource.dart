@@ -27,7 +27,7 @@ class CollegeLocalDataSource {
   bool contains(String uuid) => _box.containsKey(uuid);
 
   College? getCollegeByUuid(String uuid) => _box.get(uuid);
-  List<College> getCollegeList() => _box.values.toList();
+  List<College> getAllCollege() => _box.values.toList();
 
   List<College> findCollegeKnownAs(String name) =>
       _box.values.where((c) => c.isKnownAs(name)).toList();

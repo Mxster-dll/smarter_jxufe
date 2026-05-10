@@ -37,7 +37,7 @@ class MajorLocalDataSource {
   bool contains(String uuid) => _box.containsKey(uuid);
 
   Major? getMajorByUuid(String uuid) => _box.get(uuid);
-  List<Major> getMajorList() => _box.values.toList();
+  List<Major> getAllMajor() => _box.values.toList();
 
   List<Major> findMajorKnownAs(String name) =>
       _box.values.where((c) => c.isKnownAs(name)).toList();
