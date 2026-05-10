@@ -7,9 +7,11 @@ import 'package:smarter_jxufe/features/major/data/providers/major_index_box_prov
 part 'major_local_datasource_provider.g.dart';
 
 @riverpod
-MajorLocalDataSource majorLocalDataSource(MajorLocalDataSourceRef ref) {
-  final box = ref.watch(majorBoxProvider);
-  final indexBox = ref.watch(majorIndexBoxProvider);
+Future<MajorLocalDataSource> majorLocalDataSource(
+  MajorLocalDataSourceRef ref,
+) async {
+  final box = await ref.watch(majorBoxProvider.future);
+  final indexBox = await ref.watch(majorIndexBoxProvider.future);
 
   return MajorLocalDataSource(box, indexBox);
 }

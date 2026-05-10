@@ -6,11 +6,11 @@ part of 'major_box_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$majorBoxHash() => r'93837773ead843c217e649a3e6b3a6ec84e63b6f';
+String _$majorBoxHash() => r'a1c1745e08f22bca36f05c3d97bf2cbbd75be894';
 
 /// See also [majorBox].
 @ProviderFor(majorBox)
-final majorBoxProvider = AutoDisposeProvider<Box<Major>>.internal(
+final majorBoxProvider = AutoDisposeFutureProvider<Box<Major>>.internal(
   majorBox,
   name: r'majorBoxProvider',
   debugGetCreateSourceHash:
@@ -19,6 +19,6 @@ final majorBoxProvider = AutoDisposeProvider<Box<Major>>.internal(
   allTransitiveDependencies: null,
 );
 
-typedef MajorBoxRef = AutoDisposeProviderRef<Box<Major>>;
+typedef MajorBoxRef = AutoDisposeFutureProviderRef<Box<Major>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

@@ -6,4 +6,4 @@ import 'package:smarter_jxufe/features/major/domain/major.dart';
 part 'major_box_provider.g.dart';
 
 @riverpod
-Box<Major> majorBox(MajorBoxRef ref) => Hive.box<Major>('majors');
+Future<Box<Major>> majorBox(MajorBoxRef ref) => Hive.openBox<Major>('majors');

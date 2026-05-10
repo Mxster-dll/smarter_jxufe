@@ -1,26 +1,27 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'major_repository_provider.dart';
+part of 'curriculum_viewmodel.dart';
 
 // **************************************************************************
 // RiverpodGenerator
 // **************************************************************************
 
-String _$majorRepositoryHash() => r'23a35132fbad60b5114a5c7e3a2804c7fad46d95';
+String _$curriculumViewModelHash() =>
+    r'16b14fcefeb9922b10dbef734796b92f9a6f0646';
 
-/// See also [majorRepository].
-@ProviderFor(majorRepository)
-final majorRepositoryProvider =
-    AutoDisposeFutureProvider<MajorRepository>.internal(
-  majorRepository,
-  name: r'majorRepositoryProvider',
+/// See also [CurriculumViewModel].
+@ProviderFor(CurriculumViewModel)
+final curriculumViewModelProvider = AutoDisposeAsyncNotifierProvider<
+    CurriculumViewModel, CurriculumState>.internal(
+  CurriculumViewModel.new,
+  name: r'curriculumViewModelProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
       ? null
-      : _$majorRepositoryHash,
+      : _$curriculumViewModelHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
-typedef MajorRepositoryRef = AutoDisposeFutureProviderRef<MajorRepository>;
+typedef _$CurriculumViewModel = AutoDisposeAsyncNotifier<CurriculumState>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

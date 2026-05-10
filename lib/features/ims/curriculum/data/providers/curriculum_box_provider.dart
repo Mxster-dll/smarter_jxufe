@@ -6,5 +6,5 @@ import 'package:smarter_jxufe/features/ims/curriculum/domain/curriculum.dart';
 part 'curriculum_box_provider.g.dart';
 
 @riverpod
-Box<Curriculum> curriculumBox(CurriculumBoxRef ref) =>
-    Hive.box<Curriculum>('curriculums');
+Future<Box<Curriculum>> curriculumBox(CurriculumBoxRef ref) =>
+    Hive.openBox<Curriculum>('curriculums');

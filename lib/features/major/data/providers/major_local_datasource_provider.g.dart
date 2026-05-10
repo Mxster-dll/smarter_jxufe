@@ -7,12 +7,12 @@ part of 'major_local_datasource_provider.dart';
 // **************************************************************************
 
 String _$majorLocalDataSourceHash() =>
-    r'4e4c2bd092ce61095a4ee4ea488c03179199d467';
+    r'60bc1513b9b257b9a22f908a52906b3d22f84c55';
 
 /// See also [majorLocalDataSource].
 @ProviderFor(majorLocalDataSource)
 final majorLocalDataSourceProvider =
-    AutoDisposeProvider<MajorLocalDataSource>.internal(
+    AutoDisposeFutureProvider<MajorLocalDataSource>.internal(
   majorLocalDataSource,
   name: r'majorLocalDataSourceProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -22,6 +22,7 @@ final majorLocalDataSourceProvider =
   allTransitiveDependencies: null,
 );
 
-typedef MajorLocalDataSourceRef = AutoDisposeProviderRef<MajorLocalDataSource>;
+typedef MajorLocalDataSourceRef
+    = AutoDisposeFutureProviderRef<MajorLocalDataSource>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

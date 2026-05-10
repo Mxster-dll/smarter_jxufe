@@ -5,7 +5,6 @@ import 'package:smarter_jxufe/features/college/domain/college.dart';
 import 'package:smarter_jxufe/features/ims/course/data/models/course.dart';
 import 'package:smarter_jxufe/features/ims/curriculum/presentation/curriculum_state.dart';
 import 'package:smarter_jxufe/features/ims/curriculum/presentation/curriculum_viewmodel.dart';
-import 'package:smarter_jxufe/features/ims/curriculum/presentation/curriculum_viewmodel_provider.dart';
 import 'package:smarter_jxufe/features/major/domain/major.dart';
 import 'package:smarter_jxufe/shared/widgets/reorderable_table/reorderable_table.dart';
 
@@ -14,32 +13,38 @@ class CurriculumScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(curriculumViewModelProvider);
     final viewModel = ref.read(curriculumViewModelProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(title: const Text('培养方案查询')),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Expanded(child: _buildYearDropdown(state, viewModel)),
-                const SizedBox(width: 16),
-                Expanded(child: _buildCollegeDropdown(state, viewModel)),
-                const SizedBox(width: 16),
-                Expanded(child: _buildMajorDropdown(state, viewModel)),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Expanded(
-              child: RepaintBoundary(
-                child: SingleChildScrollView(child: _buildTable(state)),
+        child: ref
+            .watch(curriculumViewModelProvider)
+            .when(
+              data: (state) => Column(
+                // state 现在是 CurriculumState
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: _buildYearDropdown(state, viewModel)),
+                      const SizedBox(width: 16),
+                      Expanded(child: _buildCollegeDropdown(state, viewModel)),
+                      const SizedBox(width: 16),
+                      Expanded(child: _buildMajorDropdown(state, viewModel)),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Expanded(
+                    child: RepaintBoundary(
+                      child: SingleChildScrollView(child: _buildTable(state)),
+                    ),
+                  ),
+                ],
               ),
+              loading: () => const CircularProgressIndicator(), // 加载状态
+              error: (err, stack) => Text('Error: $err'), // 错误状态
             ),
-          ],
-        ),
       ),
     );
   }
@@ -139,7 +144,11 @@ class CurriculumScreen extends ConsumerWidget {
     };
 
     final colHeaders = colMapper.keys.toList();
-    final courses = state.curriculum!.courses;
+    final curriculum = state.curriculum;
+    if (curriculum == null) return Text('培养方案为空');
+
+    final courses = curriculum.courses;
+
     final cells = List.generate(
       courses.length,
       (rowIndex) => colHeaders

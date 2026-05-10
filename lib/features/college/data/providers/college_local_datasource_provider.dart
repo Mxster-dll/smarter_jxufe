@@ -7,9 +7,11 @@ import 'package:smarter_jxufe/features/college/data/providers/college_index_box_
 part 'college_local_datasource_provider.g.dart';
 
 @riverpod
-CollegeLocalDataSource collegeLocalDataSource(CollegeLocalDataSourceRef ref) {
-  final box = ref.watch(collegeBoxProvider);
-  final indexBox = ref.watch(collegeIndexBoxProvider);
+Future<CollegeLocalDataSource> collegeLocalDataSource(
+  CollegeLocalDataSourceRef ref,
+) async {
+  final box = await ref.read(collegeBoxProvider.future);
+  final indexBox = await ref.watch(collegeIndexBoxProvider.future);
 
   return CollegeLocalDataSource(box, indexBox);
 }

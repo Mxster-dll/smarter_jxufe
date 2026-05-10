@@ -17,7 +17,6 @@ class HiveInitializer {
 
     await Hive.initFlutter(hiveRootPath);
     _registerAdapters();
-    await _openBoxes();
   }
 
   static void _registerAdapters() {
@@ -31,14 +30,5 @@ class HiveInitializer {
     Hive.registerAdapter(MajorAdapter());
     Hive.registerAdapter(CollegeAdapter());
     Hive.registerAdapter(FunctionTypeAdapter());
-  }
-
-  static Future<void> _openBoxes() async {
-    await Hive.openBox<Curriculum>('curriculums');
-    await Hive.openBox<College>('colleges');
-    await Hive.openBox<List<String>>('collegeIndexes');
-    await Hive.openBox<Major>('majors');
-    await Hive.openBox<List<String>>('majorIndexes');
-    await Hive.openBox<Course>('courses');
   }
 }
