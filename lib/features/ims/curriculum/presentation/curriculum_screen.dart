@@ -119,16 +119,16 @@ class CurriculumScreen extends ConsumerWidget {
       return const Center(child: Text('请选择专业查看培养方案'));
     }
 
-    final colMapper = <String, String Function(Course)>{
+    final colMapper = <String, String? Function(Course)>{
       '课程代码': (c) => c.code,
       '课程名称': (c) => c.name,
       '学分': (c) => c.credit.toStringAsFixed(1),
       '课程大类': (c) => c.mainCategory,
       '二级分类': (c) => c.subCategory,
-      '三级分类': (c) => c.tertiaryCategory ?? '',
-      '课程地位': (c) => c.requirement.name,
-      '课程性质': (c) => c.importance == .core ? c.importance.name : '',
-      '考核方式': (c) => c.assessmentMethod.name,
+      '三级分类': (c) => c.tertiaryCategory,
+      '课程地位': (c) => c.requirement.displayName,
+      '课程性质': (c) => c.importance == .core ? c.importance.displayName : '',
+      '考核方式': (c) => c.assessmentMethod.displayName,
       '总学时': (c) => c.creditHour.total.toString(),
       '讲授学时': (c) => c.creditHour.lecture.toString(),
       '实验学时': (c) => c.creditHour.lab.toString(),
@@ -143,7 +143,7 @@ class CurriculumScreen extends ConsumerWidget {
     final cells = List.generate(
       courses.length,
       (rowIndex) => colHeaders
-          .map((col) => Text(colMapper[col]!(courses[rowIndex])))
+          .map((col) => Text(colMapper[col]!(courses[rowIndex]) ?? ''))
           .toList(),
     );
 
