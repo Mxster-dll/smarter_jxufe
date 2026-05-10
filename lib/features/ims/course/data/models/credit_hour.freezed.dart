@@ -17,15 +17,15 @@ final _privateConstructorUsedError = UnsupportedError(
 /// @nodoc
 mixin _$CreditHour {
   @HiveField(0)
-  int get total => throw _privateConstructorUsedError;
+  int get total => throw _privateConstructorUsedError; // 总学时
   @HiveField(1)
-  int get lecture => throw _privateConstructorUsedError;
+  int get lecture => throw _privateConstructorUsedError; // 讲授学时
   @HiveField(2)
-  int get lab => throw _privateConstructorUsedError;
+  int get lab => throw _privateConstructorUsedError; // 实验学时
   @HiveField(3)
-  int get practice => throw _privateConstructorUsedError;
+  int get practice => throw _privateConstructorUsedError; // 实践学时
   @HiveField(4)
-  int get other => throw _privateConstructorUsedError;
+  int get other => throw _privateConstructorUsedError; // 其它学时
   @HiveField(5)
   double get weekly => throw _privateConstructorUsedError;
 
@@ -176,21 +176,26 @@ class _$CreditHourImpl implements _CreditHour {
   @override
   @HiveField(0)
   final int total;
+// 总学时
   @override
   @HiveField(1)
   final int lecture;
+// 讲授学时
   @override
   @JsonKey()
   @HiveField(2)
   final int lab;
+// 实验学时
   @override
   @JsonKey()
   @HiveField(3)
   final int practice;
+// 实践学时
   @override
   @JsonKey()
   @HiveField(4)
   final int other;
+// 其它学时
   @override
   @HiveField(5)
   final double weekly;
@@ -237,19 +242,19 @@ abstract class _CreditHour implements CreditHour {
   @override
   @HiveField(0)
   int get total;
-  @override
+  @override // 总学时
   @HiveField(1)
   int get lecture;
-  @override
+  @override // 讲授学时
   @HiveField(2)
   int get lab;
-  @override
+  @override // 实验学时
   @HiveField(3)
   int get practice;
-  @override
+  @override // 实践学时
   @HiveField(4)
   int get other;
-  @override
+  @override // 其它学时
   @HiveField(5)
   double get weekly;
   @override

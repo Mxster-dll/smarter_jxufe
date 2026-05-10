@@ -14,10 +14,6 @@ T _$identity<T>(T value) => value;
 final _privateConstructorUsedError = UnsupportedError(
     'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
 
-Course _$CourseFromJson(Map<String, dynamic> json) {
-  return _Course.fromJson(json);
-}
-
 /// @nodoc
 mixin _$Course {
   @HiveField(1)
@@ -45,7 +41,6 @@ mixin _$Course {
   @HiveField(12)
   String get identification => throw _privateConstructorUsedError;
 
-  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
   $CourseCopyWith<Course> get copyWith => throw _privateConstructorUsedError;
 }
@@ -262,7 +257,7 @@ class __$$CourseImplCopyWithImpl<$Res>
 }
 
 /// @nodoc
-@JsonSerializable()
+
 class _$CourseImpl implements _Course {
   const _$CourseImpl(
       {@HiveField(1) required this.code,
@@ -277,9 +272,6 @@ class _$CourseImpl implements _Course {
       @HiveField(10) required this.importance,
       @HiveField(11) required this.assessmentMethod,
       @HiveField(12) required this.identification});
-
-  factory _$CourseImpl.fromJson(Map<String, dynamic> json) =>
-      _$$CourseImplFromJson(json);
 
   @override
   @HiveField(1)
@@ -350,7 +342,6 @@ class _$CourseImpl implements _Course {
                 other.identification == identification));
   }
 
-  @JsonKey(ignore: true)
   @override
   int get hashCode => Object.hash(
       runtimeType,
@@ -372,13 +363,6 @@ class _$CourseImpl implements _Course {
   @pragma('vm:prefer-inline')
   _$$CourseImplCopyWith<_$CourseImpl> get copyWith =>
       __$$CourseImplCopyWithImpl<_$CourseImpl>(this, _$identity);
-
-  @override
-  Map<String, dynamic> toJson() {
-    return _$$CourseImplToJson(
-      this,
-    );
-  }
 }
 
 abstract class _Course implements Course {
@@ -395,8 +379,6 @@ abstract class _Course implements Course {
       @HiveField(10) required final CourseImportance importance,
       @HiveField(11) required final AssessmentMethod assessmentMethod,
       @HiveField(12) required final String identification}) = _$CourseImpl;
-
-  factory _Course.fromJson(Map<String, dynamic> json) = _$CourseImpl.fromJson;
 
   @override
   @HiveField(1)
