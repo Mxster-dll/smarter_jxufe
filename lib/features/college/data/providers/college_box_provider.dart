@@ -6,4 +6,5 @@ import 'package:smarter_jxufe/features/college/domain/college.dart';
 part 'college_box_provider.g.dart';
 
 @riverpod
-Box<College> collegeBox(CollegeBoxRef ref) => Hive.box<College>('colleges');
+Future<Box<College>> collegeBox(CollegeBoxRef ref) =>
+    Hive.openBox<College>('colleges');

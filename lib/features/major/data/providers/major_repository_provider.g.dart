@@ -6,11 +6,12 @@ part of 'major_repository_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$majorRepositoryHash() => r'28869a6bc2f91c9a5060d61e3c4b1a95df848f32';
+String _$majorRepositoryHash() => r'23a35132fbad60b5114a5c7e3a2804c7fad46d95';
 
 /// See also [majorRepository].
 @ProviderFor(majorRepository)
-final majorRepositoryProvider = AutoDisposeProvider<MajorRepository>.internal(
+final majorRepositoryProvider =
+    AutoDisposeFutureProvider<MajorRepository>.internal(
   majorRepository,
   name: r'majorRepositoryProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -20,6 +21,6 @@ final majorRepositoryProvider = AutoDisposeProvider<MajorRepository>.internal(
   allTransitiveDependencies: null,
 );
 
-typedef MajorRepositoryRef = AutoDisposeProviderRef<MajorRepository>;
+typedef MajorRepositoryRef = AutoDisposeFutureProviderRef<MajorRepository>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

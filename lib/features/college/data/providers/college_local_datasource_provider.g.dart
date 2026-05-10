@@ -7,12 +7,12 @@ part of 'college_local_datasource_provider.dart';
 // **************************************************************************
 
 String _$collegeLocalDataSourceHash() =>
-    r'1cd9e6520ec2d3450f3646218ac888ab29e19a1a';
+    r'953c8e9e00b520594d2b11245255555de4060625';
 
 /// See also [collegeLocalDataSource].
 @ProviderFor(collegeLocalDataSource)
 final collegeLocalDataSourceProvider =
-    AutoDisposeProvider<CollegeLocalDataSource>.internal(
+    AutoDisposeFutureProvider<CollegeLocalDataSource>.internal(
   collegeLocalDataSource,
   name: r'collegeLocalDataSourceProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -23,6 +23,6 @@ final collegeLocalDataSourceProvider =
 );
 
 typedef CollegeLocalDataSourceRef
-    = AutoDisposeProviderRef<CollegeLocalDataSource>;
+    = AutoDisposeFutureProviderRef<CollegeLocalDataSource>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

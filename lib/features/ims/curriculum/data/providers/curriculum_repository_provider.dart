@@ -9,8 +9,12 @@ import 'package:smarter_jxufe/features/ims/curriculum/data/providers/curriculum_
 part 'curriculum_repository_provider.g.dart';
 
 @riverpod
-CurriculumRepository curriculumRepository(CurriculumRepositoryRef ref) {
-  final localDataSource = ref.watch(curriculumLocalDataSourceProvider);
+Future<CurriculumRepository> curriculumRepository(
+  CurriculumRepositoryRef ref,
+) async {
+  final localDataSource = await ref.watch(
+    curriculumLocalDataSourceProvider.future,
+  );
   final remoteDataSource = ref.watch(curriculumRemoteDataSourceProvider);
   final htmlParser = ref.watch(curriculumHtmlParserProvider);
   final curriculumMapper = ref.watch(curriculumMapperProvider);

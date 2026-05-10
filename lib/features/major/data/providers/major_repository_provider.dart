@@ -8,8 +8,8 @@ import 'package:smarter_jxufe/features/ims/curriculum/data/providers/curriculum_
 part 'major_repository_provider.g.dart';
 
 @riverpod
-MajorRepository majorRepository(MajorRepositoryRef ref) {
-  final majorLocal = ref.watch(majorLocalDataSourceProvider);
+Future<MajorRepository> majorRepository(MajorRepositoryRef ref) async {
+  final majorLocal = await ref.watch(majorLocalDataSourceProvider.future);
   final curriculumRemote = ref.watch(curriculumMajorRemoteDataSourceProvider);
   final majorMapper = ref.watch(majorMapperProvider);
 

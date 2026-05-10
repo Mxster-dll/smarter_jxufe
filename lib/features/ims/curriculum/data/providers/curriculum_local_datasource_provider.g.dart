@@ -7,12 +7,12 @@ part of 'curriculum_local_datasource_provider.dart';
 // **************************************************************************
 
 String _$curriculumLocalDataSourceHash() =>
-    r'1a186d2b7a2df3d2e7fb502cc184b6f0891def90';
+    r'62d0b7e41f2343ca93f5bdbb58dbb63f1698783c';
 
 /// See also [curriculumLocalDataSource].
 @ProviderFor(curriculumLocalDataSource)
 final curriculumLocalDataSourceProvider =
-    AutoDisposeProvider<CurriculumLocalDataSource>.internal(
+    AutoDisposeFutureProvider<CurriculumLocalDataSource>.internal(
   curriculumLocalDataSource,
   name: r'curriculumLocalDataSourceProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -23,6 +23,6 @@ final curriculumLocalDataSourceProvider =
 );
 
 typedef CurriculumLocalDataSourceRef
-    = AutoDisposeProviderRef<CurriculumLocalDataSource>;
+    = AutoDisposeFutureProviderRef<CurriculumLocalDataSource>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member
