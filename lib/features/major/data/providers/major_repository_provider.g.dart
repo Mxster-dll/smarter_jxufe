@@ -6,7 +6,7 @@ part of 'major_repository_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$majorRepositoryHash() => r'b6ccd9970b00cc36a5a3c180e0f12ffb2e919566';
+String _$majorRepositoryHash() => r'0af75c6eb0667680960ce6c50a20dd1509be6848';
 
 /// See also [majorRepository].
 @ProviderFor(majorRepository)
