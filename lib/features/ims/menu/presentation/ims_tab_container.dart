@@ -15,13 +15,14 @@ class ImsTabContainer extends StatefulWidget {
 
 class _ImsTabContainerState extends State<ImsTabContainer> {
   late PageController _pageController;
-  late int _currentIndex;
+  late ImsTab _currentTab;
 
   @override
   void initState() {
     super.initState();
-    _currentIndex = ImsTab.values.indexOf(widget.initialTab);
-    _pageController = PageController(initialPage: _currentIndex);
+    _currentTab = widget.initialTab;
+    final initialIndex = ImsTab.values.indexOf(_currentTab);
+    _pageController = PageController(initialPage: initialIndex);
   }
 
   @override
@@ -31,15 +32,13 @@ class _ImsTabContainerState extends State<ImsTabContainer> {
   }
 
   void _onTabSelected(ImsTab tab) {
-    final newIndex = ImsTab.values.indexOf(tab);
-    if (newIndex != _currentIndex) {
-      _currentIndex = newIndex;
-      _pageController.animateToPage(
-        newIndex,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-    }
+    if (tab == _currentTab) return;
+    final targetIndex = ImsTab.values.indexOf(tab);
+    _pageController.animateToPage(
+      targetIndex,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
   }
 
   @override
@@ -49,13 +48,13 @@ class _ImsTabContainerState extends State<ImsTabContainer> {
         controller: _pageController,
         onPageChanged: (index) {
           setState(() {
-            _currentIndex = index;
+            _currentTab = ImsTab.values[index];
           });
         },
         children: ImsTab.values.map(_getPage).toList(),
       ),
       bottomNavigationBar: _CustomBottomNavBar(
-        currentTab: ImsTab.values[_currentIndex],
+        currentTab: _currentTab,
         onTabSelected: _onTabSelected,
       ),
     );
@@ -69,6 +68,7 @@ class _ImsTabContainerState extends State<ImsTabContainer> {
   };
 }
 
+// 底部栏组件（与之前相同，只是参数类型已是 ImsTab）
 class _CustomBottomNavBar extends StatelessWidget {
   final ImsTab currentTab;
   final ValueChanged<ImsTab> onTabSelected;
