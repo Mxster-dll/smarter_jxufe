@@ -14,21 +14,49 @@ class ImsTabContainer extends StatefulWidget {
 }
 
 class _ImsTabContainerState extends State<ImsTabContainer> {
-  late ImsTab _currentTab;
+  late PageController _pageController;
+  late int _currentIndex;
 
   @override
   void initState() {
     super.initState();
-    _currentTab = widget.initialTab;
+    _currentIndex = ImsTab.values.indexOf(widget.initialTab);
+    _pageController = PageController(initialPage: _currentIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _onTabSelected(ImsTab tab) {
+    final newIndex = ImsTab.values.indexOf(tab);
+    if (newIndex != _currentIndex) {
+      _currentIndex = newIndex;
+      _pageController.animateToPage(
+        newIndex,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _getPage(_currentTab),
+      body: PageView(
+        controller: _pageController,
+        onPageChanged: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        children: ImsTab.values.map(_getPage).toList(),
+      ),
       bottomNavigationBar: _CustomBottomNavBar(
-        currentTab: _currentTab,
-        onTabSelected: (tab) => setState(() => _currentTab = tab),
+        currentTab: ImsTab.values[_currentIndex],
+        onTabSelected: _onTabSelected,
       ),
     );
   }
