@@ -1,8 +1,8 @@
-// lib/features/ims/shared/presentation/ims_tab_container.dart
-
 import 'package:flutter/material.dart';
+
 import 'package:smarter_jxufe/features/ims/curriculum/presentation/curriculum_screen.dart';
 import 'package:smarter_jxufe/features/ims/menu/domain/ims_tab.dart';
+import 'package:smarter_jxufe/features/ims/schedule/presentation/schedule_screen.dart';
 
 class ImsTabContainer extends StatefulWidget {
   final ImsTab initialTab;
@@ -63,7 +63,7 @@ class _ImsTabContainerState extends State<ImsTabContainer> {
   Widget _getPage(ImsTab tab) => switch (tab) {
     .curriculum => const CurriculumScreen(),
     .grade => const Text('成绩'),
-    .schedule => const Text('课表'),
+    .schedule => const ScheduleScreen(),
     .studentInfo => const Text('学生信息'),
   };
 }
