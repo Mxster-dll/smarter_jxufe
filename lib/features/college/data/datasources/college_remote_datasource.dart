@@ -1,13 +1,13 @@
 import 'package:dio/dio.dart';
 
-import 'package:smarter_jxufe/features/ims/curriculum/data/datasources/api_models/api_college.dart';
+import 'package:smarter_jxufe/features/college/data/datasources/api_models/api_college.dart';
 
-class CurriculumCollegeRemoteDataSource {
+class CollegeRemoteDataSource {
   final Dio _dio;
 
-  CurriculumCollegeRemoteDataSource(this._dio);
+  CollegeRemoteDataSource(this._dio);
 
-  Future<List<ApiCollege>> getCollegeList() async {
+  Future<List<ApiCollege>> getAllCollege() async {
     final response = await _dio.post(
       '/frame/droplist/getDropLists.action',
       data: {
@@ -28,9 +28,7 @@ class CurriculumCollegeRemoteDataSource {
       ),
     );
 
-    final List<dynamic> rawList = response.data;
-    return rawList
-        .map((e) => ApiCollege.fromJson(e as Map<String, dynamic>))
-        .toList();
+    final rawList = response.data as List<dynamic>;
+    return ApiCollege.fromJsonList(rawList);
   }
 }

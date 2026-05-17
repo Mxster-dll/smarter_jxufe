@@ -10,4 +10,8 @@ class ApiCollege with _$ApiCollege {
 
   factory ApiCollege.fromJson(Map<String, dynamic> json) =>
       _$ApiCollegeFromJson(json);
+
+  static List<ApiCollege> fromJsonList(List<dynamic> jsonList) => jsonList
+      .map((e) => ApiCollege.fromJson(e as Map<String, dynamic>))
+      .toList();
 }

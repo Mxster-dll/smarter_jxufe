@@ -10,4 +10,8 @@ class ApiMajor with _$ApiMajor {
 
   factory ApiMajor.fromJson(Map<String, dynamic> json) =>
       _$ApiMajorFromJson(json);
+
+  static List<ApiMajor> fromJsonList(List<dynamic> jsonList) => jsonList
+      .map((e) => ApiMajor.fromJson(e as Map<String, dynamic>))
+      .toList();
 }

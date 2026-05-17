@@ -17,24 +17,28 @@ class MajorAdapter extends TypeAdapter<Major> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return Major(
-      fields[0] as String,
-      fields[1] as String,
-      functionIdIn: (fields[2] as Map?)?.cast<FunctionType, String>(),
-    ).._aliases = (fields[3] as List).cast<String>();
+      id: fields[0] as String,
+      name: fields[1] as String,
+      code: fields[2] as String,
+      year: fields[3] as int,
+      collegeName: fields[4] as String,
+    );
   }
 
   @override
   void write(BinaryWriter writer, Major obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(5)
       ..writeByte(0)
-      ..write(obj.uuid)
+      ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.standardName)
+      ..write(obj.name)
       ..writeByte(2)
-      ..write(obj.functionIdIn)
+      ..write(obj.code)
       ..writeByte(3)
-      ..write(obj._aliases);
+      ..write(obj.year)
+      ..writeByte(4)
+      ..write(obj.collegeName);
   }
 
   @override

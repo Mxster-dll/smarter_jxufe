@@ -1,11 +1,11 @@
 import 'package:dio/dio.dart';
 
-import 'package:smarter_jxufe/features/ims/curriculum/data/datasources/api_models/api_major.dart';
+import 'package:smarter_jxufe/features/major/data/datasources/api_models/api_major.dart';
 
-class CurriculumMajorRemoteDataSource {
+class MajorRemoteDataSource {
   final Dio _dio;
 
-  CurriculumMajorRemoteDataSource(this._dio);
+  MajorRemoteDataSource(this._dio);
 
   Future<List<ApiMajor>> getMajorList(int year, String collegeId) async {
     final response = await _dio.post(
@@ -28,8 +28,6 @@ class CurriculumMajorRemoteDataSource {
     );
 
     final List<dynamic> rawList = response.data;
-    return rawList
-        .map((e) => ApiMajor.fromJson(e as Map<String, dynamic>))
-        .toList();
+    return ApiMajor.fromJsonList(rawList);
   }
 }

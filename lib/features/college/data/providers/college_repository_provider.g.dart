@@ -6,7 +6,7 @@ part of 'college_repository_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$collegeRepositoryHash() => r'52d7488410259616eb515246c57a8316b0c597d2';
+String _$collegeRepositoryHash() => r'f5400a873ee5337e150939cbf2021ce2913d3e30';
 
 /// See also [collegeRepository].
 @ProviderFor(collegeRepository)

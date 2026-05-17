@@ -1,7 +1,5 @@
-import 'package:riverpod/riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:smarter_jxufe/core/errors/failures.dart';
-import 'package:smarter_jxufe/core/function_type.dart';
 import 'package:smarter_jxufe/features/college/data/college_repository.dart';
 import 'package:smarter_jxufe/features/college/data/providers/college_repository_provider.dart';
 import 'package:smarter_jxufe/features/college/domain/college.dart';
@@ -50,11 +48,7 @@ class CurriculumViewModel extends _$CurriculumViewModel {
     state = AsyncData(
       currentState.copyWith(isLoadingColleges: true, errorMessage: null),
     );
-    final result = await _collegeRepository.getCollegeListIn(
-      FunctionType.curriculum, // 假设 .curriculum 对应 FunctionType.curriculum
-      year: DateTime.now().year,
-      forceRefresh: true,
-    );
+    final result = await _collegeRepository.getAllCollege();
     result.fold(
       (failure) {
         print("加载学院列表失败：${failure.message}");
@@ -112,12 +106,7 @@ class CurriculumViewModel extends _$CurriculumViewModel {
     state = AsyncData(
       currentState.copyWith(isLoadingMajors: true, errorMessage: null),
     );
-    final result = await _majorRepository.getMajorListIn(
-      FunctionType.curriculum,
-      year: year,
-      college: college,
-      forceRefresh: true,
-    );
+    final result = await _majorRepository.getAllMajorIn(college, year: year);
     result.fold(
       (failure) {
         print("加载专业列表失败：${failure.message}");
@@ -161,7 +150,7 @@ class CurriculumViewModel extends _$CurriculumViewModel {
     state = AsyncData(
       currentState.copyWith(isLoadingTable: true, errorMessage: null),
     );
-    final result = await _curriculumRepository.getCurriculum(
+    final result = await _curriculumRepository.getCurriculumIn(
       year,
       college,
       major,

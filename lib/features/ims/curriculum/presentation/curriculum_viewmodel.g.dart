@@ -7,7 +7,7 @@ part of 'curriculum_viewmodel.dart';
 // **************************************************************************
 
 String _$curriculumViewModelHash() =>
-    r'16b14fcefeb9922b10dbef734796b92f9a6f0646';
+    r'2d93bedc44162413819ef1119bde37c6fc21d847';
 
 /// See also [CurriculumViewModel].
 @ProviderFor(CurriculumViewModel)

@@ -18,8 +18,8 @@ class CurriculumAdapter extends TypeAdapter<Curriculum> {
     };
     return Curriculum(
       year: fields[0] as int,
-      collegeId: fields[1] as String,
-      majorId: fields[2] as String,
+      collegeName: fields[1] as String,
+      majorName: fields[2] as String,
       courses: (fields[3] as List).cast<Course>(),
       lastUpdated: fields[4] as DateTime?,
     );
@@ -32,9 +32,9 @@ class CurriculumAdapter extends TypeAdapter<Curriculum> {
       ..writeByte(0)
       ..write(obj.year)
       ..writeByte(1)
-      ..write(obj.collegeId)
+      ..write(obj.collegeName)
       ..writeByte(2)
-      ..write(obj.majorId)
+      ..write(obj.majorName)
       ..writeByte(3)
       ..write(obj.courses)
       ..writeByte(4)
