@@ -1,15 +1,11 @@
 import 'package:dio/dio.dart';
 
-import 'package:smarter_jxufe/features/major/data/anti_corruption/major_mapper.dart';
 import 'package:smarter_jxufe/features/ims/curriculum/domain/curriculum_key.dart';
 
 class CurriculumRemoteDataSource {
   final Dio _dio;
 
-  CurriculumRemoteDataSource({
-    required Dio dio,
-    required MajorMapper majorMapper,
-  }) : _dio = dio;
+  CurriculumRemoteDataSource(this._dio);
 
   Future<String> getCurriculumHtml(
     int year,

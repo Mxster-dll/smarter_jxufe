@@ -7,7 +7,7 @@ part of 'curriculum_remote_datasource_provider.dart';
 // **************************************************************************
 
 String _$curriculumRemoteDataSourceHash() =>
-    r'3262d01183227d42305b73697cc3302c69e84565';
+    r'a390edd3ee6a12fea16679d86bd80d3fe495a01d';
 
 /// See also [curriculumRemoteDataSource].
 @ProviderFor(curriculumRemoteDataSource)
