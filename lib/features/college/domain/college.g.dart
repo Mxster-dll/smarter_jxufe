@@ -19,22 +19,20 @@ class CollegeAdapter extends TypeAdapter<College> {
     return College(
       fields[0] as String,
       fields[1] as String,
-      functionIdIn: (fields[2] as Map?)?.cast<FunctionType, String>(),
-    ).._aliases = (fields[3] as List).cast<String>();
+      fields[2] as String,
+    );
   }
 
   @override
   void write(BinaryWriter writer, College obj) {
     writer
-      ..writeByte(4)
-      ..writeByte(0)
-      ..write(obj.uuid)
-      ..writeByte(1)
-      ..write(obj.standardName)
-      ..writeByte(2)
-      ..write(obj.functionIdIn)
       ..writeByte(3)
-      ..write(obj._aliases);
+      ..writeByte(0)
+      ..write(obj.id)
+      ..writeByte(1)
+      ..write(obj.name)
+      ..writeByte(2)
+      ..write(obj.code);
   }
 
   @override

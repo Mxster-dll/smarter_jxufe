@@ -12,8 +12,8 @@ part 'curriculum.g.dart';
 class Curriculum with _$Curriculum {
   const factory Curriculum({
     @HiveField(0) required int year,
-    @HiveField(1) required String collegeId,
-    @HiveField(2) required String majorId,
+    @HiveField(1) required String collegeName,
+    @HiveField(2) required String majorName,
     @HiveField(3) required List<Course> courses,
     @HiveField(4) DateTime? lastUpdated,
   }) = _Curriculum;

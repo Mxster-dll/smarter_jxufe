@@ -8,40 +8,44 @@ class CurriculumLocalDataSource {
 
   CurriculumLocalDataSource(this._box);
 
-  String keyString(CurriculumKey key) =>
-      keyStringFrom(key.year, key.collegeId, key.majorId);
+  String toKeyString(CurriculumKey key) =>
+      keyString(key.year, key.college.name, key.major.name);
 
-  String keyStringFrom(int year, String collegeId, String majorId) =>
-      'curriculum_${year}_${collegeId}_$majorId';
+  String keyString(int year, String collegeName, String majorName) =>
+      'curriculum_${year}_${collegeName}_$majorName';
 
   Future<void> saveCurriculum({
     required int year,
-    required String collegeId,
-    required String majorId,
+    required String collegeName,
+    required String majorName,
     required Curriculum curriculum,
-  }) => _box.put(keyStringFrom(year, collegeId, majorId), curriculum);
+  }) => _box.put(keyString(year, collegeName, majorName), curriculum);
 
   Future<void> saveCurriculumByKey(CurriculumKey key, Curriculum curriculum) =>
-      _box.put(keyString(key), curriculum);
+      _box.put(toKeyString(key), curriculum);
 
-  bool existCurriculum(int year, String collegeId, String majorId) =>
-      _box.containsKey(keyStringFrom(year, collegeId, majorId));
+  bool existCurriculum(int year, String collegeName, String majorName) =>
+      _box.containsKey(keyString(year, collegeName, majorName));
 
   bool existCurriculumByKey(CurriculumKey key) =>
-      _box.containsKey(keyString(key));
+      _box.containsKey(toKeyString(key));
 
-  Curriculum? getCurriculum(int year, String collegeId, String majorId) =>
-      _box.get(keyStringFrom(year, collegeId, majorId));
+  Curriculum? getCurriculum(int year, String collegeName, String majorName) =>
+      _box.get(keyString(year, collegeName, majorName));
 
-  Curriculum? getCurriculumByKey(CurriculumKey key) => _box.get(keyString(key));
+  Curriculum? getCurriculumByKey(CurriculumKey key) =>
+      _box.get(toKeyString(key));
 
   List<Curriculum> getAllCurriculums() => _box.values.toList();
 
-  Future<void> deleteCurriculum(int year, String collegeId, String majorId) =>
-      _box.delete(keyStringFrom(year, collegeId, majorId));
+  Future<void> deleteCurriculum(
+    int year,
+    String collegeName,
+    String majorName,
+  ) => _box.delete(keyString(year, collegeName, majorName));
 
   Future<void> deleteCurriculumByKey(CurriculumKey key) =>
-      _box.delete(keyString(key));
+      _box.delete(toKeyString(key));
 
   Future<void> clearAll() => _box.clear();
 }

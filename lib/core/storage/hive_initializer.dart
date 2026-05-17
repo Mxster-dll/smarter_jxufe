@@ -1,7 +1,7 @@
 import 'package:hive_flutter/hive_flutter.dart';
+
 import 'package:smarter_jxufe/core/function_type.dart';
 import 'package:smarter_jxufe/features/college/domain/college.dart';
-
 import 'package:smarter_jxufe/features/ims/course/data/models/assessment_method.dart';
 import 'package:smarter_jxufe/features/ims/course/data/models/course.dart';
 import 'package:smarter_jxufe/features/ims/course/data/models/course_importance.dart';

@@ -75,10 +75,8 @@ class CurriculumScreen extends ConsumerWidget {
       hint: const Text('选择学院'),
       items: state.colleges
           .map(
-            (college) => DropdownMenuItem(
-              value: college,
-              child: Text(college.standardName),
-            ),
+            (college) =>
+                DropdownMenuItem(value: college, child: Text(college.name)),
           )
           .toList(),
       onChanged: viewModel.onCollegeChanged,
@@ -105,8 +103,7 @@ class CurriculumScreen extends ConsumerWidget {
       hint: const Text('选择专业'),
       items: state.majors
           .map(
-            (major) =>
-                DropdownMenuItem(value: major, child: Text(major.standardName)),
+            (major) => DropdownMenuItem(value: major, child: Text(major.name)),
           )
           .toList(),
       onChanged: viewModel.onMajorChanged,

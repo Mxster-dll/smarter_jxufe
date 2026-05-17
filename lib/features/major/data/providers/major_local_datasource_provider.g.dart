@@ -7,7 +7,7 @@ part of 'major_local_datasource_provider.dart';
 // **************************************************************************
 
 String _$majorLocalDataSourceHash() =>
-    r'60bc1513b9b257b9a22f908a52906b3d22f84c55';
+    r'43103e2a94afbea948d4c6bd3eeb9bbe076a863e';
 
 /// See also [majorLocalDataSource].
 @ProviderFor(majorLocalDataSource)

@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 
-import 'package:smarter_jxufe/features/ims/curriculum/data/anti_corruption/major_mapper.dart';
+import 'package:smarter_jxufe/features/major/data/major_mapper.dart';
 import 'package:smarter_jxufe/features/ims/curriculum/domain/curriculum_key.dart';
 
 class CurriculumRemoteDataSource {
@@ -40,5 +40,5 @@ class CurriculumRemoteDataSource {
   }
 
   Future<String> getCurriculumHtmlByKey(CurriculumKey key) =>
-      getCurriculumHtml(key.year, key.collegeId, key.majorId);
+      getCurriculumHtml(key.year, key.college.code, key.major.code);
 }

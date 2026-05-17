@@ -1,55 +1,49 @@
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'package:smarter_jxufe/core/constants/hive_type_ids.dart';
-import 'package:smarter_jxufe/core/function_type.dart';
 
 part 'major.g.dart';
 
 @HiveType(typeId: kMajorTypeId)
 class Major {
   @HiveField(0)
-  final String uuid;
+  final String id;
 
   @HiveField(1)
-  String standardName;
+  final String name;
 
   @HiveField(2)
-  final Map<FunctionType, String> functionIdIn;
+  final String code;
 
   @HiveField(3)
-  List<String> _aliases;
+  final int year;
 
-  Major(
-    this.uuid,
-    this.standardName, {
-    Map<FunctionType, String>? functionIdIn,
-    List<String>? aliases,
-  }) : functionIdIn = functionIdIn ?? {},
-       _aliases = aliases ?? [];
+  @HiveField(4)
+  final String collegeName;
+
+  Major({
+    required this.id,
+    required this.name,
+    required this.code,
+    required this.year,
+    required this.collegeName,
+  });
 
   @override
-  String toString() => 'Major(uuid: $uuid, standardName: $standardName)';
+  String toString() =>
+      'Major<$year>[$id](name: $collegeName-$name, code: $code)';
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is Major && runtimeType == other.runtimeType && uuid == other.uuid;
+      other is Major &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          code == other.code &&
+          name == other.name &&
+          year == other.year &&
+          collegeName == other.collegeName;
 
   @override
-  int get hashCode => uuid.hashCode;
-
-  Set<String> get aliases => _aliases.toSet();
-
-  bool hasAlias(String alias) => _aliases.contains(alias);
-  bool isKnownAs(String name) => standardName == name || hasAlias(name);
-
-  void addAlias(String alias) {
-    if (!_aliases.contains(alias)) {
-      _aliases.add(alias);
-    }
-  }
-
-  void removeAlias(String alias) => _aliases.remove(alias);
-
-  void restoreDefaultAliases() => _aliases = [];
+  int get hashCode => '$id|$name|$code|$collegeName|$year'.hashCode;
 }
