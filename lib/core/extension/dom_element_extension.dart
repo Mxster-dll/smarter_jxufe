@@ -1,7 +1,7 @@
 import 'package:html/dom.dart';
 
 extension DomElementExtension on Element {
-  List<List<String>> get toMatrix => querySelectorAll('tr')
+  List<List<String>> toMatrix() => querySelectorAll('tr')
       .map(
         (Element row) => row
             .querySelectorAll('th, td')

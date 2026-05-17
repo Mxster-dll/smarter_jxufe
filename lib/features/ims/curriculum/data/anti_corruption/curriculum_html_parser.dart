@@ -13,6 +13,6 @@ class CurriculumHtmlParser {
       throw Exception('期望有1个 table，但找到了${tables.length}个 table\n $tables');
     }
 
-    return tables.first.toMatrix;
+    return tables.first.toMatrix();
   }
 }
