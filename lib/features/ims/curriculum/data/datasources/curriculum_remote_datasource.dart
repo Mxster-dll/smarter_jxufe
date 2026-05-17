@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 
-import 'package:smarter_jxufe/features/major/data/major_mapper.dart';
+import 'package:smarter_jxufe/features/major/data/anti_corruption/major_mapper.dart';
 import 'package:smarter_jxufe/features/ims/curriculum/domain/curriculum_key.dart';
 
 class CurriculumRemoteDataSource {

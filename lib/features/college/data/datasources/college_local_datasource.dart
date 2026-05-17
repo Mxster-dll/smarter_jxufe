@@ -3,7 +3,7 @@ import 'package:hive/hive.dart';
 import 'package:smarter_jxufe/features/college/domain/college.dart';
 
 class CollegeLocalDataSource {
-  /// 以 [College] 的 [name] 为键
+  /// 以 [College] 的 [name] 为键，唯一性由仓库保证
   final Box<College> _box;
 
   CollegeLocalDataSource(this._box);
