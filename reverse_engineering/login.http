@@ -1,0 +1,44 @@
+POST https://ssl.jxufe.edu.cn/cas/mfa/detect HTTP/1.1
+Host: ssl.jxufe.edu.cn
+Connection: keep-alive
+sec-ch-ua-platform: "Windows"
+X-Requested-With: XMLHttpRequest
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0
+Accept: application/json, text/javascript, */*; q=0.01
+sec-ch-ua: "Chromium";v="148", "Microsoft Edge";v="148", "Not/A)Brand";v="99"
+Content-Type: application/x-www-form-urlencoded; charset=UTF-8
+sec-ch-ua-mobile: ?0
+Origin: https://ssl.jxufe.edu.cn
+Sec-Fetch-Site: same-origin
+Sec-Fetch-Mode: cors
+Sec-Fetch-Dest: empty
+Referer: https://ssl.jxufe.edu.cn/cas/login?service=http%3A%2F%2Fehall.jxufe.edu.cn%2Famp-auth-adapter%2FloginSuccess%3FsessionToken%3DTESTSESSIONTOKEN0000000000000002
+Accept-Encoding: gzip, deflate, br, zstd
+Accept-Language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6
+# Cookie: SESSION=<REDACTED>; Hm_lvt_d605d8df6bf5ca8a54fe078683196518=1778982016,1779083781,1779087083,1779087737; Hm_lpvt_d605d8df6bf5ca8a54fe078683196518=1779087737; HMACCOUNT=<REDACTED>
+
+username=REDACTED_USERNAME&password=REDACTED_PASSWORD&fpVisitorId=TESTVISITORID0000000000000000001
+
+### 
+POST https://ssl.jxufe.edu.cn/cas/login?service=http%3A%2F%2Fehall.jxufe.edu.cn%2Famp-auth-adapter%2FloginSuccess%3FsessionToken%3DTESTSESSIONTOKEN0000000000000002 HTTP/1.1
+Host: ssl.jxufe.edu.cn
+Connection: keep-alive
+Cache-Control: max-age=0
+sec-ch-ua: "Chromium";v="148", "Microsoft Edge";v="148", "Not/A)Brand";v="99"
+sec-ch-ua-mobile: ?0
+sec-ch-ua-platform: "Windows"
+Upgrade-Insecure-Requests: 1
+Content-Type: application/x-www-form-urlencoded
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0
+Origin: https://ssl.jxufe.edu.cn
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Sec-Fetch-Site: same-origin
+Sec-Fetch-Mode: navigate
+Sec-Fetch-User: ?1
+Sec-Fetch-Dest: document
+Referer: https://ssl.jxufe.edu.cn/cas/login?service=http%3A%2F%2Fehall.jxufe.edu.cn%2Famp-auth-adapter%2FloginSuccess%3FsessionToken%3DTESTSESSIONTOKEN0000000000000002
+Accept-Encoding: gzip, deflate, br, zstd
+Accept-Language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6
+# Cookie: SESSION=<REDACTED>; Hm_lvt_d605d8df6bf5ca8a54fe078683196518=1778982016,1779083781,1779087083,1779087737; Hm_lpvt_d605d8df6bf5ca8a54fe078683196518=1779087737; HMACCOUNT=<REDACTED>
+
+username=REDACTED_USERNAME&password=REDACTED_PASSWORD&captcha=&currentMenu=1&failN=0&mfaState=JT85QS&execution=<REDACTED>&_eventId=submit&geolocation=&fpVisitorId=TESTVISITORID0000000000000000001&trustAgent=&submit1=Login1

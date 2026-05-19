@@ -56,6 +56,10 @@ class ImsService {
     await dio.get(url);
   }
 
+  void setAuthToken(String token) {
+    _loginService.token = token;
+  }
+
   // BUG 对单个账号未实现单例模式
   ImsService([LoginService? loginService]) {
     _loginService = loginService ?? LoginService();

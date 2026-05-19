@@ -10,6 +10,8 @@ class LoginService {
     ),
   );
 
+  String? token;
+
   late final String _execution;
   String? _fpVisitorId;
   Future<void>? finishPreload;
@@ -83,8 +85,7 @@ class LoginService {
           'Referer': 'http://ehall.jxufe.edu.cn/',
           'Accept-Encoding': 'gzip, deflate, br, zstd',
           'Accept-Language': 'zh-CN,zh;q=0.9',
-          'Cookie':
-              'SESSION=<REDACTED>; TGC=<REDACTED>; Hm_lvt_d605d8df6bf5ca8a54fe078683196518=1775387797,1775397037,1775466632,1775499134; Hm_lpvt_d605d8df6bf5ca8a54fe078683196518=1775499134; HMACCOUNT=<REDACTED>',
+          'Cookie': 'TGC=$token; ',
         },
         followRedirects: false,
       ),
