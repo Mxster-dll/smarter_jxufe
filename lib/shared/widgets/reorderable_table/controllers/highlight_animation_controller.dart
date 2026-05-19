@@ -1,5 +1,3 @@
-// lib/shared/widgets/reorderable_table/controllers/highlight_animation_controller.dart
-
 import 'package:flutter/material.dart';
 
 class HighlightAnimationController {

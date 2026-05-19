@@ -1,5 +1,3 @@
-// lib/shared/widgets/reorderable_table/painters/cell_background_painter.dart
-
 import 'package:flutter/material.dart';
 
 class CellBackgroundPainter extends CustomPainter {
