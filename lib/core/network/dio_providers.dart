@@ -70,12 +70,19 @@
 import 'package:dio/dio.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:smarter_jxufe/old/ims/data/repositories/ims/ImsService.dart';
+import 'package:smarter_jxufe/old/login/JxufeLogin.dart';
 
 part 'dio_providers.g.dart';
 
-final imsService = ImsService();
+final loginService = LoginService();
+final imsService = ImsService(loginService);
 
 @riverpod
 Dio imsDio(ImsDioRef ref) {
   return imsService.dio;
+}
+
+@riverpod
+Dio loginDio(LoginDioRef ref) {
+  return loginService.dio;
 }
