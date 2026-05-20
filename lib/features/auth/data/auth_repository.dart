@@ -1,5 +1,7 @@
+import 'package:dartz/dartz.dart';
+
+import 'package:smarter_jxufe/core/errors/failures.dart';
 import 'package:smarter_jxufe/features/auth/data/datasources/auth_remote_datasource.dart';
-import 'package:smarter_jxufe/features/auth/domain/models/user.dart';
 
 class AuthRepository {
   final AuthRemoteDataSource _remoteDataSource;
@@ -10,11 +12,12 @@ class AuthRepository {
     : _remoteDataSource = remoteDataSource;
 
   /// 登录流程：检测 MFA → 提交登录 → 获取 TGC → 构造 User
-  Future<User> login(String username, String password) async {
+  Future<Either<Failure, void>> login(String username, String password) async {
     final fpVisitorId = _generateFpVisitorId();
 
+    try {
     // 1. 检测 MFA，获取 state
-    final mfaState = await remoteDataSource.detectMfa(
+      final mfaState = await _remoteDataSource.detectMfa(
       username: username,
       password: password,
       fpVisitorId: fpVisitorId,
@@ -27,12 +30,10 @@ class AuthRepository {
       fpVisitorId: fpVisitorId,
       mfaState: mfaState,
     );
-
-    // 3. 可选的获取用户详细信息（例如 /api/user/info）
-    // final name = await _fetchUserName(tgc);
-    const name = '待获取'; // 临时占位
-
-    return User(token: tgc, name: name);
+      return Right(null);
+    } catch (e) {
+      return Left(UnknownFailure("login 错误：$e"));
+    }
   }
 
   String _generateFpVisitorId() {
