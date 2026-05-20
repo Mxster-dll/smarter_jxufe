@@ -4,6 +4,8 @@ import 'package:smarter_jxufe/features/auth/domain/models/user.dart';
 class AuthRepository {
   final AuthRemoteDataSource _remoteDataSource;
 
+  String? _tgc;
+
   AuthRepository({required AuthRemoteDataSource remoteDataSource})
     : _remoteDataSource = remoteDataSource;
 
@@ -19,7 +21,7 @@ class AuthRepository {
     );
 
     // 2. 提交登录，获取 TGC
-    final tgc = await remoteDataSource.login(
+      _tgc = await _remoteDataSource.login(
       username: username,
       password: password,
       fpVisitorId: fpVisitorId,
