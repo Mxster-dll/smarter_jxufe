@@ -148,4 +148,40 @@ class AuthRemoteDataSource {
 
     throw Exception('TGC cookie not found in Set-Cookie');
   }
+
+  Future<String> getRedirectImsUrl(String token) async {
+    final response = await _dio.get(
+      'https://ssl.jxufe.edu.cn/cas/login?service=https%3A%2F%2Fjwxt.jxufe.edu.cn%2F%2Fjxcjcaslogin',
+      options: Options(
+        headers: {
+          'Host': 'ssl.jxufe.edu.cn',
+          'Connection': 'keep-alive',
+          'Upgrade-Insecure-Requests': '1',
+          'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0',
+          'Accept':
+              'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+          'Sec-Fetch-Site': 'cross-site',
+          'Sec-Fetch-Mode': 'navigate',
+          'Sec-Fetch-User': '?1',
+          'Sec-Fetch-Dest': 'document',
+          'sec-ch-ua':
+              '"Not:A-Brand";v="99", "Microsoft Edge";v="145", "Chromium";v="145"',
+          'sec-ch-ua-mobile': '?0',
+          'sec-ch-ua-platform': '"Windows"',
+          'Referer': 'http://ehall.jxufe.edu.cn/',
+          'Accept-Encoding': 'gzip, deflate, br, zstd',
+          'Accept-Language': 'zh-CN,zh;q=0.9',
+          'Cookie': 'TGC=$token; ',
+        },
+        followRedirects: false,
+      ),
+    );
+
+    final location = response.headers.value('location');
+    if (location == null) throw Exception('location == null\n${response.data}');
+    // 这里报错要考虑是不是统一登录的 Cookie 过期了
+
+    return location;
+  }
 }
