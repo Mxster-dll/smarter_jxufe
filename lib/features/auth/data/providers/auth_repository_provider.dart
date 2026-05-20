@@ -8,5 +8,5 @@ part 'auth_repository_provider.g.dart';
 @riverpod
 AuthRepository authRepository(AuthRepositoryRef ref) {
   final remoteDataSource = ref.watch(authRemoteDataSourceProvider);
-  return AuthRepository(remoteDataSource);
+  return AuthRepository(remoteDataSource: remoteDataSource);
 }
