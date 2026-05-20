@@ -2,9 +2,10 @@ import 'package:smarter_jxufe/features/auth/data/datasources/auth_remote_datasou
 import 'package:smarter_jxufe/features/auth/domain/models/user.dart';
 
 class AuthRepository {
-  final AuthRemoteDataSource remoteDataSource;
+  final AuthRemoteDataSource _remoteDataSource;
 
-  AuthRepository(this.remoteDataSource);
+  AuthRepository({required AuthRemoteDataSource remoteDataSource})
+    : _remoteDataSource = remoteDataSource;
 
   /// 登录流程：检测 MFA → 提交登录 → 获取 TGC → 构造 User
   Future<User> login(String username, String password) async {
