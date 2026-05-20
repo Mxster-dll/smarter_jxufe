@@ -4,6 +4,11 @@ abstract class Failure {
   Failure([this.message]);
 }
 
+class UnknownFailure extends Failure {
+  final String? message;
+  UnknownFailure(this.message);
+}
+
 class NetworkFailure extends Failure {
   final String? message;
   NetworkFailure(this.message);
