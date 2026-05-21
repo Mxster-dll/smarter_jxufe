@@ -6,7 +6,7 @@ part of 'curriculum_box_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$curriculumBoxHash() => r'791b2fc4b257a1d1625dac92dce0a9be76e42e2c';
+String _$curriculumBoxHash() => r'8cd6567e97aa608fb34f597b6da1357bf945dc1f';
 
 /// See also [curriculumBox].
 @ProviderFor(curriculumBox)

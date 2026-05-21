@@ -6,7 +6,7 @@ part of 'college_box_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$collegeBoxHash() => r'46a76dffbf6485b3af9d4a79021a67ed3d168c00';
+String _$collegeBoxHash() => r'96f2bb49c386d1dcfe1ce5f0cfb2d497f6621e4a';
 
 /// See also [collegeBox].
 @ProviderFor(collegeBox)
