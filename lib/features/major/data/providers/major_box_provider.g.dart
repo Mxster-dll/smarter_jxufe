@@ -6,7 +6,7 @@ part of 'major_box_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$majorBoxHash() => r'a1c1745e08f22bca36f05c3d97bf2cbbd75be894';
+String _$majorBoxHash() => r'b39375d698c12e10a64540db83ab5dcf43f63544';
 
 /// See also [majorBox].
 @ProviderFor(majorBox)
