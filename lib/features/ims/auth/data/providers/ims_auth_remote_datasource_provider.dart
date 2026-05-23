@@ -1,0 +1,15 @@
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+import 'package:smarter_jxufe/core/network/dio_providers.dart';
+import 'package:smarter_jxufe/features/ims/auth/data/datasource/ims_auth_remote_datasource.dart';
+
+part 'ims_auth_remote_datasource_provider.g.dart';
+
+@riverpod
+ImsAuthRemoteDataSource imsAuthRemoteDataSource(
+  ImsAuthRemoteDataSourceRef ref,
+) {
+  final dio = ref.watch(imsDioProvider);
+
+  return ImsAuthRemoteDataSource(dio);
+}

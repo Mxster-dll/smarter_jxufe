@@ -11,7 +11,7 @@ class AuthRepository {
   AuthRepository({required AuthRemoteDataSource remoteDataSource})
     : _remoteDataSource = remoteDataSource;
 
-  /// 登录流程：检测 MFA → 提交登录 → 获取 TGC → 构造 User
+  /// 登录流程：检测 MFA → 提交登录 → 获取 TGC
   Future<Either<Failure, void>> login(String username, String password) async {
     final fpVisitorId = _generateFpVisitorId();
 

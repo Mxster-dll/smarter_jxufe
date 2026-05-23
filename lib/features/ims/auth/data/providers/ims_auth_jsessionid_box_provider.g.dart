@@ -1,25 +1,27 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'auth_repository_provider.dart';
+part of 'ims_auth_jsessionid_box_provider.dart';
 
 // **************************************************************************
 // RiverpodGenerator
 // **************************************************************************
 
-String _$authRepositoryHash() => r'54f0161163d77916e298ceb0f2ca168b17d16065';
+String _$imsAuthJsessionIdBoxHash() =>
+    r'e731b16270dacf164e971b9ce6645fe34702af79';
 
-/// See also [authRepository].
-@ProviderFor(authRepository)
-final authRepositoryProvider = AutoDisposeProvider<AuthRepository>.internal(
-  authRepository,
-  name: r'authRepositoryProvider',
+/// See also [imsAuthJsessionIdBox].
+@ProviderFor(imsAuthJsessionIdBox)
+final imsAuthJsessionIdBoxProvider =
+    AutoDisposeFutureProvider<Box<String>>.internal(
+  imsAuthJsessionIdBox,
+  name: r'imsAuthJsessionIdBoxProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
       ? null
-      : _$authRepositoryHash,
+      : _$imsAuthJsessionIdBoxHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
-typedef AuthRepositoryRef = AutoDisposeProviderRef<AuthRepository>;
+typedef ImsAuthJsessionIdBoxRef = AutoDisposeFutureProviderRef<Box<String>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member
