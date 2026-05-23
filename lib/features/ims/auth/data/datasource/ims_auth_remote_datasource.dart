@@ -1,0 +1,37 @@
+import 'package:dio/dio.dart';
+
+class ImsAuthRemoteDataSource {
+  final Dio _dio;
+
+  ImsAuthRemoteDataSource(this._dio);
+
+  Future<String> fetchJsessionId() async {
+    final queryParameters = {
+      't_s': DateTime.now().millisecondsSinceEpoch,
+      'amp_sec_version_': '1',
+      'gid_':
+          'S3lvSGM0NjRtSEtYcGhMcjZ2byszZnlGU0VkeXdGSTNOdllhckgyQVRaVnhhNi8zTUxRQ2hvWjhDbmlodWo1d0lVNGRzbDdqZ3hXU2FJYmxrK054TlE9PQ',
+      'EMAP_LANG': 'zh',
+      'THEME': 'cherry',
+    };
+
+    final response = await _dio.get(
+      '/jxcjcaslogin',
+      queryParameters: queryParameters,
+      options: Options(
+        followRedirects: false,
+        validateStatus: (status) => true,
+      ),
+    );
+
+    final setCookie = response.headers['set-cookie'];
+    if (setCookie == null || setCookie.isEmpty) {
+      throw Exception('Missing set-cookie header');
+    }
+
+    final match = RegExp(r'JSESSIONID=([^;]+)').firstMatch(setCookie.first);
+    final jsessionId = match?.group(1);
+    if (jsessionId == null) throw Exception('JSESSIONID not found');
+    return jsessionId;
+  }
+}
