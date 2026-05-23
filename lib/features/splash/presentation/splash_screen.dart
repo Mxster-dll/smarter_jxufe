@@ -42,8 +42,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         if (mounted) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const ImsSplashScreen()),
-            // MaterialPageRoute(builder: (_) => const LoginScreen()),
+            // MaterialPageRoute(builder: (_) => const ImsSplashScreen()),
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
           );
         }
       });
