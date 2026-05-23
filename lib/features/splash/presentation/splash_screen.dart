@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/core/storage/hive_initializer.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_provider.dart';
+import 'package:smarter_jxufe/features/auth/presentation/login_screen.dart';
 import 'package:smarter_jxufe/features/ims/splash/presentation/ims_splash_screen.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -42,6 +43,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (_) => const ImsSplashScreen()),
+            // MaterialPageRoute(builder: (_) => const LoginScreen()),
           );
         }
       });
@@ -49,7 +51,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const Text("待实现登录页")),
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
         );
       }
     }
