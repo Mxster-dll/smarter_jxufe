@@ -4,11 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smarter_jxufe/features/splash/presentation/splash_screen.dart';
 
 void main() async {
-  // await CalendarService.update();
-  // // CalendarService.showDurationBetweenAcademicTimes();
-  // MajorCurriculum data = MajorCurriculum();
-  // data.checkUpdate();
-
   runApp(const ProviderScope(child: SmarterJxUFE()));
 }
 
