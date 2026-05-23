@@ -18,7 +18,6 @@ class LoginScreen extends ConsumerWidget {
       backgroundColor: JxufeTheme.backgroundColor,
       body: Stack(
         children: [
-          // 背景装饰元素（保持不变）
           _buildBackgroundDecorations(),
           SingleChildScrollView(
             child: Container(
@@ -28,7 +27,7 @@ class LoginScreen extends ConsumerWidget {
                   _buildHeader(),
                   const SizedBox(height: 60),
                   _buildLoginCard(context, state, viewModel),
-                  const Spacer(),
+                  const SizedBox(height: 40),
                   _buildFooter(),
                 ],
               ),
@@ -330,44 +329,71 @@ class LoginScreen extends ConsumerWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        _buildIconButton(
-          icon: Icons.qr_code_rounded,
-          color: JxufeTheme.primaryColor,
+        _buildOtherLoginIcon(
+          Icons.qr_code_rounded,
+          JxufeTheme.primaryColor,
           onTap: () => viewModel.scanLogin(context),
         ),
         const SizedBox(width: 32),
-        _buildIconButton(
-          icon: Icons.wechat,
-          color: const Color(0xFF14c468),
+        _buildOtherLoginIcon(
+          Icons.wechat,
+          const Color(0xFF14c468),
           onTap: () => viewModel.wechatLogin(context),
         ),
         const SizedBox(width: 32),
-        _buildIconButton(
-          icon: ExpandIcons.wecon,
-          color: const Color(0xFF73A9EC),
+        _buildOtherLoginIcon(
+          ExpandIcons.wecon,
+          const Color(0xFF73A9EC),
           onTap: () => viewModel.showWecomUnavailable(context),
         ),
       ],
     );
   }
 
-  Widget _buildIconButton({
-    required IconData icon,
-    required Color color,
+  Widget _buildOtherLoginIcon(
+    IconData icon,
+    Color color, {
     required VoidCallback onTap,
   }) {
-    // 简化版，未实现 hover 动画（可保留原始逻辑但略复杂，此处省略）
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          color: JxufeTheme.inputBgColor,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: JxufeTheme.borderColor),
+    final isHovering = ValueNotifier<bool>(false);
+
+    return MouseRegion(
+      onEnter: (_) => isHovering.value = true,
+      onExit: (_) => isHovering.value = false,
+      child: GestureDetector(
+        onTap: onTap,
+        child: ValueListenableBuilder<bool>(
+          valueListenable: isHovering,
+          builder: (context, hovering, child) {
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: hovering ? color : JxufeTheme.inputBgColor,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: hovering ? color : JxufeTheme.borderColor,
+                  width: hovering ? 2 : 1,
+                ),
+                boxShadow: hovering
+                    ? [
+                        BoxShadow(
+                          color: color.withAlpha(77),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Icon(
+                icon,
+                color: hovering ? Colors.white : color,
+                size: 24,
+              ),
+            );
+          },
         ),
-        child: Icon(icon, color: color, size: 24),
       ),
     );
   }
