@@ -42,6 +42,7 @@ class CollegeRepository {
       }
 
       final colleges = _collegeMapper.fromApiList(filteredApiColleges);
+      await _localDataSource.saveCollegeList(colleges);
 
       return Right(colleges);
     } catch (e) {

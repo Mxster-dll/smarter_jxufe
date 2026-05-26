@@ -56,6 +56,7 @@ class MajorRepository {
         year: year,
         college: college,
       );
+      await _localDataSource.saveMajorList(majors);
 
       return Right(majors);
     } catch (e) {
