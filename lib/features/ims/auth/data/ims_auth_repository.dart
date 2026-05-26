@@ -84,6 +84,7 @@ class ImsAuthRepository {
       if (!needRefresh) return Right(cacheJsessionId);
 
       final jsessionId = await _remoteDataSource.fetchJsessionId();
+      await _localDataSource.saveJsessionId(jsessionId);
 
       return Right(jsessionId);
     } catch (e) {
