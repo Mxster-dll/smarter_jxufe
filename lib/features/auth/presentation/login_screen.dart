@@ -5,6 +5,7 @@ import 'package:smarter_jxufe/design/JxufeTheme.dart';
 import 'package:smarter_jxufe/design/Icons.dart';
 import 'package:smarter_jxufe/features/auth/presentation/login_state.dart';
 import 'package:smarter_jxufe/features/auth/presentation/login_viewmodel.dart';
+import 'package:smarter_jxufe/features/ims/splash/presentation/ims_splash_screen.dart';
 
 class LoginScreen extends ConsumerWidget {
   const LoginScreen({super.key});
@@ -13,6 +14,15 @@ class LoginScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(loginViewModelProvider);
     final viewModel = ref.read(loginViewModelProvider.notifier);
+
+    ref.listen(loginViewModelProvider, (previous, next) {
+      if (next.loginSuccess && !next.isLoading) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const ImsSplashScreen()),
+        );
+      }
+    });
 
     return Scaffold(
       backgroundColor: JxufeTheme.backgroundColor,
