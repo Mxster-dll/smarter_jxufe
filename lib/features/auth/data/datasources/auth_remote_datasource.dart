@@ -17,8 +17,6 @@ class AuthRemoteDataSource {
       'Connection': 'keep-alive',
       'sec-ch-ua-platform': '"Windows"',
       'X-Requested-With': 'XMLHttpRequest',
-      'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0',
       'Accept': 'application/json, text/javascript, */*; q=0.01',
       'sec-ch-ua':
           '"Chromium";v="148", "Microsoft Edge";v="148", "Not/A)Brand";v="99"',
@@ -78,8 +76,6 @@ class AuthRemoteDataSource {
       'sec-ch-ua-platform': '"Windows"',
       'Upgrade-Insecure-Requests': '1',
       'Content-Type': 'application/x-www-form-urlencoded',
-      'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0',
       'Origin': 'https://ssl.jxufe.edu.cn',
       'Accept':
           'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
@@ -157,8 +153,6 @@ class AuthRemoteDataSource {
           'Host': 'ssl.jxufe.edu.cn',
           'Connection': 'keep-alive',
           'Upgrade-Insecure-Requests': '1',
-          'User-Agent':
-              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0',
           'Accept':
               'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
           'Sec-Fetch-Site': 'cross-site',
