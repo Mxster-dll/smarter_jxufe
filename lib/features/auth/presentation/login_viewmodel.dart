@@ -1,29 +1,28 @@
 import 'dart:io';
+
 import 'package:dio/dio.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'package:smarter_jxufe/features/auth/presentation/login_state.dart';
 import 'package:smarter_jxufe/old/login/MfaService.dart';
 import 'package:smarter_jxufe/qrCode/QrCodeService.dart';
 
-final loginViewModelProvider =
-    StateNotifierProvider<LoginViewModel, LoginState>((ref) {
-      return LoginViewModel();
-    });
+part 'login_viewmodel.g.dart';
 
 @riverpod
-class LoginViewModel extends StateNotifier<LoginState> {
-  final Dio _dio = Dio();
+class LoginViewModel extends _$LoginViewModel {
   late final MfaService _mfaService;
   late final ScanLogin _scanLoginService;
   late final WeChatLogin _wechatLoginService;
+  final Dio _dio = Dio();
 
-  LoginViewModel() : super(const LoginState()) {
+  @override
+  LoginState build() {
     _mfaService = MfaService(_dio);
     _scanLoginService = ScanLogin(_dio);
     _wechatLoginService = WeChatLogin();
+    return const LoginState();
   }
 
   void updateAccount(String value) {
@@ -39,6 +38,9 @@ class LoginViewModel extends StateNotifier<LoginState> {
   }
 
   Future<void> login(BuildContext context) async {
+    // final account = state.account.trim();
+    // final password = state.password.trim();
+
     var account = state.account.trim();
     var password = state.password.trim();
 
