@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -68,6 +67,8 @@ class LoginViewModel extends _$LoginViewModel {
 
     try {
       await _mfaService.process(context);
+
+      state = state.copyWith(loginSuccess: true);
     } catch (e) {
       state = state.copyWith(errorMessage: '登录失败: $e');
     } finally {

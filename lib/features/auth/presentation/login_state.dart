@@ -4,6 +4,7 @@ class LoginState {
   final bool isLoading;
   final String? errorMessage;
   final bool passwordVisible;
+  final bool loginSuccess;
 
   const LoginState({
     this.account = '',
@@ -11,6 +12,7 @@ class LoginState {
     this.isLoading = false,
     this.errorMessage,
     this.passwordVisible = false,
+    this.loginSuccess = false,
   });
 
   LoginState copyWith({
@@ -19,6 +21,7 @@ class LoginState {
     bool? isLoading,
     String? errorMessage,
     bool? passwordVisible,
+    bool? loginSuccess,
   }) {
     return LoginState(
       account: account ?? this.account,
@@ -26,6 +29,7 @@ class LoginState {
       isLoading: isLoading ?? this.isLoading,
       errorMessage: errorMessage ?? this.errorMessage,
       passwordVisible: passwordVisible ?? this.passwordVisible,
+      loginSuccess: loginSuccess ?? this.loginSuccess,
     );
   }
 }
