@@ -6,7 +6,7 @@ part of 'dio_providers.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$imsDioHash() => r'5129232595f1eaa4d6baaa921cac2f7bc3d9659e';
+String _$imsDioHash() => r'f4e95f76db476237dd341e4f58f503f3d860d9c8';
 
 /// See also [imsDio].
 @ProviderFor(imsDio)
@@ -20,7 +20,7 @@ final imsDioProvider = AutoDisposeProvider<Dio>.internal(
 );
 
 typedef ImsDioRef = AutoDisposeProviderRef<Dio>;
-String _$loginDioHash() => r'61b9ed2106b15b17a98004da89935cc8a71a2ecc';
+String _$loginDioHash() => r'4a914f81a508bae6e2de44f37d22e3675c69b8ec';
 
 /// See also [loginDio].
 @ProviderFor(loginDio)
