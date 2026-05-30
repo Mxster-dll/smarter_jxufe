@@ -5,7 +5,7 @@ import 'package:smarter_jxufe/features/ims/curriculum/data/providers/curriculum_
 
 part 'curriculum_local_datasource_provider.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 Future<CurriculumLocalDataSource> curriculumLocalDataSource(
   CurriculumLocalDataSourceRef ref,
 ) async {

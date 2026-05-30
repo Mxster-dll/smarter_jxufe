@@ -5,7 +5,7 @@ import 'package:smarter_jxufe/features/college/data/providers/college_box_provid
 
 part 'college_local_datasource_provider.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 Future<CollegeLocalDataSource> collegeLocalDataSource(
   CollegeLocalDataSourceRef ref,
 ) async {

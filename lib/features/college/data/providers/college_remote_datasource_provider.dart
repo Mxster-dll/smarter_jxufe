@@ -5,7 +5,7 @@ import 'package:smarter_jxufe/features/college/data/datasources/college_remote_d
 
 part 'college_remote_datasource_provider.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 CollegeRemoteDataSource collegeRemoteDataSource(
   CollegeRemoteDataSourceRef ref,
 ) {

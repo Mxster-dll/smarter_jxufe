@@ -4,5 +4,5 @@ import 'package:smarter_jxufe/features/major/data/anti_corruption/major_filter.d
 
 part 'major_filter_provider.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 MajorFilter majorFilter(MajorFilterRef ref) => MajorFilter();

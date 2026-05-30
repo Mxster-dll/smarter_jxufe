@@ -4,6 +4,6 @@ import 'package:smarter_jxufe/features/ims/schedule/data/anti_corruption/schedul
 
 part 'schedule_html_parser_provider.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 ScheduleHtmlParser scheduleHtmlParser(ScheduleHtmlParserRef ref) =>
     ScheduleHtmlParser();

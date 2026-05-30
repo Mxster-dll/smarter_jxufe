@@ -5,7 +5,7 @@ import 'package:smarter_jxufe/features/ims/schedule/data/datasources/schedule_re
 
 part 'schedule_remote_datasource_provider.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 ScheduleRemoteDataSource scheduleRemoteDataSource(
   ScheduleRemoteDataSourceRef ref,
 ) {

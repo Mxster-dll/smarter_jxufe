@@ -4,5 +4,5 @@ import 'package:smarter_jxufe/features/major/data/anti_corruption/major_mapper.d
 
 part 'major_mapper_provider.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 MajorMapper majorMapper(MajorMapperRef ref) => MajorMapper();

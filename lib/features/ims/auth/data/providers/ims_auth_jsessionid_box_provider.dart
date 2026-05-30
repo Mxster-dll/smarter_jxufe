@@ -5,6 +5,6 @@ import 'package:smarter_jxufe/core/constants/hive_box_names.dart';
 
 part 'ims_auth_jsessionid_box_provider.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 Future<Box<String>> imsAuthJsessionIdBox(ImsAuthJsessionIdBoxRef ref) =>
     Hive.openBox<String>(imsAuthJsessionIdBoxName);

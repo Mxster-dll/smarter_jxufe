@@ -5,7 +5,7 @@ import 'package:smarter_jxufe/features/major/data/providers/major_box_provider.d
 
 part 'major_local_datasource_provider.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 Future<MajorLocalDataSource> majorLocalDataSource(
   MajorLocalDataSourceRef ref,
 ) async {
