@@ -11,7 +11,7 @@ part 'ims_auth_repository_provider.g.dart';
 @Riverpod(keepAlive: true)
 Future<ImsAuthRepository> imsAuthRepository(ImsAuthRepositoryRef ref) async {
   final dio = ref.watch(imsDioProvider);
-  final authRepository = ref.watch(authRepositoryProvider);
+  final authRepository = await ref.watch(authRepositoryProvider.future);
   final localDataSource = await ref.watch(
     imsAuthLocalDataSourceProvider.future,
   );

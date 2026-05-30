@@ -35,7 +35,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
       // TODO 这个地方逻辑要大改，如何从后端验证，什么时候进登录页，什么时候尝试重新获取tgc
       // TODO 此行验证登录状态（修改密码的情况）并隔一阵子就验证密码（可选）
-      final authRepo = ref.read(authRepositoryProvider);
+      final authRepo = await ref.read(authRepositoryProvider.future);
       final result = await authRepo.login(lines[0], lines[1]);
 
       result.fold(Left.new, (user) async {
