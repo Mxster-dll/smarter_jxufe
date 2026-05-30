@@ -1,4 +1,5 @@
 import 'package:dartz/dartz.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'package:smarter_jxufe/core/errors/failures.dart';
 import 'package:smarter_jxufe/core/network/device_profile_repository.dart';
@@ -8,7 +9,7 @@ class AuthRepository {
   final AuthRemoteDataSource _remoteDataSource;
   final DeviceProfileRepository _deviceProfileRepo;
 
-  String? _tgc;
+  String? _tgc; // tgc 和 jid 的管理方式不一致，考虑本地数据源究竟存什么，
 
   AuthRepository({
     required AuthRemoteDataSource remoteDataSource,
@@ -16,19 +17,16 @@ class AuthRepository {
   }) : _remoteDataSource = remoteDataSource,
        _deviceProfileRepo = deviceProfileRepo;
 
-  /// 登录流程：检测 MFA → 提交登录 → 获取 TGC
   Future<Either<Failure, void>> login(String username, String password) async {
     final fpVisitorId = _deviceProfileRepo.fpVisitorId;
 
     try {
-      // 1. 检测 MFA，获取 state
       final mfaState = await _remoteDataSource.detectMfa(
         username: username,
         password: password,
         fpVisitorId: fpVisitorId,
       );
 
-      // 2. 提交登录，获取 TGC
       _tgc = await _remoteDataSource.login(
         username: username,
         password: password,

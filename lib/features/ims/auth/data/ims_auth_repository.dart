@@ -26,7 +26,7 @@ class ImsAuthRepository {
   /// 登录 IMS：使用已存储的 TGC 换取 JSESSIONID
   /// 前提：全局认证已完成，TGC 已存在于 AuthRepository 中
   /// 如果 TGC 缺失或无效，抛出异常
-  Future<Either<Failure, void>> login() async {
+  Future<Either<Failure, void>> _activateJsessionId(String jsessionId) async {
     // 1. 从统一认证获取重定向 URL
     final redirectUrlEither = await _authRepository.getImsRedirectUrl();
     if (redirectUrlEither.isLeft()) {
@@ -37,28 +37,11 @@ class ImsAuthRepository {
     final redirectUrl = redirectUrlEither.getOrElse(() => '');
 
     try {
-      // 2. 访问重定向 URL，不自动跟随重定向
-      final imsResponse = await _dio.get(
+      await _dio.get(
         redirectUrl,
-        options: Options(
-          followRedirects: false,
-          validateStatus: (status) => true,
-        ),
+        options: Options(headers: {'Cookie': 'JSESSIONID=$jsessionId'}),
       );
 
-      // 3. 提取 Set-Cookie 中的 JSESSIONID
-      final setCookie = imsResponse.headers['set-cookie'];
-      if (setCookie == null || setCookie.isEmpty) {
-        return Left(UnknownFailure("setCookie empty"));
-      }
-      final match = RegExp(r'JSESSIONID=([^;]+)').firstMatch(setCookie.first);
-      final jsessionId = match?.group(1);
-      if (jsessionId == null) {
-        return Left(UnknownFailure("jsessionId empty"));
-      }
-
-      // 4. 保存 JSESSIONID
-      await _localDataSource.saveJsessionId(jsessionId);
       return const Right(unit);
     } catch (e) {
       // 网络或 Dio 异常
@@ -66,10 +49,12 @@ class ImsAuthRepository {
     }
   }
 
-  Future<void> refreshJsessionId() async {
+  Future<String> refreshJsessionId() async {
     final jsessionId = await _remoteDataSource.fetchJsessionId();
-
     await _localDataSource.saveJsessionId(jsessionId);
+
+    await _activateJsessionId(jsessionId);
+    return jsessionId;
   }
 
   Future<void> logout() => _localDataSource.clearJsessionId();
@@ -80,11 +65,11 @@ class ImsAuthRepository {
     try {
       final cacheJsessionId = _localDataSource.getJsessionId();
 
-      final needRefresh = forceRefresh || cacheJsessionId == null;
+      final needRefresh =
+          forceRefresh || cacheJsessionId == null; // 刷新判断逻辑要大改，要考虑是否失效
       if (!needRefresh) return Right(cacheJsessionId);
 
-      final jsessionId = await _remoteDataSource.fetchJsessionId();
-      await _localDataSource.saveJsessionId(jsessionId);
+      final jsessionId = await refreshJsessionId();
 
       return Right(jsessionId);
     } catch (e) {
