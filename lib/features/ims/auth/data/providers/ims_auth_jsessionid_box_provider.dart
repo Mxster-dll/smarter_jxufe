@@ -7,4 +7,4 @@ part 'ims_auth_jsessionid_box_provider.g.dart';
 
 @Riverpod(keepAlive: true)
 Future<Box<String>> imsAuthJsessionIdBox(ImsAuthJsessionIdBoxRef ref) =>
-    Hive.openBox<String>(imsAuthJsessionIdBoxName);
+    Hive.openBox<String>(imsAuthBoxName);
