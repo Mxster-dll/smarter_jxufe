@@ -1,20 +1,23 @@
 import 'package:dartz/dartz.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'package:smarter_jxufe/core/errors/failures.dart';
 import 'package:smarter_jxufe/core/network/device_profile_repository.dart';
+import 'package:smarter_jxufe/features/auth/data/datasources/auth_local_datasource.dart';
 import 'package:smarter_jxufe/features/auth/data/datasources/auth_remote_datasource.dart';
 
 class AuthRepository {
+  final AuthLocalDataSource _localDataSource;
   final AuthRemoteDataSource _remoteDataSource;
   final DeviceProfileRepository _deviceProfileRepo;
 
   String? _tgc; // tgc 和 jid 的管理方式不一致，考虑本地数据源究竟存什么，
 
   AuthRepository({
+    required AuthLocalDataSource localDataSource,
     required AuthRemoteDataSource remoteDataSource,
     required DeviceProfileRepository deviceProfileRepo,
-  }) : _remoteDataSource = remoteDataSource,
+  }) : _localDataSource = localDataSource,
+       _remoteDataSource = remoteDataSource,
        _deviceProfileRepo = deviceProfileRepo;
 
   Future<Either<Failure, void>> login(String username, String password) async {
