@@ -24,7 +24,7 @@ class _ImsSplashScreenState extends ConsumerState<ImsSplashScreen> {
     await Future.delayed(const Duration(milliseconds: 500));
 
     final imsAuthRepo = await ref.read(imsAuthRepositoryProvider.future);
-    await imsAuthRepo.login();
+    await imsAuthRepo.refreshJsessionId();
 
     if (mounted) {
       Navigator.pushReplacement(
