@@ -3,7 +3,7 @@ import 'package:smarter_jxufe/core/network/device_profile_repository.dart';
 
 part 'device_profile_repository_provider.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 DeviceProfileRepository deviceProfileRepository(
   DeviceProfileRepositoryRef ref,
 ) => DeviceProfileRepository();

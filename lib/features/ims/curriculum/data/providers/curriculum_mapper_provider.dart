@@ -4,6 +4,6 @@ import 'package:smarter_jxufe/features/ims/curriculum/data/anti_corruption/curri
 
 part 'curriculum_mapper_provider.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 CurriculumMapper curriculumMapper(CurriculumMapperRef ref) =>
     CurriculumMapper();

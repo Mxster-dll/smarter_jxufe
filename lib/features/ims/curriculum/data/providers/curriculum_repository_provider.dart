@@ -8,7 +8,7 @@ import 'package:smarter_jxufe/features/ims/curriculum/data/providers/curriculum_
 
 part 'curriculum_repository_provider.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 Future<CurriculumRepository> curriculumRepository(
   CurriculumRepositoryRef ref,
 ) async {

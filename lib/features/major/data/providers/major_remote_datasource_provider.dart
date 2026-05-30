@@ -5,7 +5,7 @@ import 'package:smarter_jxufe/features/major/data/datasources/major_remote_datas
 
 part 'major_remote_datasource_provider.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 MajorRemoteDataSource majorRemoteDataSource(MajorRemoteDataSourceRef ref) {
   final dio = ref.watch(imsDioProvider);
   return MajorRemoteDataSource(dio);

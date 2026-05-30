@@ -4,6 +4,6 @@ import 'package:smarter_jxufe/features/ims/curriculum/data/anti_corruption/curri
 
 part 'curriculum_html_parser_provider.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 CurriculumHtmlParser curriculumHtmlParser(CurriculumHtmlParserRef ref) =>
     CurriculumHtmlParser();

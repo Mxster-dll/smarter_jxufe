@@ -4,5 +4,5 @@ import 'package:smarter_jxufe/features/college/data/anti_corruption/college_filt
 
 part 'college_filter_provider.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 CollegeFilter collegeFilter(CollegeFilterRef ref) => CollegeFilter();
