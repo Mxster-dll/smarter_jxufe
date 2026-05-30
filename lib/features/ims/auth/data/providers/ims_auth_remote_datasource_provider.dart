@@ -5,7 +5,7 @@ import 'package:smarter_jxufe/features/ims/auth/data/datasource/ims_auth_remote_
 
 part 'ims_auth_remote_datasource_provider.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 ImsAuthRemoteDataSource imsAuthRemoteDataSource(
   ImsAuthRemoteDataSourceRef ref,
 ) {

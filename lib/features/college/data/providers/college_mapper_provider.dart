@@ -4,5 +4,5 @@ import 'package:smarter_jxufe/features/college/data/anti_corruption/college_mapp
 
 part 'college_mapper_provider.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 CollegeMapper collegeMapper(CollegeMapperRef ref) => CollegeMapper();

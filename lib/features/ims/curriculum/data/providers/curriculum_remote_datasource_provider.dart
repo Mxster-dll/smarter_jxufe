@@ -5,7 +5,7 @@ import 'package:smarter_jxufe/features/ims/curriculum/data/datasources/curriculu
 
 part 'curriculum_remote_datasource_provider.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 CurriculumRemoteDataSource curriculumRemoteDataSource(
   CurriculumRemoteDataSourceRef ref,
 ) {

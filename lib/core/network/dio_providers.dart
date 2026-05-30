@@ -7,7 +7,7 @@ import 'package:smarter_jxufe/core/network/device_profile_repository_provider.da
 
 part 'dio_providers.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 Dio imsDio(ImsDioRef ref) {
   final deviceProfileRepo = ref.watch(deviceProfileRepositoryProvider);
   final imsDio = Dio(
@@ -54,7 +54,7 @@ String _extractCharset(String? contentType) {
   return match?.group(1)?.trim() ?? '';
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 Dio loginDio(LoginDioRef ref) {
   final deviceProfileRepo = ref.watch(deviceProfileRepositoryProvider);
   return Dio(

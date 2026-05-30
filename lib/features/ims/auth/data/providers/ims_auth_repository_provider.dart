@@ -8,7 +8,7 @@ import 'package:smarter_jxufe/features/ims/auth/data/providers/ims_auth_remote_d
 
 part 'ims_auth_repository_provider.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 Future<ImsAuthRepository> imsAuthRepository(ImsAuthRepositoryRef ref) async {
   final dio = ref.watch(imsDioProvider);
   final authRepository = ref.watch(authRepositoryProvider);

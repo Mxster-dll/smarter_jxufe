@@ -5,7 +5,7 @@ import 'package:smarter_jxufe/features/auth/data/datasources/auth_remote_datasou
 
 part 'auth_remote_datasource_provider.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 AuthRemoteDataSource authRemoteDataSource(AuthRemoteDataSourceRef ref) {
   final dio = ref.watch(loginDioProvider);
   return AuthRemoteDataSource(dio);
