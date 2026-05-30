@@ -1,26 +1,16 @@
 import 'dart:io';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'package:smarter_jxufe/features/auth/presentation/login_state.dart';
-import 'package:smarter_jxufe/old/login/MfaService.dart';
-import 'package:smarter_jxufe/qrCode/QrCodeService.dart';
+import 'package:smarter_jxufe/features/qr_login/presentation/qr_login_viewmodel.dart';
 
 part 'login_viewmodel.g.dart';
 
 @riverpod
 class LoginViewModel extends _$LoginViewModel {
-  late final MfaService _mfaService;
-  late final ScanLogin _scanLoginService;
-  late final WeChatLogin _wechatLoginService;
-  final Dio _dio = Dio();
-
   @override
   LoginState build() {
-    _mfaService = MfaService(_dio);
-    _scanLoginService = ScanLogin(_dio);
-    _wechatLoginService = WeChatLogin();
     return const LoginState();
   }
 
@@ -37,9 +27,6 @@ class LoginViewModel extends _$LoginViewModel {
   }
 
   Future<void> login(BuildContext context) async {
-    // final account = state.account.trim();
-    // final password = state.password.trim();
-
     var account = state.account.trim();
     var password = state.password.trim();
 
@@ -62,11 +49,11 @@ class LoginViewModel extends _$LoginViewModel {
       return;
     }
 
-    _mfaService.set(account, password);
     state = state.copyWith(isLoading: true, errorMessage: null);
 
     try {
-      await _mfaService.process(context);
+      final qrViewModel = ref.read(qrLoginViewModelProvider.notifier);
+      await qrViewModel.mfaVerify(context, account, password);
 
       state = state.copyWith(loginSuccess: true);
     } catch (e) {
@@ -77,11 +64,11 @@ class LoginViewModel extends _$LoginViewModel {
   }
 
   void scanLogin(BuildContext context) {
-    _scanLoginService.process(context);
+    ref.read(qrLoginViewModelProvider.notifier).scanLogin(context);
   }
 
   void wechatLogin(BuildContext context) {
-    _wechatLoginService.process(context);
+    ref.read(qrLoginViewModelProvider.notifier).wechatLogin(context);
   }
 
   void showWecomUnavailable(BuildContext context) {
