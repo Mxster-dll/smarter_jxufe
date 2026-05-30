@@ -13,6 +13,8 @@ Dio imsDio(ImsDioRef ref) {
   final imsDio = Dio(
     BaseOptions(
       baseUrl: 'https://jwxt.jxufe.edu.cn',
+      followRedirects: false,
+      validateStatus: (status) => true,
       headers: {
         'User-Agent': deviceProfileRepo.userAgent,
         'Accept':
@@ -24,18 +26,13 @@ Dio imsDio(ImsDioRef ref) {
         'sec-ch-ua-platform': '"Windows"',
         'Referer': 'http://ehall.jxufe.edu.cn/',
       },
-      followRedirects: false,
-      validateStatus: (status) => true,
       responseDecoder: (bytes, options, response) {
         final contentType = response.headers['Content-Type']?.first;
         final charset = _extractCharset(contentType);
-        switch (charset) {
-          case 'gbk':
-          case 'gb2312':
-            return gbk.decode(bytes);
-          default:
-            return utf8.decode(bytes);
-        }
+        return switch (charset) {
+          'gbk' || 'gb2312' => gbk.decode(bytes),
+          _ => utf8.decode(bytes),
+        };
       },
     ),
   );

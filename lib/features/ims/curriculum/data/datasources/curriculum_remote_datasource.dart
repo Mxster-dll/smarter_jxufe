@@ -10,8 +10,9 @@ class CurriculumRemoteDataSource {
   Future<String> getCurriculumHtml(
     int year,
     String collegeId,
-    String majorId,
-  ) async {
+    String majorId, {
+    required String jsessionId,
+  }) async {
     final response = await _dio.post(
       '/taglib/DataTable.jsp?tableId=2508',
       data: {
@@ -25,6 +26,7 @@ class CurriculumRemoteDataSource {
       },
       options: Options(
         headers: {
+          'Cookie': 'JSESSIONID=$jsessionId',
           'Content-Type': 'application/x-www-form-urlencoded',
           'Referer':
               'https://jwxt.jxufe.edu.cn/student/pyfa.llkc.html?menucode=S20101',
@@ -35,6 +37,13 @@ class CurriculumRemoteDataSource {
     return response.data as String;
   }
 
-  Future<String> getCurriculumHtmlByKey(CurriculumKey key) =>
-      getCurriculumHtml(key.year, key.college.code, key.major.code);
+  Future<String> getCurriculumHtmlByKey(
+    CurriculumKey key, {
+    required String jsessionId,
+  }) => getCurriculumHtml(
+    key.year,
+    key.college.code,
+    key.major.code,
+    jsessionId: jsessionId,
+  );
 }
