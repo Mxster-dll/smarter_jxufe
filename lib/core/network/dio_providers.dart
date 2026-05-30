@@ -57,6 +57,8 @@ Dio loginDio(LoginDioRef ref) {
   return Dio(
     BaseOptions(
       baseUrl: 'https://ssl.jxufe.edu.cn',
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 15),
       validateStatus: (status) => true,
       followRedirects: false,
       headers: {'User-Agent': deviceProfileRepo.userAgent},
