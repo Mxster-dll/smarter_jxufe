@@ -7,7 +7,7 @@ import 'package:smarter_jxufe/features/ims/schedule/data/providers/schedule_remo
 
 part 'schedule_repository_provider.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 Future<ScheduleRepository> scheduleRepository(ScheduleRepositoryRef ref) async {
   final remoteDataSource = ref.watch(scheduleRemoteDataSourceProvider);
   final htmlParser = ref.watch(scheduleHtmlParserProvider);

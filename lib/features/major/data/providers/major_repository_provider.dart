@@ -8,7 +8,7 @@ import 'package:smarter_jxufe/features/major/data/providers/major_remote_datasou
 
 part 'major_repository_provider.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 Future<MajorRepository> majorRepository(MajorRepositoryRef ref) async {
   final majorLocal = await ref.watch(majorLocalDataSourceProvider.future);
   final curriculumRemote = ref.watch(majorRemoteDataSourceProvider);

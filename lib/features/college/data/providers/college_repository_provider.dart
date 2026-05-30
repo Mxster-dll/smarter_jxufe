@@ -8,7 +8,7 @@ import 'package:smarter_jxufe/features/college/data/providers/college_remote_dat
 
 part 'college_repository_provider.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 Future<CollegeRepository> collegeRepository(CollegeRepositoryRef ref) async {
   final localDataSource = await ref.watch(
     collegeLocalDataSourceProvider.future,

@@ -5,7 +5,7 @@ import 'package:smarter_jxufe/features/ims/auth/data/providers/ims_auth_jsession
 
 part 'ims_auth_local_datasource_provider.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 Future<ImsAuthLocalDataSource> imsAuthLocalDataSource(
   ImsAuthLocalDataSourceRef ref,
 ) async {
