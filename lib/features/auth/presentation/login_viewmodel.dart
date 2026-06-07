@@ -62,40 +62,56 @@ class LoginViewModel extends _$LoginViewModel {
     try {
       final authRepo = await ref.read(authRepositoryProvider.future);
 
-      while (true) {
-        final result = await authRepo.login(account, password);
+      // 第一步：检测是否需要 MFA
+      final mfaResult = await authRepo.detectMfa(account, password);
 
-        final shouldExit = result.fold(
-          (failure) {
-            if (failure is InvalidCredentialsFailure) {
-              state = state.copyWith(
-                errorMessage: '账号或密码错误',
-                errorVersion: state.errorVersion + 1,
-              );
-            } else {
-              state = state.copyWith(
-                errorMessage: '登录失败: ${failure.message}',
-                errorVersion: state.errorVersion + 1,
-              );
-            }
-            return true; // 失败，退出循环
-          },
-          (needMfa) {
-            if (!needMfa) {
-              // 302 登录成功，无需 MFA
-              state = state.copyWith(loginSuccess: true);
-              return true; // 成功，退出循环
-            }
-            return false; // needMfa，继续循环
-          },
+      final mfaState = mfaResult.fold((failure) {
+        state = state.copyWith(
+          errorMessage: '${failure.message}',
+          errorVersion: state.errorVersion + 1,
+        );
+        return null;
+      }, (result) => result);
+      if (mfaState == null) return; // detectMfa 失败
+
+      // 第二步：如果需要 MFA，显示二维码
+      if (mfaState.needMfa) {
+        final qrViewModel = ref.read(qrLoginViewModelProvider.notifier);
+        final authorized = await qrViewModel.mfaVerify(
+          context,
+          account,
+          password,
         );
 
-        if (shouldExit) return;
-
-        // 需要 MFA 验证：显示二维码，等待完成后重试登录
-        final qrViewModel = ref.read(qrLoginViewModelProvider.notifier);
-        await qrViewModel.mfaVerify(context, account, password);
+        // 用户手动关闭对话框 → 不做任何事，等用户再次点击登录
+        if (!authorized) return;
       }
+
+      // 第三步：提交登录
+      final loginResult = await authRepo.login(
+        account,
+        password,
+        mfaState.mfaState,
+      );
+
+      loginResult.fold(
+        (failure) {
+          if (failure is InvalidCredentialsFailure) {
+            state = state.copyWith(
+              errorMessage: '账号或密码错误',
+              errorVersion: state.errorVersion + 1,
+            );
+          } else {
+            state = state.copyWith(
+              errorMessage: '登录失败: ${failure.message}',
+              errorVersion: state.errorVersion + 1,
+            );
+          }
+        },
+        (_) {
+          state = state.copyWith(loginSuccess: true);
+        },
+      );
     } catch (e) {
       state = state.copyWith(
         errorMessage: '登录失败: $e',
