@@ -3,6 +3,7 @@ class LoginState {
   final String password;
   final bool isLoading;
   final String? errorMessage;
+  final int errorVersion;
   final bool passwordVisible;
   final bool loginSuccess;
 
@@ -11,6 +12,7 @@ class LoginState {
     this.password = '',
     this.isLoading = false,
     this.errorMessage,
+    this.errorVersion = 0,
     this.passwordVisible = false,
     this.loginSuccess = false,
   });
@@ -20,6 +22,7 @@ class LoginState {
     String? password,
     bool? isLoading,
     String? errorMessage,
+    int? errorVersion,
     bool? passwordVisible,
     bool? loginSuccess,
   }) {
@@ -28,6 +31,7 @@ class LoginState {
       password: password ?? this.password,
       isLoading: isLoading ?? this.isLoading,
       errorMessage: errorMessage ?? this.errorMessage,
+      errorVersion: errorVersion ?? this.errorVersion,
       passwordVisible: passwordVisible ?? this.passwordVisible,
       loginSuccess: loginSuccess ?? this.loginSuccess,
     );
