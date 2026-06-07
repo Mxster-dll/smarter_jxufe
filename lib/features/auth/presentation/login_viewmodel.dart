@@ -61,30 +61,41 @@ class LoginViewModel extends _$LoginViewModel {
 
     try {
       final authRepo = await ref.read(authRepositoryProvider.future);
-      final result = await authRepo.login(account, password);
 
-      result.fold(
-        (failure) {
-          if (failure is InvalidCredentialsFailure) {
-            state = state.copyWith(
-              errorMessage: '账号或密码错误',
-              errorVersion: state.errorVersion + 1,
-            );
-          } else {
-            state = state.copyWith(
-              errorMessage: '登录失败: ${failure.message}',
-              errorVersion: state.errorVersion + 1,
-            );
-          }
-        },
-        (needMfa) async {
-          if (needMfa) {
-            final qrViewModel = ref.read(qrLoginViewModelProvider.notifier);
-            await qrViewModel.mfaVerify(context, account, password);
-          }
-          state = state.copyWith(loginSuccess: true);
-        },
-      );
+      while (true) {
+        final result = await authRepo.login(account, password);
+
+        final shouldExit = result.fold(
+          (failure) {
+            if (failure is InvalidCredentialsFailure) {
+              state = state.copyWith(
+                errorMessage: '账号或密码错误',
+                errorVersion: state.errorVersion + 1,
+              );
+            } else {
+              state = state.copyWith(
+                errorMessage: '登录失败: ${failure.message}',
+                errorVersion: state.errorVersion + 1,
+              );
+            }
+            return true; // 失败，退出循环
+          },
+          (needMfa) {
+            if (!needMfa) {
+              // 302 登录成功，无需 MFA
+              state = state.copyWith(loginSuccess: true);
+              return true; // 成功，退出循环
+            }
+            return false; // needMfa，继续循环
+          },
+        );
+
+        if (shouldExit) return;
+
+        // 需要 MFA 验证：显示二维码，等待完成后重试登录
+        final qrViewModel = ref.read(qrLoginViewModelProvider.notifier);
+        await qrViewModel.mfaVerify(context, account, password);
+      }
     } catch (e) {
       state = state.copyWith(
         errorMessage: '登录失败: $e',
