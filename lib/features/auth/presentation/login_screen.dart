@@ -202,13 +202,35 @@ class LoginScreen extends ConsumerWidget {
               ),
             ),
           ),
-          if (errorMessage != null) ...[
-            const Spacer(),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 200),
-              child: _buildErrorMsg(errorMessage),
-            ),
-          ],
+          const Spacer(),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            transitionBuilder: (child, animation) {
+              return FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position:
+                      Tween<Offset>(
+                        begin: const Offset(0.3, 0),
+                        end: Offset.zero,
+                      ).animate(
+                        CurvedAnimation(
+                          parent: animation,
+                          curve: Curves.easeOut,
+                        ),
+                      ),
+                  child: child,
+                ),
+              );
+            },
+            child: errorMessage != null
+                ? ConstrainedBox(
+                    key: const ValueKey('error'),
+                    constraints: const BoxConstraints(maxWidth: 200),
+                    child: _buildErrorMsg(errorMessage),
+                  )
+                : const SizedBox.shrink(key: ValueKey('empty')),
+          ),
         ],
       ),
     );
