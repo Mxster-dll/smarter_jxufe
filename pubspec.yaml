@@ -135,6 +135,18 @@ flutter:
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
 fonts:
+  - family: Cascadia Code
+    fonts:
+      - asset: assets/fonts/CascadiaCode-Regular.ttf
+  - family: 霞鹜文楷
+    fonts:
+      - asset: assets/fonts/LXGWWenKai-Regular.ttf
+  - family: 霞鹜臻楷
+    fonts:
+      - asset: assets/fonts/霞鹜臻楷.ttf
+  - family: 仓耳今楷01
+    fonts:
+      - asset: assets/fonts/仓耳今楷01 W03.ttf
   - family: SmarterJxufeIcons
     fonts:
       - asset: assets/smarter_jxufe_icons.ttf
