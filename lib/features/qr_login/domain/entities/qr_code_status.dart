@@ -13,4 +13,10 @@ enum QrCodeStatus {
       this == QrCodeStatus.loading ||
       this == QrCodeStatus.pending ||
       this == QrCodeStatus.scanned;
+
+  /// 是否可重试（显示刷新按钮）
+  bool get canRetry =>
+      this == QrCodeStatus.cancelled ||
+      this == QrCodeStatus.expired ||
+      this == QrCodeStatus.error;
 }

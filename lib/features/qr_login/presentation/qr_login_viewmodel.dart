@@ -95,8 +95,21 @@ class QrLoginViewModel extends _$QrLoginViewModel {
       return;
     }
 
+    // MFA 验证专用监听：验证成功后 500ms 自动关闭对话框
+    late final StreamSubscription<QrCodeStatus> _mfaSub;
+    _mfaSub = _repository.statusStream.listen((status) {
+      if (status == QrCodeStatus.authorized && context.mounted) {
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (context.mounted) {
+            Navigator.of(context).pop();
+          }
+        });
+      }
+    });
+
     // 等待二维码对话框关闭后再返回
     await _showDialog(context);
+    _mfaSub.cancel();
     stopPolling();
   }
 

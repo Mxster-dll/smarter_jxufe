@@ -1,12 +1,10 @@
 import 'dart:io';
-import 'package:dartz/dartz.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/core/storage/hive_initializer.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_provider.dart';
 import 'package:smarter_jxufe/features/auth/presentation/login_screen.dart';
-import 'package:smarter_jxufe/features/ims/splash/presentation/ims_splash_screen.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -38,15 +36,24 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       final authRepo = await ref.read(authRepositoryProvider.future);
       final result = await authRepo.login(lines[0], lines[1]);
 
-      result.fold(Left.new, (user) async {
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            // MaterialPageRoute(builder: (_) => const ImsSplashScreen()),
-            MaterialPageRoute(builder: (_) => const LoginScreen()),
-          );
-        }
-      });
+      result.fold(
+        (failure) {
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const LoginScreen()),
+            );
+          }
+        },
+        (needMfa) async {
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const LoginScreen()),
+            );
+          }
+        },
+      );
     } catch (e) {
       if (mounted) {
         Navigator.pushReplacement(
