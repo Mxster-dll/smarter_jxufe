@@ -34,9 +34,30 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       // TODO 这个地方逻辑要大改，如何从后端验证，什么时候进登录页，什么时候尝试重新获取tgc
       // TODO 此行验证登录状态（修改密码的情况）并隔一阵子就验证密码（可选）
       final authRepo = await ref.read(authRepositoryProvider.future);
-      final result = await authRepo.login(lines[0], lines[1]);
 
-      result.fold(
+      // 第一步：检测 MFA
+      final mfaResult = await authRepo.detectMfa(lines[0], lines[1]);
+
+      final mfaState = mfaResult.fold((_) => null, (result) => result);
+      if (mfaState == null || mfaState.needMfa) {
+        // detectMfa 失败或需要 MFA → 跳转登录页
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+          );
+        }
+        return;
+      }
+
+      // 第二步：直接登录（无需 MFA）
+      final loginResult = await authRepo.login(
+        lines[0],
+        lines[1],
+        mfaState.mfaState,
+      );
+
+      loginResult.fold(
         (failure) {
           if (mounted) {
             Navigator.pushReplacement(
@@ -45,7 +66,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
             );
           }
         },
-        (needMfa) async {
+        (_) {
           if (mounted) {
             Navigator.pushReplacement(
               context,

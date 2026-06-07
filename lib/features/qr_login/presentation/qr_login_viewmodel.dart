@@ -73,8 +73,8 @@ class QrLoginViewModel extends _$QrLoginViewModel {
     }
   }
 
-  /// MFA 验证
-  Future<void> mfaVerify(
+  /// MFA 验证，返回 true 表示验证成功（authorized），false 表示用户手动关闭
+  Future<bool> mfaVerify(
     BuildContext context,
     String account,
     String password,
@@ -88,17 +88,19 @@ class QrLoginViewModel extends _$QrLoginViewModel {
 
     try {
       final needMfa = await _repository.startMfaVerification(account, password);
-      if (!needMfa) return;
+      if (!needMfa) return false;
       _syncFromRepository();
     } catch (e) {
       state = state.copyWith(status: QrCodeStatus.error);
-      return;
+      return false;
     }
 
-    // MFA 验证专用监听：验证成功后 500ms 自动关闭对话框
-    late final StreamSubscription<QrCodeStatus> _mfaSub;
-    _mfaSub = _repository.statusStream.listen((status) {
+    // 监听验证成功状态
+    bool authorized = false;
+    late final StreamSubscription<QrCodeStatus> mfaSub;
+    mfaSub = _repository.statusStream.listen((status) {
       if (status == QrCodeStatus.authorized && context.mounted) {
+        authorized = true;
         Future.delayed(const Duration(milliseconds: 500), () {
           if (context.mounted) {
             Navigator.of(context).pop();
@@ -107,10 +109,12 @@ class QrLoginViewModel extends _$QrLoginViewModel {
       }
     });
 
-    // 等待二维码对话框关闭后再返回
+    // 等待二维码对话框关闭
     await _showDialog(context);
-    _mfaSub.cancel();
+    mfaSub.cancel();
     stopPolling();
+
+    return authorized;
   }
 
   /// 从 repository 同步数据到 state
