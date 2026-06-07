@@ -1,10 +1,12 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/core/storage/hive_initializer.dart';
+import 'package:smarter_jxufe/features/auth/data/providers/account_repository_provider.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_provider.dart';
 import 'package:smarter_jxufe/features/auth/presentation/login_screen.dart';
+import 'package:smarter_jxufe/features/ims/splash/presentation/ims_splash_screen.dart';
+import 'package:smarter_jxufe/features/qr_login/presentation/qr_login_viewmodel.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -24,64 +26,77 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   Future<void> _checkAuth() async {
     await HiveInitializer.init();
 
-    // 等待一下，让启动页至少显示 500ms（可选）
     await Future.delayed(const Duration(milliseconds: 500));
 
     try {
-      final file = File('tmp.txt');
-      final lines = file.readAsLinesSync();
+      // 读取本地存储的账号
+      final accountRepo = await ref.read(accountRepositoryProvider.future);
+      final accountResult = await accountRepo.getAccount();
+      final account = accountResult.fold((_) => null, (a) => a);
 
-      // TODO 这个地方逻辑要大改，如何从后端验证，什么时候进登录页，什么时候尝试重新获取tgc
-      // TODO 此行验证登录状态（修改密码的情况）并隔一阵子就验证密码（可选）
+      if (account == null) {
+        _goToLogin();
+        return;
+      }
+
+      // 有本地账号 → 尝试自动登录
       final authRepo = await ref.read(authRepositoryProvider.future);
 
       // 第一步：检测 MFA
-      final mfaResult = await authRepo.detectMfa(lines[0], lines[1]);
+      final mfaResult = await authRepo.detectMfa(
+        account.username,
+        account.password,
+      );
 
       final mfaState = mfaResult.fold((_) => null, (result) => result);
-      if (mfaState == null || mfaState.needMfa) {
-        // detectMfa 失败或需要 MFA → 跳转登录页
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const LoginScreen()),
-          );
-        }
+      if (mfaState == null) {
+        // detectMfa 失败 → 跳转登录页
+        _goToLogin();
         return;
+      }
+
+      // 需要 MFA → 显示二维码（复用 login_viewmodel 的逻辑）
+      if (mfaState.needMfa) {
+        if (!mounted) return;
+        final qrViewModel = ref.read(qrLoginViewModelProvider.notifier);
+        final authorized = await qrViewModel.mfaVerify(
+          context,
+          account.username,
+          account.password,
+        );
+        if (!authorized) {
+          // 用户手动关闭 → 跳转登录页
+          _goToLogin();
+          return;
+        }
       }
 
       // 第二步：直接登录（无需 MFA）
       final loginResult = await authRepo.login(
-        lines[0],
-        lines[1],
+        account.username,
+        account.password,
         mfaState.mfaState,
       );
 
-      loginResult.fold(
-        (failure) {
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const LoginScreen()),
-            );
-          }
-        },
-        (_) {
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const LoginScreen()),
-            );
-          }
-        },
-      );
+      loginResult.fold((failure) => _goToLogin(), (_) {
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const ImsSplashScreen()),
+          );
+        }
+      });
     } catch (e) {
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-        );
-      }
+      _goToLogin();
+    }
+  }
+
+  void _goToLogin() {
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
     }
   }
 
