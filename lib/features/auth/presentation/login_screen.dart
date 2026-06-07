@@ -161,7 +161,7 @@ class LoginScreen extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildFormTitle(state.errorMessage),
+            _buildFormTitle(state.errorMessage, state.errorVersion),
             const SizedBox(height: 16),
             _buildAccountField(state, viewModel),
             const SizedBox(height: 16),
@@ -176,7 +176,7 @@ class LoginScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildFormTitle(String? errorMessage) {
+  Widget _buildFormTitle(String? errorMessage, int errorVersion) {
     return Container(
       margin: const EdgeInsets.only(bottom: 18),
       child: Row(
@@ -227,7 +227,11 @@ class LoginScreen extends ConsumerWidget {
                 ? ConstrainedBox(
                     key: const ValueKey('error'),
                     constraints: const BoxConstraints(maxWidth: 200),
-                    child: _buildErrorMsg(errorMessage),
+                    child: _ShakingError(
+                      errorMessage,
+                      errorVersion,
+                      _buildErrorMsg,
+                    ),
                   )
                 : const SizedBox.shrink(key: ValueKey('empty')),
           ),
@@ -457,6 +461,82 @@ class LoginScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ShakingError extends StatefulWidget {
+  final String message;
+  final int version;
+  final Widget Function(String) builder;
+
+  const _ShakingError(this.message, this.version, this.builder);
+
+  @override
+  State<_ShakingError> createState() => _ShakingErrorState();
+}
+
+class _ShakingErrorState extends State<_ShakingError>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<Offset> _shake;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    _shake = TweenSequence<Offset>([
+      TweenSequenceItem(
+        tween: Tween(begin: Offset.zero, end: const Offset(6, 0)),
+        weight: 1,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: const Offset(6, 0), end: const Offset(-6, 0)),
+        weight: 2,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: const Offset(-6, 0), end: const Offset(4, 0)),
+        weight: 2,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: const Offset(4, 0), end: const Offset(-4, 0)),
+        weight: 2,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: const Offset(-4, 0), end: Offset.zero),
+        weight: 1,
+      ),
+    ]).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void didUpdateWidget(covariant _ShakingError oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.version != oldWidget.version) {
+      _controller.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _shake,
+      builder: (context, child) {
+        return Transform.translate(
+          offset: Offset(_shake.value.dx, 0),
+          child: child,
+        );
+      },
+      child: widget.builder(widget.message),
     );
   }
 }
