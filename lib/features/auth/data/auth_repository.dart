@@ -24,12 +24,20 @@ class AuthRepository {
     final fpVisitorId = _deviceProfileRepo.fpVisitorId;
 
     try {
-      final mfaJson = await _remoteDataSource.detectMfa(
+      final mfaResponse = await _remoteDataSource.detectMfa(
         username: username,
         password: password,
         fpVisitorId: fpVisitorId,
       );
 
+      // 非 200 状态码视为 MFA 检测失败
+      if (mfaResponse.statusCode != 200) {
+        return Left(
+          UnknownFailure('MFA 检测失败: statusCode=${mfaResponse.statusCode}'),
+        );
+      }
+
+      final mfaJson = mfaResponse.data;
       if (mfaJson['code'] != 0) {
         return Left(UnknownFailure('MFA 检测失败: code=${mfaJson['code']}'));
       }
@@ -74,6 +82,11 @@ class AuthRepository {
         }
 
         return Left(UnknownFailure('登录失败：Set-Cookie 中未找到 TGC'));
+      }
+
+      // 200 + needMfa → MFA 验证未完成，需要显示二维码
+      if (response.statusCode == 200 && needMfa) {
+        return Right(true);
       }
 
       // 其他状态码

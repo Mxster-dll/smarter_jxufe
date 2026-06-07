@@ -5,8 +5,8 @@ class AuthRemoteDataSource {
 
   AuthRemoteDataSource(this._dio);
 
-  /// 第一步：检测是否需要 MFA（多因素认证），返回原始 JSON（由 Repository 层解析）
-  Future<dynamic> detectMfa({
+  /// 第一步：检测是否需要 MFA（多因素认证），返回原始响应（由 Repository 层判断结果）
+  Future<Response> detectMfa({
     required String username,
     required String password,
     required String fpVisitorId,
@@ -44,7 +44,7 @@ class AuthRemoteDataSource {
       data: body,
     );
 
-    return response.data;
+    return response;
   }
 
   /// 第二步：提交登录，返回原始响应（由 Repository 层判断结果）

@@ -86,18 +86,18 @@ class QrLoginViewModel extends _$QrLoginViewModel {
       hintText: '使用微信或者企业微信扫一扫完成验证',
     );
 
-    _showDialog(context).then((_) => stopPolling());
-
     try {
       final needMfa = await _repository.startMfaVerification(account, password);
-      if (!needMfa) {
-        if (context.mounted) Navigator.of(context).pop();
-        return;
-      }
+      if (!needMfa) return;
       _syncFromRepository();
     } catch (e) {
       state = state.copyWith(status: QrCodeStatus.error);
+      return;
     }
+
+    // 等待二维码对话框关闭后再返回
+    await _showDialog(context);
+    stopPolling();
   }
 
   /// 从 repository 同步数据到 state
