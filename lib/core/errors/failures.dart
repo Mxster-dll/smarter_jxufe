@@ -38,3 +38,9 @@ class NotFoundFailure extends Failure {
   final String? message;
   NotFoundFailure(this.message);
 }
+
+/// 账号或密码错误
+class InvalidCredentialsFailure extends Failure {
+  final String? message;
+  InvalidCredentialsFailure(this.message);
+}
