@@ -43,11 +43,17 @@ class LoginViewModel extends _$LoginViewModel {
     } catch (_) {}
 
     if (account.isEmpty) {
-      state = state.copyWith(errorMessage: '请输入校园卡号');
+      state = state.copyWith(
+        errorMessage: '请输入校园卡号',
+        errorVersion: state.errorVersion + 1,
+      );
       return;
     }
     if (password.isEmpty) {
-      state = state.copyWith(errorMessage: '请输入密码');
+      state = state.copyWith(
+        errorMessage: '请输入密码',
+        errorVersion: state.errorVersion + 1,
+      );
       return;
     }
 
@@ -60,9 +66,15 @@ class LoginViewModel extends _$LoginViewModel {
       result.fold(
         (failure) {
           if (failure is InvalidCredentialsFailure) {
-            state = state.copyWith(errorMessage: '账号或密码错误');
+            state = state.copyWith(
+              errorMessage: '账号或密码错误',
+              errorVersion: state.errorVersion + 1,
+            );
           } else {
-            state = state.copyWith(errorMessage: '登录失败: ${failure.message}');
+            state = state.copyWith(
+              errorMessage: '登录失败: ${failure.message}',
+              errorVersion: state.errorVersion + 1,
+            );
           }
         },
         (needMfa) async {
@@ -74,7 +86,10 @@ class LoginViewModel extends _$LoginViewModel {
         },
       );
     } catch (e) {
-      state = state.copyWith(errorMessage: '登录失败: $e');
+      state = state.copyWith(
+        errorMessage: '登录失败: $e',
+        errorVersion: state.errorVersion + 1,
+      );
     } finally {
       state = state.copyWith(isLoading: false);
     }
