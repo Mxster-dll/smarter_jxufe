@@ -5,8 +5,8 @@ class AuthRemoteDataSource {
 
   AuthRemoteDataSource(this._dio);
 
-  /// 第一步：检测是否需要 MFA（多因素认证），返回 state 参数
-  Future<String> detectMfa({
+  /// 第一步：检测是否需要 MFA（多因素认证），返回原始 JSON（由 Repository 层解析）
+  Future<dynamic> detectMfa({
     required String username,
     required String password,
     required String fpVisitorId,
@@ -44,21 +44,11 @@ class AuthRemoteDataSource {
       data: body,
     );
 
-    if (response.statusCode != 200) {
-      throw Exception('MFA detection failed: ${response.statusCode}');
-    }
-
-    final json = response.data;
-    if (json['code'] != 0) {
-      throw Exception('MFA detection error: ${json['code']}');
-    }
-
-    final state = json['data']['state'] as String;
-    return state;
+    return response.data;
   }
 
-  /// 第二步：提交登录，返回 TGC Cookie 值
-  Future<String> login({
+  /// 第二步：提交登录，返回原始响应（由 Repository 层判断结果）
+  Future<Response> login({
     required String username,
     required String password,
     required String fpVisitorId,
@@ -121,28 +111,7 @@ class AuthRemoteDataSource {
       data: body,
     );
 
-    // 登录成功应返回 302 重定向
-    if (response.statusCode != 302) {
-      throw Exception('Login failed: expected 302, got ${response.statusCode}');
-    }
-
-    final cookies = response.headers['set-cookie'];
-    if (cookies == null || cookies.isEmpty) {
-      throw Exception('No Set-Cookie header found');
-    }
-
-    // 查找 TGC cookie
-    for (var cookie in cookies) {
-      final parts = cookie.split(';');
-      for (var part in parts) {
-        final trimmed = part.trim();
-        if (trimmed.startsWith('TGC=')) {
-          return trimmed.substring(4); // 返回 TGC 值（不含“TGC=”前缀）
-        }
-      }
-    }
-
-    throw Exception('TGC cookie not found in Set-Cookie');
+    return response;
   }
 
   Future<String> getRedirectImsUrl(String token) async {

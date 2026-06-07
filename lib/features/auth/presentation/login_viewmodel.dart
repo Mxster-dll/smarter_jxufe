@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:smarter_jxufe/core/errors/failures.dart';
+import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_provider.dart';
 
 import 'package:smarter_jxufe/features/auth/presentation/login_state.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/qr_login_viewmodel.dart';
@@ -52,10 +54,25 @@ class LoginViewModel extends _$LoginViewModel {
     state = state.copyWith(isLoading: true, errorMessage: null);
 
     try {
-      final qrViewModel = ref.read(qrLoginViewModelProvider.notifier);
-      await qrViewModel.mfaVerify(context, account, password);
+      final authRepo = await ref.read(authRepositoryProvider.future);
+      final result = await authRepo.login(account, password);
 
-      state = state.copyWith(loginSuccess: true);
+      result.fold(
+        (failure) {
+          if (failure is InvalidCredentialsFailure) {
+            state = state.copyWith(errorMessage: '账号或密码错误');
+          } else {
+            state = state.copyWith(errorMessage: '登录失败: ${failure.message}');
+          }
+        },
+        (needMfa) async {
+          if (needMfa) {
+            final qrViewModel = ref.read(qrLoginViewModelProvider.notifier);
+            await qrViewModel.mfaVerify(context, account, password);
+          }
+          state = state.copyWith(loginSuccess: true);
+        },
+      );
     } catch (e) {
       state = state.copyWith(errorMessage: '登录失败: $e');
     } finally {
