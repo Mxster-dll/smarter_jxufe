@@ -20,25 +20,66 @@ class AuthRepository {
        _remoteDataSource = remoteDataSource,
        _deviceProfileRepo = deviceProfileRepo;
 
-  Future<Either<Failure, void>> login(String username, String password) async {
+  Future<Either<Failure, bool>> login(String username, String password) async {
     final fpVisitorId = _deviceProfileRepo.fpVisitorId;
 
     try {
-      final mfaState = await _remoteDataSource.detectMfa(
+      final mfaJson = await _remoteDataSource.detectMfa(
         username: username,
         password: password,
         fpVisitorId: fpVisitorId,
       );
 
-      _tgc = await _remoteDataSource.login(
+      if (mfaJson['code'] != 0) {
+        return Left(UnknownFailure('MFA 检测失败: code=${mfaJson['code']}'));
+      }
+
+      final mfaData = mfaJson['data'];
+      final needMfa = mfaData['need'] == true;
+      final mfaState = mfaData['state'] as String;
+
+      final response = await _remoteDataSource.login(
         username: username,
         password: password,
         fpVisitorId: fpVisitorId,
         mfaState: mfaState,
       );
-      return Right(null);
+
+      // 401 且响应体包含 "账号或密码错误" → 密码错误
+      if (response.statusCode == 401) {
+        final body = response.data?.toString() ?? '';
+        if (body.contains('账号或密码错误')) {
+          return Left(InvalidCredentialsFailure('账号或密码错误'));
+        }
+        return Left(UnknownFailure('登录失败（401）：$body'));
+      }
+
+      // 302 且有 Set-Cookie → 登录成功
+      if (response.statusCode == 302) {
+        final cookies = response.headers['set-cookie'];
+        if (cookies == null || cookies.isEmpty) {
+          return Left(UnknownFailure('登录失败：未收到 Set-Cookie'));
+        }
+
+        // 查找 TGC cookie
+        for (var cookie in cookies) {
+          final parts = cookie.split(';');
+          for (var part in parts) {
+            final trimmed = part.trim();
+            if (trimmed.startsWith('TGC=')) {
+              _tgc = trimmed.substring(4);
+              return Right(needMfa);
+            }
+          }
+        }
+
+        return Left(UnknownFailure('登录失败：Set-Cookie 中未找到 TGC'));
+      }
+
+      // 其他状态码
+      return Left(UnknownFailure('登录失败：预期 302，实际 ${response.statusCode}'));
     } catch (e) {
-      return Left(UnknownFailure("login 错误：$e"));
+      return Left(UnknownFailure('登录错误：$e'));
     }
   }
 
