@@ -1,8 +1,9 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:smarter_jxufe/core/errors/failures.dart';
+import 'package:smarter_jxufe/features/auth/data/providers/account_repository_provider.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_provider.dart';
+import 'package:smarter_jxufe/features/auth/domain/entities/account.dart';
 
 import 'package:smarter_jxufe/features/auth/presentation/login_state.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/qr_login_viewmodel.dart';
@@ -29,18 +30,8 @@ class LoginViewModel extends _$LoginViewModel {
   }
 
   Future<void> login(BuildContext context) async {
-    var account = state.account.trim();
-    var password = state.password.trim();
-
-    // 从临时文件读取测试账号（仅开发调试）
-    try {
-      final file = File('tmp.txt');
-      final lines = file.readAsLinesSync();
-      if (lines.length >= 2) {
-        if (account.isEmpty) account = lines[0];
-        if (password.isEmpty) password = lines[1];
-      }
-    } catch (_) {}
+    final account = state.account.trim();
+    final password = state.password.trim();
 
     if (account.isEmpty) {
       state = state.copyWith(
@@ -94,24 +85,29 @@ class LoginViewModel extends _$LoginViewModel {
         mfaState.mfaState,
       );
 
-      loginResult.fold(
-        (failure) {
-          if (failure is InvalidCredentialsFailure) {
-            state = state.copyWith(
-              errorMessage: '账号或密码错误',
-              errorVersion: state.errorVersion + 1,
-            );
-          } else {
-            state = state.copyWith(
-              errorMessage: '登录失败: ${failure.message}',
-              errorVersion: state.errorVersion + 1,
-            );
-          }
-        },
-        (_) {
-          state = state.copyWith(loginSuccess: true);
-        },
-      );
+      final loginSuccess = loginResult.fold((failure) {
+        if (failure is InvalidCredentialsFailure) {
+          state = state.copyWith(
+            errorMessage: '账号或密码错误',
+            errorVersion: state.errorVersion + 1,
+          );
+        } else {
+          state = state.copyWith(
+            errorMessage: '登录失败: ${failure.message}',
+            errorVersion: state.errorVersion + 1,
+          );
+        }
+        return false;
+      }, (_) => true);
+
+      if (loginSuccess) {
+        // 登录成功 → 加密保存账号（先存再跳转）
+        final accountRepo = await ref.read(accountRepositoryProvider.future);
+        await accountRepo.saveAccount(
+          Account(username: account, password: password),
+        );
+        state = state.copyWith(loginSuccess: true);
+      }
     } catch (e) {
       state = state.copyWith(
         errorMessage: '登录失败: $e',
