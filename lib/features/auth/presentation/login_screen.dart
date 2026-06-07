@@ -159,13 +159,13 @@ class LoginScreen extends ConsumerWidget {
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            _buildFormTitle(),
+            _buildFormTitle(state.errorMessage),
             const SizedBox(height: 16),
             _buildAccountField(state, viewModel),
             const SizedBox(height: 16),
             _buildPasswordField(context, state, viewModel),
-            if (state.errorMessage != null) _buildErrorMsg(state.errorMessage!),
             const SizedBox(height: 24),
             _buildLoginButton(state, viewModel, context),
             const SizedBox(height: 24),
@@ -176,10 +176,11 @@ class LoginScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildFormTitle() {
+  Widget _buildFormTitle(String? errorMessage) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 24),
+      margin: const EdgeInsets.only(bottom: 18),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
             width: 4,
@@ -190,14 +191,24 @@ class LoginScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(width: 12),
-          Text(
-            '账号密码登录',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: JxufeTheme.textColor,
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Text(
+              '账号密码登录',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: JxufeTheme.textColor,
+              ),
             ),
           ),
+          if (errorMessage != null) ...[
+            const Spacer(),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 200),
+              child: _buildErrorMsg(errorMessage),
+            ),
+          ],
         ],
       ),
     );
@@ -273,14 +284,14 @@ class LoginScreen extends ConsumerWidget {
 
   Widget _buildErrorMsg(String msg) {
     return Container(
-      padding: const EdgeInsets.all(12),
-      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.fromLTRB(12, 12, 16, 12),
       decoration: BoxDecoration(
         color: JxufeTheme.primaryColor.withAlpha(20),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: JxufeTheme.primaryColor.withAlpha(51)),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             Icons.error_outline_rounded,
@@ -288,11 +299,11 @@ class LoginScreen extends ConsumerWidget {
             size: 18,
           ),
           const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              msg,
-              style: TextStyle(color: JxufeTheme.primaryColor, fontSize: 13),
-            ),
+          Text(
+            msg,
+            style: TextStyle(color: JxufeTheme.primaryColor, fontSize: 13),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
           ),
         ],
       ),
