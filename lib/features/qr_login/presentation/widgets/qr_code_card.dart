@@ -27,7 +27,10 @@ class QrCodeCard extends ConsumerWidget {
         border: Border.all(color: JxufeTheme.borderColor),
       ),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minWidth: sideLength, minHeight: sideLength),
+        constraints: const BoxConstraints(
+          minWidth: sideLength,
+          minHeight: sideLength,
+        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -69,8 +72,8 @@ class QrCodeCard extends ConsumerWidget {
                 ),
               ),
             ),
-            if (state.status.isFinal) const SizedBox(height: 12),
-            if (state.status.isFinal)
+            if (state.status.canRetry) const SizedBox(height: 12),
+            if (state.status.canRetry)
               OutlinedButton(
                 onPressed: () => viewModel.refresh(),
                 style: OutlinedButton.styleFrom(
