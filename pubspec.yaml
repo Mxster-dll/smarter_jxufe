@@ -140,7 +140,7 @@ fonts:
       - asset: assets/fonts/CascadiaCode-Regular.ttf
   - family: 霞鹜文楷
     fonts:
-      - asset: assets/fonts/LXGWWenKai-Regular.ttf
+      - asset: assets/fonts/LXGWWenKai-Medium.ttf
   - family: 霞鹜臻楷
     fonts:
       - asset: assets/fonts/霞鹜臻楷.ttf
