@@ -4,6 +4,7 @@ import 'package:smarter_jxufe/core/errors/failures.dart';
 import 'package:smarter_jxufe/core/network/device_profile_repository.dart';
 import 'package:smarter_jxufe/features/auth/data/datasources/auth_local_datasource.dart';
 import 'package:smarter_jxufe/features/auth/data/datasources/auth_remote_datasource.dart';
+import 'package:smarter_jxufe/features/auth/domain/entities/mfa_result.dart';
 
 class AuthRepository {
   final AuthLocalDataSource _localDataSource;
@@ -20,7 +21,11 @@ class AuthRepository {
        _remoteDataSource = remoteDataSource,
        _deviceProfileRepo = deviceProfileRepo;
 
-  Future<Either<Failure, bool>> login(String username, String password) async {
+  /// 第一步：检测是否需要 MFA
+  Future<Either<Failure, MfaResult>> detectMfa(
+    String username,
+    String password,
+  ) async {
     final fpVisitorId = _deviceProfileRepo.fpVisitorId;
 
     try {
@@ -30,7 +35,6 @@ class AuthRepository {
         fpVisitorId: fpVisitorId,
       );
 
-      // 非 200 状态码视为 MFA 检测失败
       if (mfaResponse.statusCode != 200) {
         return Left(
           UnknownFailure('MFA 检测失败: statusCode=${mfaResponse.statusCode}'),
@@ -43,9 +47,26 @@ class AuthRepository {
       }
 
       final mfaData = mfaJson['data'];
-      final needMfa = mfaData['need'] == true;
-      final mfaState = mfaData['state'] as String;
+      return Right(
+        MfaResult(
+          needMfa: mfaData['need'] == true,
+          mfaState: mfaData['state'] as String,
+        ),
+      );
+    } catch (e) {
+      return Left(UnknownFailure('MFA 检测错误：$e'));
+    }
+  }
 
+  /// 第二步：提交登录（MFA 完成后调用）
+  Future<Either<Failure, void>> login(
+    String username,
+    String password,
+    String mfaState,
+  ) async {
+    final fpVisitorId = _deviceProfileRepo.fpVisitorId;
+
+    try {
       final response = await _remoteDataSource.login(
         username: username,
         password: password,
@@ -69,14 +90,13 @@ class AuthRepository {
           return Left(UnknownFailure('登录失败：未收到 Set-Cookie'));
         }
 
-        // 查找 TGC cookie
         for (var cookie in cookies) {
           final parts = cookie.split(';');
           for (var part in parts) {
             final trimmed = part.trim();
             if (trimmed.startsWith('TGC=')) {
               _tgc = trimmed.substring(4);
-              return Right(needMfa);
+              return const Right(null);
             }
           }
         }
@@ -84,9 +104,12 @@ class AuthRepository {
         return Left(UnknownFailure('登录失败：Set-Cookie 中未找到 TGC'));
       }
 
-      // 200 + needMfa → MFA 验证未完成，需要显示二维码
-      if (response.statusCode == 200 && needMfa) {
-        return Right(true);
+      // 200 + 响应体包含 "登录成功" → MFA 验证后登录成功
+      if (response.statusCode == 200) {
+        final body = response.data?.toString() ?? '';
+        if (body.contains('登录成功')) {
+          return const Right(null);
+        }
       }
 
       // 其他状态码
