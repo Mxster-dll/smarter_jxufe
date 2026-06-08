@@ -23,7 +23,6 @@ class CurriculumScreen extends ConsumerWidget {
             .watch(curriculumViewModelProvider)
             .when(
               data: (state) => Column(
-                // state 现在是 CurriculumState
                 children: [
                   Row(
                     children: [
@@ -42,8 +41,8 @@ class CurriculumScreen extends ConsumerWidget {
                   ),
                 ],
               ),
-              loading: () => const CircularProgressIndicator(), // 加载状态
-              error: (err, stack) => Text('Error: $err'), // 错误状态
+              loading: () => const CircularProgressIndicator(),
+              error: (err, stack) => Text('Error: $err'),
             ),
       ),
     );
@@ -54,7 +53,7 @@ class CurriculumScreen extends ConsumerWidget {
     CurriculumViewModel viewModel,
   ) {
     return DropdownButtonFormField<int>(
-      initialValue: state.selectedYear,
+      value: state.selectedYear,
       hint: const Text('选择年份'),
       items: state.years
           .map((year) => DropdownMenuItem(value: year, child: Text('$year年')))
@@ -71,7 +70,7 @@ class CurriculumScreen extends ConsumerWidget {
       return const Center(child: CircularProgressIndicator());
     }
     return DropdownButtonFormField<College>(
-      initialValue: state.selectedCollege,
+      value: state.selectedCollege,
       hint: const Text('选择学院'),
       items: state.colleges
           .map(
@@ -90,6 +89,7 @@ class CurriculumScreen extends ConsumerWidget {
     final enabled = state.selectedCollege != null && state.selectedYear != null;
     if (!enabled) {
       return DropdownButtonFormField<Major>(
+        value: null,
         hint: const Text('请先选择学院和年份'),
         items: const [],
         onChanged: null,
@@ -99,7 +99,7 @@ class CurriculumScreen extends ConsumerWidget {
       return const Center(child: CircularProgressIndicator());
     }
     return DropdownButtonFormField<Major>(
-      initialValue: null,
+      value: state.selectedMajor,
       hint: const Text('选择专业'),
       items: state.majors
           .map(
