@@ -33,27 +33,44 @@ class CurriculumState {
     bool? isLoadingColleges,
     bool? isLoadingMajors,
     bool? isLoadingTable,
-    String? errorMessage,
+    Object? errorMessage = _sentinel,
     List<College>? colleges,
-    College? selectedCollege,
+    Object? selectedCollege = _sentinel,
     List<int>? years,
-    int? selectedYear,
+    Object? selectedYear = _sentinel,
     List<Major>? majors,
-    Major? selectedMajor,
-    Curriculum? curriculum,
+    Object? selectedMajor = _sentinel,
+    Object? curriculum = _sentinel,
   }) {
     return CurriculumState(
       isLoadingColleges: isLoadingColleges ?? this.isLoadingColleges,
       isLoadingMajors: isLoadingMajors ?? this.isLoadingMajors,
       isLoadingTable: isLoadingTable ?? this.isLoadingTable,
-      errorMessage: errorMessage,
+      errorMessage:
+          identical(errorMessage, _sentinel)
+              ? this.errorMessage
+              : errorMessage as String?,
       colleges: colleges ?? this.colleges,
-      selectedCollege: selectedCollege ?? this.selectedCollege,
+      selectedCollege:
+          identical(selectedCollege, _sentinel)
+              ? this.selectedCollege
+              : selectedCollege as College?,
       years: years ?? this.years,
-      selectedYear: selectedYear ?? this.selectedYear,
+      selectedYear:
+          identical(selectedYear, _sentinel)
+              ? this.selectedYear
+              : selectedYear as int?,
       majors: majors ?? this.majors,
-      selectedMajor: selectedMajor ?? this.selectedMajor,
-      curriculum: curriculum ?? this.curriculum,
+      selectedMajor:
+          identical(selectedMajor, _sentinel)
+              ? this.selectedMajor
+              : selectedMajor as Major?,
+      curriculum:
+          identical(curriculum, _sentinel)
+              ? this.curriculum
+              : curriculum as Curriculum?,
     );
   }
+
+  static const _sentinel = Object();
 }
