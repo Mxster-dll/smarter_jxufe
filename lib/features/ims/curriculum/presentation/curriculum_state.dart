@@ -46,29 +46,24 @@ class CurriculumState {
       isLoadingColleges: isLoadingColleges ?? this.isLoadingColleges,
       isLoadingMajors: isLoadingMajors ?? this.isLoadingMajors,
       isLoadingTable: isLoadingTable ?? this.isLoadingTable,
-      errorMessage:
-          identical(errorMessage, _sentinel)
-              ? this.errorMessage
-              : errorMessage as String?,
+      errorMessage: identical(errorMessage, _sentinel)
+          ? this.errorMessage
+          : errorMessage as String?,
       colleges: colleges ?? this.colleges,
-      selectedCollege:
-          identical(selectedCollege, _sentinel)
-              ? this.selectedCollege
-              : selectedCollege as College?,
+      selectedCollege: identical(selectedCollege, _sentinel)
+          ? this.selectedCollege
+          : selectedCollege as College?,
       years: years ?? this.years,
-      selectedYear:
-          identical(selectedYear, _sentinel)
-              ? this.selectedYear
-              : selectedYear as int?,
+      selectedYear: identical(selectedYear, _sentinel)
+          ? this.selectedYear
+          : selectedYear as int?,
       majors: majors ?? this.majors,
-      selectedMajor:
-          identical(selectedMajor, _sentinel)
-              ? this.selectedMajor
-              : selectedMajor as Major?,
-      curriculum:
-          identical(curriculum, _sentinel)
-              ? this.curriculum
-              : curriculum as Curriculum?,
+      selectedMajor: identical(selectedMajor, _sentinel)
+          ? this.selectedMajor
+          : selectedMajor as Major?,
+      curriculum: identical(curriculum, _sentinel)
+          ? this.curriculum
+          : curriculum as Curriculum?,
     );
   }
 
