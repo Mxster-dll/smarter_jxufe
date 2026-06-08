@@ -4,6 +4,7 @@ import 'package:fast_gbk/fast_gbk.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'package:smarter_jxufe/core/network/device_profile_repository_provider.dart';
+import 'package:smarter_jxufe/core/network/proxy_adapter.dart';
 
 part 'dio_providers.g.dart';
 
@@ -40,6 +41,11 @@ Dio imsDio(ImsDioRef ref) {
   // 可选：添加日志拦截器方便调试（生产环境可移除）
   // dio.interceptors.add(LogInterceptor(responseBody: true, requestBody: true));
 
+  final proxyAdapter = createProxyAdapter();
+  if (proxyAdapter != null) {
+    imsDio.httpClientAdapter = proxyAdapter;
+  }
+
   return imsDio;
 }
 
@@ -54,7 +60,7 @@ String _extractCharset(String? contentType) {
 @Riverpod(keepAlive: true)
 Dio loginDio(LoginDioRef ref) {
   final deviceProfileRepo = ref.watch(deviceProfileRepositoryProvider);
-  return Dio(
+  final dio = Dio(
     BaseOptions(
       baseUrl: 'https://ssl.jxufe.edu.cn',
       connectTimeout: const Duration(seconds: 10),
@@ -64,4 +70,11 @@ Dio loginDio(LoginDioRef ref) {
       headers: {'User-Agent': deviceProfileRepo.userAgent},
     ),
   );
+
+  final proxyAdapter = createProxyAdapter();
+  if (proxyAdapter != null) {
+    dio.httpClientAdapter = proxyAdapter;
+  }
+
+  return dio;
 }
