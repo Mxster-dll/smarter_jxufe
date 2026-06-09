@@ -7,11 +7,24 @@ import 'package:smarter_jxufe/features/auth/presentation/login_state.dart';
 import 'package:smarter_jxufe/features/auth/presentation/login_viewmodel.dart';
 import 'package:smarter_jxufe/features/ims/splash/presentation/ims_splash_screen.dart';
 
-class LoginScreen extends ConsumerWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends ConsumerState<LoginScreen> {
+  final _passwordFocusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _passwordFocusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(loginViewModelProvider);
     final viewModel = ref.read(loginViewModelProvider.notifier);
 
@@ -248,6 +261,8 @@ class LoginScreen extends ConsumerWidget {
       ),
       child: TextField(
         onChanged: (value) => viewModel.updateAccount(value),
+        onSubmitted: (_) => _passwordFocusNode.requestFocus(),
+        textInputAction: TextInputAction.next,
         decoration: InputDecoration(
           hintText: '请输入校园卡号',
           hintStyle: TextStyle(color: JxufeTheme.hintColor),
@@ -278,6 +293,7 @@ class LoginScreen extends ConsumerWidget {
         borderRadius: BorderRadius.circular(8),
       ),
       child: TextField(
+        focusNode: _passwordFocusNode,
         onChanged: (value) => viewModel.updatePassword(value),
         decoration: InputDecoration(
           hintText: '请输入登录密码',
