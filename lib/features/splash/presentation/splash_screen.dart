@@ -48,10 +48,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         account.password,
       );
 
-      final mfaState = mfaResult.fold((_) => null, (result) => result);
+      final mfaState = mfaResult.fold((failure) {
+        _showErrorThenLogin('${failure.message}');
+        return null;
+      }, (result) => result);
       if (mfaState == null) {
-        // detectMfa 失败 → 跳转登录页
-        _goToLogin();
+        // detectMfa 失败 → 显示错误后跳转登录页
         return;
       }
 
@@ -89,6 +91,27 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     } catch (e) {
       _goToLogin();
     }
+  }
+
+  void _showErrorThenLogin(String message) {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: const Text('自动登录失败'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _goToLogin();
+            },
+            child: const Text('前往登录'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _goToLogin() {
