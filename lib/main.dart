@@ -23,7 +23,7 @@ class SmarterJxUFE extends StatelessWidget {
           ).copyWith(
             textTheme: ThemeData.light().textTheme.apply(
               fontFamily: 'Cascadia Code',
-              fontFamilyFallback: ['霞鹜文楷', '仓耳今楷01'],
+              fontFamilyFallback: ['仓耳今楷01'],
             ),
           ),
       home: SplashScreen(),
