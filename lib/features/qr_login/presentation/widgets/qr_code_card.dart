@@ -96,18 +96,17 @@ class QrCodeCard extends ConsumerWidget {
                 ),
               ),
             ),
-            if (state.status.canRetry) const SizedBox(height: 12),
-            if (state.status.canRetry)
-              OutlinedButton(
-                onPressed: () => viewModel.refresh(),
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: JxufeTheme.secondaryColor, width: 1),
-                ),
-                child: const Text(
-                  '刷新',
-                  style: TextStyle(color: JxufeTheme.secondaryColor),
-                ),
+            const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: () => viewModel.refresh(),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: JxufeTheme.secondaryColor, width: 1),
               ),
+              child: const Text(
+                '刷新',
+                style: TextStyle(color: JxufeTheme.secondaryColor),
+              ),
+            ),
           ],
         ),
       ),
