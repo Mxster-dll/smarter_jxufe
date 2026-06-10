@@ -10,6 +10,7 @@ class QrLoginState {
   final String title;
   final String info;
   final String hintText;
+  final String username;
 
   const QrLoginState({
     this.status = QrCodeStatus.loading,
@@ -18,6 +19,7 @@ class QrLoginState {
     this.title = '',
     this.info = '',
     this.hintText = '',
+    this.username = '',
   });
 
   QrLoginState copyWith({
@@ -27,6 +29,7 @@ class QrLoginState {
     String? title,
     String? info,
     String? hintText,
+    String? username,
   }) {
     return QrLoginState(
       status: status ?? this.status,
@@ -35,6 +38,7 @@ class QrLoginState {
       title: title ?? this.title,
       info: info ?? this.info,
       hintText: hintText ?? this.hintText,
+      username: username ?? this.username,
     );
   }
 
