@@ -84,6 +84,7 @@ class QrLoginViewModel extends _$QrLoginViewModel {
       title: '安全验证',
       info: '当前登录环境异常，需通过安全验证确认是本人操作',
       hintText: '使用微信或者企业微信扫一扫完成验证',
+      username: account,
     );
 
     try {

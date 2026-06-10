@@ -34,6 +34,30 @@ class QrCodeCard extends ConsumerWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            if (state.username.isNotEmpty) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: Text.rich(
+                  TextSpan(
+                    text: '验证账号：',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: JxufeTheme.hintColor,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: state.username,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: JxufeTheme.textColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),
               child: KeyedSubtree(
