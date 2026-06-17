@@ -24,24 +24,41 @@ class CurriculumScreen extends ConsumerWidget {
           .when(
             data: (state) => Column(
               children: [
-                Row(
-                  children: [
-                    Expanded(child: _buildYearDropdown(state, viewModel)),
-                    const SizedBox(width: 16),
-                    Expanded(child: _buildCollegeDropdown(state, viewModel)),
-                    const SizedBox(width: 16),
-                    Expanded(child: _buildMajorDropdown(state, viewModel)),
-                  ],
+                Theme(
+                  data: Theme.of(context).copyWith(
+                    colorScheme: Theme.of(context).colorScheme.copyWith(
+                      primary: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _buildYearDropdown(context, state, viewModel),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildCollegeDropdown(context, state, viewModel),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildMajorDropdown(context, state, viewModel),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 20),
                 Expanded(
                   child: RepaintBoundary(
-                    child: SingleChildScrollView(child: _buildTable(state)),
+                    child: SingleChildScrollView(
+                      child: _buildTable(context, state),
+                    ),
                   ),
                 ),
               ],
             ),
-            loading: () => const CircularProgressIndicator(),
+            loading: () => CircularProgressIndicator(
+              color: Theme.of(context).colorScheme.error,
+            ),
             error: (err, stack) => Text('Error: $err'),
           ),
     );
@@ -56,6 +73,7 @@ class CurriculumScreen extends ConsumerWidget {
   }
 
   Widget _buildYearDropdown(
+    BuildContext context,
     CurriculumState state,
     CurriculumViewModel viewModel,
   ) {
@@ -70,11 +88,16 @@ class CurriculumScreen extends ConsumerWidget {
   }
 
   Widget _buildCollegeDropdown(
+    BuildContext context,
     CurriculumState state,
     CurriculumViewModel viewModel,
   ) {
     if (state.isLoadingColleges) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(
+        child: CircularProgressIndicator(
+          color: Theme.of(context).colorScheme.error,
+        ),
+      );
     }
     return DropdownButtonFormField<College>(
       value: state.selectedCollege,
@@ -90,6 +113,7 @@ class CurriculumScreen extends ConsumerWidget {
   }
 
   Widget _buildMajorDropdown(
+    BuildContext context,
     CurriculumState state,
     CurriculumViewModel viewModel,
   ) {
@@ -103,7 +127,11 @@ class CurriculumScreen extends ConsumerWidget {
       );
     }
     if (state.isLoadingMajors) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(
+        child: CircularProgressIndicator(
+          color: Theme.of(context).colorScheme.error,
+        ),
+      );
     }
     return DropdownButtonFormField<Major>(
       value: state.selectedMajor,
@@ -117,9 +145,13 @@ class CurriculumScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTable(CurriculumState state) {
+  Widget _buildTable(BuildContext context, CurriculumState state) {
     if (state.isLoadingTable) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(
+        child: CircularProgressIndicator(
+          color: Theme.of(context).colorScheme.error,
+        ),
+      );
     }
     if (state.errorMessage != null) {
       return Center(child: Text(state.errorMessage!));
@@ -163,15 +195,26 @@ class CurriculumScreen extends ConsumerWidget {
     const cellWidth = 100.0;
     const cellHeight = 40.0;
 
-    return ReorderableTable(
-      fixedRowHeaders: true,
-      colHeaders: colHeaders,
-      rowHeaders: List.generate(cells.length, (i) => (i + 1).toString()),
-      cells: cells,
-      cellWidth: cellWidth,
-      cellHeight: cellHeight,
-      enableRowHeaderCollapse: true,
-      rowHeadersCollapsed: true,
+    return Theme(
+      data: Theme.of(context).copyWith(
+        colorScheme: Theme.of(
+          context,
+        ).colorScheme.copyWith(primary: Theme.of(context).colorScheme.error),
+      ),
+      child: ReorderableTable(
+        fixedRowHeaders: true,
+        colHeaders: colHeaders,
+        rowHeaders: List.generate(cells.length, (i) => (i + 1).toString()),
+        cells: cells,
+        cellWidth: cellWidth,
+        cellHeight: cellHeight,
+        enableRowHeaderCollapse: true,
+        rowHeadersCollapsed: true,
+        colHeaderNormal: Theme.of(context).colorScheme.error,
+        colHeaderHighlight: Theme.of(context).colorScheme.error,
+        rowHeaderNormal: Theme.of(context).colorScheme.errorContainer,
+        rowHeaderHighlight: Theme.of(context).colorScheme.error,
+      ),
     );
   }
 }

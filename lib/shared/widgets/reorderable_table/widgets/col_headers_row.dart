@@ -92,7 +92,10 @@ class ColHeadersRow extends StatelessWidget {
                   child: Text(
                     widget.colHeaders?[originalCol] ??
                         defaultColHeaders[originalCol],
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
