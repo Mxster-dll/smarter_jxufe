@@ -48,6 +48,10 @@ class _ImsTabContainerState extends State<ImsTabContainer> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
         centerTitle: true,
         title: AnimatedSwitcher(
           duration: const Duration(milliseconds: 200),
