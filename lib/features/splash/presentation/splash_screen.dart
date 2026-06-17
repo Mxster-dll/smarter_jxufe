@@ -44,7 +44,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
       // 第一步：检测 MFA
       final mfaResult = await authRepo.detectMfa(
-        account.username,
+        account.cardNumber,
         account.password,
       );
 
@@ -63,7 +63,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         final qrViewModel = ref.read(qrLoginViewModelProvider.notifier);
         final authorized = await qrViewModel.mfaVerify(
           context,
-          account.username,
+          account.cardNumber,
           account.password,
         );
         if (!authorized) {
@@ -75,7 +75,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
       // 第二步：直接登录（无需 MFA）
       final loginResult = await authRepo.login(
-        account.username,
+        account.cardNumber,
         account.password,
         mfaState.mfaState,
       );

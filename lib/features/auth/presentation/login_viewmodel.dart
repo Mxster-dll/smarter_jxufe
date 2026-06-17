@@ -104,7 +104,7 @@ class LoginViewModel extends _$LoginViewModel {
         // 登录成功 → 加密保存账号（先存再跳转）
         final accountRepo = await ref.read(accountRepositoryProvider.future);
         await accountRepo.saveAccount(
-          Account(username: account, password: password),
+          Account(cardNumber: account, password: password),
         );
         state = state.copyWith(loginSuccess: true);
       }
