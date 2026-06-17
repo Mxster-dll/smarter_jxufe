@@ -17,6 +17,7 @@ class ImsTabContainer extends StatefulWidget {
 class _ImsTabContainerState extends State<ImsTabContainer> {
   late PageController _pageController;
   late ImsTab _currentTab;
+  int _prevTabIndex = 0;
 
   @override
   void initState() {
@@ -34,6 +35,7 @@ class _ImsTabContainerState extends State<ImsTabContainer> {
 
   void _onTabSelected(ImsTab tab) {
     if (tab == _currentTab) return;
+    _prevTabIndex = _currentTab.index;
     final targetIndex = ImsTab.values.indexOf(tab);
     _pageController.animateToPage(
       targetIndex,
@@ -45,10 +47,33 @@ class _ImsTabContainerState extends State<ImsTabContainer> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        centerTitle: true,
+        title: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          switchOutCurve: Curves.easeIn,
+          transitionBuilder: (child, animation) {
+            final isCurrent =
+                (child.key as ValueKey<ImsTab>).value == _currentTab;
+            final goingRight = _currentTab.index > _prevTabIndex;
+            final sign = (isCurrent == goingRight) ? 1.0 : -1.0;
+            final dist = (_currentTab.index - _prevTabIndex).abs().clamp(1, 10);
+            return SlideTransition(
+              position: Tween<Offset>(
+                begin: Offset(0, sign * dist * 0.6),
+                end: Offset.zero,
+              ).animate(animation),
+              child: FadeTransition(opacity: animation, child: child),
+            );
+          },
+          child: Text(_currentTab.title, key: ValueKey(_currentTab)),
+        ),
+      ),
       body: PageView(
         controller: _pageController,
         onPageChanged: (index) {
           setState(() {
+            _prevTabIndex = _currentTab.index;
             _currentTab = ImsTab.values[index];
           });
         },
@@ -62,10 +87,10 @@ class _ImsTabContainerState extends State<ImsTabContainer> {
   }
 
   Widget _getPage(ImsTab tab) => switch (tab) {
-    .curriculum => const CurriculumScreen(),
-    .grade => const Text('成绩'),
-    .schedule => const ScheduleScreen(),
-    .studentInfo => const StudentInfoScreen(),
+    .curriculum => CurriculumScreen(showAppBar: false),
+    .grade => const Center(child: Text('成绩')),
+    .schedule => ScheduleScreen(showAppBar: false),
+    .studentInfo => StudentInfoScreen(showAppBar: false),
   };
 }
 
