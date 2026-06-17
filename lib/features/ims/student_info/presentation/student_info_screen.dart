@@ -59,50 +59,54 @@ class StudentInfoScreen extends ConsumerWidget {
               child: Column(
                 children: [
                   _card(context, '身份信息', [
-                    _r('姓名', i.name),
-                    _r('拼音', i.namePinyin),
-                    _r('曾用名', i.formerName),
-                    _r('性别', i.gender),
-                    _r('民族', i.ethnicity),
-                    _r('出生日期', i.birthDate),
-                    _r('出生地', i.birthPlace),
+                    _r(context, '姓名', i.name),
+                    _r(context, '拼音', i.namePinyin),
+                    _r(context, '曾用名', i.formerName),
+                    _r(context, '性别', i.gender),
+                    _r(context, '民族', i.ethnicity),
+                    _r(context, '出生日期', i.birthDate),
+                    _r(context, '出生地', i.birthPlace),
                   ]),
                   _card(context, '入学培养', [
-                    _r('入学年级', i.enrollYear),
-                    _r('学制', i.studyYears.isNotEmpty ? '${i.studyYears}年' : ''),
-                    _r('报到时间', i.enrollDate),
-                    _r('招生季节', i.enrollSeason),
-                    _r('入学方式', i.enrollMethod),
-                    _r('入学前学历', i.prevEducation),
-                    _r('培养层次', i.trainLevel),
-                    _r('培养方式', i.trainMode),
-                    _r('考生类别', i.examineeType),
-                    _r('录取专业', i.admittedMajor),
+                    _r(context, '入学年级', i.enrollYear),
+                    _r(
+                      context,
+                      '学制',
+                      i.studyYears.isNotEmpty ? '${i.studyYears}年' : '',
+                    ),
+                    _r(context, '报到时间', i.enrollDate),
+                    _r(context, '招生季节', i.enrollSeason),
+                    _r(context, '入学方式', i.enrollMethod),
+                    _r(context, '入学前学历', i.prevEducation),
+                    _r(context, '培养层次', i.trainLevel),
+                    _r(context, '培养方式', i.trainMode),
+                    _r(context, '考生类别', i.examineeType),
+                    _r(context, '录取专业', i.admittedMajor),
                   ]),
                   _card(context, '证件信息', [
-                    _r('身份证号', i.idCardNo),
-                    _r('身份证别码', i.idCardAltCode),
-                    _r('身份证照片', i.idPhotoPath),
-                    _r('身份证正面', i.idPhotoFront),
+                    _r(context, '身份证号', i.idCardNo),
+                    _r(context, '身份证别码', i.idCardAltCode),
+                    _r(context, '身份证照片', i.idPhotoPath),
+                    _r(context, '身份证正面', i.idPhotoFront),
                   ]),
                   _card(context, '学籍状态', [
-                    _r('政治面貌', i.politicalStatus),
-                    _r('文化程度', i.educationLevel),
-                    _r('户口性质', i.residenceType),
-                    _r('健康状况', i.healthStatus),
-                    _r('考生特征', i.examineeFeature),
+                    _r(context, '政治面貌', i.politicalStatus),
+                    _r(context, '文化程度', i.educationLevel),
+                    _r(context, '户口性质', i.residenceType),
+                    _r(context, '健康状况', i.healthStatus),
+                    _r(context, '考生特征', i.examineeFeature),
                   ]),
 
                   _card(context, '高考信息', [
-                    _r('考生号', i.gaokaoNo),
-                    _r('准考证号', i.gaokaoTicketNo),
-                    _r('高考总分', i.gaokaoScore),
-                    _r('文化成绩', i.cultureScore),
-                    _r('考生特长', i.examineeTalent),
-                    _r('生源专业', i.originMajor),
-                    _r('招生省市类型', i.admissionType),
-                    _r('培养对象', i.trainTarget),
-                    _r('生源来源', i.originSource),
+                    _r(context, '考生号', i.gaokaoNo),
+                    _r(context, '准考证号', i.gaokaoTicketNo),
+                    _r(context, '高考总分', i.gaokaoScore),
+                    _r(context, '文化成绩', i.cultureScore),
+                    _r(context, '考生特长', i.examineeTalent),
+                    _r(context, '生源专业', i.originMajor),
+                    _r(context, '招生省市类型', i.admissionType),
+                    _r(context, '培养对象', i.trainTarget),
+                    _r(context, '生源来源', i.originSource),
                   ]),
                 ],
               ),
@@ -112,48 +116,48 @@ class StudentInfoScreen extends ConsumerWidget {
               child: Column(
                 children: [
                   _card(context, '学籍标识', [
-                    _r('用户号', i.userId),
-                    _r('学号', i.studentId),
-                    _r('序号', i.serialNo),
-                    _r('入学号', i.enrollNo),
+                    _r(context, '用户号', i.userId),
+                    _r(context, '学号', i.studentId),
+                    _r(context, '序号', i.serialNo),
+                    _r(context, '入学号', i.enrollNo),
                   ]),
                   _card(context, '学院专业', [
-                    _r('院系', i.college),
-                    _r('专业', i.major),
-                    _r('专业方向', i.majorDirection),
-                    _r('班级', i.className),
-                    _r('学科门类', i.disciplineCategory),
-                    _r('宿舍名称', i.dormName),
-                    _r('宿舍信息', i.dormInfo),
+                    _r(context, '院系', i.college),
+                    _r(context, '专业', i.major),
+                    _r(context, '专业方向', i.majorDirection),
+                    _r(context, '班级', i.className),
+                    _r(context, '学科门类', i.disciplineCategory),
+                    _r(context, '宿舍名称', i.dormName),
+                    _r(context, '宿舍信息', i.dormInfo),
                   ]),
 
                   _card(context, '联系方式', [
-                    _r('电话', i.phone),
-                    _r('邮箱', i.email),
-                    _r('通讯地址', i.address),
-                    _r('邮编', i.postalCode),
-                    _r('籍贯', i.hometown),
-                    _r('生源省份', i.originProvince),
-                    _r('生源地', i.originPlace),
-                    _r('生源地单位', i.originUnit),
+                    _r(context, '电话', i.phone),
+                    _r(context, '邮箱', i.email),
+                    _r(context, '通讯地址', i.address),
+                    _r(context, '邮编', i.postalCode),
+                    _r(context, '籍贯', i.hometown),
+                    _r(context, '生源省份', i.originProvince),
+                    _r(context, '生源地', i.originPlace),
+                    _r(context, '生源地单位', i.originUnit),
                   ]),
                   _card(context, '家庭联系', [
-                    _r('联系人', i.contactPerson),
-                    _r('家庭联系人', i.familyContact),
-                    _r('家庭联系人方式', i.familyContactPhone),
-                    _r('宿舍电话', i.dormPhone),
+                    _r(context, '联系人', i.contactPerson),
+                    _r(context, '家庭联系人', i.familyContact),
+                    _r(context, '家庭联系人方式', i.familyContactPhone),
+                    _r(context, '宿舍电话', i.dormPhone),
                   ]),
                   _card(context, '其他信息', [
-                    _r('辅导员', i.advisor),
-                    _r('是否贫困', i.isPoor),
-                    _r('贫困类型', i.povertyType),
-                    _r('入党团时间', i.partyJoinDate),
-                    _r('年总收入', i.annualIncome),
-                    _r('人均收入', i.perCapitaIncome),
-                    _r('学籍卡编号', i.registryNo),
-                    _r('外语语种', i.foreignLanguage),
-                    _r('计算机等级', i.computerLevel),
-                    _r('所属集团', i.groupInfo),
+                    _r(context, '辅导员', i.advisor),
+                    _r(context, '是否贫困', i.isPoor),
+                    _r(context, '贫困类型', i.povertyType),
+                    _r(context, '入党团时间', i.partyJoinDate),
+                    _r(context, '年总收入', i.annualIncome),
+                    _r(context, '人均收入', i.perCapitaIncome),
+                    _r(context, '学籍卡编号', i.registryNo),
+                    _r(context, '外语语种', i.foreignLanguage),
+                    _r(context, '计算机等级', i.computerLevel),
+                    _r(context, '所属集团', i.groupInfo),
                   ]),
                 ],
               ),
@@ -170,12 +174,12 @@ class StudentInfoScreen extends ConsumerWidget {
     children: [
       CircleAvatar(
         radius: 40,
-        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+        backgroundColor: Theme.of(context).colorScheme.error,
         child: Text(
           i.name.isNotEmpty ? i.name[0] : '?',
           style: TextStyle(
             fontSize: 36,
-            color: Theme.of(context).colorScheme.onPrimaryContainer,
+            color: Theme.of(context).colorScheme.onError,
           ),
         ),
       ),
@@ -232,6 +236,7 @@ class StudentInfoScreen extends ConsumerWidget {
       Padding(
         padding: const EdgeInsets.only(bottom: 10),
         child: Card(
+          color: Colors.white,
           clipBehavior: Clip.antiAlias,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -242,13 +247,13 @@ class StudentInfoScreen extends ConsumerWidget {
                   horizontal: 12,
                   vertical: 7,
                 ),
-                color: Theme.of(context).colorScheme.primaryContainer,
+                color: Color.fromARGB(255, 239, 160, 160),
                 child: Text(
                   title,
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    color: Colors.black,
                   ),
                 ),
               ),
@@ -266,9 +271,15 @@ class StudentInfoScreen extends ConsumerWidget {
 }
 
 // ── 键值行 ──
-Widget _r(String label, String value) {
+Widget _r(BuildContext context, String label, String value) {
+  final scheme = Theme.of(context).colorScheme;
   final isEmpty = value.isEmpty;
-  final color = isEmpty ? Colors.grey.shade400 : Colors.grey.shade700;
+  final labelColor = isEmpty
+      ? scheme.onSurfaceVariant.withOpacity(0.3)
+      : scheme.onSurfaceVariant;
+  final valueColor = isEmpty
+      ? scheme.onSurface.withOpacity(0.25)
+      : scheme.onSurface;
   return Padding(
     padding: const EdgeInsets.symmetric(vertical: 3.5),
     child: Row(
@@ -276,17 +287,14 @@ Widget _r(String label, String value) {
       children: [
         SizedBox(
           width: 84,
-          child: Text(label, style: TextStyle(fontSize: 14, color: color)),
+          child: Text(label, style: TextStyle(fontSize: 14, color: labelColor)),
         ),
         const SizedBox(width: 4),
         Expanded(
           child: Text(
             isEmpty ? '（无）' : value,
             textAlign: TextAlign.start,
-            style: TextStyle(
-              fontSize: 14,
-              color: isEmpty ? Colors.grey.shade300 : null,
-            ),
+            style: TextStyle(fontSize: 14, color: valueColor),
           ),
         ),
       ],
