@@ -80,58 +80,87 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     if (_tableData == null || _tableData!.isEmpty) {
       return const Center(child: Text('暂无课表数据'));
     }
-    return _buildTable(_tableData!);
+    return _buildTable(context, _tableData!);
   }
 
-  Widget _buildTable(List<List<String>> tableData) {
+  Widget _buildTable(BuildContext context, List<List<String>> tableData) {
     final rowCount = tableData.length;
-    final colCount = tableData[0].length; // 应该是7
+    final colCount = tableData[0].length;
+    const headerColor = Color(0xFFC62828); // 深红表头
+    const altColor = Color(0xFFFFF5F5); // 极浅红交替行
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(8.0),
-        child: Table(
-          border: TableBorder.all(),
-          defaultColumnWidth: const IntrinsicColumnWidth(),
-          children: [
-            // 表头（无节次列）
-            TableRow(
-              decoration: const BoxDecoration(color: Colors.grey),
-              children: [
-                for (int i = 0; i < colCount; i++)
-                  TableCell(
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Center(
-                        child: Text(
-                          _weekdayName(i),
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.all(12),
+        child: IntrinsicWidth(
+          child: Card(
+            clipBehavior: Clip.antiAlias,
+            elevation: 3,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
-            // 数据行（无节次列）
-            for (int i = 0; i < rowCount; i++)
-              TableRow(
-                children: [
-                  for (int j = 0; j < colCount; j++)
-                    TableCell(
-                      child: Container(
-                        constraints: const BoxConstraints(maxWidth: 150),
-                        padding: const EdgeInsets.all(8.0),
-                        child: Text(
-                          tableData[i][j].isEmpty ? ' ' : tableData[i][j],
-                          style: const TextStyle(fontSize: 12),
-                          softWrap: true,
-                        ),
-                      ),
+            child: IntrinsicHeight(
+              child: SingleChildScrollView(
+                child: Table(
+                  border: TableBorder.symmetric(
+                    inside: BorderSide(color: Colors.red.shade100, width: 0.5),
+                  ),
+                  defaultColumnWidth: const IntrinsicColumnWidth(),
+                  children: [
+                    TableRow(
+                      decoration: const BoxDecoration(color: headerColor),
+                      children: [
+                        for (int i = 0; i < colCount; i++)
+                          TableCell(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  _weekdayName(i),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
-                ],
+                    for (int i = 0; i < rowCount; i++)
+                      TableRow(
+                        decoration: BoxDecoration(
+                          color: i.isOdd ? altColor : null,
+                        ),
+                        children: [
+                          for (int j = 0; j < colCount; j++)
+                            TableCell(
+                              child: Container(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 150,
+                                ),
+                                padding: const EdgeInsets.all(10),
+                                child: Text(
+                                  tableData[i][j].isEmpty
+                                      ? ' '
+                                      : tableData[i][j],
+                                  style: const TextStyle(fontSize: 13),
+                                  softWrap: true,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                  ],
+                ),
               ),
-          ],
+            ),
+          ),
         ),
       ),
     );
