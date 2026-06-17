@@ -20,7 +20,7 @@ class User {
 
   // ── 学籍信息（14 字段） ──
   final String yhxh; // 用户号（统一身份认证号）
-  final String xh; // 学号
+  final String xh; // 序号（基本不用）
   final String rxh; // 入学号
   final String rxnj; // 入学年级
   final String xz; // 学制（年）
@@ -73,7 +73,7 @@ class User {
   final String fdy; // 辅导员
   final String zp; // 照片
   final String zpxsh; // 照片审核号
-  final String bz; // 备注
+  final String bz; // 学号
   final String sfpk; // 是否贫困
   final String jtpklx; // 家庭贫困类型
   final String rdtsj; // 入党团时间
