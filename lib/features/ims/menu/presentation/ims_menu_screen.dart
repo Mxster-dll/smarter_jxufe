@@ -10,7 +10,7 @@ class ImsMenuScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: AppBar(title: const Text('教学信息服务')),
+      appBar: AppBar(title: const Text('教学信息服务'), centerTitle: true),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(32.0),

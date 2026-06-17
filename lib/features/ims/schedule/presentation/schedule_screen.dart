@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smarter_jxufe/features/ims/schedule/data/providers/schedule_repository_provider.dart';
 
 class ScheduleScreen extends ConsumerStatefulWidget {
-  const ScheduleScreen({super.key});
+  final bool showAppBar;
+
+  const ScheduleScreen({super.key, this.showAppBar = true});
 
   @override
   ConsumerState<ScheduleScreen> createState() => _ScheduleScreenState();
@@ -46,10 +48,15 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('课程表')),
-      body: _buildBody(),
-    );
+    final body = _buildBody();
+
+    if (widget.showAppBar) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('课程表'), centerTitle: true),
+        body: body,
+      );
+    }
+    return body;
   }
 
   Widget _buildBody() {

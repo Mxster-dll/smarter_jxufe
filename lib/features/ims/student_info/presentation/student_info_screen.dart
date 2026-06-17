@@ -6,34 +6,41 @@ import 'package:smarter_jxufe/features/ims/student_info/domain/student_info.dart
 
 /// 「我的」页面 —— 左右双列纵排，纯色标题背景。
 class StudentInfoScreen extends ConsumerWidget {
-  const StudentInfoScreen({super.key});
+  final bool showAppBar;
+
+  const StudentInfoScreen({super.key, this.showAppBar = true});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final infoAsync = ref.watch(_studentInfoProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('我的'), centerTitle: true),
-      body: infoAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
-              const SizedBox(height: 8),
-              Text('加载失败\n$error', textAlign: TextAlign.center),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => ref.invalidate(_studentInfoProvider),
-                child: const Text('重试'),
-              ),
-            ],
-          ),
+    final body = infoAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, _) => Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: Colors.red),
+            const SizedBox(height: 8),
+            Text('加载失败\n$error', textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => ref.invalidate(_studentInfoProvider),
+              child: const Text('重试'),
+            ),
+          ],
         ),
-        data: (info) => _buildContent(context, info),
       ),
+      data: (info) => _buildContent(context, info),
     );
+
+    if (showAppBar) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('我的'), centerTitle: true),
+        body: body,
+      );
+    }
+    return body;
   }
 
   Widget _buildContent(BuildContext context, StudentInfo i) {

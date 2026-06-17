@@ -9,43 +9,50 @@ import 'package:smarter_jxufe/features/major/domain/major.dart';
 import 'package:smarter_jxufe/shared/widgets/reorderable_table/reorderable_table.dart';
 
 class CurriculumScreen extends ConsumerWidget {
-  const CurriculumScreen({super.key});
+  final bool showAppBar;
+
+  const CurriculumScreen({super.key, this.showAppBar = true});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final viewModel = ref.read(curriculumViewModelProvider.notifier);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('培养方案查询')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ref
-            .watch(curriculumViewModelProvider)
-            .when(
-              data: (state) => Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(child: _buildYearDropdown(state, viewModel)),
-                      const SizedBox(width: 16),
-                      Expanded(child: _buildCollegeDropdown(state, viewModel)),
-                      const SizedBox(width: 16),
-                      Expanded(child: _buildMajorDropdown(state, viewModel)),
-                    ],
+    final body = Padding(
+      padding: const EdgeInsets.all(16),
+      child: ref
+          .watch(curriculumViewModelProvider)
+          .when(
+            data: (state) => Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(child: _buildYearDropdown(state, viewModel)),
+                    const SizedBox(width: 16),
+                    Expanded(child: _buildCollegeDropdown(state, viewModel)),
+                    const SizedBox(width: 16),
+                    Expanded(child: _buildMajorDropdown(state, viewModel)),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Expanded(
+                  child: RepaintBoundary(
+                    child: SingleChildScrollView(child: _buildTable(state)),
                   ),
-                  const SizedBox(height: 20),
-                  Expanded(
-                    child: RepaintBoundary(
-                      child: SingleChildScrollView(child: _buildTable(state)),
-                    ),
-                  ),
-                ],
-              ),
-              loading: () => const CircularProgressIndicator(),
-              error: (err, stack) => Text('Error: $err'),
+                ),
+              ],
             ),
-      ),
+            loading: () => const CircularProgressIndicator(),
+            error: (err, stack) => Text('Error: $err'),
+          ),
     );
+
+    if (showAppBar) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('培养方案查询'), centerTitle: true),
+        body: body,
+      );
+    }
+    return body;
   }
 
   Widget _buildYearDropdown(
