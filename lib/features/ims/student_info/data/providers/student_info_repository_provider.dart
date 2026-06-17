@@ -2,7 +2,6 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:riverpod/riverpod.dart';
 
 import 'package:smarter_jxufe/core/network/dio_providers.dart';
-import 'package:smarter_jxufe/features/ims/auth/data/ims_auth_repository.dart';
 import 'package:smarter_jxufe/features/ims/auth/data/providers/ims_auth_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/student_info/data/anti_corruption/student_info_mapper.dart';
 import 'package:smarter_jxufe/features/ims/student_info/data/datasources/student_info_local_datasource.dart';
