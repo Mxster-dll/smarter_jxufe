@@ -11,7 +11,7 @@ class AccountLocalDataSource {
   AccountLocalDataSource(this._box);
 
   Future<void> saveAccount(Account account) async {
-    await _box.put(_keyUsername, account.username);
+    await _box.put(_keyUsername, account.cardNumber);
     await _box.put(_keyPassword, account.password);
   }
 
@@ -19,7 +19,7 @@ class AccountLocalDataSource {
     final username = _box.get(_keyUsername);
     final password = _box.get(_keyPassword);
     if (username == null || password == null) return null;
-    return Account(username: username, password: password);
+    return Account(cardNumber: username, password: password);
   }
 
   Future<void> deleteAccount() async {
