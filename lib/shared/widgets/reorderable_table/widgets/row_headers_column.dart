@@ -79,7 +79,10 @@ class RowHeadersColumn extends StatelessWidget {
                   child: Text(
                     widget.rowHeaders?[originalRow] ??
                         defaultRowHeaders[originalRow],
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
