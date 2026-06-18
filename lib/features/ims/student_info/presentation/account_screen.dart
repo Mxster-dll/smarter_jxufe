@@ -2,18 +2,39 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/features/auth/data/providers/account_repository_provider.dart';
+import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_provider.dart';
 import 'package:smarter_jxufe/features/auth/domain/entities/account.dart';
+import 'package:smarter_jxufe/features/auth/presentation/login_screen.dart';
+import 'package:smarter_jxufe/features/ims/splash/presentation/ims_splash_screen.dart';
 import 'package:smarter_jxufe/features/ims/student_info/data/providers/student_info_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/student_info/domain/student_info.dart';
+import 'package:smarter_jxufe/features/ims/auth/data/providers/ims_auth_repository_provider.dart';
+import 'package:smarter_jxufe/features/qr_login/presentation/qr_login_viewmodel.dart';
+import 'package:smarter_jxufe/core/network/dio_providers.dart';
 
-/// 账户选择页面 —— 显示已保存的账户，支持切换。
-class AccountScreen extends ConsumerWidget {
+/// 账户管理页面 —— 多账户卡片 + 添加账户。
+class AccountScreen extends ConsumerStatefulWidget {
   const AccountScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final accountAsync = ref.watch(_accountProvider);
-    final studentInfoAsync = ref.watch(_cachedStudentInfoProvider);
+  ConsumerState<AccountScreen> createState() => _AccountScreenState();
+}
+
+class _AccountScreenState extends ConsumerState<AccountScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // 每次进入页面强制刷新
+    Future.microtask(() {
+      ref.invalidate(_accountsProvider);
+      ref.invalidate(_currentAccountProvider);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final accountsAsync = ref.watch(_accountsProvider);
+    final currentAsync = ref.watch(_currentAccountProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -24,13 +45,64 @@ class AccountScreen extends ConsumerWidget {
         title: const Text('账户'),
         centerTitle: true,
       ),
-      body: accountAsync.when(
+      body: accountsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('加载失败: $error')),
-        data: (account) => account == null
-            ? const Center(child: Text('未保存账户'))
-            : _buildAccountCard(context, ref, account, studentInfoAsync),
+        error: (e, _) => Center(child: Text('$e')),
+        data: (accounts) {
+          final current = currentAsync.valueOrNull;
+          return Column(
+            children: [
+              Expanded(
+                child: accounts.isEmpty
+                    ? const Center(child: Text('暂无账户'))
+                    : ListView(
+                        padding: const EdgeInsets.all(16),
+                        children: accounts.map((a) {
+                          final isCurrent = current?.cardNumber == a.cardNumber;
+                          return _buildAccountCard(context, ref, a, isCurrent);
+                        }).toList(),
+                      ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              const LoginScreen(showBackButton: true),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.person_add),
+                    label: const Text('添加账户'),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
+    );
+  }
+
+  Widget _avatarContent(BuildContext context, WidgetRef ref, Account account) {
+    if (account.displayName.isNotEmpty) {
+      return Text(
+        account.displayName[0],
+        style: TextStyle(
+          fontSize: 20,
+          color: Theme.of(context).colorScheme.onError,
+        ),
+      );
+    }
+    return Icon(
+      Icons.person,
+      size: 24,
+      color: Theme.of(context).colorScheme.onError,
     );
   }
 
@@ -38,74 +110,171 @@ class AccountScreen extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     Account account,
-    AsyncValue<StudentInfo?> studentInfoAsync,
+    bool isCurrent,
   ) {
-    final studentInfo = studentInfoAsync.valueOrNull;
-
-    return Center(
+    return Card(
+      elevation: isCurrent ? 3 : 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: isCurrent
+              ? Theme.of(context).colorScheme.error
+              : Colors.transparent,
+          width: 2,
+        ),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Card(
-          elevation: 3,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // 头像：已关联学生信息则用姓名首位，否则用图标
-                CircleAvatar(
-                  radius: 40,
-                  backgroundColor: Theme.of(context).colorScheme.error,
-                  child: studentInfo != null && studentInfo.name.isNotEmpty
-                      ? Text(
-                          studentInfo.name[0],
-                          style: TextStyle(
-                            fontSize: 36,
-                            color: Theme.of(context).colorScheme.onError,
-                          ),
-                        )
-                      : Icon(
-                          Icons.person,
-                          size: 36,
-                          color: Theme.of(context).colorScheme.onError,
-                        ),
-                ),
-                const SizedBox(height: 16),
-                if (studentInfo != null)
-                  Text(
-                    studentInfo.name,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                const SizedBox(height: 4),
-                Text(
-                  account.cardNumber,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    // TODO: 切换到其他账户
-                  },
-                  icon: const Icon(Icons.swap_horiz),
-                  label: const Text('切换账户'),
-                ),
-              ],
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: Theme.of(context).colorScheme.error,
+              child: _avatarContent(context, ref, account),
             ),
-          ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    account.cardNumber,
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  if (isCurrent)
+                    Text(
+                      '当前登录',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            if (!isCurrent)
+              ElevatedButton(
+                onPressed: () => _switchAccount(context, ref, account),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                  foregroundColor: Theme.of(context).colorScheme.onError,
+                ),
+                child: const Text('登录'),
+              ),
+          ],
         ),
       ),
     );
   }
+
+  Future<void> _switchAccount(
+    BuildContext context,
+    WidgetRef ref,
+    Account account,
+  ) async {
+    try {
+      final authRepo = await ref.read(authRepositoryProvider.future);
+      final accountRepo = await ref.read(accountRepositoryProvider.future);
+      final studentInfoRepo = await ref.read(
+        studentInfoRepositoryProvider.future,
+      );
+
+      // 第一步：检测 MFA
+      final mfaResult = await authRepo.detectMfa(
+        account.cardNumber,
+        account.password,
+      );
+      final mfaState = mfaResult.fold((failure) {
+        _showError(context, 'MFA检测失败: ${failure.message}');
+        return null;
+      }, (r) => r);
+      if (mfaState == null) return;
+
+      // 第二步：MFA 验证
+      String? trustAgent;
+      if (mfaState.needMfa) {
+        if (!mounted) return;
+        final qrViewModel = ref.read(qrLoginViewModelProvider.notifier);
+        final result = await qrViewModel.mfaVerify(
+          context,
+          account.cardNumber,
+          account.password,
+        );
+        if (!result.authorized) return;
+        trustAgent = result.trustDevice ? 'true' : '';
+      }
+
+      // 第三步：登录
+      final loginResult = await authRepo.login(
+        account.cardNumber,
+        account.password,
+        mfaState.mfaState,
+        trustAgent: trustAgent ?? '',
+      );
+
+      loginResult.fold(
+        (failure) => _showError(context, '登录失败: ${failure.message}'),
+        (_) async {
+          // 更新当前账户 Provider（驱动 Dio 切换）
+          ref.read(currentAccountProvider.notifier).state = account.cardNumber;
+          // 清除旧 JSESSIONID 缓存
+          final imsAuthRepo = await ref.read(imsAuthRepositoryProvider.future);
+          await imsAuthRepo.logout();
+          // 清除旧学生信息缓存
+          await studentInfoRepo.clearCache();
+          // 刷新学生信息并更新账户显示名称
+          final infoResult = await studentInfoRepo.getStudentInfo(
+            forceRefresh: true,
+          );
+          infoResult.fold(
+            (_) => null,
+            (info) =>
+                accountRepo.updateDisplayName(account.cardNumber, info.name),
+          );
+          // 设为当前账户
+          final accountsResult = accountRepo.getAccounts();
+          final idx = accountsResult.fold(
+            (_) => -1,
+            (list) =>
+                list.indexWhere((a) => a.cardNumber == account.cardNumber),
+          );
+          if (idx >= 0) {
+            await accountRepo.setCurrentAccount(idx);
+          }
+          // 刷新学生信息
+          studentInfoRepo.getStudentInfo(forceRefresh: true).ignore();
+          // 跳转 IMS
+          if (mounted) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const ImsSplashScreen()),
+              (_) => false,
+            );
+          }
+        },
+      );
+    } catch (e) {
+      _showError(context, '切换失败: $e');
+    }
+  }
+
+  void _showError(BuildContext context, String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
 }
 
-final _accountProvider = FutureProvider<Account?>((ref) async {
+final _accountsProvider = FutureProvider<List<Account>>((ref) async {
   final repo = await ref.watch(accountRepositoryProvider.future);
-  final result = await repo.getAccount();
+  final result = repo.getAccounts();
+  return result.fold(
+    (failure) => throw Exception(failure.message),
+    (accounts) => accounts,
+  );
+});
+
+final _currentAccountProvider = FutureProvider<Account?>((ref) async {
+  final repo = await ref.watch(accountRepositoryProvider.future);
+  final result = repo.getCurrentAccount();
   return result.fold(
     (failure) => throw Exception(failure.message),
     (account) => account,

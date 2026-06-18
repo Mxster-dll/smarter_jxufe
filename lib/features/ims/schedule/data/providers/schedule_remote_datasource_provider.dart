@@ -9,7 +9,7 @@ part 'schedule_remote_datasource_provider.g.dart';
 ScheduleRemoteDataSource scheduleRemoteDataSource(
   ScheduleRemoteDataSourceRef ref,
 ) {
-  final dio = ref.watch(imsDioProvider);
+  final dio = ref.watch(currentImsDioProvider);
 
   return ScheduleRemoteDataSource(dio);
 }

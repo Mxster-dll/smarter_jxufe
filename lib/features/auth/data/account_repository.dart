@@ -9,33 +9,72 @@ class AccountRepository {
 
   AccountRepository(this._localDataSource);
 
-  /// 获取本地存储的账号，无数据时返回 null
-  Future<Either<Failure, Account?>> getAccount() async {
+  /// 获取全部账户列表。
+  Either<Failure, List<Account>> getAccounts() {
     try {
-      final account = await _localDataSource.getAccount();
-      return Right(account);
+      return Right(_localDataSource.getAccounts());
     } catch (e) {
-      return Left(UnknownFailure('读取账号失败: $e'));
+      return Left(UnknownFailure('读取账户失败: $e'));
     }
   }
 
-  /// 加密保存账号
+  /// 获取当前登录的账户。
+  Either<Failure, Account?> getCurrentAccount() {
+    try {
+      return Right(_localDataSource.getCurrentAccount());
+    } catch (e) {
+      return Left(UnknownFailure('读取当前账户失败: $e'));
+    }
+  }
+
+  /// 保存账户并自动设为当前登录账户。
   Future<Either<Failure, void>> saveAccount(Account account) async {
     try {
       await _localDataSource.saveAccount(account);
+      // 自动设为当前账户
+      final accounts = _localDataSource.getAccounts();
+      final idx = accounts.indexWhere(
+        (a) => a.cardNumber == account.cardNumber,
+      );
+      if (idx != -1) {
+        await _localDataSource.setCurrentIndex(idx);
+      }
       return const Right(null);
     } catch (e) {
-      return Left(UnknownFailure('保存账号失败: $e'));
+      return Left(UnknownFailure('保存账户失败: $e'));
     }
   }
 
-  /// 删除存储的账号
-  Future<Either<Failure, void>> deleteAccount() async {
+  /// 设置当前登录账户。
+  Future<Either<Failure, void>> setCurrentAccount(int index) async {
     try {
-      await _localDataSource.deleteAccount();
+      await _localDataSource.setCurrentIndex(index);
       return const Right(null);
     } catch (e) {
-      return Left(UnknownFailure('删除账号失败: $e'));
+      return Left(UnknownFailure('切换账户失败: $e'));
+    }
+  }
+
+  /// 删除账户。
+  Future<Either<Failure, void>> deleteAccount(String cardNumber) async {
+    try {
+      await _localDataSource.deleteAccount(cardNumber);
+      return const Right(null);
+    } catch (e) {
+      return Left(UnknownFailure('删除账户失败: $e'));
+    }
+  }
+
+  /// 更新账户的显示名称。
+  Future<Either<Failure, void>> updateDisplayName(
+    String cardNumber,
+    String displayName,
+  ) async {
+    try {
+      await _localDataSource.updateDisplayName(cardNumber, displayName);
+      return const Right(null);
+    } catch (e) {
+      return Left(UnknownFailure('更新显示名称失败: $e'));
     }
   }
 }

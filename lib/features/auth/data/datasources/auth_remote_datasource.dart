@@ -53,6 +53,7 @@ class AuthRemoteDataSource {
     required String password,
     required String fpVisitorId,
     required String mfaState,
+    String trustAgent = '',
   }) async {
     const url =
         'https://ssl.jxufe.edu.cn/cas/login?service=http%3A%2F%2Fehall.jxufe.edu.cn%2Famp-auth-adapter%2FloginSuccess%3FsessionToken%3DTESTSESSIONTOKEN0000000000000002';
@@ -84,7 +85,6 @@ class AuthRemoteDataSource {
         '<REDACTED_EXECUTION>';
     const eventId = 'submit';
     const geolocation = '';
-    const trustAgent = '';
     const submit1 = 'Login1';
 
     final body = {

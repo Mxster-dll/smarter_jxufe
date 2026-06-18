@@ -9,6 +9,6 @@ part 'mfa_login_remote_datasource_provider.g.dart';
 MfaLoginRemoteDataSource mfaLoginRemoteDataSource(
   MfaLoginRemoteDataSourceRef ref,
 ) {
-  final dio = ref.watch(loginDioProvider);
+  final dio = ref.watch(currentLoginDioProvider);
   return MfaLoginRemoteDataSource(dio);
 }

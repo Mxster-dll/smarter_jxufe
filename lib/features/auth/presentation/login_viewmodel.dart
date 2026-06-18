@@ -4,6 +4,8 @@ import 'package:smarter_jxufe/core/errors/failures.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/account_repository_provider.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_provider.dart';
 import 'package:smarter_jxufe/features/auth/domain/entities/account.dart';
+import 'package:smarter_jxufe/features/ims/student_info/data/providers/student_info_repository_provider.dart';
+import 'package:smarter_jxufe/core/network/dio_providers.dart';
 
 import 'package:smarter_jxufe/features/auth/presentation/login_state.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/qr_login_viewmodel.dart';
@@ -66,16 +68,14 @@ class LoginViewModel extends _$LoginViewModel {
       if (mfaState == null) return; // detectMfa 失败
 
       // 第二步：如果需要 MFA，显示二维码
+      String? trustAgent;
       if (mfaState.needMfa) {
         final qrViewModel = ref.read(qrLoginViewModelProvider.notifier);
-        final authorized = await qrViewModel.mfaVerify(
-          context,
-          account,
-          password,
-        );
+        final result = await qrViewModel.mfaVerify(context, account, password);
 
         // 用户手动关闭对话框 → 不做任何事，等用户再次点击登录
-        if (!authorized) return;
+        if (!result.authorized) return;
+        trustAgent = result.trustDevice ? 'true' : '';
       }
 
       // 第三步：提交登录
@@ -83,6 +83,7 @@ class LoginViewModel extends _$LoginViewModel {
         account,
         password,
         mfaState.mfaState,
+        trustAgent: trustAgent ?? '',
       );
 
       final loginSuccess = loginResult.fold((failure) {
@@ -105,6 +106,19 @@ class LoginViewModel extends _$LoginViewModel {
         final accountRepo = await ref.read(accountRepositoryProvider.future);
         await accountRepo.saveAccount(
           Account(cardNumber: account, password: password),
+        );
+        // 更新当前账户 Provider（驱动 Dio 切换）
+        ref.read(currentAccountProvider.notifier).state = account;
+        // 刷新学生信息并更新账户显示名称
+        final studentInfoRepo = await ref.read(
+          studentInfoRepositoryProvider.future,
+        );
+        final infoResult = await studentInfoRepo.getStudentInfo(
+          forceRefresh: true,
+        );
+        infoResult.fold(
+          (_) => null,
+          (info) => accountRepo.updateDisplayName(account, info.name),
         );
         state = state.copyWith(loginSuccess: true);
       }

@@ -9,6 +9,6 @@ part 'scan_login_remote_datasource_provider.g.dart';
 ScanLoginRemoteDataSource scanLoginRemoteDataSource(
   ScanLoginRemoteDataSourceRef ref,
 ) {
-  final dio = ref.watch(loginDioProvider);
+  final dio = ref.watch(currentLoginDioProvider);
   return ScanLoginRemoteDataSource(dio);
 }
