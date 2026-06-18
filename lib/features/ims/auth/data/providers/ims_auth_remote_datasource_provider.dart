@@ -9,7 +9,7 @@ part 'ims_auth_remote_datasource_provider.g.dart';
 ImsAuthRemoteDataSource imsAuthRemoteDataSource(
   ImsAuthRemoteDataSourceRef ref,
 ) {
-  final dio = ref.watch(imsDioProvider);
+  final dio = ref.watch(currentImsDioProvider);
 
   return ImsAuthRemoteDataSource(dio);
 }

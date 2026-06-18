@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/core/network/dio_providers.dart';
 import 'package:smarter_jxufe/core/storage/hive_initializer.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/account_repository_provider.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_provider.dart';
 import 'package:smarter_jxufe/features/auth/presentation/login_screen.dart';
 import 'package:smarter_jxufe/features/ims/splash/presentation/ims_splash_screen.dart';
+import 'package:smarter_jxufe/features/ims/student_info/data/providers/student_info_repository_provider.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/qr_login_viewmodel.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -31,13 +33,16 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     try {
       // 读取本地存储的账号
       final accountRepo = await ref.read(accountRepositoryProvider.future);
-      final accountResult = await accountRepo.getAccount();
+      final accountResult = accountRepo.getCurrentAccount();
       final account = accountResult.fold((_) => null, (a) => a);
 
       if (account == null) {
         _goToLogin();
         return;
       }
+
+      // 初始化当前账户 Provider
+      ref.read(currentAccountProvider.notifier).state = account.cardNumber;
 
       // 有本地账号 → 尝试自动登录
       final authRepo = await ref.read(authRepositoryProvider.future);
@@ -58,19 +63,21 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       }
 
       // 需要 MFA → 显示二维码（复用 login_viewmodel 的逻辑）
+      String? trustAgent;
       if (mfaState.needMfa) {
         if (!mounted) return;
         final qrViewModel = ref.read(qrLoginViewModelProvider.notifier);
-        final authorized = await qrViewModel.mfaVerify(
+        final result = await qrViewModel.mfaVerify(
           context,
           account.cardNumber,
           account.password,
         );
-        if (!authorized) {
+        if (!result.authorized) {
           // 用户手动关闭 → 跳转登录页
           _goToLogin();
           return;
         }
+        trustAgent = result.trustDevice ? 'true' : '';
       }
 
       // 第二步：直接登录（无需 MFA）
@@ -78,9 +85,23 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         account.cardNumber,
         account.password,
         mfaState.mfaState,
+        trustAgent: trustAgent ?? '',
       );
 
-      loginResult.fold((failure) => _goToLogin(), (_) {
+      loginResult.fold((failure) => _goToLogin(), (_) async {
+        // 刷新学生信息并更新账户显示名称
+        final studentInfoRepo = await ref.read(
+          studentInfoRepositoryProvider.future,
+        );
+        final accountRepo = await ref.read(accountRepositoryProvider.future);
+        final infoResult = await studentInfoRepo.getStudentInfo(
+          forceRefresh: true,
+        );
+        infoResult.fold(
+          (_) => null,
+          (info) =>
+              accountRepo.updateDisplayName(account.cardNumber, info.name),
+        );
         if (mounted) {
           Navigator.pushReplacement(
             context,

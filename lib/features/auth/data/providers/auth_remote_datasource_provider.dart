@@ -7,6 +7,6 @@ part 'auth_remote_datasource_provider.g.dart';
 
 @Riverpod(keepAlive: true)
 AuthRemoteDataSource authRemoteDataSource(AuthRemoteDataSourceRef ref) {
-  final dio = ref.watch(loginDioProvider);
+  final dio = ref.watch(currentLoginDioProvider);
   return AuthRemoteDataSource(dio);
 }

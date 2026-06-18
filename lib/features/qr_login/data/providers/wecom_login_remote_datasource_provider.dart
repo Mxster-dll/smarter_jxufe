@@ -9,6 +9,6 @@ part 'wecom_login_remote_datasource_provider.g.dart';
 WecomLoginRemoteDataSource wecomLoginRemoteDataSource(
   WecomLoginRemoteDataSourceRef ref,
 ) {
-  final dio = ref.watch(loginDioProvider);
+  final dio = ref.watch(currentLoginDioProvider);
   return WecomLoginRemoteDataSource(dio);
 }

@@ -74,7 +74,8 @@ class QrLoginViewModel extends _$QrLoginViewModel {
   }
 
   /// MFA 验证，返回 true 表示验证成功（authorized），false 表示用户手动关闭
-  Future<bool> mfaVerify(
+  /// 返回 (是否授权成功, 是否信任设备)
+  Future<({bool authorized, bool trustDevice})> mfaVerify(
     BuildContext context,
     String account,
     String password,
@@ -89,11 +90,11 @@ class QrLoginViewModel extends _$QrLoginViewModel {
 
     try {
       final needMfa = await _repository.startMfaVerification(account, password);
-      if (!needMfa) return false;
+      if (!needMfa) return (authorized: false, trustDevice: false);
       _syncFromRepository();
     } catch (e) {
       state = state.copyWith(status: QrCodeStatus.error);
-      return false;
+      return (authorized: false, trustDevice: false);
     }
 
     // 监听验证成功状态
@@ -115,7 +116,7 @@ class QrLoginViewModel extends _$QrLoginViewModel {
     mfaSub.cancel();
     stopPolling();
 
-    return authorized;
+    return (authorized: authorized, trustDevice: state.trustDevice);
   }
 
   /// 从 repository 同步数据到 state
@@ -143,7 +144,14 @@ class QrLoginViewModel extends _$QrLoginViewModel {
 
   /// 显示二维码对话框，返回 Future 在对话框关闭时完成
   Future<void> _showDialog(BuildContext context) {
-    return QrCodeDialog.show(context, title: state.title, info: state.info);
+    return QrCodeDialog.show(
+      context,
+      title: state.title,
+      info: state.info,
+      onTrustChanged: (v) {
+        state = state.copyWith(trustDevice: v);
+      },
+    );
   }
 
   /// 停止轮询
