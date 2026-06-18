@@ -9,6 +9,6 @@ part 'college_remote_datasource_provider.g.dart';
 CollegeRemoteDataSource collegeRemoteDataSource(
   CollegeRemoteDataSourceRef ref,
 ) {
-  final dio = ref.watch(imsDioProvider);
+  final dio = ref.watch(currentImsDioProvider);
   return CollegeRemoteDataSource(dio);
 }
