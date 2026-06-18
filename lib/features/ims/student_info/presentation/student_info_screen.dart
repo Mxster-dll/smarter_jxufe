@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/features/ims/student_info/data/providers/student_info_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/student_info/domain/student_info.dart';
+import 'package:smarter_jxufe/features/ims/student_info/presentation/account_screen.dart';
 
 /// 「我的」页面 —— 左右双列纵排，纯色标题背景。
 class StudentInfoScreen extends ConsumerWidget {
@@ -184,7 +185,25 @@ class StudentInfoScreen extends ConsumerWidget {
         ),
       ),
       const SizedBox(height: 12),
-      Text(i.name, style: Theme.of(context).textTheme.headlineSmall),
+      // 名字居中，退出图标紧贴右侧
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox(width: 34), // 与右侧图标等宽，保证名字绝对居中
+          Text(i.name, style: Theme.of(context).textTheme.headlineSmall),
+          const SizedBox(width: 2),
+          IconButton(
+            icon: const Icon(Icons.logout, size: 18),
+            tooltip: '',
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AccountScreen()),
+            ),
+          ),
+        ],
+      ),
       const SizedBox(height: 4),
       _dotRow(
         context,
