@@ -9,7 +9,7 @@ part 'curriculum_remote_datasource_provider.g.dart';
 CurriculumRemoteDataSource curriculumRemoteDataSource(
   CurriculumRemoteDataSourceRef ref,
 ) {
-  final dio = ref.watch(imsDioProvider);
+  final dio = ref.watch(currentImsDioProvider);
 
   return CurriculumRemoteDataSource(dio);
 }

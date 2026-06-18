@@ -322,7 +322,9 @@ Widget _r(BuildContext context, String label, String value) {
 }
 
 /// 从仓库获取学生信息。
-final _studentInfoProvider = FutureProvider<StudentInfo>((ref) async {
+final _studentInfoProvider = FutureProvider.autoDispose<StudentInfo>((
+  ref,
+) async {
   final repo = await ref.watch(studentInfoRepositoryProvider.future);
   final result = await repo.getStudentInfo();
   return result.fold(

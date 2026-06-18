@@ -1,16 +1,17 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:fast_gbk/fast_gbk.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:riverpod/riverpod.dart';
 
 import 'package:smarter_jxufe/core/network/device_profile_repository_provider.dart';
 
-part 'dio_providers.g.dart';
+/// 当前登录账户卡号，切换账户时更新此值。
+final currentAccountProvider = StateProvider<String>((ref) => '');
 
-@Riverpod(keepAlive: true)
-Dio imsDio(ImsDioRef ref) {
+/// 按账户卡号分例的 IMS Dio。
+final imsDioProvider = Provider.family<Dio, String>((ref, account) {
   final deviceProfileRepo = ref.watch(deviceProfileRepositoryProvider);
-  final imsDio = Dio(
+  final dio = Dio(
     BaseOptions(
       baseUrl: 'https://jwxt.jxufe.edu.cn',
       followRedirects: false,
@@ -36,23 +37,11 @@ Dio imsDio(ImsDioRef ref) {
       },
     ),
   );
+  return dio;
+});
 
-  // 可选：添加日志拦截器方便调试（生产环境可移除）
-  // dio.interceptors.add(LogInterceptor(responseBody: true, requestBody: true));
-
-  return imsDio;
-}
-
-String _extractCharset(String? contentType) {
-  if (contentType == null) return '';
-  final match = RegExp(
-    r'charset=([^;]+)',
-  ).firstMatch(contentType.toLowerCase());
-  return match?.group(1)?.trim() ?? '';
-}
-
-@Riverpod(keepAlive: true)
-Dio loginDio(LoginDioRef ref) {
+/// 按账户卡号分例的 Login Dio。
+final loginDioProvider = Provider.family<Dio, String>((ref, account) {
   final deviceProfileRepo = ref.watch(deviceProfileRepositoryProvider);
   return Dio(
     BaseOptions(
@@ -64,4 +53,24 @@ Dio loginDio(LoginDioRef ref) {
       headers: {'User-Agent': deviceProfileRepo.userAgent},
     ),
   );
+});
+
+/// 当前账户的 IMS Dio，由 [currentAccountProvider] 驱动。
+final currentImsDioProvider = Provider<Dio>((ref) {
+  final account = ref.watch(currentAccountProvider);
+  return ref.watch(imsDioProvider(account));
+});
+
+/// 当前账户的 Login Dio，由 [currentAccountProvider] 驱动。
+final currentLoginDioProvider = Provider<Dio>((ref) {
+  final account = ref.watch(currentAccountProvider);
+  return ref.watch(loginDioProvider(account));
+});
+
+String _extractCharset(String? contentType) {
+  if (contentType == null) return '';
+  final match = RegExp(
+    r'charset=([^;]+)',
+  ).firstMatch(contentType.toLowerCase());
+  return match?.group(1)?.trim() ?? '';
 }

@@ -11,6 +11,7 @@ class QrLoginState {
   final String info;
   final String hintText;
   final String username;
+  final bool trustDevice;
 
   const QrLoginState({
     this.status = QrCodeStatus.loading,
@@ -20,6 +21,7 @@ class QrLoginState {
     this.info = '',
     this.hintText = '',
     this.username = '',
+    this.trustDevice = false,
   });
 
   QrLoginState copyWith({
@@ -30,6 +32,7 @@ class QrLoginState {
     String? info,
     String? hintText,
     String? username,
+    bool? trustDevice,
   }) {
     return QrLoginState(
       status: status ?? this.status,
@@ -39,6 +42,7 @@ class QrLoginState {
       info: info ?? this.info,
       hintText: hintText ?? this.hintText,
       username: username ?? this.username,
+      trustDevice: trustDevice ?? this.trustDevice,
     );
   }
 

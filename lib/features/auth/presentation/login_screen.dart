@@ -8,7 +8,9 @@ import 'package:smarter_jxufe/features/auth/presentation/login_viewmodel.dart';
 import 'package:smarter_jxufe/features/ims/splash/presentation/ims_splash_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+  final bool showBackButton;
+
+  const LoginScreen({super.key, this.showBackButton = false});
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -99,53 +101,70 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget _buildHeader() {
     return Container(
       margin: const EdgeInsets.only(top: 20, bottom: 40),
-      child: Column(
+      child: Stack(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
+          Column(
             children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: JxufeTheme.primaryColor,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.school_rounded,
-                  color: Colors.white,
-                  size: 30,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Text(
-                    '江西财经大学统一身份认证',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: JxufeTheme.textColor,
-                      height: 1.2,
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: JxufeTheme.primaryColor,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.school_rounded,
+                      color: Colors.white,
+                      size: 30,
                     ),
                   ),
-                  Text(
-                    'Jiangxi University of Finance and Economics',
-                    style: TextStyle(fontSize: 12, color: JxufeTheme.hintColor),
+                  const SizedBox(width: 16),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '江西财经大学统一身份认证',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: JxufeTheme.textColor,
+                          height: 1.2,
+                        ),
+                      ),
+                      Text(
+                        'Jiangxi University of Finance and Economics',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: JxufeTheme.hintColor,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
+              const SizedBox(height: 24),
+              Container(
+                height: 1,
+                color: JxufeTheme.borderColor,
+                margin: const EdgeInsets.symmetric(horizontal: 20),
+              ),
+              const SizedBox(height: 24),
             ],
           ),
-          const SizedBox(height: 24),
-          Container(
-            height: 1,
-            color: JxufeTheme.borderColor,
-            margin: const EdgeInsets.symmetric(horizontal: 20),
-          ),
-          const SizedBox(height: 24),
+          // 返回按钮（仅从账户页进入时显示）
+          if (widget.showBackButton)
+            Positioned(
+              left: 0,
+              top: 0,
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => Navigator.of(context).maybePop(),
+              ),
+            ),
         ],
       ),
     );

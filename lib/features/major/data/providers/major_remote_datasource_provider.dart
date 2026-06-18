@@ -7,6 +7,6 @@ part 'major_remote_datasource_provider.g.dart';
 
 @Riverpod(keepAlive: true)
 MajorRemoteDataSource majorRemoteDataSource(MajorRemoteDataSourceRef ref) {
-  final dio = ref.watch(imsDioProvider);
+  final dio = ref.watch(currentImsDioProvider);
   return MajorRemoteDataSource(dio);
 }

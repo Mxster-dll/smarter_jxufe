@@ -9,7 +9,7 @@ part 'student_info_remote_datasource_provider.g.dart';
 StudentInfoRemoteDataSource studentInfoRemoteDataSource(
   StudentInfoRemoteDataSourceRef ref,
 ) {
-  final dio = ref.watch(imsDioProvider);
+  final dio = ref.watch(currentImsDioProvider);
 
   return StudentInfoRemoteDataSource(dio);
 }

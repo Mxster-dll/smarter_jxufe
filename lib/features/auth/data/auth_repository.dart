@@ -11,7 +11,7 @@ class AuthRepository {
   final AuthRemoteDataSource _remoteDataSource;
   final DeviceProfileRepository _deviceProfileRepo;
 
-  String? _tgc; // tgc 和 jid 的管理方式不一致，考虑本地数据源究竟存什么，
+  String? _tgc;
 
   AuthRepository({
     required AuthLocalDataSource localDataSource,
@@ -19,7 +19,9 @@ class AuthRepository {
     required DeviceProfileRepository deviceProfileRepo,
   }) : _localDataSource = localDataSource,
        _remoteDataSource = remoteDataSource,
-       _deviceProfileRepo = deviceProfileRepo;
+       _deviceProfileRepo = deviceProfileRepo {
+    _tgc = _localDataSource.getTgc();
+  }
 
   /// 第一步：检测是否需要 MFA
   Future<Either<Failure, MfaResult>> detectMfa(
@@ -62,8 +64,9 @@ class AuthRepository {
   Future<Either<Failure, void>> login(
     String username,
     String password,
-    String mfaState,
-  ) async {
+    String mfaState, {
+    String trustAgent = '',
+  }) async {
     final fpVisitorId = _deviceProfileRepo.fpVisitorId;
 
     try {
@@ -72,6 +75,7 @@ class AuthRepository {
         password: password,
         fpVisitorId: fpVisitorId,
         mfaState: mfaState,
+        trustAgent: trustAgent,
       );
 
       // 401 且响应体包含 "账号或密码错误" → 密码错误
@@ -96,6 +100,7 @@ class AuthRepository {
             final trimmed = part.trim();
             if (trimmed.startsWith('TGC=')) {
               _tgc = trimmed.substring(4);
+              await _localDataSource.saveTgc(_tgc!);
               return const Right(null);
             }
           }
