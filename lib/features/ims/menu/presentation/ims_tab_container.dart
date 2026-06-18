@@ -4,6 +4,7 @@ import 'package:smarter_jxufe/features/ims/curriculum/presentation/curriculum_sc
 import 'package:smarter_jxufe/features/ims/menu/domain/ims_tab.dart';
 import 'package:smarter_jxufe/features/ims/schedule/presentation/schedule_screen.dart';
 import 'package:smarter_jxufe/features/ims/student_info/presentation/student_info_screen.dart';
+import 'package:smarter_jxufe/features/ims/grades/presentation/grades_screen.dart';
 
 class ImsTabContainer extends StatefulWidget {
   final ImsTab initialTab;
@@ -92,7 +93,7 @@ class _ImsTabContainerState extends State<ImsTabContainer> {
 
   Widget _getPage(ImsTab tab) => switch (tab) {
     .curriculum => CurriculumScreen(showAppBar: false),
-    .grade => const Center(child: Text('成绩')),
+    .grade => GradesScreen(showAppBar: false),
     .schedule => ScheduleScreen(showAppBar: false),
     .studentInfo => StudentInfoScreen(showAppBar: false),
   };
