@@ -200,59 +200,86 @@ class GradesScreen extends ConsumerWidget {
       child: Card(
         clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: IntrinsicWidth(
-            child: DataTable(
-              headingRowColor: WidgetStateProperty.all(theme.colorScheme.error),
-              headingTextStyle: TextStyle(
-                color: theme.colorScheme.onError,
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-              ),
-              dataTextStyle: const TextStyle(fontSize: 13),
-              columnSpacing: 16,
-              columns: const [
-                DataColumn(label: Text('课程代码')),
-                DataColumn(label: Text('课程名称')),
-                DataColumn(label: Text('学分')),
-                DataColumn(label: Text('类别')),
-                DataColumn(label: Text('性质')),
-                DataColumn(label: Text('考核')),
-                DataColumn(label: Text('成绩')),
-                DataColumn(label: Text('绩点')),
-                DataColumn(label: Text('学分绩点')),
-              ],
-              rows: [
-                for (final g in grades)
-                  DataRow(
-                    cells: [
-                      DataCell(
-                        Text(
-                          g.courseCode,
-                          style: const TextStyle(fontSize: 11),
-                        ),
-                      ),
-                      DataCell(
-                        Text(
-                          g.courseName,
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                      ),
-                      DataCell(Text(g.credit)),
-                      DataCell(
-                        Text(g.category, style: const TextStyle(fontSize: 11)),
-                      ),
-                      DataCell(Text(g.nature)),
-                      DataCell(Text(g.examType)),
-                      DataCell(Text(g.score)),
-                      DataCell(Text(g.gradePoint)),
-                      DataCell(Text(g.creditGradePoint)),
-                    ],
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 600;
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: IntrinsicWidth(
+                child: DataTable(
+                  headingRowColor: WidgetStateProperty.all(
+                    theme.colorScheme.error,
                   ),
-              ],
-            ),
-          ),
+                  headingTextStyle: TextStyle(
+                    color: theme.colorScheme.onError,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                  dataTextStyle: const TextStyle(fontSize: 13),
+                  columnSpacing: 16,
+                  columns: isNarrow
+                      ? const [
+                          DataColumn(label: Text('课程名称')),
+                          DataColumn(label: Text('学分')),
+                          DataColumn(label: Text('分数')),
+                        ]
+                      : const [
+                          DataColumn(label: Text('课程代码')),
+                          DataColumn(label: Text('课程名称')),
+                          DataColumn(label: Text('学分')),
+                          DataColumn(label: Text('类别')),
+                          DataColumn(label: Text('性质')),
+                          DataColumn(label: Text('考核')),
+                          DataColumn(label: Text('成绩')),
+                          DataColumn(label: Text('绩点')),
+                          DataColumn(label: Text('学分绩点')),
+                        ],
+                  rows: [
+                    for (final g in grades)
+                      DataRow(
+                        cells: isNarrow
+                            ? [
+                                DataCell(
+                                  Text(
+                                    g.courseName,
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                ),
+                                DataCell(Text(g.credit)),
+                                DataCell(Text(g.score)),
+                              ]
+                            : [
+                                DataCell(
+                                  Text(
+                                    g.courseCode,
+                                    style: const TextStyle(fontSize: 11),
+                                  ),
+                                ),
+                                DataCell(
+                                  Text(
+                                    g.courseName,
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                ),
+                                DataCell(Text(g.credit)),
+                                DataCell(
+                                  Text(
+                                    g.category,
+                                    style: const TextStyle(fontSize: 11),
+                                  ),
+                                ),
+                                DataCell(Text(g.nature)),
+                                DataCell(Text(g.examType)),
+                                DataCell(Text(g.score)),
+                                DataCell(Text(g.gradePoint)),
+                                DataCell(Text(g.creditGradePoint)),
+                              ],
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
