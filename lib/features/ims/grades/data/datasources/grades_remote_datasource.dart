@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 
-import 'package:smarter_jxufe/features/ims/grades/domain/grade.dart';
+import 'package:smarter_jxufe/features/ims/grades/domain/grades_query_params.dart';
 
 /// 从教务系统获取成绩的远程数据源。
 class GradesRemoteDataSource {
