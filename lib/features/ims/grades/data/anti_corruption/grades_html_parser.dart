@@ -2,6 +2,8 @@ import 'package:html/dom.dart';
 import 'package:html/parser.dart' as html_parser;
 
 import 'package:smarter_jxufe/features/ims/grades/domain/grade.dart';
+import 'package:smarter_jxufe/features/ims/grades/domain/grade_summary.dart';
+import 'package:smarter_jxufe/features/ims/grades/domain/grades_result.dart';
 
 /// 解析成绩 HTML 响应。
 ///
