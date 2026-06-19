@@ -1,0 +1,99 @@
+import 'package:dio/dio.dart';
+
+/// IMS 教务系统 Dio 拦截器 —— 自动检测"凭证失效"并刷新 JSESSIONID 重试。
+///
+/// 用法：
+/// 1. 创建拦截器实例并添加到 IMS Dio
+/// 2. 在 [ImsAuthRepository] 初始化后调用 [setRefreshCallback] 注入刷新函数
+/// 3. 后续所有 IMS 请求若响应体包含"凭证失效"，拦截器会自动刷新重试一次
+class ImsAuthInterceptor extends Interceptor {
+  /// 用于刷新 JSESSIONID 的回调，由外部注入。
+  Future<String> Function()? _refreshCallback;
+
+  /// 注入刷新回调。应在 [ImsAuthRepository] 初始化完成后立即调用。
+  void setRefreshCallback(Future<String> Function() callback) {
+    _refreshCallback = callback;
+  }
+
+  @override
+  void onResponse(Response response, ResponseInterceptorHandler handler) {
+    final data = response.data;
+    // 仅当响应体为字符串且包含"凭证失效"时才处理
+    if (data is String && data.contains('凭证失效')) {
+      _handleRetry(response, handler);
+      return;
+    }
+    handler.next(response);
+  }
+
+  Future<void> _handleRetry(
+    Response response,
+    ResponseInterceptorHandler handler,
+  ) async {
+    final extra = response.requestOptions.extra;
+    final retryCount = (extra['_ims_retry_count'] as int?) ?? 0;
+
+    // 已重试过或未注入刷新回调，直接拒绝
+    if (retryCount >= 1 || _refreshCallback == null) {
+      handler.reject(
+        DioException(
+          requestOptions: response.requestOptions,
+          response: response,
+          message: '凭证已失效，请重新登录',
+        ),
+      );
+      return;
+    }
+
+    try {
+      // 刷新 JSESSIONID
+      final newJsessionId = await _refreshCallback!();
+
+      // 更新 Cookie 头中的 JSESSIONID
+      final headers = <String, dynamic>{...?response.requestOptions.headers};
+      final oldCookie = (headers['Cookie'] ?? '').toString();
+      final newCookie = _replaceJsessionId(oldCookie, newJsessionId);
+      headers['Cookie'] = newCookie;
+
+      // 构造新请求选项并标记重试次数
+      final newOptions = response.requestOptions.copyWith(
+        headers: headers,
+        extra: {...extra, '_ims_retry_count': retryCount + 1},
+      );
+
+      // 重试请求（responseDecoder 等配置保留在 requestOptions 中，
+      // 使用临时 Dio 避免拦截器递归，_ims_retry_count 防止无限重试）
+      final retryResponse = await Dio().fetch(newOptions);
+      handler.resolve(retryResponse);
+    } on DioException {
+      // 重试本身也失败了
+      handler.reject(
+        DioException(
+          requestOptions: response.requestOptions,
+          response: response,
+          message: '凭证已失效，请重新登录',
+        ),
+      );
+    } catch (_) {
+      handler.reject(
+        DioException(
+          requestOptions: response.requestOptions,
+          response: response,
+          message: '凭证已失效，请重新登录',
+        ),
+      );
+    }
+  }
+
+  /// 将 Cookie 字符串中的 JSESSIONID 替换为新值；若不存在则追加。
+  String _replaceJsessionId(String cookie, String newId) {
+    if (cookie.contains('JSESSIONID=')) {
+      return cookie.replaceAll(
+        RegExp(r'JSESSIONID=[^;]+'),
+        'JSESSIONID=$newId',
+      );
+    }
+    final separator = cookie.isNotEmpty && !cookie.endsWith(';') ? ';' : '';
+    return '$cookie$separator JSESSIONID=$newId';
+  }
+}

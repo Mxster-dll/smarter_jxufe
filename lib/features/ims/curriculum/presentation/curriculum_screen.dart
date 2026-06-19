@@ -30,20 +30,33 @@ class CurriculumScreen extends ConsumerWidget {
                       primary: Theme.of(context).colorScheme.error,
                     ),
                   ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _buildYearDropdown(context, state, viewModel),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildCollegeDropdown(context, state, viewModel),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildMajorDropdown(context, state, viewModel),
-                      ),
-                    ],
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isNarrow = constraints.maxWidth < 600;
+                      final dropdowns = [
+                        _buildYearDropdown(context, state, viewModel),
+                        _buildCollegeDropdown(context, state, viewModel),
+                        _buildMajorDropdown(context, state, viewModel),
+                      ];
+                      if (isNarrow) {
+                        return Column(
+                          children: [
+                            for (int i = 0; i < dropdowns.length; i++) ...[
+                              if (i > 0) const SizedBox(height: 8),
+                              dropdowns[i],
+                            ],
+                          ],
+                        );
+                      }
+                      return Row(
+                        children: [
+                          for (int i = 0; i < dropdowns.length; i++) ...[
+                            if (i > 0) const SizedBox(width: 16),
+                            Expanded(child: dropdowns[i]),
+                          ],
+                        ],
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(height: 20),

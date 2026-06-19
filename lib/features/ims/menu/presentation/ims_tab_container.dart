@@ -74,15 +74,23 @@ class _ImsTabContainerState extends State<ImsTabContainer> {
           child: Text(_currentTab.title, key: ValueKey(_currentTab)),
         ),
       ),
-      body: PageView(
-        controller: _pageController,
-        onPageChanged: (index) {
-          setState(() {
-            _prevTabIndex = _currentTab.index;
-            _currentTab = ImsTab.values[index];
-          });
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isNarrow = constraints.maxWidth < 600;
+          return PageView(
+            controller: _pageController,
+            physics: isNarrow
+                ? const NeverScrollableScrollPhysics()
+                : const PageScrollPhysics(),
+            onPageChanged: (index) {
+              setState(() {
+                _prevTabIndex = _currentTab.index;
+                _currentTab = ImsTab.values[index];
+              });
+            },
+            children: ImsTab.values.map(_getPage).toList(),
+          );
         },
-        children: ImsTab.values.map(_getPage).toList(),
       ),
       bottomNavigationBar: _CustomBottomNavBar(
         currentTab: _currentTab,

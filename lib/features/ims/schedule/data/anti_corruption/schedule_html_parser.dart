@@ -28,7 +28,13 @@ class ScheduleHtmlParser {
           .where((td) => !td.classes.contains('td1'))
           .toList();
 
-      final rowCells = tds.map((td) => td.text.trim()).toList();
+      final rowCells = tds.map((td) {
+        // 将 <br> 替换为换行符，避免课程名、教师、教室等信息粘连
+        for (final br in td.querySelectorAll('br')) {
+          br.replaceWith(Text('\n'));
+        }
+        return td.text.trim();
+      }).toList();
 
       if (rowCells.isNotEmpty) {
         result.add(rowCells);
