@@ -4,9 +4,20 @@ import 'package:fast_gbk/fast_gbk.dart';
 import 'package:riverpod/riverpod.dart';
 
 import 'package:smarter_jxufe/core/network/device_profile_repository_provider.dart';
+import 'package:smarter_jxufe/core/network/interceptors/ims_auth_interceptor.dart';
 
 /// 当前登录账户卡号，切换账户时更新此值。
 final currentAccountProvider = StateProvider<String>((ref) => '');
+
+/// 全局 IMS 认证拦截器实例（所有账户共用同一个拦截器，
+/// 因为 JSESSIONID 刷新逻辑不区分账户）。
+final _imsAuthInterceptor = ImsAuthInterceptor();
+
+/// 注入 JSESSIONID 刷新回调。
+/// 应在 [ImsAuthRepository] 初始化完成后调用。
+void setJsessionIdRefreshCallback(Future<String> Function() callback) {
+  _imsAuthInterceptor.setRefreshCallback(callback);
+}
 
 /// 按账户卡号分例的 IMS Dio。
 final imsDioProvider = Provider.family<Dio, String>((ref, account) {
@@ -37,6 +48,8 @@ final imsDioProvider = Provider.family<Dio, String>((ref, account) {
       },
     ),
   );
+  // 添加凭证失效自动重试拦截器
+  dio.interceptors.add(_imsAuthInterceptor);
   return dio;
 });
 
