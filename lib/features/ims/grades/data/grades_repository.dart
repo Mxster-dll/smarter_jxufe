@@ -5,7 +5,8 @@ import 'package:smarter_jxufe/core/exception/sync_failure.dart';
 import 'package:smarter_jxufe/features/ims/auth/data/ims_auth_repository.dart';
 import 'package:smarter_jxufe/features/ims/grades/data/anti_corruption/grades_html_parser.dart';
 import 'package:smarter_jxufe/features/ims/grades/data/datasources/grades_remote_datasource.dart';
-import 'package:smarter_jxufe/features/ims/grades/domain/grade.dart';
+import 'package:smarter_jxufe/features/ims/grades/domain/grades_query_params.dart';
+import 'package:smarter_jxufe/features/ims/grades/domain/grades_result.dart';
 
 class GradesRepository {
   final GradesRemoteDataSource _remoteDataSource;

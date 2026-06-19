@@ -3,40 +3,33 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/features/ims/grades/data/providers/grades_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grade.dart';
+import 'package:smarter_jxufe/features/ims/grades/domain/grade_summary.dart';
+import 'package:smarter_jxufe/features/ims/grades/domain/grades_query_params.dart';
+import 'package:smarter_jxufe/features/ims/grades/domain/grades_result.dart';
+import 'package:smarter_jxufe/features/ims/grades/domain/time_limit.dart';
+import 'package:smarter_jxufe/features/ims/grades/presentation/grades_viewmodel.dart';
 
-/// 成绩页面。
-class GradesScreen extends ConsumerStatefulWidget {
+class GradesScreen extends ConsumerWidget {
   final bool showAppBar;
 
   const GradesScreen({super.key, this.showAppBar = true});
 
   @override
-  ConsumerState<GradesScreen> createState() => _GradesScreenState();
-}
-
-class _GradesScreenState extends ConsumerState<GradesScreen> {
-  TimeLimit _timeLimit = TimeLimit.semester;
-  bool _showRawGrade = false;
-  bool _selectMajor = true;
-  bool _selectMinor = true;
-  bool _selectWeiZhuan = true;
-  bool _onlyNotPassed = false;
-  String _semesterXq = '0';
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return _wrapWithScaffold(
+      context,
+      ref,
       Column(
         children: [
-          _buildFilters(),
-          Expanded(child: _buildGradeTable()),
+          _buildFilters(context, ref),
+          Expanded(child: _buildGradeTable(context, ref)),
         ],
       ),
     );
   }
 
-  Widget _wrapWithScaffold(Widget child) {
-    if (widget.showAppBar) {
+  Widget _wrapWithScaffold(BuildContext context, WidgetRef ref, Widget child) {
+    if (showAppBar) {
       return Scaffold(
         appBar: AppBar(
           title: const Text('成绩'),
@@ -45,7 +38,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
             IconButton(
               icon: const Icon(Icons.refresh),
               tooltip: '刷新',
-              onPressed: _refresh,
+              onPressed: () => ref.invalidate(_gradesProvider),
             ),
           ],
         ),
@@ -55,32 +48,10 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     return child;
   }
 
-  void _refresh() {
-    ref.invalidate(_gradesProvider);
-  }
+  Widget _buildFilters(BuildContext context, WidgetRef ref) {
+    final vm = ref.watch(gradesViewModelProvider.notifier);
+    final state = ref.watch(gradesViewModelProvider);
 
-  /// 主修/辅修/微专 至少选一个。
-  void _onCategoryToggle(String category) {
-    final count =
-        (_selectMajor ? 1 : 0) +
-        (_selectMinor ? 1 : 0) +
-        (_selectWeiZhuan ? 1 : 0);
-    setState(() {
-      switch (category) {
-        case 'major':
-          if (_selectMajor && count <= 1) return;
-          _selectMajor = !_selectMajor;
-        case 'minor':
-          if (_selectMinor && count <= 1) return;
-          _selectMinor = !_selectMinor;
-        case 'weizhuan':
-          if (_selectWeiZhuan && count <= 1) return;
-          _selectWeiZhuan = !_selectWeiZhuan;
-      }
-    });
-  }
-
-  Widget _buildFilters() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
       child: Wrap(
@@ -88,39 +59,53 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
         runSpacing: 4,
         children: [
           _dropdown<TimeLimit>(
-            value: _timeLimit,
+            context,
+            value: state.timeLimit,
             items: TimeLimit.values,
             label: (t) => t.label,
-            onChanged: (v) => setState(() => _timeLimit = v!),
+            onChanged: (v) => vm.setTimeLimit(v!),
           ),
           _dropdown<String>(
-            value: _semesterXq,
+            context,
+            value: state.semesterXq,
             items: const ['0', '1', '2'],
             label: (s) => s == '0'
                 ? '第一学期'
                 : s == '1'
                 ? '第二学期'
                 : '第二阶段',
-            onChanged: (v) => setState(() => _semesterXq = v!),
-          ),
-          _toggle('主修', _selectMajor, () => _onCategoryToggle('major')),
-          _toggle('辅修', _selectMinor, () => _onCategoryToggle('minor')),
-          _toggle('微专', _selectWeiZhuan, () => _onCategoryToggle('weizhuan')),
-          _toggle(
-            '仅未通过',
-            _onlyNotPassed,
-            () => setState(() => _onlyNotPassed = !_onlyNotPassed),
+            onChanged: (v) => vm.setSemesterXq(v!),
           ),
           _toggle(
-            _showRawGrade ? '原始成绩' : '有效成绩',
-            _showRawGrade,
-            () => setState(() => _showRawGrade = !_showRawGrade),
+            context,
+            '主修',
+            state.selectMajor,
+            () => vm.toggleCategory('major'),
+          ),
+          _toggle(
+            context,
+            '辅修',
+            state.selectMinor,
+            () => vm.toggleCategory('minor'),
+          ),
+          _toggle(
+            context,
+            '微专',
+            state.selectWeiZhuan,
+            () => vm.toggleCategory('weizhuan'),
+          ),
+          _toggle(context, '仅未通过', state.onlyNotPassed, vm.toggleOnlyNotPassed),
+          _toggle(
+            context,
+            state.showRawGrade ? '原始成绩' : '有效成绩',
+            state.showRawGrade,
+            vm.toggleShowRawGrade,
             activeColor: Colors.red,
           ),
           IconButton(
             icon: const Icon(Icons.refresh, size: 20),
             tooltip: '刷新',
-            onPressed: _refresh,
+            onPressed: () => ref.invalidate(_gradesProvider),
             visualDensity: VisualDensity.compact,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
@@ -130,7 +115,8 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     );
   }
 
-  Widget _dropdown<T>({
+  Widget _dropdown<T>(
+    BuildContext context, {
     required T value,
     required List<T> items,
     required String Function(T) label,
@@ -153,6 +139,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
   }
 
   Widget _toggle(
+    BuildContext context,
     String label,
     bool active,
     VoidCallback onTap, {
@@ -172,8 +159,9 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     );
   }
 
-  Widget _buildGradeTable() {
-    final resultAsync = ref.watch(_gradesProvider(_buildParams()));
+  Widget _buildGradeTable(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(gradesViewModelProvider);
+    final resultAsync = ref.watch(_gradesProvider(state.params));
 
     return resultAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -196,16 +184,16 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  _buildGradeTableWidget(result.grades),
+                  _buildGradeTableWidget(context, result.grades),
                   if (result.summaries.isNotEmpty)
-                    _buildSummaryTable(result.summaries),
+                    _buildSummaryTable(context, result.summaries),
                 ],
               ),
             ),
     );
   }
 
-  Widget _buildGradeTableWidget(List<Grade> grades) {
+  Widget _buildGradeTableWidget(BuildContext context, List<Grade> grades) {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.all(12),
@@ -270,7 +258,10 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     );
   }
 
-  Widget _buildSummaryTable(List<GradeSummary> summaries) {
+  Widget _buildSummaryTable(
+    BuildContext context,
+    List<GradeSummary> summaries,
+  ) {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
@@ -332,19 +323,6 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
       ),
     );
   }
-
-  GradesQueryParams _buildParams() => GradesQueryParams(
-    enrollYear: '2025',
-    timeLimit: _timeLimit,
-    showRawGrade: _showRawGrade,
-    selectMajor: _selectMajor,
-    selectMinor: _selectMinor,
-    selectWeiZhuan: _selectWeiZhuan,
-    onlyNotPassed: _onlyNotPassed,
-    semesterXq: _timeLimit == TimeLimit.semester ? _semesterXq : null,
-    academicYear: _timeLimit != TimeLimit.sinceEnrollment ? '2025' : null,
-    academicYearNext: _timeLimit != TimeLimit.sinceEnrollment ? '2026' : null,
-  );
 }
 
 final _gradesProvider = FutureProvider.family<GradesResult, GradesQueryParams>((
