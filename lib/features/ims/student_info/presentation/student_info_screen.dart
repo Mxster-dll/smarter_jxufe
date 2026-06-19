@@ -48,122 +48,132 @@ class StudentInfoScreen extends ConsumerWidget {
     const pad = 12.0;
     const colGap = 10.0;
 
+    final leftCards = <Widget>[
+      _card(context, '身份信息', [
+        _r(context, '姓名', i.name),
+        _r(context, '拼音', i.namePinyin),
+        _r(context, '曾用名', i.formerName),
+        _r(context, '性别', i.gender),
+        _r(context, '民族', i.ethnicity),
+        _r(context, '出生日期', i.birthDate),
+        _r(context, '出生地', i.birthPlace),
+      ]),
+      _card(context, '入学培养', [
+        _r(context, '入学年级', i.enrollYear),
+        _r(context, '学制', i.studyYears.isNotEmpty ? '${i.studyYears}年' : ''),
+        _r(context, '报到时间', i.enrollDate),
+        _r(context, '招生季节', i.enrollSeason),
+        _r(context, '入学方式', i.enrollMethod),
+        _r(context, '入学前学历', i.prevEducation),
+        _r(context, '培养层次', i.trainLevel),
+        _r(context, '培养方式', i.trainMode),
+        _r(context, '考生类别', i.examineeType),
+        _r(context, '录取专业', i.admittedMajor),
+      ]),
+      _card(context, '证件信息', [
+        _r(context, '身份证号', i.idCardNo),
+        _r(context, '身份证别码', i.idCardAltCode),
+        _r(context, '身份证照片', i.idPhotoPath),
+        _r(context, '身份证正面', i.idPhotoFront),
+      ]),
+      _card(context, '学籍状态', [
+        _r(context, '政治面貌', i.politicalStatus),
+        _r(context, '文化程度', i.educationLevel),
+        _r(context, '户口性质', i.residenceType),
+        _r(context, '健康状况', i.healthStatus),
+        _r(context, '考生特征', i.examineeFeature),
+      ]),
+      _card(context, '高考信息', [
+        _r(context, '考生号', i.gaokaoNo),
+        _r(context, '准考证号', i.gaokaoTicketNo),
+        _r(context, '高考总分', i.gaokaoScore),
+        _r(context, '文化成绩', i.cultureScore),
+        _r(context, '考生特长', i.examineeTalent),
+        _r(context, '生源专业', i.originMajor),
+        _r(context, '招生省市类型', i.admissionType),
+        _r(context, '培养对象', i.trainTarget),
+        _r(context, '生源来源', i.originSource),
+      ]),
+    ];
+
+    final rightCards = <Widget>[
+      _card(context, '学籍标识', [
+        _r(context, '用户号', i.userId),
+        _r(context, '学号', i.studentId),
+        _r(context, '序号', i.serialNo),
+        _r(context, '入学号', i.enrollNo),
+      ]),
+      _card(context, '学院专业', [
+        _r(context, '院系', i.college),
+        _r(context, '专业', i.major),
+        _r(context, '专业方向', i.majorDirection),
+        _r(context, '班级', i.className),
+        _r(context, '学科门类', i.disciplineCategory),
+        _r(context, '宿舍名称', i.dormName),
+        _r(context, '宿舍信息', i.dormInfo),
+      ]),
+      _card(context, '联系方式', [
+        _r(context, '电话', i.phone),
+        _r(context, '邮箱', i.email),
+        _r(context, '通讯地址', i.address),
+        _r(context, '邮编', i.postalCode),
+        _r(context, '籍贯', i.hometown),
+        _r(context, '生源省份', i.originProvince),
+        _r(context, '生源地', i.originPlace),
+        _r(context, '生源地单位', i.originUnit),
+      ]),
+      _card(context, '家庭联系', [
+        _r(context, '联系人', i.contactPerson),
+        _r(context, '家庭联系人', i.familyContact),
+        _r(context, '家庭联系人方式', i.familyContactPhone),
+        _r(context, '宿舍电话', i.dormPhone),
+      ]),
+      _card(context, '其他信息', [
+        _r(context, '辅导员', i.advisor),
+        _r(context, '是否贫困', i.isPoor),
+        _r(context, '贫困类型', i.povertyType),
+        _r(context, '入党团时间', i.partyJoinDate),
+        _r(context, '年总收入', i.annualIncome),
+        _r(context, '人均收入', i.perCapitaIncome),
+        _r(context, '学籍卡编号', i.registryNo),
+        _r(context, '外语语种', i.foreignLanguage),
+        _r(context, '计算机等级', i.computerLevel),
+        _r(context, '所属集团', i.groupInfo),
+      ]),
+    ];
+
     return ListView(
       padding: const EdgeInsets.all(pad),
       children: [
         _header(context, i),
         const SizedBox(height: 16),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                children: [
-                  _card(context, '身份信息', [
-                    _r(context, '姓名', i.name),
-                    _r(context, '拼音', i.namePinyin),
-                    _r(context, '曾用名', i.formerName),
-                    _r(context, '性别', i.gender),
-                    _r(context, '民族', i.ethnicity),
-                    _r(context, '出生日期', i.birthDate),
-                    _r(context, '出生地', i.birthPlace),
-                  ]),
-                  _card(context, '入学培养', [
-                    _r(context, '入学年级', i.enrollYear),
-                    _r(
-                      context,
-                      '学制',
-                      i.studyYears.isNotEmpty ? '${i.studyYears}年' : '',
-                    ),
-                    _r(context, '报到时间', i.enrollDate),
-                    _r(context, '招生季节', i.enrollSeason),
-                    _r(context, '入学方式', i.enrollMethod),
-                    _r(context, '入学前学历', i.prevEducation),
-                    _r(context, '培养层次', i.trainLevel),
-                    _r(context, '培养方式', i.trainMode),
-                    _r(context, '考生类别', i.examineeType),
-                    _r(context, '录取专业', i.admittedMajor),
-                  ]),
-                  _card(context, '证件信息', [
-                    _r(context, '身份证号', i.idCardNo),
-                    _r(context, '身份证别码', i.idCardAltCode),
-                    _r(context, '身份证照片', i.idPhotoPath),
-                    _r(context, '身份证正面', i.idPhotoFront),
-                  ]),
-                  _card(context, '学籍状态', [
-                    _r(context, '政治面貌', i.politicalStatus),
-                    _r(context, '文化程度', i.educationLevel),
-                    _r(context, '户口性质', i.residenceType),
-                    _r(context, '健康状况', i.healthStatus),
-                    _r(context, '考生特征', i.examineeFeature),
-                  ]),
-
-                  _card(context, '高考信息', [
-                    _r(context, '考生号', i.gaokaoNo),
-                    _r(context, '准考证号', i.gaokaoTicketNo),
-                    _r(context, '高考总分', i.gaokaoScore),
-                    _r(context, '文化成绩', i.cultureScore),
-                    _r(context, '考生特长', i.examineeTalent),
-                    _r(context, '生源专业', i.originMajor),
-                    _r(context, '招生省市类型', i.admissionType),
-                    _r(context, '培养对象', i.trainTarget),
-                    _r(context, '生源来源', i.originSource),
-                  ]),
-                ],
-              ),
-            ),
-            const SizedBox(width: colGap),
-            Expanded(
-              child: Column(
-                children: [
-                  _card(context, '学籍标识', [
-                    _r(context, '用户号', i.userId),
-                    _r(context, '学号', i.studentId),
-                    _r(context, '序号', i.serialNo),
-                    _r(context, '入学号', i.enrollNo),
-                  ]),
-                  _card(context, '学院专业', [
-                    _r(context, '院系', i.college),
-                    _r(context, '专业', i.major),
-                    _r(context, '专业方向', i.majorDirection),
-                    _r(context, '班级', i.className),
-                    _r(context, '学科门类', i.disciplineCategory),
-                    _r(context, '宿舍名称', i.dormName),
-                    _r(context, '宿舍信息', i.dormInfo),
-                  ]),
-
-                  _card(context, '联系方式', [
-                    _r(context, '电话', i.phone),
-                    _r(context, '邮箱', i.email),
-                    _r(context, '通讯地址', i.address),
-                    _r(context, '邮编', i.postalCode),
-                    _r(context, '籍贯', i.hometown),
-                    _r(context, '生源省份', i.originProvince),
-                    _r(context, '生源地', i.originPlace),
-                    _r(context, '生源地单位', i.originUnit),
-                  ]),
-                  _card(context, '家庭联系', [
-                    _r(context, '联系人', i.contactPerson),
-                    _r(context, '家庭联系人', i.familyContact),
-                    _r(context, '家庭联系人方式', i.familyContactPhone),
-                    _r(context, '宿舍电话', i.dormPhone),
-                  ]),
-                  _card(context, '其他信息', [
-                    _r(context, '辅导员', i.advisor),
-                    _r(context, '是否贫困', i.isPoor),
-                    _r(context, '贫困类型', i.povertyType),
-                    _r(context, '入党团时间', i.partyJoinDate),
-                    _r(context, '年总收入', i.annualIncome),
-                    _r(context, '人均收入', i.perCapitaIncome),
-                    _r(context, '学籍卡编号', i.registryNo),
-                    _r(context, '外语语种', i.foreignLanguage),
-                    _r(context, '计算机等级', i.computerLevel),
-                    _r(context, '所属集团', i.groupInfo),
-                  ]),
-                ],
-              ),
-            ),
-          ],
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 600;
+            if (isNarrow) {
+              // 插缝排列: [L1,R1,L2,R2,L3,R3,L4,R4,L5,R5]
+              final interleaved = <Widget>[];
+              final maxLen = leftCards.length > rightCards.length
+                  ? leftCards.length
+                  : rightCards.length;
+              for (int idx = 0; idx < maxLen; idx++) {
+                if (idx < leftCards.length) interleaved.add(leftCards[idx]);
+                if (idx < rightCards.length) interleaved.add(rightCards[idx]);
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: interleaved,
+              );
+            }
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: Column(children: leftCards)),
+                const SizedBox(width: colGap),
+                Expanded(child: Column(children: rightCards)),
+              ],
+            );
+          },
         ),
         const SizedBox(height: 32),
       ],
