@@ -9,7 +9,6 @@ class AccountRepository {
 
   AccountRepository(this._localDataSource);
 
-  /// 获取全部账户列表。
   Either<Failure, List<Account>> getAccounts() {
     try {
       return Right(_localDataSource.getAccounts());
@@ -18,7 +17,6 @@ class AccountRepository {
     }
   }
 
-  /// 获取当前登录的账户。
   Either<Failure, Account?> getCurrentAccount() {
     try {
       return Right(_localDataSource.getCurrentAccount());
@@ -27,11 +25,9 @@ class AccountRepository {
     }
   }
 
-  /// 保存账户并自动设为当前登录账户。
   Future<Either<Failure, void>> saveAccount(Account account) async {
     try {
       await _localDataSource.saveAccount(account);
-      // 自动设为当前账户
       final accounts = _localDataSource.getAccounts();
       final idx = accounts.indexWhere(
         (a) => a.cardNumber == account.cardNumber,
@@ -45,7 +41,6 @@ class AccountRepository {
     }
   }
 
-  /// 设置当前登录账户。
   Future<Either<Failure, void>> setCurrentAccount(int index) async {
     try {
       await _localDataSource.setCurrentIndex(index);
@@ -55,7 +50,6 @@ class AccountRepository {
     }
   }
 
-  /// 删除账户。
   Future<Either<Failure, void>> deleteAccount(String cardNumber) async {
     try {
       await _localDataSource.deleteAccount(cardNumber);
@@ -65,7 +59,6 @@ class AccountRepository {
     }
   }
 
-  /// 更新账户的显示名称。
   Future<Either<Failure, void>> updateDisplayName(
     String cardNumber,
     String displayName,

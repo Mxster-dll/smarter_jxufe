@@ -20,7 +20,6 @@ class _ImsSplashScreenState extends ConsumerState<ImsSplashScreen> {
   }
 
   Future<void> _checkAuth() async {
-    // 等待一下，让启动页至少显示 500ms（可选）
     await Future.delayed(const Duration(milliseconds: 500));
 
     final imsAuthRepo = await ref.read(imsAuthRepositoryProvider.future);

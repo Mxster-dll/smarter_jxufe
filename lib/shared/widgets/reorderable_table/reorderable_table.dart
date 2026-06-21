@@ -113,10 +113,8 @@ class _ReorderableTableState extends State<ReorderableTable>
       onStateChanged: () => setState(() {}),
     );
 
-    // 初始化拖拽动画（需要 TickerProvider）
     _reorderCtrl.initAnimations(this);
 
-    // 监听折叠状态变化
     _collapseCtrl.addListener(() => setState(() {}));
   }
 

@@ -5,7 +5,6 @@ import 'package:smarter_jxufe/features/ims/student_info/data/providers/student_i
 import 'package:smarter_jxufe/features/ims/student_info/domain/student_info.dart';
 import 'package:smarter_jxufe/features/ims/student_info/presentation/account_screen.dart';
 
-/// 「我的」页面 —— 左右双列纵排，纯色标题背景。
 class StudentInfoScreen extends ConsumerWidget {
   final bool showAppBar;
 
@@ -151,7 +150,6 @@ class StudentInfoScreen extends ConsumerWidget {
           builder: (context, constraints) {
             final isNarrow = constraints.maxWidth < 600;
             if (isNarrow) {
-              // 插缝排列: [L1,R1,L2,R2,L3,R3,L4,R4,L5,R5]
               final interleaved = <Widget>[];
               final maxLen = leftCards.length > rightCards.length
                   ? leftCards.length
@@ -180,7 +178,6 @@ class StudentInfoScreen extends ConsumerWidget {
     );
   }
 
-  // ── 头部 ──
   Widget _header(BuildContext context, StudentInfo i) => Column(
     children: [
       CircleAvatar(
@@ -195,7 +192,6 @@ class StudentInfoScreen extends ConsumerWidget {
         ),
       ),
       const SizedBox(height: 12),
-      // 名字居中，退出图标紧贴右侧
       Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -231,7 +227,6 @@ class StudentInfoScreen extends ConsumerWidget {
     ],
   );
 
-  // ── 点居中行 ──
   Widget _dotRow(
     BuildContext context,
     String left,
@@ -260,7 +255,6 @@ class StudentInfoScreen extends ConsumerWidget {
     );
   }
 
-  // ── 卡片 ──
   Widget _card(BuildContext context, String title, List<Widget> rows) =>
       Padding(
         padding: const EdgeInsets.only(bottom: 10),
@@ -299,7 +293,6 @@ class StudentInfoScreen extends ConsumerWidget {
       );
 }
 
-// ── 键值行 ──
 Widget _r(BuildContext context, String label, String value) {
   final scheme = Theme.of(context).colorScheme;
   final isEmpty = value.isEmpty;
@@ -331,7 +324,6 @@ Widget _r(BuildContext context, String label, String value) {
   );
 }
 
-/// 从仓库获取学生信息。
 final _studentInfoProvider = FutureProvider.autoDispose<StudentInfo>((
   ref,
 ) async {

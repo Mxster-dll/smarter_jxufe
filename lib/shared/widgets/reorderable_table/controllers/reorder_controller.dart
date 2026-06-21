@@ -69,7 +69,6 @@ class ReorderController {
     final oldRowCount = rowCount;
     final oldColCount = colCount;
     widget = newWidget;
-    // 非拖拽状态下，若行列数变化，则同步顺序列表
     if (!isDragging && !isReturning) {
       if (oldRowCount != rowCount || oldColCount != colCount) {
         _syncOrdersWithDimensions();
@@ -380,7 +379,6 @@ class ReorderController {
       return;
     }
 
-    // 行表头检测
     if (widget.showRowHeaders) {
       for (int i = 0; i < rowOrder.length; i++) {
         double w = collapseCtrl.rowHeaderWidth(i);
@@ -419,7 +417,6 @@ class ReorderController {
       }
     }
 
-    // 列表头检测
     if (widget.showColHeaders) {
       for (int i = 0; i < colOrder.length; i++) {
         double h = collapseCtrl.colHeaderHeight(i);
@@ -458,7 +455,6 @@ class ReorderController {
       }
     }
 
-    // 单元格区域
     int row = ((y - cornerHeight) / cellHeight).floor();
     int col = ((x - cornerWidth) / cellWidth).floor();
     if (row >= 0 &&

@@ -11,8 +11,6 @@ import 'package:smarter_jxufe/features/ims/course/data/models/credit_hour.dart';
 part 'course.freezed.dart';
 part 'course.g.dart';
 
-/// ### 课程
-/// 区别于学科，课程对于不同学生是不一样的，尤其是不同学院的学生
 @HiveType(typeId: kCourseTypeId)
 @freezed
 class Course with _$Course {

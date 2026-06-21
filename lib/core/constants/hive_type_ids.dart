@@ -1,4 +1,3 @@
-// @HiveType 标注的 typeId, 不能重复
 
 const int kCollegeTypeId = 0;
 const int kMajorTypeId = 1;

@@ -1,6 +1,7 @@
 import 'package:smarter_jxufe/features/ims/schedule/data/anti_corruption/schedule_html_parser.dart';
 import 'package:smarter_jxufe/features/ims/schedule/data/datasources/schedule_remote_datasource.dart';
 
+    // TODO 实现允许模糊匹配，即10-8月一定可以判断学年
 class ScheduleRepository {
   final ScheduleRemoteDataSource _remoteDataSource;
   final ScheduleHtmlParser _htmlParser;

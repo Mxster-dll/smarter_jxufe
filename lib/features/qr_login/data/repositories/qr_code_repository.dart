@@ -8,9 +8,6 @@ import 'package:smarter_jxufe/features/qr_login/data/datasources/wechat_login_re
 import 'package:smarter_jxufe/features/qr_login/domain/entities/qr_code_data.dart';
 import 'package:smarter_jxufe/features/qr_login/domain/entities/qr_code_status.dart';
 
-/// QR码仓库——管理二维码生命周期（轮询、状态流、缓存定时器）
-///
-/// 参照项目现有仓库模式，无抽象接口，直接提供具体实现。
 class QrCodeRepository {
   final ScanLoginRemoteDataSource _scanLoginDs;
   final WechatLoginRemoteDataSource _wechatLoginDs;
@@ -24,7 +21,6 @@ class QrCodeRepository {
        _wechatLoginDs = wechatLoginDs,
        _mfaLoginDs = mfaLoginDs;
 
-  // ── 状态管理 ──
   final _statusSubject = BehaviorSubject<QrCodeStatus>.seeded(
     QrCodeStatus.loading,
   );
@@ -38,14 +34,11 @@ class QrCodeRepository {
   bool get isLoading => currentStatus == QrCodeStatus.loading;
   bool get isPending => currentStatus == QrCodeStatus.pending;
 
-  // ── 轮询管理 ──
   Timer? _pollingTimer;
   late int _pollingInterval;
 
-  /// 当前活跃的登录类型，用于 refresh 和 poll 时选择正确的分支
   _LoginType? _activeLoginType;
 
-  /// 各登录类型所需的轮询上下文
   String? _scanCookie;
   String? _wechatUuid;
   String? _mfaAttestServer;
@@ -59,9 +52,7 @@ class QrCodeRepository {
     }
   }
 
-  // ═══ 扫码登录 ═══
 
-  /// 发起扫码登录流程
   Future<void> startScanLogin({int pollingInterval = 1500}) async {
     _activeLoginType = _LoginType.scan;
     _pollingInterval = pollingInterval;
@@ -77,7 +68,6 @@ class QrCodeRepository {
     _startPolling();
   }
 
-  /// 刷新扫码登录二维码
   Future<void> refreshScanLogin() async {
     _stopPolling();
     _setStatus(QrCodeStatus.loading);
@@ -92,9 +82,7 @@ class QrCodeRepository {
     _startPolling();
   }
 
-  // ═══ 微信登录 ═══
 
-  /// 发起微信登录流程
   Future<void> startWechatLogin() async {
     _activeLoginType = _LoginType.wechat;
     _pollingInterval = 17000; // 微信长轮询，间隔较长
@@ -114,10 +102,7 @@ class QrCodeRepository {
     _startPolling();
   }
 
-  // ═══ MFA 验证 ═══
 
-  /// 发起 MFA 验证流程
-  /// 返回 true 表示需要 MFA（已弹出二维码），false 表示无需 MFA
   Future<bool> startMfaVerification(
     String account,
     String password, {
@@ -156,7 +141,6 @@ class QrCodeRepository {
     return true;
   }
 
-  /// 刷新 MFA 二维码
   Future<void> refreshMfa() async {
     _stopPolling();
     _setStatus(QrCodeStatus.loading);
@@ -194,9 +178,7 @@ class QrCodeRepository {
     _startPolling();
   }
 
-  // ═══ 通用方法 ═══
 
-  /// 刷新当前活跃的二维码
   Future<void> refresh() async {
     switch (_activeLoginType) {
       case _LoginType.scan:
@@ -242,14 +224,11 @@ class QrCodeRepository {
         }
       }
     } catch (_) {
-      // 轮询异常静默处理，等待下一次轮询
     }
   }
 
-  /// 停止轮询（对话框关闭时调用）
   void stopPolling() => _stopPolling();
 
-  /// 释放资源
   void dispose() {
     _stopPolling();
     _statusSubject.close();

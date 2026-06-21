@@ -4,19 +4,16 @@ import 'package:smarter_jxufe/design/JxufeTheme.dart';
 import 'package:smarter_jxufe/features/qr_login/domain/entities/qr_code_status.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/qr_login_state.dart';
 
-/// QR码显示策略接口
 abstract interface class QrCodeDisplayStrategy {
   Widget buildWidget(BuildContext context, QrLoginState state);
 }
 
-/// 加载中
 final class LoadingDisplayStrategy implements QrCodeDisplayStrategy {
   @override
   Widget buildWidget(BuildContext context, QrLoginState state) =>
       CircularProgressIndicator(color: JxufeTheme.primaryColor);
 }
 
-/// 待扫描
 final class PendingDisplayStrategy implements QrCodeDisplayStrategy {
   @override
   Widget buildWidget(BuildContext context, QrLoginState state) {
@@ -36,7 +33,6 @@ final class PendingDisplayStrategy implements QrCodeDisplayStrategy {
   }
 }
 
-/// 已扫描
 final class ScannedDisplayStrategy implements QrCodeDisplayStrategy {
   @override
   Widget buildWidget(BuildContext context, QrLoginState state) => Column(
@@ -57,7 +53,6 @@ final class ScannedDisplayStrategy implements QrCodeDisplayStrategy {
   );
 }
 
-/// 已验证
 final class AuthorizedDisplayStrategy implements QrCodeDisplayStrategy {
   @override
   Widget buildWidget(BuildContext context, QrLoginState state) => Column(
@@ -72,7 +67,6 @@ final class AuthorizedDisplayStrategy implements QrCodeDisplayStrategy {
   );
 }
 
-/// 已取消
 final class CancelledDisplayStrategy implements QrCodeDisplayStrategy {
   @override
   Widget buildWidget(BuildContext context, QrLoginState state) => Column(
@@ -87,7 +81,6 @@ final class CancelledDisplayStrategy implements QrCodeDisplayStrategy {
   );
 }
 
-/// 已过期
 final class ExpiredDisplayStrategy implements QrCodeDisplayStrategy {
   @override
   Widget buildWidget(BuildContext context, QrLoginState state) => Column(
@@ -99,7 +92,6 @@ final class ExpiredDisplayStrategy implements QrCodeDisplayStrategy {
   );
 }
 
-/// 出错
 final class ErrorDisplayStrategy implements QrCodeDisplayStrategy {
   @override
   Widget buildWidget(BuildContext context, QrLoginState state) => Column(
@@ -112,7 +104,6 @@ final class ErrorDisplayStrategy implements QrCodeDisplayStrategy {
   );
 }
 
-/// 显示策略工厂
 final class QrCodeDisplayStrategyFactory {
   static QrCodeDisplayStrategy createStrategy(QrCodeStatus status) =>
       switch (status) {

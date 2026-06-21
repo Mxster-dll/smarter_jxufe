@@ -6,8 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smarter_jxufe/design/JxufeTheme.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/qr_login_viewmodel.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/widgets/qr_code_display_strategies.dart';
+      // TODO 修改 refresh 按钮的样式
+// TODO 轮询异常的判断和提示
 
-/// QR码卡片——纯UI组件，通过 Riverpod 获取状态
 class QrCodeCard extends ConsumerWidget {
   const QrCodeCard({super.key});
 

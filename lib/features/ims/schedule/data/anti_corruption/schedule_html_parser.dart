@@ -15,7 +15,6 @@ class ScheduleHtmlParser {
 
     final table = tables[1];
 
-    // 获取所有非表头行
     final rows = table
         .querySelectorAll('tr')
         .where((tr) => !tr.classes.contains('H'))
@@ -29,7 +28,6 @@ class ScheduleHtmlParser {
           .toList();
 
       final rowCells = tds.map((td) {
-        // 将 <br> 替换为换行符，避免课程名、教师、教室等信息粘连
         for (final br in td.querySelectorAll('br')) {
           br.replaceWith(Text('\n'));
         }

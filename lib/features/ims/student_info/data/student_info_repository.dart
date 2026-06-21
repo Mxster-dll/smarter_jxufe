@@ -28,7 +28,6 @@ class StudentInfoRepository {
        _mapper = mapper,
        _imsAuthRepo = imsAuthRepo;
 
-  /// 获取缓存的用户信息，无缓存时返回 null。
   Either<Failure, StudentInfo?> getCachedStudentInfo() {
     try {
       return Right(_localDataSource.getStudentInfo());
@@ -37,7 +36,6 @@ class StudentInfoRepository {
     }
   }
 
-  /// 从教务系统远程获取学生信息并缓存到本地。
   Future<Either<Failure, StudentInfo>> _fetchAndSaveStudentInfo() async {
     try {
       final jsessionResult = await _imsAuthRepo.getJsessionId();
@@ -63,7 +61,6 @@ class StudentInfoRepository {
     }
   }
 
-  /// 获取学生信息：优先返回缓存，若 [forceRefresh] 为 true 或缓存为空则从远程拉取。
   Future<Either<Failure, StudentInfo>> getStudentInfo({
     bool forceRefresh = false,
   }) async {
@@ -75,7 +72,6 @@ class StudentInfoRepository {
     return _fetchAndSaveStudentInfo();
   }
 
-  /// 清除本地缓存。
   Future<Either<Failure, void>> clearCache() async {
     try {
       await _localDataSource.clear();

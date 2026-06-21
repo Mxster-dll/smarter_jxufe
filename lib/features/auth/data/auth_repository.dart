@@ -23,7 +23,6 @@ class AuthRepository {
     _tgc = _localDataSource.getTgc();
   }
 
-  /// 第一步：检测是否需要 MFA
   Future<Either<Failure, MfaResult>> detectMfa(
     String username,
     String password,
@@ -60,7 +59,6 @@ class AuthRepository {
     }
   }
 
-  /// 第二步：提交登录（MFA 完成后调用）
   Future<Either<Failure, void>> login(
     String username,
     String password,
@@ -78,7 +76,6 @@ class AuthRepository {
         trustAgent: trustAgent,
       );
 
-      // 401 且响应体包含 "账号或密码错误" → 密码错误
       if (response.statusCode == 401) {
         final body = response.data?.toString() ?? '';
         if (body.contains('账号或密码错误')) {
@@ -87,7 +84,6 @@ class AuthRepository {
         return Left(UnknownFailure('登录失败（401）：$body'));
       }
 
-      // 302 且有 Set-Cookie → 登录成功
       if (response.statusCode == 302) {
         final cookies = response.headers['set-cookie'];
         if (cookies == null || cookies.isEmpty) {
@@ -109,7 +105,6 @@ class AuthRepository {
         return Left(UnknownFailure('登录失败：Set-Cookie 中未找到 TGC'));
       }
 
-      // 200 + 响应体包含 "登录成功" → MFA 验证后登录成功
       if (response.statusCode == 200) {
         final body = response.data?.toString() ?? '';
         if (body.contains('登录成功')) {
@@ -117,7 +112,6 @@ class AuthRepository {
         }
       }
 
-      // 其他状态码
       return Left(UnknownFailure('登录失败：预期 302，实际 ${response.statusCode}'));
     } catch (e) {
       return Left(UnknownFailure('登录错误：$e'));

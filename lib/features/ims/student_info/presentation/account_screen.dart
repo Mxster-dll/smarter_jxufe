@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/features/auth/data/providers/account_repository_provider.dart';
+                    // TODO: 切换到其他账户
 import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_provider.dart';
 import 'package:smarter_jxufe/features/auth/domain/entities/account.dart';
 import 'package:smarter_jxufe/features/auth/presentation/login_screen.dart';
@@ -12,7 +13,6 @@ import 'package:smarter_jxufe/features/ims/auth/data/providers/ims_auth_reposito
 import 'package:smarter_jxufe/features/qr_login/presentation/qr_login_viewmodel.dart';
 import 'package:smarter_jxufe/core/network/dio_providers.dart';
 
-/// 账户管理页面 —— 多账户卡片 + 添加账户。
 class AccountScreen extends ConsumerStatefulWidget {
   const AccountScreen({super.key});
 
@@ -24,7 +24,6 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
   @override
   void initState() {
     super.initState();
-    // 每次进入页面强制刷新
     Future.microtask(() {
       ref.invalidate(_accountsProvider);
       ref.invalidate(_currentAccountProvider);
@@ -179,7 +178,6 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
         studentInfoRepositoryProvider.future,
       );
 
-      // 第一步：检测 MFA
       final mfaResult = await authRepo.detectMfa(
         account.cardNumber,
         account.password,
@@ -190,7 +188,6 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       }, (r) => r);
       if (mfaState == null) return;
 
-      // 第二步：MFA 验证
       String? trustAgent;
       if (mfaState.needMfa) {
         if (!mounted) return;
@@ -204,7 +201,6 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
         trustAgent = result.trustDevice ? 'true' : '';
       }
 
-      // 第三步：登录
       final loginResult = await authRepo.login(
         account.cardNumber,
         account.password,
@@ -215,14 +211,10 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       loginResult.fold(
         (failure) => _showError(context, '登录失败: ${failure.message}'),
         (_) async {
-          // 更新当前账户 Provider（驱动 Dio 切换）
           ref.read(currentAccountProvider.notifier).state = account.cardNumber;
-          // 清除旧 JSESSIONID 缓存
           final imsAuthRepo = await ref.read(imsAuthRepositoryProvider.future);
           await imsAuthRepo.logout();
-          // 清除旧学生信息缓存
           await studentInfoRepo.clearCache();
-          // 刷新学生信息并更新账户显示名称
           final infoResult = await studentInfoRepo.getStudentInfo(
             forceRefresh: true,
           );
@@ -231,7 +223,6 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
             (info) =>
                 accountRepo.updateDisplayName(account.cardNumber, info.name),
           );
-          // 设为当前账户
           final accountsResult = accountRepo.getAccounts();
           final idx = accountsResult.fold(
             (_) => -1,
@@ -241,9 +232,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           if (idx >= 0) {
             await accountRepo.setCurrentAccount(idx);
           }
-          // 刷新学生信息
           studentInfoRepo.getStudentInfo(forceRefresh: true).ignore();
-          // 跳转 IMS
           if (mounted) {
             Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(builder: (_) => const ImsSplashScreen()),
@@ -281,7 +270,6 @@ final _currentAccountProvider = FutureProvider<Account?>((ref) async {
   );
 });
 
-/// 从本地缓存读取学生信息（不触发网络请求）。
 final _cachedStudentInfoProvider = FutureProvider<StudentInfo?>((ref) async {
   final repo = await ref.watch(studentInfoRepositoryProvider.future);
   final result = repo.getCachedStudentInfo();

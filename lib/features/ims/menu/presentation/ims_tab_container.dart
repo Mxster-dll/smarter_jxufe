@@ -107,7 +107,6 @@ class _ImsTabContainerState extends State<ImsTabContainer> {
   };
 }
 
-// 底部栏组件（与之前相同，只是参数类型已是 ImsTab）
 class _CustomBottomNavBar extends StatelessWidget {
   final ImsTab currentTab;
   final ValueChanged<ImsTab> onTabSelected;

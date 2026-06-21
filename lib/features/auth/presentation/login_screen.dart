@@ -4,9 +4,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smarter_jxufe/design/JxufeTheme.dart';
 import 'package:smarter_jxufe/design/Icons.dart';
 import 'package:smarter_jxufe/features/auth/presentation/login_state.dart';
+    // TODO: 处理社交登录
+    // TODO: 跳转到忘记密码页面
+      // TODO: 跳转到主页
+// TODO: 从服务器获取
+    // TODO: 实现浏览器指纹
+    // TODO: 根据登录失败次数判断
 import 'package:smarter_jxufe/features/auth/presentation/login_viewmodel.dart';
 import 'package:smarter_jxufe/features/ims/splash/presentation/ims_splash_screen.dart';
 
+    // TODO: 实际应用中根据User-Agent判断
 class LoginScreen extends ConsumerStatefulWidget {
   final bool showBackButton;
 
@@ -155,7 +162,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               const SizedBox(height: 24),
             ],
           ),
-          // 返回按钮（仅从账户页进入时显示）
           if (widget.showBackButton)
             Positioned(
               left: 0,
@@ -273,6 +279,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Widget _buildAccountField(LoginState state, LoginViewModel viewModel) {
+    // TODO: 从shared_preferences加载记住的账号
     return Container(
       decoration: BoxDecoration(
         color: JxufeTheme.inputBgColor,
@@ -415,6 +422,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           Icons.qr_code_rounded,
           JxufeTheme.primaryColor,
           onTap: () => viewModel.scanLogin(context),
+// TODO 添加扫描登录
         ),
         const SizedBox(width: 32),
         _buildOtherLoginIcon(

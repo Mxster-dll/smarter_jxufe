@@ -1,4 +1,3 @@
-/// 时间限制。
 enum TimeLimit {
   sinceEnrollment('入学以来', 'sjxz1'),
   academicYear('学年', 'sjxz2'),

@@ -2,7 +2,6 @@ import 'dart:typed_data';
 
 import 'package:smarter_jxufe/features/qr_login/domain/entities/qr_code_status.dart';
 
-/// QR登录 UI 状态
 class QrLoginState {
   final QrCodeStatus status;
   final Uint8List? qrImage;

@@ -2,13 +2,11 @@ import 'package:dio/dio.dart';
 
 import 'package:smarter_jxufe/features/ims/grades/domain/grades_query_params.dart';
 
-/// 从教务系统获取成绩的远程数据源。
 class GradesRemoteDataSource {
   final Dio _dio;
 
   GradesRemoteDataSource(this._dio);
 
-  /// 获取成绩 HTML。
   Future<String> fetchGradesHtml({
     required String jsessionId,
     required GradesQueryParams params,

@@ -4,7 +4,6 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import 'package:smarter_jxufe/features/ims/student_info/domain/student_info.dart';
 
-/// 学生基本信息的本地 Hive 缓存（JSON 序列化全字段）。
 class StudentInfoLocalDataSource {
   final Box<String> _box;
 
@@ -12,21 +11,17 @@ class StudentInfoLocalDataSource {
 
   StudentInfoLocalDataSource(this._box);
 
-  /// 保存学生信息。
   Future<void> saveStudentInfo(StudentInfo info) async =>
       _box.put(_key, json.encode(_toMap(info)));
 
-  /// 读取缓存的学生信息，无数据时返回 null。
   StudentInfo? getStudentInfo() {
     final raw = _box.get(_key);
     if (raw == null) return null;
     return _fromMap(json.decode(raw) as Map<String, dynamic>);
   }
 
-  /// 是否已有缓存。
   bool hasCache() => _box.containsKey(_key);
 
-  /// 清除缓存。
   Future<void> clear() => _box.delete(_key);
 
   static Map<String, dynamic> _toMap(StudentInfo i) => {

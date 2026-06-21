@@ -5,8 +5,6 @@ import 'package:dio/dio.dart';
 import 'package:smarter_jxufe/features/qr_login/domain/entities/qr_code_status.dart';
 import 'package:smarter_jxufe/utils/Log.dart';
 
-/// MFA 登录远程数据源
-/// 负责 MFA 检测与 QR 码验证的 HTTP 请求
 class MfaLoginRemoteDataSource {
   static const baseUrl = 'https://ssl.jxufe.edu.cn';
 
@@ -14,8 +12,6 @@ class MfaLoginRemoteDataSource {
 
   MfaLoginRemoteDataSource(this._dio);
 
-  /// 第一步：检测是否需要 MFA（多因素认证）
-  /// 返回 (是否MFA需要, mfaState)
   Future<(bool, String)> detectMfa(String account, String password) async {
     try {
       final response = await _dio.post(
@@ -39,8 +35,6 @@ class MfaLoginRemoteDataSource {
     }
   }
 
-  /// 第二步：初始化 QR 码（获取 attestServerUrl 和 gid）
-  /// 返回 (attestServerUrl, gid)
   Future<(String, String)> initQrCode(String mfaState) async {
     try {
       final response = await _dio.get(
@@ -60,8 +54,6 @@ class MfaLoginRemoteDataSource {
     }
   }
 
-  /// 第三步：获取二维码信息（verifyCode 和 imgUrl）
-  /// 返回 (verifyCode, imgUrl)
   Future<(String, String)> fetchQrCode(
     String attestServer,
     String gid,
@@ -84,7 +76,6 @@ class MfaLoginRemoteDataSource {
     }
   }
 
-  /// 第四步：下载二维码图片
   Future<Uint8List> downloadQrCode(String imgUrl) async {
     try {
       final response = await _dio.get(
@@ -113,14 +104,12 @@ class MfaLoginRemoteDataSource {
 
   static const _statusMap = {
     0: QrCodeStatus.loading,
-    // 1: 待扫描
     2: QrCodeStatus.authorized,
     5: QrCodeStatus.cancelled,
     8: QrCodeStatus.scanned,
     9: QrCodeStatus.expired,
   };
 
-  /// 第五步：轮询二维码状态
   Future<QrCodeStatus?> pollStatus(String attestServer, String gid) async {
     try {
       final response = await _dio.post(

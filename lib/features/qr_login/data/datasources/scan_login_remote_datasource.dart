@@ -5,8 +5,6 @@ import 'package:dio/dio.dart';
 
 import 'package:smarter_jxufe/features/qr_login/domain/entities/qr_code_status.dart';
 
-/// 扫码登录远程数据源
-/// 负责与校方 CAS 系统通信：下载二维码、轮询扫码状态
 class ScanLoginRemoteDataSource {
   static const baseUrl = 'https://ssl.jxufe.edu.cn';
 
@@ -21,7 +19,6 @@ class ScanLoginRemoteDataSource {
 
   String getQrCodeUrl(String id) => '$baseUrl/qr/qrcode?r=$id';
 
-  /// 下载二维码图片，返回 (图片字节, session cookie)
   Future<(Uint8List, String)> downloadQrCode(String id) async {
     final response = await _dio.get(
       '$baseUrl/cas/qr/qrcode',
@@ -60,14 +57,11 @@ class ScanLoginRemoteDataSource {
   }
 
   static const _statusMap = {
-    // '1': 待扫描
     '2': QrCodeStatus.scanned,
     '3': QrCodeStatus.authorized,
     '4': QrCodeStatus.cancelled,
   };
 
-  /// 轮询扫码状态
-  /// 返回 null 表示仍为待扫描状态
   Future<QrCodeStatus?> pollStatus(String cookie) async {
     final response = await _dio.post(
       '$baseUrl/cas/qr/comet',

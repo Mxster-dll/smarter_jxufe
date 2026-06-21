@@ -1,6 +1,5 @@
 import 'package:smarter_jxufe/features/ims/grades/domain/time_limit.dart';
 
-/// 成绩查询参数。
 class GradesQueryParams {
   final String enrollYear;
   final TimeLimit timeLimit;
