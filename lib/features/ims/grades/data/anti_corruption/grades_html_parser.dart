@@ -5,18 +5,11 @@ import 'package:smarter_jxufe/features/ims/grades/domain/grade.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grade_summary.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grades_result.dart';
 
-/// 解析成绩 HTML 响应。
-///
-/// HTML 结构：3 个 table
-/// - table[0]: style 含 border:none，学年学期信息（跳过）
-/// - table[1]: 成绩明细表（tbody 中每行一门课）
-/// - table[2]: 汇总统计表
 class GradesHtmlParser {
   GradesResult parseHtml(String html) {
     final document = html_parser.parse(html);
     final tables = document.querySelectorAll('table');
 
-    // 过滤掉 border:none 的元数据 table，取数据 table
     final dataTables = tables.where((t) {
       final style = t.attributes['style'] ?? '';
       return !style.contains('border:none');
@@ -26,7 +19,6 @@ class GradesHtmlParser {
       throw Exception('期望至少2个数据 table，找到了${dataTables.length}个');
     }
 
-    // dataTables[0] = 成绩明细, dataTables[1] = 汇总
     final grades = _parseGrades(dataTables[0]);
     final summaries = _parseSummaries(dataTables[1]);
 

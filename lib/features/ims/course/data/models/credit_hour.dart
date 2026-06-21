@@ -6,7 +6,6 @@ import 'package:smarter_jxufe/core/constants/hive_type_ids.dart';
 part 'credit_hour.freezed.dart';
 part 'credit_hour.g.dart';
 
-/// ### 学时信息
 @HiveType(typeId: kCreditHourTypeId)
 @freezed
 class CreditHour with _$CreditHour {

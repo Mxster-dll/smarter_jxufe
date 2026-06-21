@@ -3,8 +3,6 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:smarter_jxufe/features/major/domain/major.dart';
 
 class MajorLocalDataSource {
-  /// 以 [Major] 的 [year] [collegeName] [name] 为键，
-  /// 其中 同 [year] [collegeName] 时的 [name] 唯一性由仓库保证
   final Box<Major> _box;
 
   MajorLocalDataSource(this._box);

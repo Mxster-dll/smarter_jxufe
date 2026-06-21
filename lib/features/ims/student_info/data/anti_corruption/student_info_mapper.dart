@@ -1,7 +1,6 @@
 import 'package:smarter_jxufe/features/ims/student_info/data/anti_corruption/student_info_xml_parser.dart';
 import 'package:smarter_jxufe/features/ims/student_info/domain/student_info.dart';
 
-/// 将 [ParsedStudentInfo] 转换为领域层的 [StudentInfo]。
 class StudentInfoMapper {
   StudentInfo fromParsed(ParsedStudentInfo p) => StudentInfo(
     name: p.name,

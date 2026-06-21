@@ -2,7 +2,6 @@ import 'package:smarter_jxufe/features/college/data/datasources/api_models/api_c
 import 'package:smarter_jxufe/features/college/domain/college.dart';
 
 class CollegeMapper {
-  // 解析形如 "[051]经济学院" 的字符串
   static (String, String) extractCodeAndName(String raw) {
     final regex = RegExp(r'^\[(\d+)\](.*)$');
     final match = regex.firstMatch(raw);

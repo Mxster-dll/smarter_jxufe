@@ -5,7 +5,6 @@ class AuthRemoteDataSource {
 
   AuthRemoteDataSource(this._dio);
 
-  /// 第一步：检测是否需要 MFA（多因素认证），返回原始响应（由 Repository 层判断结果）
   Future<Response> detectMfa({
     required String username,
     required String password,
@@ -47,7 +46,6 @@ class AuthRemoteDataSource {
     return response;
   }
 
-  /// 第二步：提交登录，返回原始响应（由 Repository 层判断结果）
   Future<Response> login({
     required String username,
     required String password,
@@ -80,7 +78,6 @@ class AuthRemoteDataSource {
       'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
     };
 
-    // 固定参数（实际应从登录页面预请求获取，此处为示例）
     const execution =
         '<REDACTED_EXECUTION>';
     const eventId = 'submit';
@@ -143,7 +140,6 @@ class AuthRemoteDataSource {
 
     final location = response.headers.value('location');
     if (location == null) throw Exception('location == null\n${response.data}');
-    // 这里报错要考虑是不是统一登录的 Cookie 过期了
 
     return location;
   }

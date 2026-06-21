@@ -34,17 +34,13 @@ class QrLoginViewModel extends _$QrLoginViewModel {
     });
   }
 
-  /// 扫码登录
   Future<void> scanLogin(BuildContext context) async {
-    // 先初始化状态再显示对话框（确保首次渲染拿到 loading）
     state = state.copyWith(
       status: QrCodeStatus.loading,
       title: '扫描二维码登录',
       hintText: '使用微信或者企业微信扫一扫登录',
     );
 
-    // 显示对话框（不 await，fire-and-forget）
-    // 对话框关闭时自动停止轮询
     _showDialog(context).then((_) => stopPolling());
 
     try {
@@ -55,7 +51,6 @@ class QrLoginViewModel extends _$QrLoginViewModel {
     }
   }
 
-  /// 微信登录
   Future<void> wechatLogin(BuildContext context) async {
     state = state.copyWith(
       status: QrCodeStatus.loading,
@@ -73,8 +68,6 @@ class QrLoginViewModel extends _$QrLoginViewModel {
     }
   }
 
-  /// MFA 验证，返回 true 表示验证成功（authorized），false 表示用户手动关闭
-  /// 返回 (是否授权成功, 是否信任设备)
   Future<({bool authorized, bool trustDevice})> mfaVerify(
     BuildContext context,
     String account,
@@ -97,7 +90,6 @@ class QrLoginViewModel extends _$QrLoginViewModel {
       return (authorized: false, trustDevice: false);
     }
 
-    // 监听验证成功状态
     bool authorized = false;
     late final StreamSubscription<QrCodeStatus> mfaSub;
     mfaSub = _repository.statusStream.listen((status) {
@@ -111,7 +103,6 @@ class QrLoginViewModel extends _$QrLoginViewModel {
       }
     });
 
-    // 等待二维码对话框关闭
     await _showDialog(context);
     mfaSub.cancel();
     stopPolling();
@@ -119,7 +110,6 @@ class QrLoginViewModel extends _$QrLoginViewModel {
     return (authorized: authorized, trustDevice: state.trustDevice);
   }
 
-  /// 从 repository 同步数据到 state
   void _syncFromRepository() {
     final data = _repository.qrCodeData;
     if (data != null) {
@@ -132,7 +122,6 @@ class QrLoginViewModel extends _$QrLoginViewModel {
     _listenToRepository();
   }
 
-  /// 刷新二维码
   Future<void> refresh() async {
     try {
       await _repository.refresh();
@@ -142,7 +131,6 @@ class QrLoginViewModel extends _$QrLoginViewModel {
     }
   }
 
-  /// 显示二维码对话框，返回 Future 在对话框关闭时完成
   Future<void> _showDialog(BuildContext context) {
     return QrCodeDialog.show(
       context,
@@ -154,7 +142,6 @@ class QrLoginViewModel extends _$QrLoginViewModel {
     );
   }
 
-  /// 停止轮询
   void stopPolling() {
     _repository.stopPolling();
   }

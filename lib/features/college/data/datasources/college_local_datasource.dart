@@ -2,8 +2,8 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import 'package:smarter_jxufe/features/college/domain/college.dart';
 
+// TODO 看运行时是否报错
 class CollegeLocalDataSource {
-  /// 以 [College] 的 [name] 为键，唯一性由仓库保证
   final Box<College> _box;
 
   CollegeLocalDataSource(this._box);

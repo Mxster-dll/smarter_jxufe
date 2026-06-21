@@ -12,6 +12,7 @@ import 'package:smarter_jxufe/features/ims/curriculum/presentation/curriculum_st
 
 part 'curriculum_viewmodel.g.dart';
 
+//TODO 测试时强制
 @riverpod
 class CurriculumViewModel extends _$CurriculumViewModel {
   late final CurriculumRepository _curriculumRepository;
@@ -20,30 +21,21 @@ class CurriculumViewModel extends _$CurriculumViewModel {
 
   @override
   Future<CurriculumState> build() async {
-    // 异步获取依赖（必须等待）
     _curriculumRepository = await ref.watch(
       curriculumRepositoryProvider.future,
     );
     _collegeRepository = await ref.watch(collegeRepositoryProvider.future);
     _majorRepository = await ref.watch(majorRepositoryProvider.future);
 
-    // 初始状态（加载学院中）
     final initialState = CurriculumState(isLoadingColleges: true);
-    // 注意：此时 state 还是 AsyncLoading，但我们手动返回的 initialState 并不会被用到
-    // 我们要在下面手动设置状态
     state = AsyncData(initialState);
 
-    // 加载学院数据（等待完成）
     await _loadColleges(); // 这个函数内部会重新设置 state
 
-    // 返回最终状态（实际上状态已经更新过了，这里返回值会被 AsyncNotifier 忽略？
-    // 但实际上 AsyncNotifier 机制：build 返回的 Future 完成后，state 被设置为该返回值。
-    // 所以我们需要返回 _loadColleges 更新后的状态。
     return state.requireValue;
   }
 
   Future<void> _loadColleges() async {
-    // 注意：此时 state 是 AsyncData<CurriculumState>，我们通过 value 访问
     final currentState = state.requireValue;
     state = AsyncData(
       currentState.copyWith(isLoadingColleges: true, errorMessage: null),

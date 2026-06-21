@@ -1,7 +1,6 @@
 import 'package:smarter_jxufe/features/ims/grades/domain/grades_query_params.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/time_limit.dart';
 
-/// 成绩页面筛选状态。
 class GradesState {
   final TimeLimit timeLimit;
   final bool showRawGrade;
@@ -39,11 +38,9 @@ class GradesState {
     semesterXq: semesterXq ?? this.semesterXq,
   );
 
-  /// 主修 / 辅修 / 微专 中选中的数量。
   int get selectedCategoryCount =>
       (selectMajor ? 1 : 0) + (selectMinor ? 1 : 0) + (selectWeiZhuan ? 1 : 0);
 
-  /// 构建查询参数。
   GradesQueryParams get params => GradesQueryParams(
     enrollYear: '2025',
     timeLimit: timeLimit,

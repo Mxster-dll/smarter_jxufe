@@ -60,6 +60,7 @@ class CurriculumRepository {
           );
           final matrix = _htmlParser.parse(html);
           final courses = _curriculumMapper.fromRows(matrix);
+  // TODO 进一步打开每个课程的信息页，获取更多信息
           final curriculum = Curriculum(
             year: year,
             collegeName: college.name,

@@ -1,6 +1,5 @@
 import 'dart:typed_data';
 
-/// QR码数据实体——纯数据载体，无业务逻辑
 class QrCodeData {
   final String id;
   final String? verifyCode;

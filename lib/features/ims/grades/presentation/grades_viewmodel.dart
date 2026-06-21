@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/time_limit.dart';
 import 'package:smarter_jxufe/features/ims/grades/presentation/grades_state.dart';
 
-/// 成绩筛选状态管理。
 class GradesViewModel extends StateNotifier<GradesState> {
   GradesViewModel() : super(const GradesState());
 
@@ -16,7 +15,6 @@ class GradesViewModel extends StateNotifier<GradesState> {
   void toggleOnlyNotPassed() =>
       state = state.copyWith(onlyNotPassed: !state.onlyNotPassed);
 
-  /// 主修 / 辅修 / 微专 切换，保证至少选中一个。
   void toggleCategory(String category) {
     switch (category) {
       case 'major':

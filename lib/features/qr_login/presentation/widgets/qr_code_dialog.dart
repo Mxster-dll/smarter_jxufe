@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'package:smarter_jxufe/design/JxufeTheme.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/widgets/qr_code_card.dart';
+    // TODO 让关闭 dialog  停止轮询
 
-/// QR码对话框——纯UI组件
 class QrCodeDialog extends StatefulWidget {
   final String title;
   final String info;
@@ -16,7 +16,6 @@ class QrCodeDialog extends StatefulWidget {
     this.onTrustChanged,
   });
 
-  /// 显示二维码对话框
   static Future<void> show(
     BuildContext context, {
     String title = '',
@@ -107,7 +106,6 @@ class _QrCodeDialogState extends State<QrCodeDialog> {
                 ),
                 QrCodeCard(),
                 const SizedBox(height: 8),
-                // 信任设备复选框（紧凑）
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

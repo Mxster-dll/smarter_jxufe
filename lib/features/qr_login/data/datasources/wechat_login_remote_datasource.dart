@@ -3,17 +3,9 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 
 import 'package:smarter_jxufe/features/qr_login/domain/entities/qr_code_status.dart';
+    // TODO: implement process
 import 'package:smarter_jxufe/utils/Log.dart';
 
-/// 微信登录远程数据源
-/// 负责与微信开放平台通信：初始化二维码、下载、轮询状态
-///
-/// 长轮询模式：
-/// - 超时返回 408
-/// - 已扫描返回 404
-/// - 失效返回 402
-/// - 取消返回 403
-/// - 已确认返回 405
 class WechatLoginRemoteDataSource {
   static const String appid = 'wx0c8ba76c633d28f2';
   static const String redirectUrl =
@@ -23,7 +15,6 @@ class WechatLoginRemoteDataSource {
 
   WechatLoginRemoteDataSource(this._dio);
 
-  /// 初始化：访问校方联邦重定向页面，提取微信 uuid
   Future<String> initAndGetUuid() async {
     try {
       final response = await _dio.get(
@@ -59,7 +50,6 @@ class WechatLoginRemoteDataSource {
     throw Exception('无法匹配到 uuid: $responseBody');
   }
 
-  /// 下载微信二维码图片
   Future<Uint8List> downloadQrCode(String uuid) async {
     try {
       final response = await _dio.get(
@@ -78,11 +68,8 @@ class WechatLoginRemoteDataSource {
     '403': QrCodeStatus.cancelled,
     '404': QrCodeStatus.scanned,
     '405': QrCodeStatus.authorized,
-    // '408': 待扫描
   };
 
-  /// 轮询微信扫码状态
-  /// 返回 null 表示仍为待扫描状态
   Future<QrCodeStatus?> pollStatus(String uuid) async {
     try {
       final response = await _dio.get(
@@ -109,8 +96,8 @@ class WechatLoginRemoteDataSource {
     }
   }
 
-  /// 微信二维码刷新暂时不支持
   Future<void> refreshQrCode() {
+    // TODO: implement refreshQrCode
     throw UnimplementedError('微信二维码刷新暂未实现');
   }
 }

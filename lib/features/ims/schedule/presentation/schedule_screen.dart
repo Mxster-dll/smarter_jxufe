@@ -30,9 +30,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     });
 
     try {
-      // 第一步：异步获取仓库实例
       final repository = await ref.read(scheduleRepositoryProvider.future);
-      // 第二步：异步获取课表数据
       final data = await repository.getSchedule();
       setState(() {
         _tableData = data;
@@ -92,7 +90,6 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isNarrow = constraints.maxWidth < 600;
-        // 计算每行高度，使表格填满页面
         final availHeight = constraints.maxHeight - 24; // 减去外边距
         final headerH = isNarrow ? 28.0 : 44.0;
         final rowH = rowCount > 0
@@ -193,18 +190,15 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     );
   }
 
-  /// 提取单元格显示文本：窄屏显示课程名+教师+教室，宽屏显示全部。
   String _cellText(String raw, {required bool compact}) {
     if (raw.isEmpty) return ' ';
     if (!compact) return raw;
-    // 按行拆分，取前3行：课程名、教师、教室
     final lines = raw
         .split(RegExp(r'[\n\r]+'))
         .map((l) => l.trim())
         .where((l) => l.isNotEmpty)
         .toList();
     if (lines.isEmpty) return ' ';
-    // 取前3行，用换行连接
     final display = lines.take(3).join('\n');
     return display.isEmpty ? ' ' : display;
   }

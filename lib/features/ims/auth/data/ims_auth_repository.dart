@@ -6,6 +6,7 @@ import 'package:smarter_jxufe/features/auth/data/auth_repository.dart';
 import 'package:smarter_jxufe/features/ims/auth/data/datasource/ims_auth_local_datasource.dart';
 import 'package:smarter_jxufe/features/ims/auth/data/datasource/ims_auth_remote_datasource.dart';
 
+// TODO 增加账号管理
 class ImsAuthRepository {
   final Dio _dio;
 
@@ -23,11 +24,7 @@ class ImsAuthRepository {
        _localDataSource = localDataSource,
        _remoteDataSource = remoteDataSource;
 
-  /// 登录 IMS：使用已存储的 TGC 换取 JSESSIONID
-  /// 前提：全局认证已完成，TGC 已存在于 AuthRepository 中
-  /// 如果 TGC 缺失或无效，抛出异常
   Future<Either<Failure, void>> _activateJsessionId(String jsessionId) async {
-    // 1. 从统一认证获取重定向 URL
     final redirectUrlEither = await _authRepository.getImsRedirectUrl();
     if (redirectUrlEither.isLeft()) {
       return Left(
@@ -44,7 +41,6 @@ class ImsAuthRepository {
 
       return const Right(unit);
     } catch (e) {
-      // 网络或 Dio 异常
       return Left(NetworkFailure(e.toString()));
     }
   }

@@ -24,7 +24,6 @@ Future<ImsAuthRepository> imsAuthRepository(ImsAuthRepositoryRef ref) async {
     remoteDataSource: remoteDataSource,
   );
 
-  // 注入 JSESSIONID 刷新回调到 IMS 拦截器，实现凭证失效自动重试
   setJsessionIdRefreshCallback(() => repository.refreshJsessionId());
 
   return repository;

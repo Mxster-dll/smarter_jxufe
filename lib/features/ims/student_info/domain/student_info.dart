@@ -1,6 +1,4 @@
-/// 学生完整基本信息（对应教务系统 STU_BaseInfoAction XML 响应的全字段）。
 class StudentInfo {
-  // ── 身份信息 ──
   final String name; // 姓名 <xm>
   final String namePinyin; // 姓名拼音 <xmpy>
   final String formerName; // 曾用名 <cym>
@@ -9,26 +7,22 @@ class StudentInfo {
   final String birthDate; // 出生日期 <csrq>
   final String birthPlace; // 出生地 <csd>
 
-  // ── 证件信息 ──
   final String idCardNo; // 身份证号 <sfzjh>
   final String idCardAltCode; // 身份证别码 <sfzbm>
   final String idPhotoPath; // 身份证照片路径 <sfzzp>
   final String idPhotoFront; // 身份证正面 <sfzzm>
 
-  // ── 学籍状态 ──
   final String politicalStatus; // 政治面貌 <zzmm>
   final String educationLevel; // 文化程度 <whcd>
   final String residenceType; // 户口性质 <hkxz>
   final String healthStatus; // 健康状况 <jkzk>
   final String examineeFeature; // 考生特征 <kstz>
 
-  // ── 学籍标识 ──
   final String userId; // 用户号（统一身份认证号）<yhxh>
   final String studentId; // 学号 <bz>
   final String serialNo; // 序号 <xh>
   final String enrollNo; // 入学号 <rxh>
 
-  // ── 入学培养 ──
   final String enrollYear; // 入学年级 <rxnj>
   final String studyYears; // 学制（年）<xz>
   final String enrollDate; // 报到时间 <bdtime>
@@ -40,18 +34,15 @@ class StudentInfo {
   final String examineeType; // 考生类别 <kslb>
   final String admittedMajor; // 录取专业 <lqzy>
 
-  // ── 学院专业 ──
   final String college; // 院系部 <yxb>
   final String major; // 专业名称 <zymc>
   final String majorDirection; // 专业方向名称 <zyfxmc>
   final String className; // 班级名称 <bjmc>
   final String disciplineCategory; // 学科门类 <xkml>
 
-  // ── 住宿信息 ──
   final String dormName; // 宿舍名称 <ss_mc>
   final String dormInfo; // 宿舍信息 <ssxx>
 
-  // ── 联系方式 ──
   final String phone; // 电话 <dh>
   final String email; // 电子邮箱 <dzyx>
   final String address; // 通讯地址 <txdz>
@@ -61,13 +52,11 @@ class StudentInfo {
   final String originPlace; // 生源地 <syd>
   final String originUnit; // 生源地单位 <sydw>
 
-  // ── 家庭联系 ──
   final String contactPerson; // 联系人 <lxr>
   final String familyContact; // 家庭联系人 <jtlxr>
   final String familyContactPhone; // 家庭联系人方式 <jtlxrfs>
   final String dormPhone; // 宿舍电话 <ssdh>
 
-  // ── 高考信息 ──
   final String gaokaoNo; // 高考考生号 <gkksh>
   final String gaokaoTicketNo; // 高考准考证号 <gkzkzh>
   final String gaokaoScore; // 高考总分 <gkzs>
@@ -78,7 +67,6 @@ class StudentInfo {
   final String trainTarget; // 培养对象 <pydx>
   final String originSource; // 生源来源 <srly>
 
-  // ── 其他信息 ──
   final String advisor; // 辅导员 <fdy>
   final String photo; // 照片 <zp>
   final String photoReviewNo; // 照片审核号 <zpxsh>
@@ -93,7 +81,6 @@ class StudentInfo {
   final String groupInfo; // 所属集团 <ssjt>
   final String graduationPhoto; // 毕业照片 <byzp>
 
-  // ── 内部标记 ──
   final String publicSecurity; // 公安 <gat>
   final String cooperationPath; // 合作途径 <hztj>
   final String timestamp1; // 时间戳1 <pv8>

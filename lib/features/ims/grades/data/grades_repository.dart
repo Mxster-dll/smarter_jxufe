@@ -4,10 +4,13 @@ import 'package:smarter_jxufe/core/errors/failures.dart';
 import 'package:smarter_jxufe/core/exception/sync_failure.dart';
 import 'package:smarter_jxufe/features/ims/auth/data/ims_auth_repository.dart';
 import 'package:smarter_jxufe/features/ims/grades/data/anti_corruption/grades_html_parser.dart';
+// TODO 去掉
+    // TODO 这里可能不止一个 table, 大概率是因为选项也是 table
 import 'package:smarter_jxufe/features/ims/grades/data/datasources/grades_remote_datasource.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grades_query_params.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grades_result.dart';
 
+// TODO 待实现获取功能
 class GradesRepository {
   final GradesRemoteDataSource _remoteDataSource;
   final GradesHtmlParser _htmlParser;
@@ -26,6 +29,7 @@ class GradesRepository {
   ) async {
     try {
       final jsessionResult = await _imsAuthRepo.getJsessionId();
+  // TODO 可持续化 JSESSIONID
       if (jsessionResult.isLeft()) {
         return Left(
           jsessionResult.swap().getOrElse(() => UnknownFailure('??')),
@@ -55,7 +59,6 @@ class GradesRepository {
       return Right(result);
     } catch (e) {
       if (e.toString().contains('凭证已失效')) {
-        // 刷新 JSESSIONID 并重试一次
         final refreshResult = await _imsAuthRepo.getJsessionId(
           forceRefresh: true,
         );

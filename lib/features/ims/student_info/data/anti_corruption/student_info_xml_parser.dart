@@ -1,6 +1,4 @@
-/// 解析 STU_BaseInfoAction.do 返回的 XML，提取为 [ParsedStudentInfo]。
 class StudentInfoXmlParser {
-  /// 从 XML 字符串提取全部字段。
   ParsedStudentInfo parse(String xml) => ParsedStudentInfo(
     name: _tag(xml, 'xm'),
     namePinyin: _tag(xml, 'xmpy'),
@@ -88,7 +86,6 @@ class StudentInfoXmlParser {
       RegExp('<$tag>(.*?)</$tag>').firstMatch(xml)?.group(1) ?? '';
 }
 
-/// XML 解析后的中间数据结构（全字段，共 83 字段）。
 class ParsedStudentInfo {
   final String name,
       namePinyin,

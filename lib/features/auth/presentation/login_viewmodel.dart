@@ -55,7 +55,6 @@ class LoginViewModel extends _$LoginViewModel {
     try {
       final authRepo = await ref.read(authRepositoryProvider.future);
 
-      // 第一步：检测是否需要 MFA
       final mfaResult = await authRepo.detectMfa(account, password);
 
       final mfaState = mfaResult.fold((failure) {
@@ -67,18 +66,15 @@ class LoginViewModel extends _$LoginViewModel {
       }, (result) => result);
       if (mfaState == null) return; // detectMfa 失败
 
-      // 第二步：如果需要 MFA，显示二维码
       String? trustAgent;
       if (mfaState.needMfa) {
         final qrViewModel = ref.read(qrLoginViewModelProvider.notifier);
         final result = await qrViewModel.mfaVerify(context, account, password);
 
-        // 用户手动关闭对话框 → 不做任何事，等用户再次点击登录
         if (!result.authorized) return;
         trustAgent = result.trustDevice ? 'true' : '';
       }
 
-      // 第三步：提交登录
       final loginResult = await authRepo.login(
         account,
         password,
@@ -102,14 +98,11 @@ class LoginViewModel extends _$LoginViewModel {
       }, (_) => true);
 
       if (loginSuccess) {
-        // 登录成功 → 加密保存账号（先存再跳转）
         final accountRepo = await ref.read(accountRepositoryProvider.future);
         await accountRepo.saveAccount(
           Account(cardNumber: account, password: password),
         );
-        // 更新当前账户 Provider（驱动 Dio 切换）
         ref.read(currentAccountProvider.notifier).state = account;
-        // 刷新学生信息并更新账户显示名称
         final studentInfoRepo = await ref.read(
           studentInfoRepositoryProvider.future,
         );

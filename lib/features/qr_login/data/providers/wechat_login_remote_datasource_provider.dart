@@ -9,7 +9,6 @@ part 'wechat_login_remote_datasource_provider.g.dart';
 WechatLoginRemoteDataSource wechatLoginRemoteDataSource(
   WechatLoginRemoteDataSourceRef ref,
 ) {
-  // 微信登录需要更长的超时时间（长轮询）
   final dio = Dio(BaseOptions(
     connectTimeout: const Duration(seconds: 10),
     receiveTimeout: const Duration(seconds: 20),

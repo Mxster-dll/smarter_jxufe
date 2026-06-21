@@ -1,4 +1,3 @@
-/// QR码状态枚举
 enum QrCodeStatus {
   loading, // 包括未初始化状态
   pending, // 待扫描
@@ -14,7 +13,6 @@ enum QrCodeStatus {
       this == QrCodeStatus.pending ||
       this == QrCodeStatus.scanned;
 
-  /// 是否可重试（显示刷新按钮）
   bool get canRetry =>
       this == QrCodeStatus.cancelled ||
       this == QrCodeStatus.expired ||
