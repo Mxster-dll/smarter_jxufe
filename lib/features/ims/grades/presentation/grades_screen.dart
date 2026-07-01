@@ -23,13 +23,57 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(gradesViewModelProvider);
+    final gradesAsync = ref.watch(_gradesProvider(state.params));
+
     return _wrapWithScaffold(
       context,
       Column(
         children: [
           _buildFilters(context),
+          gradesAsync.when(
+            data: (result) => _buildSummary(context, result.grades),
+            loading: () => const SizedBox.shrink(),
+            error: (_, _2) => const SizedBox.shrink(),
+          ),
           Flexible(fit: FlexFit.loose, child: _buildGradeTable(context)),
         ],
+      ),
+    );
+  }
+
+  static const _excludedCourses = {'军事训练', '创新创业实践活动', '毕业设计', '毕业论文'};
+
+  Widget _buildSummary(BuildContext context, List<Grade> grades) {
+    final filtered = grades
+        .where((g) => !_excludedCourses.contains(g.courseName))
+        .toList();
+    if (filtered.isEmpty) return const SizedBox.shrink();
+
+    double totalCredit = 0;
+    double totalScoreCredit = 0;
+    double totalGpCredit = 0;
+
+    for (final g in filtered) {
+      final c = double.tryParse(g.credit) ?? 0;
+      final s = double.tryParse(g.score) ?? 0;
+      final gp = double.tryParse(g.gradePoint) ?? 0;
+      totalCredit += c;
+      totalScoreCredit += s * c;
+      totalGpCredit += gp * c;
+    }
+
+    final avgScore = totalCredit > 0 ? totalScoreCredit / totalCredit : 0;
+    final avgGp = totalCredit > 0 ? totalGpCredit / totalCredit : 0;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+      child: Text(
+        '加权均分 ${avgScore.toStringAsFixed(2)}  |  加权绩点 ${avgGp.toStringAsFixed(2)}',
+        style: TextStyle(
+          fontSize: 12,
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+        ),
       ),
     );
   }
