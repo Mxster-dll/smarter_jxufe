@@ -18,15 +18,21 @@ class _SlotData {
 /// - 相同时段多门课（单双周冲突）垂直平分该格
 class ScheduleGridView extends StatelessWidget {
   final List<ScheduleEntry> entries;
+  final VoidCallback? onToggle;
+  final bool isHorizontal;
 
-  const ScheduleGridView({super.key, required this.entries});
+  const ScheduleGridView({
+    super.key,
+    required this.entries,
+    this.onToggle,
+    this.isHorizontal = false,
+  });
 
   // ─── 布局常量 ─────────────────────────────────────────────────
 
   static const _periodLabelWidth = 36.0;
   static const _headerHeight = 40.0;
   static const _cellMinHeight = 56.0;
-  static const _cellWidth = 120.0;
   static const _borderWidth = 0.5;
 
   // ─── 调色板 ───────────────────────────────────────────────────
@@ -63,43 +69,50 @@ class ScheduleGridView extends StatelessWidget {
 
   // ─── 构建 ─────────────────────────────────────────────────────
 
-  /// grid 主体内容总宽度（不含 padding）
-  double get _totalContentWidth => _periodLabelWidth + 7 * _cellWidth;
-
   @override
   Widget build(BuildContext context) {
     final grid = _buildGrid();
-    final gridContent = SizedBox(
-      width: _totalContentWidth,
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildPeriodLabelColumn(),
-            ...List.generate(7, (day) => _buildDayColumn(day, grid[day])),
-          ],
-        ),
-      ),
-    );
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final viewportWidth = constraints.maxWidth - 24; // 减去 padding
-        final fitsWidth = _totalContentWidth <= viewportWidth;
+        // 列宽自适应屏幕，最小 80dp 保证可读，最大 160dp
+        final colWidth = ((viewportWidth - _periodLabelWidth) / 7).clamp(
+          80.0,
+          160.0,
+        );
+        final totalWidth = _periodLabelWidth + 7 * colWidth;
+        final fitsWidth = totalWidth <= viewportWidth;
+
+        final gridContent = SizedBox(
+          width: fitsWidth ? viewportWidth : totalWidth,
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildPeriodLabelColumn(),
+                ...List.generate(
+                  7,
+                  (day) => _buildDayColumn(day, grid[day], colWidth: colWidth),
+                ),
+              ],
+            ),
+          ),
+        );
 
         if (fitsWidth) {
-          // 宽度够 → 居中 + 垂直滚动
+          // 占满屏幕宽度，无需水平滚动
           return SingleChildScrollView(
             padding: const EdgeInsets.all(12),
-            child: Center(child: gridContent),
+            child: gridContent,
           );
         }
-        // 宽度不够 → 水平滚动 + 垂直滚动
+        // 内容超出 → 水平滚动
         return SingleChildScrollView(
           padding: const EdgeInsets.all(12),
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            child: gridContent,
+            child: SizedBox(width: totalWidth, child: gridContent),
           ),
         );
       },
@@ -111,8 +124,28 @@ class ScheduleGridView extends StatelessWidget {
   Widget _buildPeriodLabelColumn() {
     return Column(
       children: [
-        // 表头占位
-        const SizedBox(width: _periodLabelWidth, height: _headerHeight),
+        // 左上角：切换横/竖版按钮
+        GestureDetector(
+          onTap: onToggle,
+          child: Container(
+            width: _periodLabelWidth,
+            height: _headerHeight,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: Colors.grey.shade200,
+                  width: _borderWidth,
+                ),
+              ),
+            ),
+            child: Icon(
+              isHorizontal ? Icons.view_day : Icons.view_week,
+              color: const Color(0xFFC62828),
+              size: 18,
+            ),
+          ),
+        ),
         // 12 节标签
         ...List.generate(12, (i) {
           final period = i + 1;
@@ -149,13 +182,17 @@ class ScheduleGridView extends StatelessWidget {
 
   // ─── 一天列 ───────────────────────────────────────────────────
 
-  Widget _buildDayColumn(int day, Map<int, List<_SlotData>> dayData) {
+  Widget _buildDayColumn(
+    int day,
+    Map<int, List<_SlotData>> dayData, {
+    required double colWidth,
+  }) {
     // 预计算每个节次是否被上方跨行课程占用
     final occupied = <int, bool>{};
     final widgets = <Widget>[];
 
     // 表头
-    widgets.add(_buildDayHeader(day));
+    widgets.add(_buildDayHeader(day, colWidth: colWidth));
 
     // 逐节次构建
     for (int period = 1; period <= 12; period++) {
@@ -163,8 +200,9 @@ class ScheduleGridView extends StatelessWidget {
 
       final slots = dayData[period];
       if (slots == null || slots.isEmpty) {
-        // 空节次
-        widgets.add(_buildEmptyCell(isBeforeNoon: period == 5));
+        widgets.add(
+          _buildEmptyCell(isBeforeNoon: period == 5, colWidth: colWidth),
+        );
         continue;
       }
 
@@ -177,26 +215,29 @@ class ScheduleGridView extends StatelessWidget {
       }
 
       widgets.add(
-        _buildCourseCell(slots: slots, span: span, day: day, period: period),
+        _buildCourseCell(
+          slots: slots,
+          span: span,
+          day: day,
+          period: period,
+          colWidth: colWidth,
+        ),
       );
-
-      // 跳过已占用的节次
-      // (for 循环自动推进，occupied map 只是标记后续)
     }
 
     return SizedBox(
-      width: _cellWidth,
+      width: colWidth,
       child: Column(children: widgets),
     );
   }
 
   // ─── 表头 ─────────────────────────────────────────────────────
 
-  Widget _buildDayHeader(int day) {
+  Widget _buildDayHeader(int day, {required double colWidth}) {
     const names = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
     final isWeekend = day >= 5;
     return Container(
-      width: _cellWidth,
+      width: colWidth,
       height: _headerHeight,
       alignment: Alignment.center,
       decoration: BoxDecoration(
@@ -218,9 +259,12 @@ class ScheduleGridView extends StatelessWidget {
 
   // ─── 空节次格子 ───────────────────────────────────────────────
 
-  Widget _buildEmptyCell({required bool isBeforeNoon}) {
+  Widget _buildEmptyCell({
+    required bool isBeforeNoon,
+    required double colWidth,
+  }) {
     return Container(
-      width: _cellWidth,
+      width: colWidth,
       height: _cellMinHeight,
       decoration: BoxDecoration(
         border: Border(
@@ -239,6 +283,7 @@ class ScheduleGridView extends StatelessWidget {
     required int span,
     required int day,
     required int period,
+    required double colWidth,
   }) {
     final entry = slots.first.entry;
     final classTime = slots.first.classTime;
@@ -257,7 +302,7 @@ class ScheduleGridView extends StatelessWidget {
         : '';
 
     return Container(
-      width: _cellWidth,
+      width: colWidth,
       height: cellHeight,
       decoration: BoxDecoration(
         color: bgColor,

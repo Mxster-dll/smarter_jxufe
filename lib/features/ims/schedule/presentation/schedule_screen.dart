@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smarter_jxufe/features/ims/schedule/data/providers/schedule_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/schedule_entry.dart';
 import 'package:smarter_jxufe/features/ims/schedule/presentation/schedule_grid_view.dart';
+import 'package:smarter_jxufe/features/ims/schedule/presentation/schedule_horizontal_view.dart';
 
 class ScheduleScreen extends ConsumerStatefulWidget {
   final bool showAppBar;
@@ -18,6 +19,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   List<ScheduleEntry>? _entries;
   String? _error;
   bool _isLoading = true;
+  bool _isHorizontal = false;
 
   @override
   void initState() {
@@ -59,6 +61,8 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     return body;
   }
 
+  void _toggleView() => setState(() => _isHorizontal = !_isHorizontal);
+
   Widget _buildBody() {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -84,7 +88,17 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       return const Center(child: Text('暂无课表数据'));
     }
 
-    // ── 课表网格 ──
-    return ScheduleGridView(entries: _entries!);
+    // 切换按钮内置在课表左上角格子中
+    return _isHorizontal
+        ? ScheduleHorizontalView(
+            entries: _entries!,
+            onToggle: _toggleView,
+            isHorizontal: _isHorizontal,
+          )
+        : ScheduleGridView(
+            entries: _entries!,
+            onToggle: _toggleView,
+            isHorizontal: _isHorizontal,
+          );
   }
 }
