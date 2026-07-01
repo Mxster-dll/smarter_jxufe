@@ -22,7 +22,7 @@ class GradesScreen extends ConsumerWidget {
       Column(
         children: [
           _buildFilters(context, ref),
-          Expanded(child: _buildGradeTable(context, ref)),
+          Flexible(fit: FlexFit.loose, child: _buildGradeTable(context, ref)),
         ],
       ),
     );
@@ -386,6 +386,7 @@ class _StickyHeaderTableState extends State<_StickyHeaderTable> {
     );
 
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         // 固定表头（带悬浮阴影）
         Container(
@@ -426,8 +427,9 @@ class _StickyHeaderTableState extends State<_StickyHeaderTable> {
             ),
           ),
         ),
-        // 可滚动内容
-        Expanded(
+        // 表体
+        Flexible(
+          fit: FlexFit.loose,
           child: SingleChildScrollView(
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
