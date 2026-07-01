@@ -4,11 +4,13 @@ import 'package:smarter_jxufe/features/college/data/college_repository.dart';
 import 'package:smarter_jxufe/features/college/data/providers/college_repository_provider.dart';
 import 'package:smarter_jxufe/features/college/domain/college.dart';
 import 'package:smarter_jxufe/features/ims/curriculum/data/providers/curriculum_repository_provider.dart';
+import 'package:smarter_jxufe/features/ims/curriculum/data/curriculum_repository.dart';
+import 'package:smarter_jxufe/features/ims/curriculum/presentation/curriculum_state.dart';
+import 'package:smarter_jxufe/features/ims/student_info/data/providers/student_info_repository_provider.dart';
+import 'package:smarter_jxufe/features/ims/student_info/domain/student_info.dart';
 import 'package:smarter_jxufe/features/major/data/major_repository.dart';
 import 'package:smarter_jxufe/features/major/data/providers/major_repository_provider.dart';
 import 'package:smarter_jxufe/features/major/domain/major.dart';
-import 'package:smarter_jxufe/features/ims/curriculum/data/curriculum_repository.dart';
-import 'package:smarter_jxufe/features/ims/curriculum/presentation/curriculum_state.dart';
 
 part 'curriculum_viewmodel.g.dart';
 
@@ -27,18 +29,70 @@ class CurriculumViewModel extends _$CurriculumViewModel {
     _collegeRepository = await ref.watch(collegeRepositoryProvider.future);
     _majorRepository = await ref.watch(majorRepositoryProvider.future);
 
-    // 初始状态（加载学院中）
-    final initialState = CurriculumState(isLoadingColleges: true);
-    // 注意：此时 state 还是 AsyncLoading，但我们手动返回的 initialState 并不会被用到
-    // 我们要在下面手动设置状态
-    state = AsyncData(initialState);
+    // 尝试获取缓存的学籍信息，用于预填默认值
+    final studentInfoRepo = await ref.watch(
+      studentInfoRepositoryProvider.future,
+    );
+    StudentInfo? studentInfo;
+    studentInfoRepo.getCachedStudentInfo().fold(
+      (_) {},
+      (info) => studentInfo = info,
+    );
+    final defaultYear = studentInfo != null
+        ? int.tryParse(studentInfo!.enrollYear)
+        : null;
+
+    // 确保年份列表包含入学年份
+    List<int> years = List.generate(16, (i) => 2025 - i);
+    if (defaultYear != null && !years.contains(defaultYear)) {
+      years = [defaultYear, ...years];
+    }
+
+    // 初始状态（加载学院中，预填年份）
+    state = AsyncData(
+      CurriculumState(
+        isLoadingColleges: true,
+        selectedYear: defaultYear,
+        years: years,
+      ),
+    );
 
     // 加载学院数据（等待完成）
-    await _loadColleges(); // 这个函数内部会重新设置 state
+    await _loadColleges();
 
-    // 返回最终状态（实际上状态已经更新过了，这里返回值会被 AsyncNotifier 忽略？
-    // 但实际上 AsyncNotifier 机制：build 返回的 Future 完成后，state 被设置为该返回值。
-    // 所以我们需要返回 _loadColleges 更新后的状态。
+    // 尝试从学籍信息预填学院和专业
+    if (studentInfo != null && defaultYear != null) {
+      final current = state.requireValue;
+      College? matchedCollege;
+      for (final c in current.colleges) {
+        if (c.name == studentInfo!.college) {
+          matchedCollege = c;
+          break;
+        }
+      }
+
+      if (matchedCollege != null) {
+        // 设置学院并加载专业列表
+        state = AsyncData(current.copyWith(selectedCollege: matchedCollege));
+        await _loadMajors(defaultYear, matchedCollege);
+
+        // 尝试匹配专业
+        final afterMajors = state.requireValue;
+        Major? matchedMajor;
+        for (final m in afterMajors.majors) {
+          if (m.name == studentInfo!.major) {
+            matchedMajor = m;
+            break;
+          }
+        }
+
+        if (matchedMajor != null) {
+          state = AsyncData(afterMajors.copyWith(selectedMajor: matchedMajor));
+          await _loadCurriculum(defaultYear, matchedCollege, matchedMajor);
+        }
+      }
+    }
+
     return state.requireValue;
   }
 
