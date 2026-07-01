@@ -126,13 +126,23 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
             double.tryParse(b.creditGradePoint) ?? 0,
           );
         case 'contribution':
-          final ca =
-              ((double.tryParse(a.score) ?? 0) - avgScore) *
-              (double.tryParse(a.credit) ?? 0);
-          final cb =
-              ((double.tryParse(b.score) ?? 0) - avgScore) *
-              (double.tryParse(b.credit) ?? 0);
-          cmp = ca.compareTo(cb);
+          final aEx = _excludedCourses.contains(a.courseName);
+          final bEx = _excludedCourses.contains(b.courseName);
+          if (aEx && bEx) {
+            cmp = 0;
+          } else if (aEx) {
+            cmp = 1;
+          } else if (bEx) {
+            cmp = -1;
+          } else {
+            final ca =
+                ((double.tryParse(a.score) ?? 0) - avgScore) *
+                (double.tryParse(a.credit) ?? 0);
+            final cb =
+                ((double.tryParse(b.score) ?? 0) - avgScore) *
+                (double.tryParse(b.credit) ?? 0);
+            cmp = ca.compareTo(cb);
+          }
         case 'semester':
           cmp = a.semester.compareTo(b.semester);
         default:
@@ -368,9 +378,8 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
                 _toggle(
                   context,
                   state.showRawGrade ? '原始成绩' : '有效成绩',
-                  state.showRawGrade,
+                  !state.showRawGrade,
                   vm.toggleShowRawGrade,
-                  activeColor: Colors.red,
                 ),
                 IconButton(
                   icon: const Icon(Icons.refresh, size: 20),
