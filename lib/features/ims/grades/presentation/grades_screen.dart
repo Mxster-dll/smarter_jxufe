@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/features/ims/grades/data/providers/grades_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grade.dart';
-import 'package:smarter_jxufe/features/ims/grades/domain/grade_summary.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grades_query_params.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grades_result.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/time_limit.dart';
@@ -181,14 +180,7 @@ class GradesScreen extends ConsumerWidget {
       data: (result) => result.grades.isEmpty
           ? const Center(child: Text('暂无成绩数据'))
           : SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  _buildGradeTableWidget(context, result.grades),
-                  if (result.summaries.isNotEmpty)
-                    _buildSummaryTable(context, result.summaries),
-                ],
-              ),
+              child: _buildGradeTableWidget(context, result.grades),
             ),
     );
   }
@@ -222,6 +214,7 @@ class GradesScreen extends ConsumerWidget {
                           DataColumn(label: Text('课程名称')),
                           DataColumn(label: Text('学分')),
                           DataColumn(label: Text('分数')),
+                          DataColumn(label: Text('学期')),
                         ]
                       : const [
                           DataColumn(label: Text('课程代码')),
@@ -233,6 +226,7 @@ class GradesScreen extends ConsumerWidget {
                           DataColumn(label: Text('成绩')),
                           DataColumn(label: Text('绩点')),
                           DataColumn(label: Text('学分绩点')),
+                          DataColumn(label: Text('学期')),
                         ],
                   rows: [
                     for (final g in grades)
@@ -247,6 +241,12 @@ class GradesScreen extends ConsumerWidget {
                                 ),
                                 DataCell(Text(g.credit)),
                                 DataCell(Text(g.score)),
+                                DataCell(
+                                  Text(
+                                    g.semester,
+                                    style: const TextStyle(fontSize: 11),
+                                  ),
+                                ),
                               ]
                             : [
                                 DataCell(
@@ -273,6 +273,12 @@ class GradesScreen extends ConsumerWidget {
                                 DataCell(Text(g.score)),
                                 DataCell(Text(g.gradePoint)),
                                 DataCell(Text(g.creditGradePoint)),
+                                DataCell(
+                                  Text(
+                                    g.semester,
+                                    style: const TextStyle(fontSize: 11),
+                                  ),
+                                ),
                               ],
                       ),
                   ],
@@ -280,72 +286,6 @@ class GradesScreen extends ConsumerWidget {
               ),
             );
           },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSummaryTable(
-    BuildContext context,
-    List<GradeSummary> summaries,
-  ) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: IntrinsicWidth(
-            child: DataTable(
-              headingRowColor: WidgetStateProperty.all(theme.colorScheme.error),
-              headingTextStyle: TextStyle(
-                color: theme.colorScheme.onError,
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
-              dataTextStyle: const TextStyle(fontSize: 12),
-              columnSpacing: 16,
-              columns: const [
-                DataColumn(label: Text('类别')),
-                DataColumn(label: Text('环节数')),
-                DataColumn(label: Text('学分')),
-                DataColumn(label: Text('获得学分')),
-                DataColumn(label: Text('绩点')),
-                DataColumn(label: Text('学分绩点')),
-                DataColumn(label: Text('平均绩点')),
-              ],
-              rows: summaries.map((s) {
-                final isTotal = s.category == '合计';
-                return DataRow(
-                  color: isTotal
-                      ? WidgetStateProperty.all(
-                          theme.colorScheme.errorContainer,
-                        )
-                      : null,
-                  cells: [
-                    DataCell(
-                      Text(
-                        s.category,
-                        style: TextStyle(
-                          fontWeight: isTotal
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                        ),
-                      ),
-                    ),
-                    DataCell(Text(s.courseCount)),
-                    DataCell(Text(s.credit)),
-                    DataCell(Text(s.earnedCredit)),
-                    DataCell(Text(s.earnedGradePoint)),
-                    DataCell(Text(s.earnedCreditGradePoint)),
-                    DataCell(Text(s.avgGradePoint)),
-                  ],
-                );
-              }).toList(),
-            ),
-          ),
         ),
       ),
     );
