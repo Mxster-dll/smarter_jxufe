@@ -10,6 +10,7 @@ class GradesState {
   final bool selectWeiZhuan;
   final bool onlyNotPassed;
   final String semesterXq;
+  final int academicYear;
 
   const GradesState({
     this.timeLimit = TimeLimit.semester,
@@ -19,6 +20,7 @@ class GradesState {
     this.selectWeiZhuan = true,
     this.onlyNotPassed = false,
     this.semesterXq = '0',
+    this.academicYear = 2025,
   });
 
   GradesState copyWith({
@@ -29,6 +31,7 @@ class GradesState {
     bool? selectWeiZhuan,
     bool? onlyNotPassed,
     String? semesterXq,
+    int? academicYear,
   }) => GradesState(
     timeLimit: timeLimit ?? this.timeLimit,
     showRawGrade: showRawGrade ?? this.showRawGrade,
@@ -37,6 +40,7 @@ class GradesState {
     selectWeiZhuan: selectWeiZhuan ?? this.selectWeiZhuan,
     onlyNotPassed: onlyNotPassed ?? this.onlyNotPassed,
     semesterXq: semesterXq ?? this.semesterXq,
+    academicYear: academicYear ?? this.academicYear,
   );
 
   /// 主修 / 辅修 / 微专 中选中的数量。
@@ -53,7 +57,11 @@ class GradesState {
     selectWeiZhuan: selectWeiZhuan,
     onlyNotPassed: onlyNotPassed,
     semesterXq: timeLimit == TimeLimit.semester ? semesterXq : null,
-    academicYear: timeLimit != TimeLimit.sinceEnrollment ? '2025' : null,
-    academicYearNext: timeLimit != TimeLimit.sinceEnrollment ? '2026' : null,
+    academicYear: timeLimit != TimeLimit.sinceEnrollment
+        ? academicYear.toString()
+        : null,
+    academicYearNext: timeLimit != TimeLimit.sinceEnrollment
+        ? (academicYear + 1).toString()
+        : null,
   );
 }

@@ -9,6 +9,7 @@ class GradesViewModel extends StateNotifier<GradesState> {
 
   void setTimeLimit(TimeLimit v) => state = state.copyWith(timeLimit: v);
   void setSemesterXq(String v) => state = state.copyWith(semesterXq: v);
+  void setAcademicYear(int v) => state = state.copyWith(academicYear: v);
 
   void toggleShowRawGrade() =>
       state = state.copyWith(showRawGrade: !state.showRawGrade);
