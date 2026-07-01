@@ -21,10 +21,17 @@ class GradesScreen extends ConsumerStatefulWidget {
 class _GradesScreenState extends ConsumerState<GradesScreen> {
   bool _pickerHovered = false;
 
+  static const _excludedCourses = <String>{'军事技能训练', '军事理论', '劳动教育', '形势与政策'};
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(gradesViewModelProvider);
     final gradesAsync = ref.watch(_gradesProvider(state.params));
+
+    double avgScore = 0;
+    gradesAsync.whenData((result) {
+      avgScore = _calcAvgScore(result.grades);
+    });
 
     return _wrapWithScaffold(
       context,
@@ -32,38 +39,52 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
         children: [
           _buildFilters(context),
           gradesAsync.when(
-            data: (result) => _buildSummary(context, result.grades),
+            data: (result) => _buildSummary(context, result.grades, avgScore),
             loading: () => const SizedBox.shrink(),
             error: (_, _2) => const SizedBox.shrink(),
           ),
-          Flexible(fit: FlexFit.loose, child: _buildGradeTable(context)),
+          Flexible(
+            fit: FlexFit.loose,
+            child: _buildGradeTable(context, avgScore),
+          ),
         ],
       ),
     );
   }
 
-  static const _excludedCourses = {'军事训练', '创新创业实践活动', '毕业设计', '毕业论文'};
+  double _calcAvgScore(List<Grade> grades) {
+    final filtered = grades
+        .where((g) => !_excludedCourses.contains(g.courseName))
+        .toList();
+    if (filtered.isEmpty) return 0;
+    double totalCredit = 0, totalScoreCredit = 0;
+    for (final g in filtered) {
+      final c = double.tryParse(g.credit) ?? 0;
+      final s = double.tryParse(g.score) ?? 0;
+      totalCredit += c;
+      totalScoreCredit += s * c;
+    }
+    return totalCredit > 0 ? totalScoreCredit / totalCredit : 0;
+  }
 
-  Widget _buildSummary(BuildContext context, List<Grade> grades) {
+  Widget _buildSummary(
+    BuildContext context,
+    List<Grade> grades,
+    double avgScore,
+  ) {
+    if (grades.isEmpty) return const SizedBox.shrink();
     final filtered = grades
         .where((g) => !_excludedCourses.contains(g.courseName))
         .toList();
     if (filtered.isEmpty) return const SizedBox.shrink();
 
-    double totalCredit = 0;
-    double totalScoreCredit = 0;
-    double totalGpCredit = 0;
-
+    double totalCredit = 0, totalGpCredit = 0;
     for (final g in filtered) {
       final c = double.tryParse(g.credit) ?? 0;
-      final s = double.tryParse(g.score) ?? 0;
       final gp = double.tryParse(g.gradePoint) ?? 0;
       totalCredit += c;
-      totalScoreCredit += s * c;
       totalGpCredit += gp * c;
     }
-
-    final avgScore = totalCredit > 0 ? totalScoreCredit / totalCredit : 0;
     final avgGp = totalCredit > 0 ? totalGpCredit / totalCredit : 0;
 
     return Padding(
@@ -239,7 +260,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     );
   }
 
-  Widget _buildGradeTable(BuildContext context) {
+  Widget _buildGradeTable(BuildContext context, double avgScore) {
     final state = ref.watch(gradesViewModelProvider);
     final resultAsync = ref.watch(_gradesProvider(state.params));
 
@@ -264,6 +285,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
               context,
               result.grades,
               showSemester: state.timeLimit != TimeLimit.semester,
+              avgScore: avgScore,
             ),
     );
   }
@@ -272,12 +294,13 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     BuildContext context,
     List<Grade> grades, {
     required bool showSemester,
+    required double avgScore,
   }) {
     final theme = Theme.of(context);
 
     List<String> buildHeaders(bool isNarrow) {
       final h = isNarrow
-          ? <String>['课程名称', '学分', '分数']
+          ? <String>['课程名称', '学分', '分数', '贡献']
           : <String>[
               '课程代码',
               '课程名称',
@@ -288,6 +311,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
               '成绩',
               '绩点',
               '学分绩点',
+              '贡献',
             ];
       if (showSemester) h.add('学期');
       return h;
@@ -296,25 +320,27 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     Map<int, TableColumnWidth> buildColumnWidths(bool isNarrow) {
       if (isNarrow) {
         final w = <int, TableColumnWidth>{
-          0: const FixedColumnWidth(180),
+          0: const FixedColumnWidth(160),
           1: const FixedColumnWidth(56),
-          2: const FixedColumnWidth(68),
+          2: const FixedColumnWidth(60),
+          3: const FixedColumnWidth(60),
         };
-        if (showSemester) w[3] = const FixedColumnWidth(56);
+        if (showSemester) w[4] = const FixedColumnWidth(52);
         return w;
       }
       final w = <int, TableColumnWidth>{
         0: const FixedColumnWidth(88),
-        1: const FixedColumnWidth(200),
+        1: const FixedColumnWidth(180),
         2: const FixedColumnWidth(56),
-        3: const FixedColumnWidth(140),
+        3: const FixedColumnWidth(130),
         4: const FixedColumnWidth(56),
         5: const FixedColumnWidth(56),
-        6: const FixedColumnWidth(68),
-        7: const FixedColumnWidth(60),
-        8: const FixedColumnWidth(80),
+        6: const FixedColumnWidth(60),
+        7: const FixedColumnWidth(56),
+        8: const FixedColumnWidth(72),
+        9: const FixedColumnWidth(60),
       };
-      if (showSemester) w[9] = const FixedColumnWidth(52);
+      if (showSemester) w[10] = const FixedColumnWidth(52);
       return w;
     }
 
@@ -337,11 +363,25 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
 
     List<List<Widget>> buildDataRows(bool isNarrow) {
       return grades.map((g) {
+        final s = double.tryParse(g.score) ?? 0;
+        final c = double.tryParse(g.credit) ?? 0;
+        final contrib = (s - avgScore) * c;
+        final contribText = contrib.toStringAsFixed(1);
+        final contribWidget = Text(
+          contribText,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 12,
+            color: contrib < 0 ? Colors.red : null,
+          ),
+        );
+
         final cells = isNarrow
             ? <Widget>[
                 Text(g.courseName, style: const TextStyle(fontSize: 12)),
                 Text(g.credit, textAlign: TextAlign.center),
                 Text(g.score, textAlign: TextAlign.center),
+                contribWidget,
               ]
             : <Widget>[
                 Text(g.courseCode, style: const TextStyle(fontSize: 11)),
@@ -353,6 +393,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
                 Text(g.score, textAlign: TextAlign.center),
                 Text(g.gradePoint, textAlign: TextAlign.center),
                 Text(g.creditGradePoint, textAlign: TextAlign.center),
+                contribWidget,
               ];
         if (showSemester) {
           cells.add(Text(g.semester, textAlign: TextAlign.center));
