@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 /// 横向滑动学年选择器。
@@ -91,107 +92,120 @@ class _AcademicYearPickerState extends State<AcademicYearPicker> {
     final t = Theme.of(context);
     final n = widget.endYear - widget.startYear + 1;
 
-    return GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onHorizontalDragStart: _expanded
-          ? (d) {
-              _dragStartX = d.localPosition.dx;
-              _dragStartOffset = _offset;
-              _dragging = true;
-            }
-          : null,
-      onHorizontalDragUpdate: _expanded
-          ? (d) {
-              setState(() {
-                _offset = _dragStartOffset - (d.localPosition.dx - _dragStartX);
-                _updateSelected();
-              });
-            }
-          : null,
-      onHorizontalDragEnd: _expanded
-          ? (_) {
-              _dragging = false;
-              _snap();
-              if (_mouseLeft) {
-                Future.delayed(const Duration(milliseconds: 500), () {
-                  if (mounted && _mouseLeft && !_dragging) {
-                    setState(() => _hovered = false);
-                    widget.onHoverChanged?.call(false);
-                  }
+    return Listener(
+      onPointerSignal: _hovered && !_dragging
+          ? (e) {
+              if (e is PointerScrollEvent) {
+                setState(() {
+                  _offset = (_offset + e.scrollDelta.dy).clamp(0.0, _maxOffset);
                 });
+                _snap();
               }
             }
           : null,
-      child: SizedBox(
-        width: _highlightW + 4,
-        height: 44,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            // 年份 + 连字符列表（溢出组件外）
-            Positioned(
-              left: -_offset + 2,
-              top: 0,
-              bottom: 0,
-              child: Row(
-                children: [
-                  for (int i = 0; i < n; i++) ...[
-                    SizedBox(
-                      width: _yearW,
-                      child: _yearItem(
-                        widget.startYear + i,
-                        t,
-                        highlight:
-                            widget.startYear + i == _selected ||
-                            widget.startYear + i == _selected + 1,
-                        dimmed: !_expanded,
-                      ),
-                    ),
-                    if (i < n - 1)
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onHorizontalDragStart: _expanded
+            ? (d) {
+                _dragStartX = d.localPosition.dx;
+                _dragStartOffset = _offset;
+                _dragging = true;
+              }
+            : null,
+        onHorizontalDragUpdate: _expanded
+            ? (d) {
+                setState(() {
+                  _offset =
+                      _dragStartOffset - (d.localPosition.dx - _dragStartX);
+                  _updateSelected();
+                });
+              }
+            : null,
+        onHorizontalDragEnd: _expanded
+            ? (_) {
+                _dragging = false;
+                _snap();
+                if (_mouseLeft) {
+                  Future.delayed(const Duration(milliseconds: 500), () {
+                    if (mounted && _mouseLeft && !_dragging) {
+                      setState(() => _hovered = false);
+                      widget.onHoverChanged?.call(false);
+                    }
+                  });
+                }
+              }
+            : null,
+        child: SizedBox(
+          width: _highlightW + 4,
+          height: 44,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // 年份 + 连字符列表（溢出组件外）
+              Positioned(
+                left: -_offset + 2,
+                top: 0,
+                bottom: 0,
+                child: Row(
+                  children: [
+                    for (int i = 0; i < n; i++) ...[
                       SizedBox(
-                        width: _dashW,
-                        child: _dashItem(
+                        width: _yearW,
+                        child: _yearItem(
+                          widget.startYear + i,
                           t,
-                          highlight: widget.startYear + i == _selected,
+                          highlight:
+                              widget.startYear + i == _selected ||
+                              widget.startYear + i == _selected + 1,
                           dimmed: !_expanded,
                         ),
                       ),
+                      if (i < n - 1)
+                        SizedBox(
+                          width: _dashW,
+                          child: _dashItem(
+                            t,
+                            highlight: widget.startYear + i == _selected,
+                            dimmed: !_expanded,
+                          ),
+                        ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-            // 高亮框 + hover 检测
-            MouseRegion(
-              onEnter: (_) {
-                _mouseLeft = false;
-                setState(() => _hovered = true);
-                widget.onHoverChanged?.call(true);
-              },
-              onExit: (_) {
-                _mouseLeft = true;
-                if (!_dragging) {
-                  setState(() => _hovered = false);
-                  widget.onHoverChanged?.call(false);
-                }
-              },
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 200),
-                opacity: _expanded ? 1.0 : 0.0,
-                child: IgnorePointer(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 2),
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: t.colorScheme.error.withValues(alpha: 0.5),
-                        width: 2,
+              // 高亮框 + hover 检测
+              MouseRegion(
+                onEnter: (_) {
+                  _mouseLeft = false;
+                  setState(() => _hovered = true);
+                  widget.onHoverChanged?.call(true);
+                },
+                onExit: (_) {
+                  _mouseLeft = true;
+                  if (!_dragging) {
+                    setState(() => _hovered = false);
+                    widget.onHoverChanged?.call(false);
+                  }
+                },
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 200),
+                  opacity: _expanded ? 1.0 : 0.0,
+                  child: IgnorePointer(
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(vertical: 2),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: t.colorScheme.error.withValues(alpha: 0.5),
+                          width: 2,
+                        ),
+                        borderRadius: BorderRadius.circular(6),
                       ),
-                      borderRadius: BorderRadius.circular(6),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
