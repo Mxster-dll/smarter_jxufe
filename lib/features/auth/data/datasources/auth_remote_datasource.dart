@@ -27,7 +27,7 @@ class AuthRemoteDataSource {
       'Sec-Fetch-Mode': 'cors',
       'Sec-Fetch-Dest': 'empty',
       'Referer':
-          'https://ssl.jxufe.edu.cn/cas/login?service=http%3A%2F%2Fehall.jxufe.edu.cn%2Famp-auth-adapter%2FloginSuccess%3FsessionToken%3DTESTSESSIONTOKEN0000000000000002',
+          'https://ssl.jxufe.edu.cn/cas/login?service=http%3A%2F%2Fehall.jxufe.edu.cn%2Famp-auth-adapter%2FloginSuccess%3FsessionToken%3DTESTSESSIONTOKEN0000000000000003',
       'Accept-Encoding': 'gzip, deflate, br, zstd',
       'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
     };
@@ -56,7 +56,7 @@ class AuthRemoteDataSource {
     String trustAgent = '',
   }) async {
     const url =
-        'https://ssl.jxufe.edu.cn/cas/login?service=http%3A%2F%2Fehall.jxufe.edu.cn%2Famp-auth-adapter%2FloginSuccess%3FsessionToken%3DTESTSESSIONTOKEN0000000000000002';
+        'https://ssl.jxufe.edu.cn/cas/login?service=http%3A%2F%2Fehall.jxufe.edu.cn%2Famp-auth-adapter%2FloginSuccess%3FsessionToken%3DTESTSESSIONTOKEN0000000000000003';
     final headers = {
       'Host': 'ssl.jxufe.edu.cn',
       'Connection': 'keep-alive',
@@ -75,7 +75,7 @@ class AuthRemoteDataSource {
       'Sec-Fetch-User': '?1',
       'Sec-Fetch-Dest': 'document',
       'Referer':
-          'https://ssl.jxufe.edu.cn/cas/login?service=http%3A%2F%2Fehall.jxufe.edu.cn%2Famp-auth-adapter%2FloginSuccess%3FsessionToken%3DTESTSESSIONTOKEN0000000000000002',
+          'https://ssl.jxufe.edu.cn/cas/login?service=http%3A%2F%2Fehall.jxufe.edu.cn%2Famp-auth-adapter%2FloginSuccess%3FsessionToken%3DTESTSESSIONTOKEN0000000000000003',
       'Accept-Encoding': 'gzip, deflate, br, zstd',
       'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
     };
