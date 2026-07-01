@@ -179,12 +179,10 @@ class GradesScreen extends ConsumerWidget {
       ),
       data: (result) => result.grades.isEmpty
           ? const Center(child: Text('暂无成绩数据'))
-          : SingleChildScrollView(
-              child: _buildGradeTableWidget(
-                context,
-                result.grades,
-                showSemester: state.timeLimit != TimeLimit.semester,
-              ),
+          : _buildGradeTableWidget(
+              context,
+              result.grades,
+              showSemester: state.timeLimit != TimeLimit.semester,
             ),
     );
   }
@@ -196,64 +194,90 @@ class GradesScreen extends ConsumerWidget {
   }) {
     final theme = Theme.of(context);
 
-    List<DataColumn> buildColumns(bool isNarrow) {
-      final cols = isNarrow
-          ? <DataColumn>[
-              const DataColumn(label: Text('课程名称')),
-              const DataColumn(label: Text('学分')),
-              const DataColumn(label: Text('分数')),
-            ]
-          : <DataColumn>[
-              const DataColumn(label: Text('课程代码')),
-              const DataColumn(label: Text('课程名称')),
-              const DataColumn(label: Text('学分')),
-              const DataColumn(label: Text('类别')),
-              const DataColumn(label: Text('性质')),
-              const DataColumn(label: Text('考核')),
-              const DataColumn(label: Text('成绩')),
-              const DataColumn(label: Text('绩点')),
-              const DataColumn(label: Text('学分绩点')),
+    List<String> buildHeaders(bool isNarrow) {
+      final h = isNarrow
+          ? <String>['课程名称', '学分', '分数']
+          : <String>[
+              '课程代码',
+              '课程名称',
+              '学分',
+              '类别',
+              '性质',
+              '考核',
+              '成绩',
+              '绩点',
+              '学分绩点',
             ];
-      if (showSemester) {
-        cols.add(const DataColumn(label: Text('学期')));
-      }
-      return cols;
+      if (showSemester) h.add('学期');
+      return h;
     }
 
-    List<DataCell> buildCells(Grade g, bool isNarrow) {
-      final cells = isNarrow
-          ? <DataCell>[
-              DataCell(
-                Text(g.courseName, style: const TextStyle(fontSize: 12)),
-              ),
-              DataCell(Text(g.credit)),
-              DataCell(Text(g.score)),
-            ]
-          : <DataCell>[
-              DataCell(
-                Text(g.courseCode, style: const TextStyle(fontSize: 11)),
-              ),
-              DataCell(
-                Text(g.courseName, style: const TextStyle(fontSize: 12)),
-              ),
-              DataCell(Text(g.credit)),
-              DataCell(
-                Text(g.category, style: const TextStyle(fontSize: 11)),
-              ),
-              DataCell(Text(g.nature)),
-              DataCell(Text(g.examType)),
-              DataCell(Text(g.score)),
-              DataCell(Text(g.gradePoint)),
-              DataCell(Text(g.creditGradePoint)),
-            ];
-      if (showSemester) {
-        cells.add(
-          DataCell(
-            Text(g.semester, style: const TextStyle(fontSize: 11)),
-          ),
-        );
+    Map<int, TableColumnWidth> buildColumnWidths(bool isNarrow) {
+      if (isNarrow) {
+        final w = <int, TableColumnWidth>{
+          0: const FixedColumnWidth(180),
+          1: const FixedColumnWidth(56),
+          2: const FixedColumnWidth(68),
+        };
+        if (showSemester) w[3] = const FixedColumnWidth(56);
+        return w;
       }
-      return cells;
+      final w = <int, TableColumnWidth>{
+        0: const FixedColumnWidth(88),
+        1: const FixedColumnWidth(200),
+        2: const FixedColumnWidth(56),
+        3: const FixedColumnWidth(140),
+        4: const FixedColumnWidth(56),
+        5: const FixedColumnWidth(56),
+        6: const FixedColumnWidth(68),
+        7: const FixedColumnWidth(60),
+        8: const FixedColumnWidth(80),
+      };
+      if (showSemester) w[9] = const FixedColumnWidth(52);
+      return w;
+    }
+
+    List<Widget> buildHeaderCells(bool isNarrow) {
+      final headers = buildHeaders(isNarrow);
+      return headers
+          .map((h) => Text(
+                h,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: theme.colorScheme.onError,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ))
+          .toList();
+    }
+
+    List<List<Widget>> buildDataRows(bool isNarrow) {
+      return grades.map((g) {
+        final cells = isNarrow
+            ? <Widget>[
+                Text(g.courseName, style: const TextStyle(fontSize: 12)),
+                Text(g.credit, textAlign: TextAlign.center),
+                Text(g.score, textAlign: TextAlign.center),
+              ]
+            : <Widget>[
+                Text(g.courseCode, style: const TextStyle(fontSize: 11)),
+                Text(g.courseName, style: const TextStyle(fontSize: 12)),
+                Text(g.credit, textAlign: TextAlign.center),
+                Text(g.category, style: const TextStyle(fontSize: 11)),
+                Text(g.nature, textAlign: TextAlign.center),
+                Text(g.examType, textAlign: TextAlign.center),
+                Text(g.score, textAlign: TextAlign.center),
+                Text(g.gradePoint, textAlign: TextAlign.center),
+                Text(g.creditGradePoint, textAlign: TextAlign.center),
+              ];
+        if (showSemester) {
+          cells.add(
+            Text(g.semester, textAlign: TextAlign.center),
+          );
+        }
+        return cells;
+      }).toList();
     }
 
     return Padding(
@@ -264,31 +288,165 @@ class GradesScreen extends ConsumerWidget {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final isNarrow = constraints.maxWidth < 600;
-            return SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: IntrinsicWidth(
-                child: DataTable(
-                  headingRowColor: WidgetStateProperty.all(
-                    theme.colorScheme.error,
-                  ),
-                  headingTextStyle: TextStyle(
-                    color: theme.colorScheme.onError,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                  dataTextStyle: const TextStyle(fontSize: 13),
-                  columnSpacing: 16,
-                  columns: buildColumns(isNarrow),
-                  rows: [
-                    for (final g in grades)
-                      DataRow(cells: buildCells(g, isNarrow)),
-                  ],
-                ),
-              ),
+            return _StickyHeaderTable(
+              headerCells: buildHeaderCells(isNarrow),
+              dataRows: buildDataRows(isNarrow),
+              headerBgColor: theme.colorScheme.error,
+              columnWidths: buildColumnWidths(isNarrow),
             );
           },
         ),
       ),
+    );
+  }
+}
+
+/// 固定表头表格：表头始终可见，内容区可垂直滚动，横向滚动同步。
+class _StickyHeaderTable extends StatefulWidget {
+  final List<Widget> headerCells;
+  final List<List<Widget>> dataRows;
+  final Color headerBgColor;
+  final Map<int, TableColumnWidth> columnWidths;
+
+  const _StickyHeaderTable({
+    required this.headerCells,
+    required this.dataRows,
+    required this.headerBgColor,
+    required this.columnWidths,
+  });
+
+  @override
+  State<_StickyHeaderTable> createState() => _StickyHeaderTableState();
+}
+
+class _StickyHeaderTableState extends State<_StickyHeaderTable> {
+  final ScrollController _headerH = ScrollController();
+  final ScrollController _bodyH = ScrollController();
+  bool _syncing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _headerH.addListener(_syncHeaderToBody);
+    _bodyH.addListener(_syncBodyToHeader);
+  }
+
+  void _syncHeaderToBody() {
+    if (_syncing) return;
+    _syncing = true;
+    if (_bodyH.hasClients && _bodyH.offset != _headerH.offset) {
+      _bodyH.jumpTo(_headerH.offset);
+    }
+    _syncing = false;
+  }
+
+  void _syncBodyToHeader() {
+    if (_syncing) return;
+    _syncing = true;
+    if (_headerH.hasClients && _headerH.offset != _bodyH.offset) {
+      _headerH.jumpTo(_bodyH.offset);
+    }
+    _syncing = false;
+  }
+
+  @override
+  void dispose() {
+    _headerH.dispose();
+    _bodyH.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final borderSide = BorderSide(
+      color: Theme.of(context).dividerColor.withValues(alpha: 0.3),
+      width: 0.5,
+    );
+
+    return Column(
+      children: [
+        // 固定表头（带悬浮阴影）
+        Container(
+          padding: const EdgeInsets.only(bottom: 6),
+          decoration: BoxDecoration(
+            color: widget.headerBgColor,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.25),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            controller: _headerH,
+            child: Table(
+              columnWidths: widget.columnWidths,
+              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+              children: [
+                TableRow(
+                  children: widget.headerCells
+                      .map(
+                        (cell) => TableCell(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 12,
+                            ),
+                            child: cell,
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ],
+            ),
+          ),
+        ),
+        // 可滚动内容
+        Expanded(
+          child: SingleChildScrollView(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              controller: _bodyH,
+              child: Table(
+                columnWidths: widget.columnWidths,
+                defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                border: TableBorder(
+                  horizontalInside: borderSide,
+                ),
+                children: [
+                  for (int i = 0; i < widget.dataRows.length; i++)
+                    TableRow(
+                      decoration: i.isOdd
+                          ? BoxDecoration(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .surfaceContainerHighest
+                                  .withValues(alpha: 0.4),
+                            )
+                          : null,
+                      children: widget.dataRows[i]
+                          .map(
+                            (cell) => TableCell(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 10,
+                                ),
+                                child: cell,
+                              ),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
