@@ -1,13 +1,80 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/features/college/data/providers/college_repository_provider.dart';
+import 'package:smarter_jxufe/features/college/domain/college.dart';
+import 'package:smarter_jxufe/features/ims/course/data/models/course_importance.dart';
+import 'package:smarter_jxufe/features/ims/curriculum/data/providers/curriculum_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/grades/data/providers/grades_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grade.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grades_query_params.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grades_result.dart';
-import 'package:smarter_jxufe/shared/widgets/academic_year_picker.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/time_limit.dart';
 import 'package:smarter_jxufe/features/ims/grades/presentation/grades_viewmodel.dart';
+import 'package:smarter_jxufe/features/ims/student_info/data/providers/student_info_repository_provider.dart';
+import 'package:smarter_jxufe/features/ims/student_info/domain/student_info.dart';
+import 'package:smarter_jxufe/features/major/data/providers/major_repository_provider.dart';
+import 'package:smarter_jxufe/features/major/domain/major.dart';
+import 'package:smarter_jxufe/shared/widgets/academic_year_picker.dart';
+
+/// 从学籍信息和培养方案中提取每门课程的「课程地位」（主干/非主干）。
+final _curriculumImportanceMapProvider =
+    FutureProvider<Map<String, CourseImportance>?>((ref) async {
+      final studentInfoRepo = await ref.watch(
+        studentInfoRepositoryProvider.future,
+      );
+      StudentInfo? info;
+      studentInfoRepo.getCachedStudentInfo().fold((_) {}, (i) => info = i);
+      if (info == null) return null;
+      final si = info!;
+
+      final year = int.tryParse(si.enrollYear);
+      if (year == null) return null;
+
+      final collegeRepo = await ref.watch(collegeRepositoryProvider.future);
+      College? matchedCollege;
+      final collegesResult = await collegeRepo.getAllCollege();
+      collegesResult.fold((_) {}, (colleges) {
+        for (final c in colleges) {
+          if (c.name == si.college) {
+            matchedCollege = c;
+            break;
+          }
+        }
+      });
+      if (matchedCollege == null) return null;
+      final mc = matchedCollege!;
+
+      final majorRepo = await ref.watch(majorRepositoryProvider.future);
+      Major? matchedMajor;
+      final majorsResult = await majorRepo.getAllMajorIn(mc, year: year);
+      majorsResult.fold((_) {}, (majors) {
+        for (final m in majors) {
+          if (m.name == si.major) {
+            matchedMajor = m;
+            break;
+          }
+        }
+      });
+      if (matchedMajor == null) return null;
+      final mm = matchedMajor!;
+
+      final curriculumRepo = await ref.watch(
+        curriculumRepositoryProvider.future,
+      );
+      final curriculumResult = await curriculumRepo.getCurriculumIn(
+        year,
+        mc,
+        mm,
+      );
+      final map = <String, CourseImportance>{};
+      curriculumResult.fold((_) {}, (curriculum) {
+        for (final course in curriculum.courses) {
+          map[course.code] = course.importance;
+        }
+      });
+      return map;
+    });
 
 class GradesScreen extends ConsumerStatefulWidget {
   final bool showAppBar;
@@ -24,7 +91,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
   String? _sortKey;
   bool _sortAsc = true;
 
-  static const _excludedCourses = <String>{'军事技能训练', '军事理论', '劳动教育', '形势与政策'};
+  static const _excludedCourses = <String>{'军事训练', '创新创业实践活动', '毕业设计', '毕业论文'};
 
   List<Grade> _sortGrades(List<Grade> grades, double avgScore) {
     if (_sortKey == null) return grades;
@@ -80,10 +147,19 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(gradesViewModelProvider);
     final gradesAsync = ref.watch(_gradesProvider(state.params));
+    final importanceMapAsync = ref.watch(_curriculumImportanceMapProvider);
+    final importanceMap = importanceMapAsync.valueOrNull;
 
     double avgScore = 0;
+    double recommendationScore = 0;
     gradesAsync.whenData((result) {
       avgScore = _calcAvgScore(result.grades);
+      if (importanceMap != null) {
+        recommendationScore = _calcRecommendationScore(
+          result.grades,
+          importanceMap,
+        );
+      }
     });
 
     return _wrapWithScaffold(
@@ -92,13 +168,19 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
         children: [
           _buildFilters(context),
           gradesAsync.when(
-            data: (result) => _buildSummary(context, result.grades, avgScore),
+            data: (result) => _buildSummary(
+              context,
+              result.grades,
+              avgScore,
+              recommendationScore,
+              importanceMap != null,
+            ),
             loading: () => const SizedBox.shrink(),
             error: (_, _2) => const SizedBox.shrink(),
           ),
           Flexible(
             fit: FlexFit.loose,
-            child: _buildGradeTable(context, avgScore),
+            child: _buildGradeTable(context, avgScore, importanceMap),
           ),
         ],
       ),
@@ -120,10 +202,40 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     return totalCredit > 0 ? totalScoreCredit / totalCredit : 0;
   }
 
+  double _calcRecommendationScore(
+    List<Grade> grades,
+    Map<String, CourseImportance> importanceMap,
+  ) {
+    final filtered = grades
+        .where((g) => !_excludedCourses.contains(g.courseName))
+        .toList();
+    double coreCredit = 0, coreScoreCredit = 0;
+    double nonCoreCredit = 0, nonCoreScoreCredit = 0;
+    for (final g in filtered) {
+      final c = double.tryParse(g.credit) ?? 0;
+      final s = double.tryParse(g.score) ?? 0;
+      final importance = importanceMap[g.courseCode];
+      if (importance == CourseImportance.core) {
+        coreCredit += c;
+        coreScoreCredit += s * c;
+      } else {
+        nonCoreCredit += c;
+        nonCoreScoreCredit += s * c;
+      }
+    }
+    final coreAvg = coreCredit > 0 ? coreScoreCredit / coreCredit : 0;
+    final nonCoreAvg = nonCoreCredit > 0
+        ? nonCoreScoreCredit / nonCoreCredit
+        : 0;
+    return coreAvg * 0.7 + nonCoreAvg * 0.3;
+  }
+
   Widget _buildSummary(
     BuildContext context,
     List<Grade> grades,
     double avgScore,
+    double recommendationScore,
+    bool hasImportanceMap,
   ) {
     if (grades.isEmpty) return const SizedBox.shrink();
     final filtered = grades
@@ -140,10 +252,20 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     }
     final avgGp = totalCredit > 0 ? totalGpCredit / totalCredit : 0;
 
+    final parts = <String>[
+      '${filtered.length}门课',
+      '总学分 ${totalCredit.toStringAsFixed(1)}',
+      '课程加权 ${avgScore.toStringAsFixed(5)}',
+      '加权绩点 ${avgGp.toStringAsFixed(2)}',
+    ];
+    if (hasImportanceMap) {
+      parts.add('推免加权 ${recommendationScore.toStringAsFixed(5)}');
+    }
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
       child: Text(
-        '加权均分 ${avgScore.toStringAsFixed(2)}  |  加权绩点 ${avgGp.toStringAsFixed(2)}',
+        parts.join('  |  '),
         style: TextStyle(
           fontSize: 12,
           color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
@@ -313,7 +435,11 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     );
   }
 
-  Widget _buildGradeTable(BuildContext context, double avgScore) {
+  Widget _buildGradeTable(
+    BuildContext context,
+    double avgScore,
+    Map<String, CourseImportance>? importanceMap,
+  ) {
     final state = ref.watch(gradesViewModelProvider);
     final resultAsync = ref.watch(_gradesProvider(state.params));
 
@@ -339,6 +465,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
               _sortGrades(result.grades, avgScore),
               showSemester: state.timeLimit != TimeLimit.semester,
               avgScore: avgScore,
+              importanceMap: importanceMap,
               sortKey: _sortKey,
               sortAsc: _sortAsc,
               onSort: (key) => setState(() {
@@ -358,6 +485,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     List<Grade> grades, {
     required bool showSemester,
     required double avgScore,
+    required Map<String, CourseImportance>? importanceMap,
     required String? sortKey,
     required bool sortAsc,
     required ValueChanged<String> onSort,
@@ -471,16 +599,16 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
 
     List<List<Widget>> buildDataRows(bool isNarrow) {
       return grades.map((g) {
+        final isExcluded = _excludedCourses.contains(g.courseName);
         final s = double.tryParse(g.score) ?? 0;
         final c = double.tryParse(g.credit) ?? 0;
         final contrib = (s - avgScore) * c;
-        final contribText = contrib.toStringAsFixed(1);
         final contribWidget = Text(
-          contribText,
+          isExcluded ? '' : contrib.toStringAsFixed(1),
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 12,
-            color: contrib < 0 ? Colors.red : null,
+            color: !isExcluded && contrib < 0 ? Colors.red : null,
           ),
         );
 
@@ -510,6 +638,16 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
       }).toList();
     }
 
+    final rowBackgrounds = importanceMap != null
+        ? grades
+              .map(
+                (g) => importanceMap[g.courseCode] == CourseImportance.core
+                    ? Colors.red.shade50
+                    : null,
+              )
+              .toList()
+        : null;
+
     return Padding(
       padding: const EdgeInsets.all(12),
       child: Card(
@@ -523,6 +661,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
               dataRows: buildDataRows(isNarrow),
               headerBgColor: theme.colorScheme.error,
               columnWidths: buildColumnWidths(isNarrow),
+              rowBackgrounds: rowBackgrounds,
             );
           },
         ),
@@ -537,12 +676,14 @@ class _StickyHeaderTable extends StatefulWidget {
   final List<List<Widget>> dataRows;
   final Color headerBgColor;
   final Map<int, TableColumnWidth> columnWidths;
+  final List<Color?>? rowBackgrounds;
 
   const _StickyHeaderTable({
     required this.headerCells,
     required this.dataRows,
     required this.headerBgColor,
     required this.columnWidths,
+    this.rowBackgrounds,
   });
 
   @override
@@ -649,7 +790,11 @@ class _StickyHeaderTableState extends State<_StickyHeaderTable> {
                 children: [
                   for (int i = 0; i < widget.dataRows.length; i++)
                     TableRow(
-                      decoration: i.isOdd
+                      decoration:
+                          widget.rowBackgrounds != null &&
+                              widget.rowBackgrounds![i] != null
+                          ? BoxDecoration(color: widget.rowBackgrounds![i])
+                          : i.isOdd
                           ? BoxDecoration(
                               color: Theme.of(context)
                                   .colorScheme
