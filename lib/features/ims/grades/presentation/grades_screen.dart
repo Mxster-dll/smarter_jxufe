@@ -5,6 +5,7 @@ import 'package:smarter_jxufe/features/ims/grades/data/providers/grades_reposito
 import 'package:smarter_jxufe/features/ims/grades/domain/grade.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grades_query_params.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grades_result.dart';
+import 'package:smarter_jxufe/shared/widgets/academic_year_picker.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/time_limit.dart';
 import 'package:smarter_jxufe/features/ims/grades/presentation/grades_viewmodel.dart';
 
@@ -50,65 +51,86 @@ class GradesScreen extends ConsumerWidget {
   Widget _buildFilters(BuildContext context, WidgetRef ref) {
     final vm = ref.watch(gradesViewModelProvider.notifier);
     final state = ref.watch(gradesViewModelProvider);
+    final showPicker = state.timeLimit != TimeLimit.sinceEnrollment;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 4,
+      child: Column(
         children: [
-          _dropdown<TimeLimit>(
-            context,
-            value: state.timeLimit,
-            items: TimeLimit.values,
-            label: (t) => t.label,
-            onChanged: (v) => vm.setTimeLimit(v!),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              _dropdown<TimeLimit>(
+                context,
+                value: state.timeLimit,
+                items: TimeLimit.values,
+                label: (t) => t.label,
+                onChanged: (v) => vm.setTimeLimit(v!),
+              ),
+              if (state.timeLimit == TimeLimit.semester)
+                _dropdown<String>(
+                  context,
+                  value: state.semesterXq,
+                  items: const ['0', '1', '2'],
+                  label: (s) => s == '0'
+                      ? '第一学期'
+                      : s == '1'
+                      ? '第二学期'
+                      : '第二阶段',
+                  onChanged: (v) => vm.setSemesterXq(v!),
+                ),
+              _toggle(
+                context,
+                '主修',
+                state.selectMajor,
+                () => vm.toggleCategory('major'),
+              ),
+              _toggle(
+                context,
+                '辅修',
+                state.selectMinor,
+                () => vm.toggleCategory('minor'),
+              ),
+              _toggle(
+                context,
+                '微专',
+                state.selectWeiZhuan,
+                () => vm.toggleCategory('weizhuan'),
+              ),
+              _toggle(
+                context,
+                '仅未通过',
+                state.onlyNotPassed,
+                vm.toggleOnlyNotPassed,
+              ),
+              _toggle(
+                context,
+                state.showRawGrade ? '原始成绩' : '有效成绩',
+                state.showRawGrade,
+                vm.toggleShowRawGrade,
+                activeColor: Colors.red,
+              ),
+              IconButton(
+                icon: const Icon(Icons.refresh, size: 20),
+                tooltip: '刷新',
+                onPressed: () => ref.invalidate(_gradesProvider),
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+              ),
+            ],
           ),
-          _dropdown<String>(
-            context,
-            value: state.semesterXq,
-            items: const ['0', '1', '2'],
-            label: (s) => s == '0'
-                ? '第一学期'
-                : s == '1'
-                ? '第二学期'
-                : '第二阶段',
-            onChanged: (v) => vm.setSemesterXq(v!),
-          ),
-          _toggle(
-            context,
-            '主修',
-            state.selectMajor,
-            () => vm.toggleCategory('major'),
-          ),
-          _toggle(
-            context,
-            '辅修',
-            state.selectMinor,
-            () => vm.toggleCategory('minor'),
-          ),
-          _toggle(
-            context,
-            '微专',
-            state.selectWeiZhuan,
-            () => vm.toggleCategory('weizhuan'),
-          ),
-          _toggle(context, '仅未通过', state.onlyNotPassed, vm.toggleOnlyNotPassed),
-          _toggle(
-            context,
-            state.showRawGrade ? '原始成绩' : '有效成绩',
-            state.showRawGrade,
-            vm.toggleShowRawGrade,
-            activeColor: Colors.red,
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh, size: 20),
-            tooltip: '刷新',
-            onPressed: () => ref.invalidate(_gradesProvider),
-            visualDensity: VisualDensity.compact,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-          ),
+          if (showPicker)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: AcademicYearPicker(
+                startYear: 2018,
+                endYear: 2030,
+                initialYear: state.academicYear,
+                onChanged: vm.setAcademicYear,
+              ),
+            ),
         ],
       ),
     );
@@ -240,15 +262,17 @@ class GradesScreen extends ConsumerWidget {
     List<Widget> buildHeaderCells(bool isNarrow) {
       final headers = buildHeaders(isNarrow);
       return headers
-          .map((h) => Text(
-                h,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: theme.colorScheme.onError,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                ),
-              ))
+          .map(
+            (h) => Text(
+              h,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: theme.colorScheme.onError,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
+            ),
+          )
           .toList();
     }
 
@@ -272,9 +296,7 @@ class GradesScreen extends ConsumerWidget {
                 Text(g.creditGradePoint, textAlign: TextAlign.center),
               ];
         if (showSemester) {
-          cells.add(
-            Text(g.semester, textAlign: TextAlign.center),
-          );
+          cells.add(Text(g.semester, textAlign: TextAlign.center));
         }
         return cells;
       }).toList();
@@ -413,9 +435,7 @@ class _StickyHeaderTableState extends State<_StickyHeaderTable> {
               child: Table(
                 columnWidths: widget.columnWidths,
                 defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                border: TableBorder(
-                  horizontalInside: borderSide,
-                ),
+                border: TableBorder(horizontalInside: borderSide),
                 children: [
                   for (int i = 0; i < widget.dataRows.length; i++)
                     TableRow(
