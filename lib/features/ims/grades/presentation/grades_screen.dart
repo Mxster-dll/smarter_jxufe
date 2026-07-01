@@ -21,7 +21,60 @@ class GradesScreen extends ConsumerStatefulWidget {
 class _GradesScreenState extends ConsumerState<GradesScreen> {
   bool _pickerHovered = false;
 
+  String? _sortKey;
+  bool _sortAsc = true;
+
   static const _excludedCourses = <String>{'军事技能训练', '军事理论', '劳动教育', '形势与政策'};
+
+  List<Grade> _sortGrades(List<Grade> grades, double avgScore) {
+    if (_sortKey == null) return grades;
+    final sorted = List<Grade>.from(grades);
+    sorted.sort((a, b) {
+      int cmp;
+      switch (_sortKey) {
+        case 'courseCode':
+          cmp = a.courseCode.compareTo(b.courseCode);
+        case 'courseName':
+          cmp = a.courseName.compareTo(b.courseName);
+        case 'credit':
+          cmp = (double.tryParse(a.credit) ?? 0).compareTo(
+            double.tryParse(b.credit) ?? 0,
+          );
+        case 'category':
+          cmp = a.category.compareTo(b.category);
+        case 'nature':
+          cmp = a.nature.compareTo(b.nature);
+        case 'examType':
+          cmp = a.examType.compareTo(b.examType);
+        case 'score':
+          cmp = (double.tryParse(a.score) ?? 0).compareTo(
+            double.tryParse(b.score) ?? 0,
+          );
+        case 'gradePoint':
+          cmp = (double.tryParse(a.gradePoint) ?? 0).compareTo(
+            double.tryParse(b.gradePoint) ?? 0,
+          );
+        case 'creditGradePoint':
+          cmp = (double.tryParse(a.creditGradePoint) ?? 0).compareTo(
+            double.tryParse(b.creditGradePoint) ?? 0,
+          );
+        case 'contribution':
+          final ca =
+              ((double.tryParse(a.score) ?? 0) - avgScore) *
+              (double.tryParse(a.credit) ?? 0);
+          final cb =
+              ((double.tryParse(b.score) ?? 0) - avgScore) *
+              (double.tryParse(b.credit) ?? 0);
+          cmp = ca.compareTo(cb);
+        case 'semester':
+          cmp = a.semester.compareTo(b.semester);
+        default:
+          cmp = 0;
+      }
+      return _sortAsc ? cmp : -cmp;
+    });
+    return sorted;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -283,9 +336,19 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
           ? const Center(child: Text('暂无成绩数据'))
           : _buildGradeTableWidget(
               context,
-              result.grades,
+              _sortGrades(result.grades, avgScore),
               showSemester: state.timeLimit != TimeLimit.semester,
               avgScore: avgScore,
+              sortKey: _sortKey,
+              sortAsc: _sortAsc,
+              onSort: (key) => setState(() {
+                if (_sortKey == key) {
+                  _sortAsc = !_sortAsc;
+                } else {
+                  _sortKey = key;
+                  _sortAsc = true;
+                }
+              }),
             ),
     );
   }
@@ -295,6 +358,9 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     List<Grade> grades, {
     required bool showSemester,
     required double avgScore,
+    required String? sortKey,
+    required bool sortAsc,
+    required ValueChanged<String> onSort,
   }) {
     final theme = Theme.of(context);
 
@@ -315,6 +381,25 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
             ];
       if (showSemester) h.add('学期');
       return h;
+    }
+
+    List<String> buildSortKeys(bool isNarrow) {
+      final keys = isNarrow
+          ? <String>['courseName', 'credit', 'score', 'contribution']
+          : <String>[
+              'courseCode',
+              'courseName',
+              'credit',
+              'category',
+              'nature',
+              'examType',
+              'score',
+              'gradePoint',
+              'creditGradePoint',
+              'contribution',
+            ];
+      if (showSemester) keys.add('semester');
+      return keys;
     }
 
     Map<int, TableColumnWidth> buildColumnWidths(bool isNarrow) {
@@ -346,19 +431,42 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
 
     List<Widget> buildHeaderCells(bool isNarrow) {
       final headers = buildHeaders(isNarrow);
-      return headers
-          .map(
-            (h) => Text(
-              h,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: theme.colorScheme.onError,
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
+      final keys = buildSortKeys(isNarrow);
+      return List.generate(headers.length, (i) {
+        final active = sortKey == keys[i];
+        return GestureDetector(
+          onTap: () => onSort(keys[i]),
+          behavior: HitTestBehavior.opaque,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Padding(
+                padding: EdgeInsets.only(right: active ? 14 : 0),
+                child: Text(
+                  headers[i],
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: theme.colorScheme.onError,
+                    fontWeight: FontWeight.bold,
+                    fontSize: active ? 11 : 13,
+                  ),
+                ),
               ),
-            ),
-          )
-          .toList();
+              if (active)
+                Positioned(
+                  right: 0,
+                  child: Icon(
+                    sortAsc ? Icons.arrow_upward : Icons.arrow_downward,
+                    size: 12,
+                    color: theme.colorScheme.onError,
+                  ),
+                ),
+            ],
+          ),
+        );
+      });
     }
 
     List<List<Widget>> buildDataRows(bool isNarrow) {
