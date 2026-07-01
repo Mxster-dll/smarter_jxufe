@@ -180,13 +180,82 @@ class GradesScreen extends ConsumerWidget {
       data: (result) => result.grades.isEmpty
           ? const Center(child: Text('暂无成绩数据'))
           : SingleChildScrollView(
-              child: _buildGradeTableWidget(context, result.grades),
+              child: _buildGradeTableWidget(
+                context,
+                result.grades,
+                showSemester: state.timeLimit != TimeLimit.semester,
+              ),
             ),
     );
   }
 
-  Widget _buildGradeTableWidget(BuildContext context, List<Grade> grades) {
+  Widget _buildGradeTableWidget(
+    BuildContext context,
+    List<Grade> grades, {
+    required bool showSemester,
+  }) {
     final theme = Theme.of(context);
+
+    List<DataColumn> buildColumns(bool isNarrow) {
+      final cols = isNarrow
+          ? <DataColumn>[
+              const DataColumn(label: Text('课程名称')),
+              const DataColumn(label: Text('学分')),
+              const DataColumn(label: Text('分数')),
+            ]
+          : <DataColumn>[
+              const DataColumn(label: Text('课程代码')),
+              const DataColumn(label: Text('课程名称')),
+              const DataColumn(label: Text('学分')),
+              const DataColumn(label: Text('类别')),
+              const DataColumn(label: Text('性质')),
+              const DataColumn(label: Text('考核')),
+              const DataColumn(label: Text('成绩')),
+              const DataColumn(label: Text('绩点')),
+              const DataColumn(label: Text('学分绩点')),
+            ];
+      if (showSemester) {
+        cols.add(const DataColumn(label: Text('学期')));
+      }
+      return cols;
+    }
+
+    List<DataCell> buildCells(Grade g, bool isNarrow) {
+      final cells = isNarrow
+          ? <DataCell>[
+              DataCell(
+                Text(g.courseName, style: const TextStyle(fontSize: 12)),
+              ),
+              DataCell(Text(g.credit)),
+              DataCell(Text(g.score)),
+            ]
+          : <DataCell>[
+              DataCell(
+                Text(g.courseCode, style: const TextStyle(fontSize: 11)),
+              ),
+              DataCell(
+                Text(g.courseName, style: const TextStyle(fontSize: 12)),
+              ),
+              DataCell(Text(g.credit)),
+              DataCell(
+                Text(g.category, style: const TextStyle(fontSize: 11)),
+              ),
+              DataCell(Text(g.nature)),
+              DataCell(Text(g.examType)),
+              DataCell(Text(g.score)),
+              DataCell(Text(g.gradePoint)),
+              DataCell(Text(g.creditGradePoint)),
+            ];
+      if (showSemester) {
+        cells.add(
+          DataCell(
+            Text(g.semester, style: const TextStyle(fontSize: 11)),
+          ),
+        );
+      }
+      return cells;
+    }
+
     return Padding(
       padding: const EdgeInsets.all(12),
       child: Card(
@@ -209,78 +278,10 @@ class GradesScreen extends ConsumerWidget {
                   ),
                   dataTextStyle: const TextStyle(fontSize: 13),
                   columnSpacing: 16,
-                  columns: isNarrow
-                      ? const [
-                          DataColumn(label: Text('课程名称')),
-                          DataColumn(label: Text('学分')),
-                          DataColumn(label: Text('分数')),
-                          DataColumn(label: Text('学期')),
-                        ]
-                      : const [
-                          DataColumn(label: Text('课程代码')),
-                          DataColumn(label: Text('课程名称')),
-                          DataColumn(label: Text('学分')),
-                          DataColumn(label: Text('类别')),
-                          DataColumn(label: Text('性质')),
-                          DataColumn(label: Text('考核')),
-                          DataColumn(label: Text('成绩')),
-                          DataColumn(label: Text('绩点')),
-                          DataColumn(label: Text('学分绩点')),
-                          DataColumn(label: Text('学期')),
-                        ],
+                  columns: buildColumns(isNarrow),
                   rows: [
                     for (final g in grades)
-                      DataRow(
-                        cells: isNarrow
-                            ? [
-                                DataCell(
-                                  Text(
-                                    g.courseName,
-                                    style: const TextStyle(fontSize: 12),
-                                  ),
-                                ),
-                                DataCell(Text(g.credit)),
-                                DataCell(Text(g.score)),
-                                DataCell(
-                                  Text(
-                                    g.semester,
-                                    style: const TextStyle(fontSize: 11),
-                                  ),
-                                ),
-                              ]
-                            : [
-                                DataCell(
-                                  Text(
-                                    g.courseCode,
-                                    style: const TextStyle(fontSize: 11),
-                                  ),
-                                ),
-                                DataCell(
-                                  Text(
-                                    g.courseName,
-                                    style: const TextStyle(fontSize: 12),
-                                  ),
-                                ),
-                                DataCell(Text(g.credit)),
-                                DataCell(
-                                  Text(
-                                    g.category,
-                                    style: const TextStyle(fontSize: 11),
-                                  ),
-                                ),
-                                DataCell(Text(g.nature)),
-                                DataCell(Text(g.examType)),
-                                DataCell(Text(g.score)),
-                                DataCell(Text(g.gradePoint)),
-                                DataCell(Text(g.creditGradePoint)),
-                                DataCell(
-                                  Text(
-                                    g.semester,
-                                    style: const TextStyle(fontSize: 11),
-                                  ),
-                                ),
-                              ],
-                      ),
+                      DataRow(cells: buildCells(g, isNarrow)),
                   ],
                 ),
               ),
