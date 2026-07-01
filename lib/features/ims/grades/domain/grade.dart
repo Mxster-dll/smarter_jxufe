@@ -36,6 +36,9 @@ class Grade {
   /// 备注
   final String notes;
 
+  /// 所属学期短编号，如 "251"
+  final String semester;
+
   const Grade({
     required this.index,
     required this.courseCode,
@@ -49,5 +52,6 @@ class Grade {
     required this.gradePoint,
     required this.creditGradePoint,
     required this.notes,
+    required this.semester,
   });
 }
