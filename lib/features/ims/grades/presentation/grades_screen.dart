@@ -9,27 +9,33 @@ import 'package:smarter_jxufe/shared/widgets/academic_year_picker.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/time_limit.dart';
 import 'package:smarter_jxufe/features/ims/grades/presentation/grades_viewmodel.dart';
 
-class GradesScreen extends ConsumerWidget {
+class GradesScreen extends ConsumerStatefulWidget {
   final bool showAppBar;
 
   const GradesScreen({super.key, this.showAppBar = true});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<GradesScreen> createState() => _GradesScreenState();
+}
+
+class _GradesScreenState extends ConsumerState<GradesScreen> {
+  bool _pickerHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
     return _wrapWithScaffold(
       context,
-      ref,
       Column(
         children: [
-          _buildFilters(context, ref),
-          Flexible(fit: FlexFit.loose, child: _buildGradeTable(context, ref)),
+          _buildFilters(context),
+          Flexible(fit: FlexFit.loose, child: _buildGradeTable(context)),
         ],
       ),
     );
   }
 
-  Widget _wrapWithScaffold(BuildContext context, WidgetRef ref, Widget child) {
-    if (showAppBar) {
+  Widget _wrapWithScaffold(BuildContext context, Widget child) {
+    if (widget.showAppBar) {
       return Scaffold(
         appBar: AppBar(
           title: const Text('成绩'),
@@ -48,89 +54,98 @@ class GradesScreen extends ConsumerWidget {
     return child;
   }
 
-  Widget _buildFilters(BuildContext context, WidgetRef ref) {
+  Widget _buildFilters(BuildContext context) {
     final vm = ref.watch(gradesViewModelProvider.notifier);
     final state = ref.watch(gradesViewModelProvider);
     final showPicker = state.timeLimit != TimeLimit.sinceEnrollment;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-      child: Column(
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            children: [
-              _dropdown<TimeLimit>(
-                context,
-                value: state.timeLimit,
-                items: TimeLimit.values,
-                label: (t) => t.label,
-                onChanged: (v) => vm.setTimeLimit(v!),
-              ),
-              if (state.timeLimit == TimeLimit.semester)
-                _dropdown<String>(
-                  context,
-                  value: state.semesterXq,
-                  items: const ['0', '1', '2'],
-                  label: (s) => s == '0'
-                      ? '第一学期'
-                      : s == '1'
-                      ? '第二学期'
-                      : '第二阶段',
-                  onChanged: (v) => vm.setSemesterXq(v!),
-                ),
-              _toggle(
-                context,
-                '主修',
-                state.selectMajor,
-                () => vm.toggleCategory('major'),
-              ),
-              _toggle(
-                context,
-                '辅修',
-                state.selectMinor,
-                () => vm.toggleCategory('minor'),
-              ),
-              _toggle(
-                context,
-                '微专',
-                state.selectWeiZhuan,
-                () => vm.toggleCategory('weizhuan'),
-              ),
-              _toggle(
-                context,
-                '仅未通过',
-                state.onlyNotPassed,
-                vm.toggleOnlyNotPassed,
-              ),
-              _toggle(
-                context,
-                state.showRawGrade ? '原始成绩' : '有效成绩',
-                state.showRawGrade,
-                vm.toggleShowRawGrade,
-                activeColor: Colors.red,
-              ),
-              IconButton(
-                icon: const Icon(Icons.refresh, size: 20),
-                tooltip: '刷新',
-                onPressed: () => ref.invalidate(_gradesProvider),
-                visualDensity: VisualDensity.compact,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-              ),
-            ],
-          ),
           if (showPicker)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: AcademicYearPicker(
-                startYear: 2018,
-                endYear: 2030,
-                initialYear: state.academicYear,
-                onChanged: vm.setAcademicYear,
-              ),
+            AcademicYearPicker(
+              startYear: 2018,
+              endYear: 2030,
+              initialYear: state.academicYear,
+              onChanged: vm.setAcademicYear,
+              onHoverChanged: (v) => setState(() => _pickerHovered = v),
             ),
+          AnimatedOpacity(
+            duration: const Duration(milliseconds: 200),
+            opacity: _pickerHovered ? 0.0 : 1.0,
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                _dropdown<TimeLimit>(
+                  context,
+                  value: state.timeLimit,
+                  items: TimeLimit.values,
+                  label: (t) => t.label,
+                  onChanged: (v) => vm.setTimeLimit(v!),
+                ),
+                if (state.timeLimit == TimeLimit.semester)
+                  _dropdown<String>(
+                    context,
+                    value: state.semesterXq,
+                    items: const ['0', '1', '2'],
+                    label: (s) => s == '0'
+                        ? '第一学期'
+                        : s == '1'
+                        ? '第二学期'
+                        : '第二阶段',
+                    onChanged: (v) => vm.setSemesterXq(v!),
+                  ),
+                _toggle(
+                  context,
+                  '主修',
+                  state.selectMajor,
+                  () => vm.toggleCategory('major'),
+                ),
+                _toggle(
+                  context,
+                  '辅修',
+                  state.selectMinor,
+                  () => vm.toggleCategory('minor'),
+                ),
+                _toggle(
+                  context,
+                  '微专',
+                  state.selectWeiZhuan,
+                  () => vm.toggleCategory('weizhuan'),
+                ),
+                _toggle(
+                  context,
+                  '仅未通过',
+                  state.onlyNotPassed,
+                  vm.toggleOnlyNotPassed,
+                ),
+                _toggle(
+                  context,
+                  state.showRawGrade ? '原始成绩' : '有效成绩',
+                  state.showRawGrade,
+                  vm.toggleShowRawGrade,
+                  activeColor: Colors.red,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.refresh, size: 20),
+                  tooltip: '刷新',
+                  onPressed: () => ref.invalidate(_gradesProvider),
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 36,
+                    minHeight: 36,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -180,7 +195,7 @@ class GradesScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildGradeTable(BuildContext context, WidgetRef ref) {
+  Widget _buildGradeTable(BuildContext context) {
     final state = ref.watch(gradesViewModelProvider);
     final resultAsync = ref.watch(_gradesProvider(state.params));
 
