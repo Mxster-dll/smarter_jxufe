@@ -176,6 +176,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     return _wrapWithScaffold(
       context,
       Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _buildFilters(context),
           gradesAsync.when(
@@ -194,9 +195,12 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
             loading: () => _buildRankingRow(context, null),
             error: (e, _) => _buildRankingRow(context, null),
           ),
-          Flexible(
-            fit: FlexFit.loose,
-            child: _buildGradeTable(context, avgScore, importanceMap),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Flexible(
+              fit: FlexFit.loose,
+              child: _buildGradeTable(context, avgScore, importanceMap),
+            ),
           ),
         ],
       ),
@@ -268,25 +272,51 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     }
     final avgGp = totalCredit > 0 ? totalGpCredit / totalCredit : 0;
 
-    final parts = <String>[
-      '${filtered.length}门课',
-      '总学分 ${totalCredit.toStringAsFixed(1)}',
-      '课程加权 ${avgScore.toStringAsFixed(5)}',
-      '加权绩点 ${avgGp.toStringAsFixed(2)}',
+    Widget _statCard(String label, String value) {
+      return Expanded(
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: Column(
+              children: [
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    final cards = <Widget>[
+      _statCard('课程门数', '${filtered.length}'),
+      _statCard('总学分', totalCredit.toStringAsFixed(1)),
+      _statCard('课程加权', avgScore.toStringAsFixed(5)),
+      _statCard('加权绩点', avgGp.toStringAsFixed(2)),
     ];
     if (hasImportanceMap) {
-      parts.add('推免加权 ${recommendationScore.toStringAsFixed(5)}');
+      cards.add(_statCard('推免加权', recommendationScore.toStringAsFixed(5)));
     }
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
-      child: Text(
-        parts.join('  |  '),
-        style: TextStyle(
-          fontSize: 12,
-          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-        ),
-      ),
+      child: Row(children: cards),
     );
   }
 
@@ -415,6 +445,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
       child: Wrap(
         spacing: 8,
         runSpacing: 4,
+        alignment: WrapAlignment.center,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           if (showPicker)
@@ -431,6 +462,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
             child: Wrap(
               spacing: 8,
               runSpacing: 4,
+              alignment: WrapAlignment.center,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 _dropdown<TimeLimit>(
@@ -640,7 +672,10 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
       return keys;
     }
 
-    Map<int, TableColumnWidth> buildColumnWidths(bool isNarrow) {
+    Map<int, TableColumnWidth> buildColumnWidths(
+      bool isNarrow,
+      double availableWidth,
+    ) {
       if (isNarrow) {
         final w = <int, TableColumnWidth>{
           0: const FixedColumnWidth(160),
@@ -651,19 +686,38 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
         if (showSemester) w[4] = const FixedColumnWidth(52);
         return w;
       }
-      final w = <int, TableColumnWidth>{
-        0: const FixedColumnWidth(88),
-        1: const FixedColumnWidth(180),
-        2: const FixedColumnWidth(56),
-        3: const FixedColumnWidth(130),
-        4: const FixedColumnWidth(56),
-        5: const FixedColumnWidth(56),
-        6: const FixedColumnWidth(60),
-        7: const FixedColumnWidth(56),
-        8: const FixedColumnWidth(72),
-        9: const FixedColumnWidth(60),
-      };
-      if (showSemester) w[10] = const FixedColumnWidth(52);
+      // 按比例分配可用宽度，保证表格铺满屏幕
+      final n = showSemester ? 11 : 10;
+      final proportions = showSemester
+          ? <double>[
+              0.09,
+              0.19,
+              0.06,
+              0.14,
+              0.06,
+              0.06,
+              0.07,
+              0.06,
+              0.08,
+              0.07,
+              0.06,
+            ]
+          : <double>[
+              0.10,
+              0.21,
+              0.06,
+              0.15,
+              0.06,
+              0.06,
+              0.07,
+              0.06,
+              0.09,
+              0.07,
+            ];
+      final w = <int, TableColumnWidth>{};
+      for (int i = 0; i < n; i++) {
+        w[i] = FixedColumnWidth(availableWidth * proportions[i]);
+      }
       return w;
     }
 
@@ -758,23 +812,21 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
               .toList()
         : null;
 
-    return Padding(
-      padding: const EdgeInsets.all(12),
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final isNarrow = constraints.maxWidth < 600;
-            return _StickyHeaderTable(
-              headerCells: buildHeaderCells(isNarrow),
-              dataRows: buildDataRows(isNarrow),
-              headerBgColor: theme.colorScheme.error,
-              columnWidths: buildColumnWidths(isNarrow),
-              rowBackgrounds: rowBackgrounds,
-            );
-          },
-        ),
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isNarrow = constraints.maxWidth < 600;
+          return _StickyHeaderTable(
+            headerCells: buildHeaderCells(isNarrow),
+            dataRows: buildDataRows(isNarrow),
+            headerBgColor: theme.colorScheme.error,
+            columnWidths: buildColumnWidths(isNarrow, constraints.maxWidth),
+            rowBackgrounds: rowBackgrounds,
+            availableWidth: constraints.maxWidth,
+          );
+        },
       ),
     );
   }
@@ -787,6 +839,7 @@ class _StickyHeaderTable extends StatefulWidget {
   final Color headerBgColor;
   final Map<int, TableColumnWidth> columnWidths;
   final List<Color?>? rowBackgrounds;
+  final double availableWidth;
 
   const _StickyHeaderTable({
     required this.headerCells,
@@ -794,6 +847,7 @@ class _StickyHeaderTable extends StatefulWidget {
     required this.headerBgColor,
     required this.columnWidths,
     this.rowBackgrounds,
+    required this.availableWidth,
   });
 
   @override
@@ -863,27 +917,30 @@ class _StickyHeaderTableState extends State<_StickyHeaderTable> {
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             controller: _headerH,
-            child: Table(
-              columnWidths: widget.columnWidths,
-              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-              children: [
-                TableRow(
-                  children: widget.headerCells
-                      .map(
-                        (cell) => TableCell(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 12,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: widget.availableWidth),
+              child: Table(
+                columnWidths: widget.columnWidths,
+                defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                children: [
+                  TableRow(
+                    children: widget.headerCells
+                        .map(
+                          (cell) => TableCell(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 12,
+                              ),
+                              child: cell,
                             ),
-                            child: cell,
                           ),
-                        ),
-                      )
-                      .toList(),
-                ),
-              ],
-            ),
+                        )
+                        .toList(),
+                  ),
+                ],
+              ),
+            ), // ConstrainedBox (header)
           ),
         ),
         // 表体
@@ -893,41 +950,44 @@ class _StickyHeaderTableState extends State<_StickyHeaderTable> {
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               controller: _bodyH,
-              child: Table(
-                columnWidths: widget.columnWidths,
-                defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                border: TableBorder(horizontalInside: borderSide),
-                children: [
-                  for (int i = 0; i < widget.dataRows.length; i++)
-                    TableRow(
-                      decoration:
-                          widget.rowBackgrounds != null &&
-                              widget.rowBackgrounds![i] != null
-                          ? BoxDecoration(color: widget.rowBackgrounds![i])
-                          : i.isOdd
-                          ? BoxDecoration(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .surfaceContainerHighest
-                                  .withValues(alpha: 0.4),
-                            )
-                          : null,
-                      children: widget.dataRows[i]
-                          .map(
-                            (cell) => TableCell(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 10,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: widget.availableWidth),
+                child: Table(
+                  columnWidths: widget.columnWidths,
+                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                  border: TableBorder(horizontalInside: borderSide),
+                  children: [
+                    for (int i = 0; i < widget.dataRows.length; i++)
+                      TableRow(
+                        decoration:
+                            widget.rowBackgrounds != null &&
+                                widget.rowBackgrounds![i] != null
+                            ? BoxDecoration(color: widget.rowBackgrounds![i])
+                            : i.isOdd
+                            ? BoxDecoration(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .surfaceContainerHighest
+                                    .withValues(alpha: 0.4),
+                              )
+                            : null,
+                        children: widget.dataRows[i]
+                            .map(
+                              (cell) => TableCell(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 10,
+                                  ),
+                                  child: cell,
                                 ),
-                                child: cell,
                               ),
-                            ),
-                          )
-                          .toList(),
-                    ),
-                ],
-              ),
+                            )
+                            .toList(),
+                      ),
+                  ],
+                ),
+              ), // ConstrainedBox (body)
             ),
           ),
         ),
