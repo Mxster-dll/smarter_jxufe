@@ -96,10 +96,16 @@ class _AcademicYearPickerState extends State<AcademicYearPicker> {
       onPointerSignal: _hovered && !_dragging
           ? (e) {
               if (e is PointerScrollEvent) {
-                setState(() {
-                  _offset = (_offset + e.scrollDelta.dy).clamp(0.0, _maxOffset);
-                });
-                _snap();
+                final dir = e.scrollDelta.dy > 0 ? 1 : -1;
+                final targetYear = (_selected + dir).clamp(
+                  widget.startYear,
+                  widget.endYear,
+                );
+                if (targetYear != _selected) {
+                  _selected = targetYear;
+                  widget.onChanged?.call(targetYear);
+                  _animateTo(_offsetOf(targetYear));
+                }
               }
             }
           : null,
