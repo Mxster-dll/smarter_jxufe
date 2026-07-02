@@ -126,23 +126,13 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
             double.tryParse(b.creditGradePoint) ?? 0,
           );
         case 'contribution':
-          final aEx = _excludedCourses.contains(a.courseName);
-          final bEx = _excludedCourses.contains(b.courseName);
-          if (aEx && bEx) {
-            cmp = 0;
-          } else if (aEx) {
-            cmp = 1;
-          } else if (bEx) {
-            cmp = -1;
-          } else {
-            final ca =
-                ((double.tryParse(a.score) ?? 0) - avgScore) *
-                (double.tryParse(a.credit) ?? 0);
-            final cb =
-                ((double.tryParse(b.score) ?? 0) - avgScore) *
-                (double.tryParse(b.credit) ?? 0);
-            cmp = ca.compareTo(cb);
-          }
+          final ca =
+              ((double.tryParse(a.score) ?? 0) - avgScore) *
+              (double.tryParse(a.credit) ?? 0);
+          final cb =
+              ((double.tryParse(b.score) ?? 0) - avgScore) *
+              (double.tryParse(b.credit) ?? 0);
+          cmp = ca.compareTo(cb);
         case 'semester':
           cmp = a.semester.compareTo(b.semester);
         default:
@@ -150,6 +140,14 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
       }
       return _sortAsc ? cmp : -cmp;
     });
+    // 排除课程始终排到最后
+    if (_sortKey == 'contribution') {
+      final excluded = sorted
+          .where((g) => _excludedCourses.contains(g.courseName))
+          .toList();
+      sorted.removeWhere((g) => _excludedCourses.contains(g.courseName));
+      sorted.addAll(excluded);
+    }
     return sorted;
   }
 
