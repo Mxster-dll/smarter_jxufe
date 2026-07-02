@@ -6,10 +6,12 @@ import 'package:smarter_jxufe/features/college/domain/college.dart';
 import 'package:smarter_jxufe/features/ims/course/data/models/course_importance.dart';
 import 'package:smarter_jxufe/features/ims/curriculum/data/providers/curriculum_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/grades/data/providers/grades_repository_provider.dart';
+import 'package:smarter_jxufe/features/ims/grades/data/providers/weighted_grade_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grade.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grades_query_params.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grades_result.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/time_limit.dart';
+import 'package:smarter_jxufe/features/ims/grades/domain/weighted_grade.dart';
 import 'package:smarter_jxufe/features/ims/grades/presentation/grades_viewmodel.dart';
 import 'package:smarter_jxufe/features/ims/student_info/data/providers/student_info_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/student_info/domain/student_info.dart';
@@ -157,6 +159,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     final gradesAsync = ref.watch(_gradesProvider(state.params));
     final importanceMapAsync = ref.watch(_curriculumImportanceMapProvider);
     final importanceMap = importanceMapAsync.valueOrNull;
+    final rankingAsync = ref.watch(weightedGradeRankingProvider(1));
 
     double avgScore = 0;
     double recommendationScore = 0;
@@ -185,6 +188,11 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
             ),
             loading: () => const SizedBox.shrink(),
             error: (_, _2) => const SizedBox.shrink(),
+          ),
+          rankingAsync.when(
+            data: (wg) => _buildRankingRow(context, wg),
+            loading: () => _buildRankingRow(context, null),
+            error: (e, _) => _buildRankingRow(context, null),
           ),
           Flexible(
             fit: FlexFit.loose,
@@ -278,6 +286,101 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
           fontSize: 12,
           color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
         ),
+      ),
+    );
+  }
+
+  Widget _buildRankingRow(BuildContext context, WeightedGrade? wg) {
+    const classTotal = 46;
+    const majorTotal = 199;
+    const gradeTotal = 7902;
+    final isLoading = wg == null;
+
+    Widget _rankCard(int rank, int total) {
+      final ratio = rank / total;
+      return Expanded(
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    if (isLoading)
+                      const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    else ...[
+                      Text(
+                        '$rank',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '/ $total',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.5),
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '${(ratio * 100).toStringAsFixed(1)}%',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 4),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(3),
+                  child: LinearProgressIndicator(
+                    value: isLoading ? 0 : ratio.clamp(0.0, 1.0),
+                    minHeight: 6,
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    final classRank = wg?.classRank ?? 0;
+    final majorRank = wg?.majorRank ?? 0;
+    final gradeRank = wg?.gradeRank ?? 0;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+      child: Row(
+        children: [
+          _rankCard(classRank, classTotal),
+          const SizedBox(width: 8),
+          _rankCard(majorRank, majorTotal),
+          const SizedBox(width: 8),
+          _rankCard(gradeRank, gradeTotal),
+        ],
       ),
     );
   }
