@@ -273,50 +273,98 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     final avgGp = totalCredit > 0 ? totalGpCredit / totalCredit : 0;
 
     Widget _statCard(String label, String value) {
-      return Expanded(
-        child: Card(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            child: Column(
-              children: [
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.error,
-                  ),
+      return Card(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: Theme.of(context).colorScheme.error.withValues(alpha: 0.7),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Column(
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.error,
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       );
     }
 
-    final cards = <Widget>[
-      _statCard('课程门数', '${filtered.length}'),
-      _statCard('总学分', totalCredit.toStringAsFixed(1)),
-      _statCard('课程加权', avgScore.toStringAsFixed(5)),
-      _statCard('加权绩点', avgGp.toStringAsFixed(2)),
+    final cardData = <(String, String)>[
+      ('课程', '${filtered.length}'),
+      ('总学分', totalCredit.toStringAsFixed(1)),
+      ('课程加权', avgScore.toStringAsFixed(5)),
+      ('加权绩点', avgGp.toStringAsFixed(2)),
     ];
     if (hasImportanceMap) {
-      cards.add(_statCard('推免加权', recommendationScore.toStringAsFixed(5)));
+      cardData.add(('推免加权', recommendationScore.toStringAsFixed(5)));
     }
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
-      child: Row(children: cards),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final totalWidth = constraints.maxWidth;
+          final spacerWidth = (cardData.length - 1) * 8.0;
+          // 用 TextPainter 估算每张卡的内容宽度
+          final painter = TextPainter(textDirection: TextDirection.ltr);
+          double intrinsicSum = 0;
+          final widths = <double>[];
+          for (final d in cardData) {
+            double maxW = 0;
+            for (final text in [d.$2, d.$1]) {
+              final isValue = text == d.$2;
+              painter
+                ..text = TextSpan(
+                  text: text,
+                  style: TextStyle(
+                    fontSize: isValue ? 15 : 11,
+                    fontWeight: isValue ? FontWeight.bold : FontWeight.normal,
+                  ),
+                )
+                ..layout();
+              if (painter.width > maxW) maxW = painter.width;
+            }
+            final w = maxW + 32;
+            widths.add(w);
+            intrinsicSum += w;
+          }
+          final extra =
+              (totalWidth - spacerWidth - intrinsicSum) / cardData.length;
+          final extraPerCard = extra > 0 ? extra : 0.0;
+
+          return Row(
+            children: [
+              for (int i = 0; i < cardData.length; i++) ...[
+                if (i > 0) const SizedBox(width: 8),
+                SizedBox(
+                  width: widths[i] + extraPerCard,
+                  child: _statCard(cardData[i].$1, cardData[i].$2),
+                ),
+              ],
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -330,6 +378,13 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
       final ratio = rank / total;
       return Expanded(
         child: Card(
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color: Theme.of(context).colorScheme.error.withValues(alpha: 0.7),
+            ),
+          ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Column(
