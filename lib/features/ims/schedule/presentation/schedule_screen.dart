@@ -49,6 +49,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       final now = DateTime.now();
       _selectedSemester = now.month >= 3 && now.month <= 8 ? '1' : '0';
     } catch (_) {}
+    if (!mounted) return;
     _loadData();
   }
 
@@ -67,11 +68,13 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         semester: _selectedSemester,
         studentId: _serialNo,
       );
+      if (!mounted) return;
       setState(() {
         _entries = data;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e.toString();
         _isLoading = false;
