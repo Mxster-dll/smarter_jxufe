@@ -83,6 +83,7 @@ class _ImsTabContainerState extends State<ImsTabContainer> {
                 ? const NeverScrollableScrollPhysics()
                 : const PageScrollPhysics(),
             onPageChanged: (index) {
+              if (!mounted) return;
               setState(() {
                 _prevTabIndex = _currentTab.index;
                 _currentTab = ImsTab.values[index];
