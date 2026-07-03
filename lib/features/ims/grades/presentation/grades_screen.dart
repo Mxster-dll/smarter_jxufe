@@ -195,10 +195,10 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
             loading: () => _buildRankingRow(context, null),
             error: (e, _) => _buildRankingRow(context, null),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Flexible(
-              fit: FlexFit.loose,
+          Flexible(
+            fit: FlexFit.loose,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
               child: _buildGradeTable(context, avgScore, importanceMap),
             ),
           ),
@@ -457,7 +457,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     final gradeRank = wg?.gradeRank ?? 0;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
       child: Row(
         children: [
           _rankCard(classRank, classTotal),
@@ -704,7 +704,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
               '学分绩点',
               '贡献',
             ];
-      if (showSemester) h.add('学期');
+      if (showSemester && !isNarrow) h.add('学期');
       return h;
     }
 
@@ -723,56 +723,73 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
               'creditGradePoint',
               'contribution',
             ];
-      if (showSemester) keys.add('semester');
+      if (showSemester && !isNarrow) keys.add('semester');
       return keys;
     }
 
-    Map<int, TableColumnWidth> buildColumnWidths(
-      bool isNarrow,
-      double availableWidth,
-    ) {
-      if (isNarrow) {
-        final w = <int, TableColumnWidth>{
-          0: const FixedColumnWidth(160),
-          1: const FixedColumnWidth(56),
-          2: const FixedColumnWidth(60),
-          3: const FixedColumnWidth(60),
-        };
-        if (showSemester) w[4] = const FixedColumnWidth(52);
-        return w;
+    Map<int, double> _computeIntrinsicWidths(bool isNarrow) {
+      final headers = buildHeaders(isNarrow);
+      final painter = TextPainter(textDirection: TextDirection.ltr);
+      final w = <int, double>{};
+
+      // 用表头文字估算
+      for (int i = 0; i < headers.length; i++) {
+        painter
+          ..text = TextSpan(
+            text: headers[i],
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+          )
+          ..layout();
+        w[i] = painter.width + 28; // padding + margin
       }
-      // 按比例分配可用宽度，保证表格铺满屏幕
-      final n = showSemester ? 11 : 10;
-      final proportions = showSemester
-          ? <double>[
-              0.09,
-              0.19,
-              0.06,
-              0.14,
-              0.06,
-              0.06,
-              0.07,
-              0.06,
-              0.08,
-              0.07,
-              0.06,
-            ]
-          : <double>[
-              0.10,
-              0.21,
-              0.06,
-              0.15,
-              0.06,
-              0.06,
-              0.07,
-              0.06,
-              0.09,
-              0.07,
-            ];
-      final w = <int, TableColumnWidth>{};
-      for (int i = 0; i < n; i++) {
-        w[i] = FixedColumnWidth(availableWidth * proportions[i]);
+
+      // 抽几个数据行做抽样，取更大者
+      if (!isNarrow) {
+        final fieldGetters = showSemester
+            ? <String Function(Grade)>[
+                (g) => g.courseCode,
+                (g) => g.courseName,
+                (g) => g.credit,
+                (g) => g.category,
+                (g) => g.nature,
+                (g) => g.examType,
+                (g) => g.score,
+                (g) => g.gradePoint,
+                (g) => g.creditGradePoint,
+                (g) => '', // 贡献
+                (g) => g.semester,
+              ]
+            : <String Function(Grade)>[
+                (g) => g.courseCode,
+                (g) => g.courseName,
+                (g) => g.credit,
+                (g) => g.category,
+                (g) => g.nature,
+                (g) => g.examType,
+                (g) => g.score,
+                (g) => g.gradePoint,
+                (g) => g.creditGradePoint,
+                (g) => '',
+              ];
+
+        final sample = grades.length > 5 ? grades.sublist(0, 5) : grades;
+        for (int i = 0; i < headers.length; i++) {
+          double maxCell = 0;
+          for (final g in sample) {
+            final text = fieldGetters[i](g);
+            painter
+              ..text = TextSpan(
+                text: text,
+                style: const TextStyle(fontSize: 12),
+              )
+              ..layout();
+            if (painter.width > maxCell) maxCell = painter.width;
+          }
+          final cellW = maxCell + 28;
+          if (cellW > w[i]!) w[i] = cellW;
+        }
       }
+
       return w;
     }
 
@@ -850,7 +867,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
                 Text(g.creditGradePoint, textAlign: TextAlign.center),
                 contribWidget,
               ];
-        if (showSemester) {
+        if (showSemester && !isNarrow) {
           cells.add(Text(g.semester, textAlign: TextAlign.center));
         }
         return cells;
@@ -867,21 +884,41 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
               .toList()
         : null;
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isNarrow = constraints.maxWidth < 600;
-          return _StickyHeaderTable(
-            headerCells: buildHeaderCells(isNarrow),
-            dataRows: buildDataRows(isNarrow),
-            headerBgColor: theme.colorScheme.error,
-            columnWidths: buildColumnWidths(isNarrow, constraints.maxWidth),
-            rowBackgrounds: rowBackgrounds,
-            availableWidth: constraints.maxWidth,
-          );
-        },
+    return Padding(
+      padding: const EdgeInsets.all(4),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 600;
+            final headers = buildHeaders(isNarrow);
+            final nCols = headers.length;
+
+            // ── 宽度算法：固有宽度 + d ──
+            final intrinsicWidths = _computeIntrinsicWidths(isNarrow);
+            double intrinsicSum = 0;
+            for (int i = 0; i < nCols; i++) {
+              intrinsicSum += intrinsicWidths[i]!;
+            }
+            final extraPerCol = (constraints.maxWidth - intrinsicSum) / nCols;
+            final colWidths = <int, TableColumnWidth>{};
+            for (int i = 0; i < nCols; i++) {
+              colWidths[i] = FixedColumnWidth(
+                intrinsicWidths[i]! + (extraPerCol > 0 ? extraPerCol : 0),
+              );
+            }
+
+            return _StickyHeaderTable(
+              headerCells: buildHeaderCells(isNarrow),
+              dataRows: buildDataRows(isNarrow),
+              headerBgColor: theme.colorScheme.error,
+              columnWidths: colWidths,
+              rowBackgrounds: rowBackgrounds,
+              availableWidth: constraints.maxWidth,
+              availableHeight: constraints.maxHeight,
+            );
+          },
+        ),
       ),
     );
   }
@@ -895,6 +932,7 @@ class _StickyHeaderTable extends StatefulWidget {
   final Map<int, TableColumnWidth> columnWidths;
   final List<Color?>? rowBackgrounds;
   final double availableWidth;
+  final double availableHeight;
 
   const _StickyHeaderTable({
     required this.headerCells,
@@ -903,6 +941,7 @@ class _StickyHeaderTable extends StatefulWidget {
     required this.columnWidths,
     this.rowBackgrounds,
     required this.availableWidth,
+    required this.availableHeight,
   });
 
   @override
@@ -913,6 +952,11 @@ class _StickyHeaderTableState extends State<_StickyHeaderTable> {
   final ScrollController _headerH = ScrollController();
   final ScrollController _bodyH = ScrollController();
   bool _syncing = false;
+
+  static const _headerHt = 50.0;
+  static const _rowHt = 40.0;
+
+  double get _intrinsicBodyHeight => widget.dataRows.length * _rowHt;
 
   @override
   void initState() {
@@ -998,53 +1042,66 @@ class _StickyHeaderTableState extends State<_StickyHeaderTable> {
             ), // ConstrainedBox (header)
           ),
         ),
-        // 表体
-        Flexible(
-          fit: FlexFit.loose,
-          child: SingleChildScrollView(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              controller: _bodyH,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minWidth: widget.availableWidth),
-                child: Table(
-                  columnWidths: widget.columnWidths,
-                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                  border: TableBorder(horizontalInside: borderSide),
-                  children: [
-                    for (int i = 0; i < widget.dataRows.length; i++)
-                      TableRow(
-                        decoration:
-                            widget.rowBackgrounds != null &&
-                                widget.rowBackgrounds![i] != null
-                            ? BoxDecoration(color: widget.rowBackgrounds![i])
-                            : i.isOdd
-                            ? BoxDecoration(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .surfaceContainerHighest
-                                    .withValues(alpha: 0.4),
-                              )
-                            : null,
-                        children: widget.dataRows[i]
-                            .map(
-                              (cell) => TableCell(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 10,
+        // 表体：min(固有高度, 可用高度 - 表头高度)
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final maxH = widget.availableHeight - _headerHt;
+            final bodyH = _intrinsicBodyHeight < maxH
+                ? _intrinsicBodyHeight
+                : maxH;
+            return SizedBox(
+              height: bodyH,
+              child: SingleChildScrollView(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  controller: _bodyH,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minWidth: widget.availableWidth,
+                    ),
+                    child: Table(
+                      columnWidths: widget.columnWidths,
+                      defaultVerticalAlignment:
+                          TableCellVerticalAlignment.middle,
+                      border: TableBorder(horizontalInside: borderSide),
+                      children: [
+                        for (int i = 0; i < widget.dataRows.length; i++)
+                          TableRow(
+                            decoration:
+                                widget.rowBackgrounds != null &&
+                                    widget.rowBackgrounds![i] != null
+                                ? BoxDecoration(
+                                    color: widget.rowBackgrounds![i],
+                                  )
+                                : i.isOdd
+                                ? BoxDecoration(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .surfaceContainerHighest
+                                        .withValues(alpha: 0.4),
+                                  )
+                                : null,
+                            children: widget.dataRows[i]
+                                .map(
+                                  (cell) => TableCell(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 10,
+                                      ),
+                                      child: cell,
+                                    ),
                                   ),
-                                  child: cell,
-                                ),
-                              ),
-                            )
-                            .toList(),
-                      ),
-                  ],
+                                )
+                                .toList(),
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
-              ), // ConstrainedBox (body)
-            ),
-          ),
+              ),
+            );
+          },
         ),
       ],
     );
