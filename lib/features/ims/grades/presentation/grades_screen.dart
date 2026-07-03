@@ -93,6 +93,9 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
   String? _sortKey;
   bool _sortAsc = true;
 
+  /// 重修成绩：课程代码 → 修改后的分数
+  final Map<String, String> _retakeScores = {};
+
   static const _excludedCourses = <String>{'军事训练', '创新创业实践活动', '毕业设计', '毕业论文'};
 
   List<Grade> _sortGrades(List<Grade> grades, double avgScore) {
@@ -186,6 +189,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
               avgScore,
               recommendationScore,
               importanceMap != null,
+              _retakeScores.isNotEmpty,
             ),
             loading: () => const SizedBox.shrink(),
             error: (_, _2) => const SizedBox.shrink(),
@@ -215,7 +219,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     double totalCredit = 0, totalScoreCredit = 0;
     for (final g in filtered) {
       final c = double.tryParse(g.credit) ?? 0;
-      final s = double.tryParse(g.score) ?? 0;
+      final s = double.tryParse(_retakeScores[g.courseCode] ?? g.score) ?? 0;
       totalCredit += c;
       totalScoreCredit += s * c;
     }
@@ -250,12 +254,133 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     return coreAvg * 0.7 + nonCoreAvg * 0.3;
   }
 
+  /// 弹出重修成绩输入框
+  Future<void> _onRetakeTap(Grade g) async {
+    final controller = TextEditingController(
+      text: _retakeScores[g.courseCode] ?? g.score,
+    );
+    final focusNode = FocusNode();
+    final hasExisting = _retakeScores.containsKey(g.courseCode);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        // 自动选中输入框内容
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          controller.selection = TextSelection(
+            baseOffset: 0,
+            extentOffset: controller.text.length,
+          );
+        });
+        return AlertDialog(
+          title: Text(g.courseName, style: const TextStyle(fontSize: 16)),
+          content: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: '重修成绩',
+                    hintText: '分数',
+                  ),
+                  autofocus: true,
+                ),
+              ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      focusNode.requestFocus();
+                      final v = double.tryParse(controller.text) ?? 0;
+                      controller.text = (v + 1).toStringAsFixed(
+                        controller.text.contains('.') ? 1 : 0,
+                      );
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        controller.selection = TextSelection(
+                          baseOffset: 0,
+                          extentOffset: controller.text.length,
+                        );
+                      });
+                    },
+                    child: const Icon(
+                      Icons.keyboard_arrow_up,
+                      size: 20,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      focusNode.requestFocus();
+                      final v = double.tryParse(controller.text) ?? 0;
+                      final next = (v - 1).clamp(0, double.infinity);
+                      controller.text = next.toStringAsFixed(
+                        controller.text.contains('.') ? 1 : 0,
+                      );
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        controller.selection = TextSelection(
+                          baseOffset: 0,
+                          extentOffset: controller.text.length,
+                        );
+                      });
+                    },
+                    child: const Icon(
+                      Icons.keyboard_arrow_down,
+                      size: 20,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            if (hasExisting)
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, ''),
+                child: const Text('恢复', style: TextStyle(color: Colors.red)),
+              ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () {
+                final text = controller.text.trim();
+                if (text.isEmpty || double.tryParse(text) == null) {
+                  ScaffoldMessenger.of(
+                    ctx,
+                  ).showSnackBar(const SnackBar(content: Text('请输入有效的分数')));
+                  return;
+                }
+                Navigator.pop(ctx, text);
+              },
+              child: const Text('确定'),
+            ),
+          ],
+        );
+      },
+    );
+    if (result != null && mounted) {
+      setState(() {
+        if (result.isEmpty) {
+          _retakeScores.remove(g.courseCode);
+        } else {
+          _retakeScores[g.courseCode] = result;
+        }
+      });
+    }
+  }
+
   Widget _buildSummary(
     BuildContext context,
     List<Grade> grades,
     double avgScore,
     double recommendationScore,
     bool hasImportanceMap,
+    bool hasRetake,
   ) {
     if (grades.isEmpty) return const SizedBox.shrink();
     final filtered = grades
@@ -266,21 +391,34 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     double totalCredit = 0, totalGpCredit = 0;
     for (final g in filtered) {
       final c = double.tryParse(g.credit) ?? 0;
-      final gp = double.tryParse(g.gradePoint) ?? 0;
+      final rawScore =
+          double.tryParse(_retakeScores[g.courseCode] ?? g.score) ?? 0;
+      final gp = rawScore >= 60
+          ? (double.tryParse(g.credit) ?? 0) * (rawScore / 10 - 5)
+          : 0;
       totalCredit += c;
-      totalGpCredit += gp * c;
+      totalGpCredit += gp;
     }
     final avgGp = totalCredit > 0 ? totalGpCredit / totalCredit : 0;
 
-    Widget _statCard(String label, String value) {
-      return Card(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
+    Widget _statCard(String label, String value, {bool dashed = false}) {
+      final borderColor = Theme.of(
+        context,
+      ).colorScheme.error.withValues(alpha: 0.7);
+      return Container(
+        margin: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          side: BorderSide(
-            color: Theme.of(context).colorScheme.error.withValues(alpha: 0.7),
-          ),
+          border: dashed ? null : Border.all(color: borderColor),
         ),
+        foregroundDecoration: dashed
+            ? DashedBorderDecoration(
+                color: borderColor,
+                strokeWidth: 1.5,
+                radius: 12,
+              )
+            : null,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           child: Column(
@@ -309,14 +447,14 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
       );
     }
 
-    final cardData = <(String, String)>[
-      ('课程', '${filtered.length}'),
-      ('总学分', totalCredit.toStringAsFixed(1)),
-      ('课程加权', avgScore.toStringAsFixed(5)),
-      ('加权绩点', avgGp.toStringAsFixed(2)),
+    final cardData = <(String, String, bool)>[
+      ('课程', '${filtered.length}', false),
+      ('总学分', totalCredit.toStringAsFixed(1), false),
+      ('课程加权', avgScore.toStringAsFixed(5), hasRetake),
+      ('加权绩点', avgGp.toStringAsFixed(2), hasRetake),
     ];
     if (hasImportanceMap) {
-      cardData.add(('推免加权', recommendationScore.toStringAsFixed(5)));
+      cardData.add(('推免加权', recommendationScore.toStringAsFixed(5), false));
     }
 
     return Padding(
@@ -324,7 +462,6 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final totalWidth = constraints.maxWidth;
-          final spacerWidth = (cardData.length - 1) * 8.0;
           // 用 TextPainter 估算每张卡的内容宽度
           final painter = TextPainter(textDirection: TextDirection.ltr);
           double intrinsicSum = 0;
@@ -348,17 +485,19 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
             widths.add(w);
             intrinsicSum += w;
           }
-          final extra =
-              (totalWidth - spacerWidth - intrinsicSum) / cardData.length;
+          final extra = (totalWidth - intrinsicSum) / cardData.length;
           final extraPerCard = extra > 0 ? extra : 0.0;
 
           return Row(
             children: [
               for (int i = 0; i < cardData.length; i++) ...[
-                if (i > 0) const SizedBox(width: 8),
                 SizedBox(
                   width: widths[i] + extraPerCard,
-                  child: _statCard(cardData[i].$1, cardData[i].$2),
+                  child: _statCard(
+                    cardData[i].$1,
+                    cardData[i].$2,
+                    dashed: cardData[i].$3,
+                  ),
                 ),
               ],
             ],
@@ -461,9 +600,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
       child: Row(
         children: [
           _rankCard(classRank, classTotal),
-          const SizedBox(width: 8),
           _rankCard(majorRank, majorTotal),
-          const SizedBox(width: 8),
           _rankCard(gradeRank, gradeTotal),
         ],
       ),
@@ -836,7 +973,9 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     List<List<Widget>> buildDataRows(bool isNarrow) {
       return grades.map((g) {
         final isExcluded = _excludedCourses.contains(g.courseName);
-        final s = double.tryParse(g.score) ?? 0;
+        final hasRetake = _retakeScores.containsKey(g.courseCode);
+        final displayScore = hasRetake ? _retakeScores[g.courseCode]! : g.score;
+        final s = double.tryParse(displayScore) ?? 0;
         final c = double.tryParse(g.credit) ?? 0;
         final contrib = (s - avgScore) * c;
         final contribWidget = Text(
@@ -848,11 +987,28 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
           ),
         );
 
+        final scoreWidget = GestureDetector(
+          onTap: () => _onRetakeTap(g),
+          child: Text.rich(
+            TextSpan(
+              text: displayScore,
+              children: [
+                if (hasRetake)
+                  const TextSpan(
+                    text: '*',
+                    style: TextStyle(color: Color(0xFF800000)),
+                  ),
+              ],
+            ),
+            textAlign: TextAlign.center,
+          ),
+        );
+
         final cells = isNarrow
             ? <Widget>[
                 Text(g.courseName, style: const TextStyle(fontSize: 12)),
                 Text(g.credit, textAlign: TextAlign.center),
-                Text(g.score, textAlign: TextAlign.center),
+                scoreWidget,
                 contribWidget,
               ]
             : <Widget>[
@@ -860,9 +1016,15 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
                 Text(g.courseName, style: const TextStyle(fontSize: 12)),
                 Text(g.credit, textAlign: TextAlign.center),
                 Text(g.category, style: const TextStyle(fontSize: 11)),
-                Text(g.nature, textAlign: TextAlign.center),
+                Text(
+                  hasRetake ? '重修' : g.nature,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: hasRetake ? const Color(0xFF800000) : null,
+                  ),
+                ),
                 Text(g.examType, textAlign: TextAlign.center),
-                Text(g.score, textAlign: TextAlign.center),
+                scoreWidget,
                 Text(g.gradePoint, textAlign: TextAlign.center),
                 Text(g.creditGradePoint, textAlign: TextAlign.center),
                 contribWidget,
@@ -1105,6 +1267,51 @@ class _StickyHeaderTableState extends State<_StickyHeaderTable> {
         ),
       ],
     );
+  }
+}
+
+/// 虚线边框 Decoration，用于 Container.foregroundDecoration。
+class DashedBorderDecoration extends Decoration {
+  final Color color;
+  final double strokeWidth;
+  final double radius;
+
+  const DashedBorderDecoration({
+    required this.color,
+    required this.strokeWidth,
+    required this.radius,
+  });
+
+  @override
+  BoxPainter createBoxPainter([VoidCallback? onChanged]) {
+    return _DashedBoxPainter(color, strokeWidth, radius, onChanged);
+  }
+}
+
+class _DashedBoxPainter extends BoxPainter {
+  final Color color;
+  final double strokeWidth;
+  final double radius;
+
+  _DashedBoxPainter(this.color, this.strokeWidth, this.radius, super.onChanged);
+
+  @override
+  void paint(Canvas canvas, Offset offset, ImageConfiguration cfg) {
+    final rect = offset & cfg.size!;
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke;
+    final rrect = RRect.fromRectAndRadius(rect, Radius.circular(radius));
+    final path = Path()..addRRect(rrect);
+    for (final metric in path.computeMetrics()) {
+      double distance = 0;
+      while (distance < metric.length) {
+        final end = (distance + 6).clamp(0, metric.length).toDouble();
+        canvas.drawPath(metric.extractPath(distance, end), paint);
+        distance = end + 4;
+      }
+    }
   }
 }
 
