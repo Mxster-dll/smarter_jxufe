@@ -38,29 +38,41 @@ class StudentInfoRepository {
   }
 
   /// 从教务系统远程获取学生信息并缓存到本地。
+  /// 最多尝试 2 次（首次 + 1 次重试）。
   Future<Either<Failure, StudentInfo>> _fetchAndSaveStudentInfo() async {
-    try {
-      final jsessionResult = await _imsAuthRepo.getJsessionId();
-      if (jsessionResult.isLeft()) {
-        return Left(
-          jsessionResult.swap().getOrElse(() => UnknownFailure('??')),
-        );
-      }
-      final jsessionId = jsessionResult.getOrElse(() => '');
-      if (jsessionId == null || jsessionId.isEmpty) {
-        return Left(UnknownFailure('JSESSIONID 为空'));
-      }
+    const maxAttempts = 2;
+    Object? lastError;
 
-      final xml = await _remoteDataSource.fetchStudentInfoXml(
-        jsessionId: jsessionId,
-      );
-      final parsed = _xmlParser.parse(xml);
-      final info = _mapper.fromParsed(parsed);
-      await _localDataSource.saveStudentInfo(info);
-      return Right(info);
-    } catch (e) {
-      return Left(SyncFailure('获取学生信息失败: $e'));
+    for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        final jsessionResult = await _imsAuthRepo.getJsessionId();
+        if (jsessionResult.isLeft()) {
+          return Left(
+            jsessionResult.swap().getOrElse(() => UnknownFailure('??')),
+          );
+        }
+        final jsessionId = jsessionResult.getOrElse(() => '');
+        if (jsessionId == null || jsessionId.isEmpty) {
+          return Left(UnknownFailure('JSESSIONID 为空'));
+        }
+
+        final xml = await _remoteDataSource.fetchStudentInfoXml(
+          jsessionId: jsessionId,
+        );
+        final parsed = _xmlParser.parse(xml);
+        final info = _mapper.fromParsed(parsed);
+        await _localDataSource.saveStudentInfo(info);
+        return Right(info);
+      } catch (e) {
+        lastError = e;
+        if (attempt < maxAttempts) {
+          // 短暂等待后重试
+          await Future.delayed(const Duration(milliseconds: 500));
+        }
+      }
     }
+
+    return Left(SyncFailure('获取学生信息失败: $lastError'));
   }
 
   /// 获取学生信息：优先返回缓存，若 [forceRefresh] 为 true 或缓存为空则从远程拉取。
