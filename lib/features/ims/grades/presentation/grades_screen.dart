@@ -99,6 +99,15 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
   /// 已提示过的 diff 哈希，避免同一次变更重复弹 SnackBar。
   int? _lastShownDiffHash;
 
+  /// 用户是否主动点击了刷新按钮。
+  bool _refreshRequested = false;
+
+  /// 筛选栏刷新按钮的 key，用于定位 Overlay 提示。
+  final _refreshBtnKey = GlobalKey();
+
+  /// 「无更新」浮层。
+  OverlayEntry? _noUpdateOverlay;
+
   static const _excludedCourses = <String>{'军事训练', '创新创业实践活动', '毕业设计', '毕业论文'};
 
   List<Grade> _sortGrades(List<Grade> grades, double avgScore) {
@@ -185,6 +194,60 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     );
   }
 
+  void _showNoUpdateHint() {
+    if (!mounted) return;
+    _removeNoUpdateOverlay();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final renderBox =
+          _refreshBtnKey.currentContext?.findRenderObject() as RenderBox?;
+      if (renderBox == null) return;
+      final pos = renderBox.localToGlobal(Offset.zero);
+      final overlay = Overlay.of(context);
+      _noUpdateOverlay = OverlayEntry(
+        builder: (ctx) => Positioned(
+          top: pos.dy - 28,
+          left: pos.dx + renderBox.size.width / 2,
+          child: FractionalTranslation(
+            translation: const Offset(-0.5, 0),
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.error.withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '无更新',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Theme.of(context).colorScheme.onError,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      overlay.insert(_noUpdateOverlay!);
+      Future.delayed(const Duration(seconds: 2), _removeNoUpdateOverlay);
+    });
+  }
+
+  void _removeNoUpdateOverlay() {
+    _noUpdateOverlay?.remove();
+    _noUpdateOverlay = null;
+  }
+
+  @override
+  void dispose() {
+    _removeNoUpdateOverlay();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(gradesViewModelProvider);
@@ -197,7 +260,8 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     ref.listen(_gradesProvider(state.params), (prev, next) {
       if (next is AsyncData) {
         final result = next.value;
-        if (result != null && result.hasChanges && mounted) {
+        if (result == null) return;
+        if (result.hasChanges && mounted) {
           final diffHash = Object.hash(
             result.newCourseNames,
             result.removedCourseNames,
@@ -209,6 +273,15 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
         }
       }
     });
+
+    // 刷新完成后无变更时显示「无更新」提示
+    if (_refreshRequested && !gradesAsync.isLoading) {
+      _refreshRequested = false;
+      final result = gradesAsync.valueOrNull;
+      if (result != null && !result.hasChanges) {
+        _showNoUpdateHint();
+      }
+    }
 
     double avgScore = 0;
     double recommendationScore = 0;
@@ -655,18 +728,28 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
 
   Widget _wrapWithScaffold(BuildContext context, Widget child) {
     if (widget.showAppBar) {
+      final params = ref.read(gradesViewModelProvider).params;
+      final isLoading = ref.watch(_gradesProvider(params)).isLoading;
       return Scaffold(
         appBar: AppBar(
           title: const Text('成绩'),
           centerTitle: true,
           actions: [
             IconButton(
-              icon: const Icon(Icons.refresh),
+              icon: isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.refresh),
               tooltip: '刷新',
-              onPressed: () {
-                final params = ref.read(gradesViewModelProvider).params;
-                ref.invalidate(_gradesProvider(params));
-              },
+              onPressed: isLoading
+                  ? null
+                  : () {
+                      _refreshRequested = true;
+                      ref.invalidate(_gradesProvider(params));
+                    },
             ),
           ],
         ),
@@ -679,6 +762,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
   Widget _buildFilters(BuildContext context) {
     final vm = ref.watch(gradesViewModelProvider.notifier);
     final state = ref.watch(gradesViewModelProvider);
+    final isLoading = ref.watch(_gradesProvider(state.params)).isLoading;
     final showPicker = state.timeLimit != TimeLimit.sinceEnrollment;
 
     return Padding(
@@ -756,10 +840,21 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
                   vm.toggleShowRawGrade,
                 ),
                 IconButton(
-                  icon: const Icon(Icons.refresh, size: 20),
+                  key: _refreshBtnKey,
+                  icon: isLoading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.refresh, size: 20),
                   tooltip: '刷新',
-                  onPressed: () =>
-                      ref.invalidate(_gradesProvider(state.params)),
+                  onPressed: isLoading
+                      ? null
+                      : () {
+                          _refreshRequested = true;
+                          ref.invalidate(_gradesProvider(state.params));
+                        },
                   visualDensity: VisualDensity.compact,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(
@@ -836,7 +931,10 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
             Text('$e', textAlign: TextAlign.center),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () => ref.invalidate(_gradesProvider(state.params)),
+              onPressed: () {
+                _refreshRequested = true;
+                ref.invalidate(_gradesProvider(state.params));
+              },
               child: const Text('重试'),
             ),
           ],
