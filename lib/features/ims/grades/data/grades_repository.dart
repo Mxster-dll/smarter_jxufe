@@ -4,6 +4,7 @@ import 'package:smarter_jxufe/core/errors/failures.dart';
 import 'package:smarter_jxufe/core/exception/sync_failure.dart';
 import 'package:smarter_jxufe/features/ims/auth/data/ims_auth_repository.dart';
 import 'package:smarter_jxufe/features/ims/grades/data/anti_corruption/grades_html_parser.dart';
+import 'package:smarter_jxufe/features/ims/grades/data/datasources/grades_local_datasource.dart';
 import 'package:smarter_jxufe/features/ims/grades/data/datasources/grades_remote_datasource.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grades_query_params.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grades_result.dart';
@@ -12,18 +13,28 @@ class GradesRepository {
   final GradesRemoteDataSource _remoteDataSource;
   final GradesHtmlParser _htmlParser;
   final ImsAuthRepository _imsAuthRepo;
+  final GradesLocalDataSource _localDataSource;
 
   GradesRepository({
     required GradesRemoteDataSource remoteDataSource,
     required GradesHtmlParser htmlParser,
     required ImsAuthRepository imsAuthRepo,
+    required GradesLocalDataSource localDataSource,
   }) : _remoteDataSource = remoteDataSource,
        _htmlParser = htmlParser,
-       _imsAuthRepo = imsAuthRepo;
+       _imsAuthRepo = imsAuthRepo,
+       _localDataSource = localDataSource;
 
+  /// 获取成绩：优先返回缓存，若 [forceRefresh] 为 true 或缓存为空则从远程拉取。
   Future<Either<Failure, GradesResult>> getGrades(
-    GradesQueryParams params,
-  ) async {
+    GradesQueryParams params, {
+    bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh) {
+      final cached = _localDataSource.getCachedGrades(params);
+      if (cached != null) return Right(cached);
+    }
+
     try {
       final jsessionResult = await _imsAuthRepo.getJsessionId();
       if (jsessionResult.isLeft()) {
@@ -36,11 +47,17 @@ class GradesRepository {
         return Left(UnknownFailure('JSESSIONID 为空'));
       }
 
-      return await _fetchWithRetry(jsessionId, params);
+      final result = await _fetchWithRetry(jsessionId, params);
+      // 成功后缓存
+      result.fold((_) {}, (r) => _localDataSource.saveGrades(params, r));
+      return result;
     } catch (e) {
       return Left(SyncFailure('获取成绩失败: $e'));
     }
   }
+
+  /// 清除所有成绩缓存。
+  Future<void> clearCache() => _localDataSource.clearAll();
 
   Future<Either<Failure, GradesResult>> _fetchWithRetry(
     String jsessionId,
