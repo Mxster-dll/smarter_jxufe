@@ -54,4 +54,36 @@ class Grade {
     required this.notes,
     required this.semester,
   });
+
+  Map<String, dynamic> toMap() => {
+    'index': index,
+    'courseCode': courseCode,
+    'courseName': courseName,
+    'credit': credit,
+    'category': category,
+    'nature': nature,
+    'examType': examType,
+    'score': score,
+    'earnedCredit': earnedCredit,
+    'gradePoint': gradePoint,
+    'creditGradePoint': creditGradePoint,
+    'notes': notes,
+    'semester': semester,
+  };
+
+  factory Grade.fromMap(Map<String, dynamic> m) => Grade(
+    index: m['index'] as String? ?? '',
+    courseCode: m['courseCode'] as String? ?? '',
+    courseName: m['courseName'] as String? ?? '',
+    credit: m['credit'] as String? ?? '',
+    category: m['category'] as String? ?? '',
+    nature: m['nature'] as String? ?? '',
+    examType: m['examType'] as String? ?? '',
+    score: m['score'] as String? ?? '',
+    earnedCredit: m['earnedCredit'] as String? ?? '',
+    gradePoint: m['gradePoint'] as String? ?? '',
+    creditGradePoint: m['creditGradePoint'] as String? ?? '',
+    notes: m['notes'] as String? ?? '',
+    semester: m['semester'] as String? ?? '',
+  );
 }
