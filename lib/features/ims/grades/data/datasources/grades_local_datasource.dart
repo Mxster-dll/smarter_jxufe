@@ -12,7 +12,7 @@ class GradesLocalDataSource {
   GradesLocalDataSource(this._box);
 
   /// 根据查询参数生成唯一的缓存键。
-  static String _cacheKey(GradesQueryParams p) => [
+  static String cacheKey(GradesQueryParams p) => [
     'grades',
     p.enrollYear,
     p.timeLimit.name,
@@ -30,11 +30,11 @@ class GradesLocalDataSource {
   Future<void> saveGrades(
     GradesQueryParams params,
     GradesResult result,
-  ) async => _box.put(_cacheKey(params), json.encode(result.toMap()));
+  ) async => _box.put(cacheKey(params), json.encode(result.toMap()));
 
   /// 读取缓存，无数据时返回 null。
   GradesResult? getCachedGrades(GradesQueryParams params) {
-    final raw = _box.get(_cacheKey(params));
+    final raw = _box.get(cacheKey(params));
     if (raw == null) return null;
     try {
       return GradesResult.fromMap(json.decode(raw) as Map<String, dynamic>);
@@ -47,6 +47,16 @@ class GradesLocalDataSource {
   Future<void> clearAll() => _box.clear();
 
   /// 清除指定参数的缓存。
-  Future<void> clear(GradesQueryParams params) =>
-      _box.delete(_cacheKey(params));
+  Future<void> clear(GradesQueryParams params) => _box.delete(cacheKey(params));
+
+  // ──────────── 调试用方法 ────────────
+
+  /// [DEBUG] 直接写入 JSON 字符串到指定参数键的缓存中。
+  /// 用于测试 diff 检测：先加载真实数据建立缓存，再调用此方法注入修改后的数据，
+  /// 然后触发 forceRefresh 即可看到 SnackBar 提示。
+  Future<void> debugInjectRaw(GradesQueryParams params, String json) async =>
+      _box.put(cacheKey(params), json);
+
+  /// [DEBUG] 读取指定参数键的原始缓存 JSON，方便复制后修改再注入。
+  String? debugReadRaw(GradesQueryParams params) => _box.get(cacheKey(params));
 }

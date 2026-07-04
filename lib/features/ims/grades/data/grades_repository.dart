@@ -26,6 +26,7 @@ class GradesRepository {
        _localDataSource = localDataSource;
 
   /// 获取成绩：优先返回缓存，若 [forceRefresh] 为 true 或缓存为空则从远程拉取。
+  /// 远程拉取时会与本地缓存比对，若有新增/减少的课程会在 [GradesResult] 中携带 diff 信息。
   Future<Either<Failure, GradesResult>> getGrades(
     GradesQueryParams params, {
     bool forceRefresh = false,
@@ -47,10 +48,27 @@ class GradesRepository {
         return Left(UnknownFailure('JSESSIONID 为空'));
       }
 
-      final result = await _fetchWithRetry(jsessionId, params);
-      // 成功后缓存
-      result.fold((_) {}, (r) => _localDataSource.saveGrades(params, r));
-      return result;
+      final remoteResult = await _fetchWithRetry(jsessionId, params);
+      return remoteResult.fold((failure) => Left(failure), (fresh) async {
+        // 与本地缓存比对变更
+        final cached = _localDataSource.getCachedGrades(params);
+        List<String>? added, removed;
+        if (cached != null) {
+          final oldNames = cached.grades.map((g) => g.courseName).toSet();
+          final newNames = fresh.grades.map((g) => g.courseName).toSet();
+          added = newNames.difference(oldNames).toList();
+          removed = oldNames.difference(newNames).toList();
+        }
+        // 存入缓存（不带 diff 信息）
+        await _localDataSource.saveGrades(params, fresh);
+        return Right(
+          GradesResult(
+            grades: fresh.grades,
+            newCourseNames: added,
+            removedCourseNames: removed,
+          ),
+        );
+      });
     } catch (e) {
       return Left(SyncFailure('获取成绩失败: $e'));
     }

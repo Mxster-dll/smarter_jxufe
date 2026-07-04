@@ -96,6 +96,9 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
   /// 重修成绩：课程代码 → 修改后的分数
   final Map<String, String> _retakeScores = {};
 
+  /// 已提示过的 diff 哈希，避免同一次变更重复弹 SnackBar。
+  int? _lastShownDiffHash;
+
   static const _excludedCourses = <String>{'军事训练', '创新创业实践活动', '毕业设计', '毕业论文'};
 
   List<Grade> _sortGrades(List<Grade> grades, double avgScore) {
@@ -156,6 +159,32 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     return sorted;
   }
 
+  void _showChangesSnackBar(BuildContext context, GradesResult result) {
+    final added = result.newCourseNames;
+    final removed = result.removedCourseNames;
+    final messages = <String>[];
+    if (added != null) {
+      for (final name in added) {
+        messages.add('$name 出成绩了');
+      }
+    }
+    if (removed != null) {
+      for (final name in removed) {
+        messages.add('$name 成绩已撤回');
+      }
+    }
+    if (messages.isEmpty) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(messages.join('；')),
+        duration: const Duration(seconds: 4),
+        behavior: SnackBarBehavior.floating,
+        action: SnackBarAction(label: '知道了', onPressed: () {}),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(gradesViewModelProvider);
@@ -163,6 +192,23 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     final importanceMapAsync = ref.watch(_curriculumImportanceMapProvider);
     final importanceMap = importanceMapAsync.valueOrNull;
     final rankingAsync = ref.watch(weightedGradeRankingProvider(1));
+
+    // 监听成绩变更（新增 / 撤回），通过 SnackBar 提示
+    ref.listen(_gradesProvider(state.params), (prev, next) {
+      if (next is AsyncData) {
+        final result = next.value;
+        if (result != null && result.hasChanges && mounted) {
+          final diffHash = Object.hash(
+            result.newCourseNames,
+            result.removedCourseNames,
+          );
+          if (_lastShownDiffHash != diffHash) {
+            _lastShownDiffHash = diffHash;
+            _showChangesSnackBar(context, result);
+          }
+        }
+      }
+    });
 
     double avgScore = 0;
     double recommendationScore = 0;
@@ -617,7 +663,10 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
             IconButton(
               icon: const Icon(Icons.refresh),
               tooltip: '刷新',
-              onPressed: () => ref.invalidate(_gradesProvider),
+              onPressed: () {
+                final params = ref.read(gradesViewModelProvider).params;
+                ref.invalidate(_gradesProvider(params));
+              },
             ),
           ],
         ),
@@ -709,7 +758,8 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
                 IconButton(
                   icon: const Icon(Icons.refresh, size: 20),
                   tooltip: '刷新',
-                  onPressed: () => ref.invalidate(_gradesProvider),
+                  onPressed: () =>
+                      ref.invalidate(_gradesProvider(state.params)),
                   visualDensity: VisualDensity.compact,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(
@@ -786,7 +836,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
             Text('$e', textAlign: TextAlign.center),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () => ref.invalidate(_gradesProvider),
+              onPressed: () => ref.invalidate(_gradesProvider(state.params)),
               child: const Text('重试'),
             ),
           ],
@@ -1320,7 +1370,10 @@ final _gradesProvider = FutureProvider.family<GradesResult, GradesQueryParams>((
   params,
 ) async {
   final repo = await ref.watch(gradesRepositoryProvider.future);
-  final result = await repo.getGrades(params);
+  final result = await repo.getGrades(
+    params,
+    forceRefresh: true,
+  ); // [DEBUG] 测试完恢复为 getGrades(params)
   return result.fold(
     (failure) => throw Exception(failure.message ?? '获取成绩失败'),
     (gradesResult) => gradesResult,
