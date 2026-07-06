@@ -123,15 +123,48 @@ class VolunteerHoursScreen extends ConsumerWidget {
             ],
           ),
         ),
-        // 列表
+        // 列表（自适应列数，高度由内容撑开）
         Expanded(
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            itemCount: activities.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
-            itemBuilder: (context, index) {
-              final activity = activities[index];
-              return _buildActivityCard(context, activity);
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              const minCardWidth = 250.0;
+              const gap = 4.0;
+              final totalWidth = constraints.maxWidth - 12; // padding
+              final columnCount = (totalWidth / minCardWidth).floor().clamp(
+                1,
+                10,
+              );
+              final cardWidth =
+                  (totalWidth - (columnCount - 1) * gap) / columnCount;
+
+              final rows = <List<VolunteerActivity>>[];
+              for (var i = 0; i < activities.length; i += columnCount) {
+                final end = (i + columnCount).clamp(0, activities.length);
+                rows.add(activities.sublist(i, end));
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.all(6),
+                itemCount: rows.length,
+                itemBuilder: (context, rowIndex) {
+                  final row = rows[rowIndex];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (var j = 0; j < row.length; j++) ...[
+                          SizedBox(
+                            width: cardWidth,
+                            child: _buildActivityCard(context, row[j]),
+                          ),
+                          if (j < row.length - 1) const SizedBox(width: 4),
+                        ],
+                      ],
+                    ),
+                  );
+                },
+              );
             },
           ),
         ),
@@ -294,92 +327,86 @@ class VolunteerHoursScreen extends ConsumerWidget {
 
   Widget _buildActivityCard(BuildContext context, VolunteerActivity activity) {
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 1.5,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // 标题行
+            // 标题行：序号 + 活动名称
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
+                    horizontal: 4,
+                    vertical: 1,
                   ),
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(3),
                   ),
                   child: Text(
                     '#${activity.index}',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 10,
                       fontWeight: FontWeight.bold,
                       color: Theme.of(context).colorScheme.onPrimaryContainer,
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     activity.activityName,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 15,
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
+                      height: 1.3,
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-
-            // 信息行
-            _buildInfoRow(context, '发起人', activity.initiator),
-            _buildInfoRow(context, '负责人', activity.responsiblePerson),
-            _buildInfoRow(context, '所属部门', activity.department),
-            _buildInfoRow(context, '活动类别', activity.activityCategory),
-
             const SizedBox(height: 8),
-
-            // 时长 + 状态
+            // 信息区：一列四排
+            _compactInfo(Icons.business_outlined, activity.department),
+            _compactInfo(Icons.category_outlined, activity.activityCategory),
+            _compactInfo(
+              Icons.assignment_ind_outlined,
+              '负责人：${activity.responsiblePerson}',
+            ),
+            _compactInfo(Icons.person_outline, '发起人：${activity.initiator}'),
+            const SizedBox(height: 8),
+            // 底栏：时长左 + 状态右
             Row(
               children: [
-                // 认定时长
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
+                    horizontal: 6,
+                    vertical: 2,
                   ),
                   decoration: BoxDecoration(
                     color: Colors.orange[50],
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(4),
                     border: Border.all(color: Colors.orange[200]!),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.timer, size: 14, color: Colors.orange[700]),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${activity.recognizedHours} 小时',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.orange[800],
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    '${activity.recognizedHours} 小时',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange[800],
+                    ),
                   ),
                 ),
                 const Spacer(),
-                // 申请状态
                 _buildStatusChip(activity.applicationStatus),
-                const SizedBox(width: 8),
-                // 认定状态
+                const SizedBox(width: 3),
                 _buildStatusChip(activity.recognitionStatus),
               ],
             ),
@@ -389,20 +416,24 @@ class VolunteerHoursScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildInfoRow(BuildContext context, String label, String value) {
+  Widget _compactInfo(IconData icon, String text) {
     return Padding(
-      padding: const EdgeInsets.only(top: 3),
+      padding: const EdgeInsets.only(top: 2, left: 12),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 60,
+            width: 14,
+            child: Icon(icon, size: 11, color: Colors.grey[450]),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
             child: Text(
-              label,
-              style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 10, color: Colors.grey[600]),
             ),
           ),
-          Expanded(child: Text(value, style: const TextStyle(fontSize: 13))),
         ],
       ),
     );
@@ -414,10 +445,10 @@ class VolunteerHoursScreen extends ConsumerWidget {
         status.contains('已认定') ||
         status.contains('成功');
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
       decoration: BoxDecoration(
         color: isSuccess ? Colors.green[50] : Colors.grey[100],
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(3),
         border: Border.all(
           color: isSuccess ? Colors.green[300]! : Colors.grey[300]!,
         ),
@@ -425,7 +456,7 @@ class VolunteerHoursScreen extends ConsumerWidget {
       child: Text(
         status,
         style: TextStyle(
-          fontSize: 11,
+          fontSize: 9,
           fontWeight: FontWeight.w500,
           color: isSuccess ? Colors.green[700] : Colors.grey[600],
         ),
