@@ -88,6 +88,8 @@ class GradesScreen extends ConsumerStatefulWidget {
 }
 
 class _GradesScreenState extends ConsumerState<GradesScreen> {
+  bool _pickerHovered = false;
+
   String? _sortKey;
   bool _sortAsc = true;
 
@@ -726,29 +728,36 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
             endYear: 2030,
             initialYear: state.academicYear,
             onChanged: vm.setAcademicYear,
+            onHoverChanged: (v) => setState(() => _pickerHovered = v),
           ),
-        const SizedBox(width: 8),
-        _dropdown<TimeLimit>(
-          context,
-          value: state.timeLimit,
-          items: TimeLimit.values,
-          label: (t) => t.label,
-          onChanged: (v) => vm.setTimeLimit(v!),
+        AnimatedOpacity(
+          opacity: _pickerHovered ? 0.0 : 1.0,
+          duration: const Duration(milliseconds: 200),
+          child: _wrapGroup([
+            const SizedBox(width: 8),
+            _dropdown<TimeLimit>(
+              context,
+              value: state.timeLimit,
+              items: TimeLimit.values,
+              label: (t) => t.label,
+              onChanged: (v) => vm.setTimeLimit(v!),
+            ),
+            if (state.timeLimit == TimeLimit.semester) ...[
+              const SizedBox(width: 8),
+              _dropdown<String>(
+                context,
+                value: state.semesterXq,
+                items: const ['0', '1', '2'],
+                label: (s) => s == '0'
+                    ? '第一学期'
+                    : s == '1'
+                    ? '第二学期'
+                    : '第二阶段',
+                onChanged: (v) => vm.setSemesterXq(v!),
+              ),
+            ],
+          ]),
         ),
-        if (state.timeLimit == TimeLimit.semester) ...[
-          const SizedBox(width: 8),
-          _dropdown<String>(
-            context,
-            value: state.semesterXq,
-            items: const ['0', '1', '2'],
-            label: (s) => s == '0'
-                ? '第一学期'
-                : s == '1'
-                ? '第二学期'
-                : '第二阶段',
-            onChanged: (v) => vm.setSemesterXq(v!),
-          ),
-        ],
       ]),
       // Group 2: 主修 辅修 微专
       _wrapGroup([
@@ -792,13 +801,18 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
         builder: (context, constraints) {
           final w = constraints.maxWidth;
           if (w >= 720) {
-            // 一行的空间：三组并排
+            // 一行的空间：三组并排，悬浮年份时同行组件隐藏
+            Widget _opaque(Widget child) => AnimatedOpacity(
+              opacity: _pickerHovered ? 0.0 : 1.0,
+              duration: const Duration(milliseconds: 200),
+              child: child,
+            );
             return Wrap(
               spacing: 8,
               runSpacing: 4,
               alignment: WrapAlignment.center,
               crossAxisAlignment: WrapCrossAlignment.center,
-              children: groups,
+              children: [groups[0], _opaque(groups[1]), _opaque(groups[2])],
             );
           } else if (w >= 450) {
             // 两行的空间：第一组独占一行，二、三组同行
