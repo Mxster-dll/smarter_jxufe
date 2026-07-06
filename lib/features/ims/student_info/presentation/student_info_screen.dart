@@ -309,11 +309,19 @@ Widget _r(BuildContext context, String label, String value) {
   final valueColor = isEmpty
       ? scheme.onSurface.withOpacity(0.25)
       : scheme.onSurface;
+  final icon = _iconFor(label);
   return Padding(
     padding: const EdgeInsets.symmetric(vertical: 3.5),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (icon != null) ...[
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Icon(icon, size: 16, color: labelColor),
+          ),
+          const SizedBox(width: 4),
+        ],
         SizedBox(
           width: 84,
           child: Text(label, style: TextStyle(fontSize: 14, color: labelColor)),
@@ -330,6 +338,78 @@ Widget _r(BuildContext context, String label, String value) {
     ),
   );
 }
+
+IconData? _iconFor(String label) => switch (label) {
+  '姓名' => Icons.person,
+  '拼音' => Icons.translate,
+  '曾用名' => Icons.badge,
+  '性别' => Icons.wc,
+  '民族' => Icons.flag,
+  '出生日期' => Icons.cake,
+  '出生地' => Icons.location_on,
+  '入学年级' => Icons.school,
+  '学制' => Icons.timeline,
+  '报到时间' => Icons.login,
+  '招生季节' => Icons.wb_sunny,
+  '入学方式' => Icons.how_to_reg,
+  '入学前学历' => Icons.school_outlined,
+  '培养层次' => Icons.trending_up,
+  '培养方式' => Icons.psychology,
+  '考生类别' => Icons.group,
+  '录取专业' => Icons.assignment,
+  '身份证号' => Icons.badge_outlined,
+  '身份证别码' => Icons.key,
+  '身份证照片' => Icons.photo,
+  '身份证正面' => Icons.credit_card,
+  '政治面貌' => Icons.account_balance,
+  '文化程度' => Icons.menu_book,
+  '户口性质' => Icons.home,
+  '健康状况' => Icons.favorite,
+  '考生特征' => Icons.emoji_events,
+  '考生号' => Icons.confirmation_number,
+  '准考证号' => Icons.assignment_ind,
+  '高考总分' => Icons.scoreboard,
+  '文化成绩' => Icons.grade,
+  '考生特长' => Icons.star,
+  '生源专业' => Icons.workspaces_outline,
+  '招生省市类型' => Icons.map,
+  '培养对象' => Icons.person_outline,
+  '生源来源' => Icons.input,
+  '用户号' => Icons.tag,
+  '学号' => Icons.pin,
+  '序号' => Icons.format_list_numbered,
+  '入学号' => Icons.login,
+  '院系' => Icons.account_balance_outlined,
+  '专业' => Icons.work,
+  '专业方向' => Icons.explore,
+  '班级' => Icons.meeting_room,
+  '学科门类' => Icons.category,
+  '宿舍名称' => Icons.bed,
+  '宿舍信息' => Icons.info,
+  '电话' => Icons.phone,
+  '邮箱' => Icons.email,
+  '通讯地址' => Icons.location_city,
+  '邮编' => Icons.markunread_mailbox,
+  '籍贯' => Icons.holiday_village,
+  '生源省份' => Icons.public,
+  '生源地' => Icons.place,
+  '生源地单位' => Icons.business,
+  '联系人' => Icons.contacts,
+  '家庭联系人' => Icons.family_restroom,
+  '家庭联系人方式' => Icons.phone,
+  '宿舍电话' => Icons.phone_in_talk,
+  '辅导员' => Icons.supervisor_account,
+  '是否贫困' => Icons.volunteer_activism,
+  '贫困类型' => Icons.priority_high,
+  '入党团时间' => Icons.event,
+  '年总收入' => Icons.attach_money,
+  '人均收入' => Icons.money,
+  '学籍卡编号' => Icons.credit_score,
+  '外语语种' => Icons.language,
+  '计算机等级' => Icons.computer,
+  '所属集团' => Icons.corporate_fare,
+  _ => null,
+};
 
 /// 从仓库获取学生信息。
 final _studentInfoProvider = FutureProvider.autoDispose<StudentInfo>((
