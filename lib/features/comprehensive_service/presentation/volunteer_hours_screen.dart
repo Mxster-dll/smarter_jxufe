@@ -101,23 +101,16 @@ class VolunteerHoursScreen extends ConsumerWidget {
     BuildContext context,
     List<VolunteerActivity> activities,
   ) {
+    final totalHours = activities.fold<double>(
+      0,
+      (sum, a) => sum + (double.tryParse(a.recognizedHours) ?? 0),
+    );
+
     return Column(
       children: [
-        // 提示信息
-        Container(
-          width: double.infinity,
-          margin: const EdgeInsets.all(12),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.amber[50],
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.amber[200]!),
-          ),
-          child: const Text(
-            '累计时长20小时及以上1分，30小时及以上1.5分，50小时及以上2分，100小时及以上4分',
-            style: TextStyle(fontSize: 13, color: Color(0xFF795548)),
-          ),
-        ),
+        // 进度条
+        _buildProgressBar(context, totalHours),
+        const SizedBox(height: 8),
         // 记录数
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -144,6 +137,159 @@ class VolunteerHoursScreen extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  Widget _buildProgressBar(BuildContext context, double totalHours) {
+    const milestones = [0, 20, 30, 50, 100];
+    const scores = ['0分', '1分', '1.5分', '2分', '4分'];
+    const maxHours = 100.0;
+    final clamped = totalHours.clamp(0, maxHours);
+    final progress = clamped / maxHours;
+    final currentScore = _getScore(totalHours);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      child: Column(
+        children: [
+          const SizedBox(height: 14),
+          // 进度条主体
+          SizedBox(
+            height: 80,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final barWidth = constraints.maxWidth;
+                return Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    // 背景轨道
+                    Positioned(
+                      top: 20,
+                      left: 0,
+                      right: 0,
+                      child: Container(
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ),
+                    // 已填充进度
+                    Positioned(
+                      top: 20,
+                      left: 0,
+                      width: barWidth * progress,
+                      child: Container(
+                        height: 8,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.orange[400]!,
+                              Colors.deepOrange[600]!,
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ),
+                    // 5 个节点
+                    for (var i = 0; i < milestones.length; i++)
+                      Positioned(
+                        left: (milestones[i] / maxHours) * barWidth - 6,
+                        top: 1,
+                        child: Column(
+                          children: [
+                            Text(
+                              '${milestones[i]}h',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: clamped >= milestones[i]
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                                color: clamped >= milestones[i]
+                                    ? Colors.deepOrange[700]
+                                    : Colors.grey[500],
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Container(
+                              width: 12,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: clamped >= milestones[i]
+                                    ? Colors.deepOrange[600]
+                                    : Colors.grey[350],
+                                border: Border.all(
+                                  color: clamped >= milestones[i]
+                                      ? Colors.deepOrange[700]!
+                                      : Colors.grey[400]!,
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              scores[i],
+                              style: TextStyle(
+                                fontSize: 9,
+                                color: clamped >= milestones[i]
+                                    ? Colors.deepOrange[400]
+                                    : Colors.grey[400],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    // 当前位置文本标注
+                    if (totalHours > 0)
+                      Positioned(
+                        left: (barWidth * progress) - 16,
+                        top: -1,
+                        child: SizedBox(
+                          width: 32,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '${totalHours.toStringAsFixed(0)}h',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.red[700],
+                                ),
+                              ),
+                              const SizedBox(height: 17),
+                              Text(
+                                currentScore,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.red[400],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getScore(double hours) {
+    if (hours >= 100) return '4分';
+    if (hours >= 50) return '2分';
+    if (hours >= 30) return '1.5分';
+    if (hours >= 20) return '1分';
+    return '0分';
   }
 
   Widget _buildActivityCard(BuildContext context, VolunteerActivity activity) {
