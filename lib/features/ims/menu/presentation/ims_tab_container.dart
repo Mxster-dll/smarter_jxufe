@@ -1,24 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/features/ims/curriculum/presentation/curriculum_screen.dart';
 import 'package:smarter_jxufe/features/ims/menu/domain/ims_tab.dart';
 import 'package:smarter_jxufe/features/ims/schedule/presentation/schedule_screen.dart';
 import 'package:smarter_jxufe/features/ims/student_info/presentation/student_info_screen.dart';
 import 'package:smarter_jxufe/features/ims/grades/presentation/grades_screen.dart';
+import 'package:smarter_jxufe/features/ims/grades/presentation/grades_viewmodel.dart';
 
-class ImsTabContainer extends StatefulWidget {
+class ImsTabContainer extends ConsumerStatefulWidget {
   final ImsTab initialTab;
 
   const ImsTabContainer({super.key, required this.initialTab});
 
   @override
-  State<ImsTabContainer> createState() => _ImsTabContainerState();
+  ConsumerState<ImsTabContainer> createState() => _ImsTabContainerState();
 }
 
-class _ImsTabContainerState extends State<ImsTabContainer> {
+class _ImsTabContainerState extends ConsumerState<ImsTabContainer> {
   late PageController _pageController;
   late ImsTab _currentTab;
   int _prevTabIndex = 0;
+
+  bool _showNoUpdateText = false;
 
   @override
   void initState() {
@@ -34,6 +38,14 @@ class _ImsTabContainerState extends State<ImsTabContainer> {
     super.dispose();
   }
 
+  void _triggerNoUpdateHint() {
+    if (!mounted) return;
+    setState(() => _showNoUpdateText = true);
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _showNoUpdateText = false);
+    });
+  }
+
   void _onTabSelected(ImsTab tab) {
     if (tab == _currentTab) return;
     _prevTabIndex = _currentTab.index;
@@ -47,6 +59,10 @@ class _ImsTabContainerState extends State<ImsTabContainer> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(noUpdateSignalProvider, (prev, next) {
+      if (prev != next) _triggerNoUpdateHint();
+    });
+
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -54,6 +70,64 @@ class _ImsTabContainerState extends State<ImsTabContainer> {
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         centerTitle: true,
+        actions: [
+          if (_currentTab == ImsTab.grade) ...[
+            if (_showNoUpdateText)
+              GestureDetector(
+                onTap: () => setState(() => _showNoUpdateText = false),
+                child: AnimatedOpacity(
+                  opacity: _showNoUpdateText ? 1 : 0,
+                  duration: const Duration(milliseconds: 300),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.error.withValues(alpha: 0.9),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '无更新',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Theme.of(context).colorScheme.onError,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            const SizedBox(width: 8),
+            Builder(
+              builder: (context) {
+                final params = ref.read(gradesViewModelProvider).params;
+                final isLoading = ref.watch(gradesProvider(params)).isLoading;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: IconButton(
+                    icon: isLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.refresh),
+                    tooltip: '',
+                    onPressed: isLoading
+                        ? null
+                        : () {
+                            ref.read(refreshRequestedProvider.notifier).state =
+                                true;
+                            ref.invalidate(gradesProvider(params));
+                          },
+                  ),
+                );
+              },
+            ),
+          ],
+        ],
         title: AnimatedSwitcher(
           duration: const Duration(milliseconds: 200),
           switchOutCurve: Curves.easeIn,
