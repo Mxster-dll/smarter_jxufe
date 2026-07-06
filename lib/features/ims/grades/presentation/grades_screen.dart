@@ -178,9 +178,8 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(messages.join('；')),
-        duration: const Duration(seconds: 4),
+        duration: const Duration(seconds: 1),
         behavior: SnackBarBehavior.floating,
-        action: SnackBarAction(label: '知道了', onPressed: () {}),
       ),
     );
   }
@@ -564,8 +563,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
             // 窄屏：共享外侧框线，竖线分隔，沿用原宽度计算
             // 扣除 Card 内边距和竖线宽度
             final narrowWidth = totalWidth - 16 - (cardData.length - 1) * 1.0;
-            final narrowExtra =
-                (narrowWidth - intrinsicSum) / cardData.length;
+            final narrowExtra = (narrowWidth - intrinsicSum) / cardData.length;
             final epc = narrowExtra > 0 ? narrowExtra : 0.0;
             return Card(
               color: Colors.white,
