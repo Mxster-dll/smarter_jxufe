@@ -562,6 +562,11 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
 
           if (constraints.maxWidth < 400) {
             // 窄屏：共享外侧框线，竖线分隔，沿用原宽度计算
+            // 扣除 Card 内边距和竖线宽度
+            final narrowWidth = totalWidth - 16 - (cardData.length - 1) * 1.0;
+            final narrowExtra =
+                (narrowWidth - intrinsicSum) / cardData.length;
+            final epc = narrowExtra > 0 ? narrowExtra : 0.0;
             return Card(
               color: Colors.white,
               shape: RoundedRectangleBorder(
@@ -586,7 +591,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
                             ).dividerColor.withValues(alpha: 0.3),
                           ),
                         SizedBox(
-                          width: widths[i] + extraPerCard,
+                          width: widths[i] + epc,
                           child: Column(
                             children: [
                               Text.rich(

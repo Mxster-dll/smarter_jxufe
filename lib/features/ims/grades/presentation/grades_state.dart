@@ -13,7 +13,7 @@ class GradesState {
   final int academicYear;
 
   const GradesState({
-    this.timeLimit = TimeLimit.semester,
+    this.timeLimit = TimeLimit.sinceEnrollment,
     this.showRawGrade = false,
     this.selectMajor = true,
     this.selectMinor = true,
