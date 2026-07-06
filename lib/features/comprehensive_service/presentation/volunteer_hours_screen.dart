@@ -191,6 +191,31 @@ class VolunteerHoursScreen extends ConsumerWidget {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final barWidth = constraints.maxWidth;
+
+                // 计算当前位置
+                final currentX = barWidth * progress;
+                const halfWidth = 16.0;
+
+                // 反重叠：检测与每个固定节点是否重叠，各自偏移
+                double currentShift = 0;
+                final nodeShifts = List.filled(milestones.length, 0.0);
+
+                for (var i = 0; i < milestones.length; i++) {
+                  final nodeX = (milestones[i] / maxHours) * barWidth;
+                  final gap = (currentX - nodeX).abs();
+                  final overlap = halfWidth * 2 - gap;
+                  if (overlap > 0) {
+                    final shift = overlap / 2;
+                    if (currentX >= nodeX) {
+                      currentShift += shift;
+                      nodeShifts[i] = -shift;
+                    } else {
+                      currentShift -= shift;
+                      nodeShifts[i] = shift;
+                    }
+                  }
+                }
+
                 return Stack(
                   clipBehavior: Clip.none,
                   children: [
@@ -228,7 +253,10 @@ class VolunteerHoursScreen extends ConsumerWidget {
                     // 5 个节点
                     for (var i = 0; i < milestones.length; i++)
                       Positioned(
-                        left: (milestones[i] / maxHours) * barWidth - 6,
+                        left:
+                            (milestones[i] / maxHours) * barWidth -
+                            6 +
+                            nodeShifts[i],
                         top: 1,
                         child: Column(
                           children: [
@@ -277,7 +305,7 @@ class VolunteerHoursScreen extends ConsumerWidget {
                     // 当前位置文本标注
                     if (totalHours > 0)
                       Positioned(
-                        left: (barWidth * progress) - 16,
+                        left: (barWidth * progress) - 16 + currentShift,
                         top: -1,
                         child: SizedBox(
                           width: 32,
