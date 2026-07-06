@@ -88,8 +88,6 @@ class GradesScreen extends ConsumerStatefulWidget {
 }
 
 class _GradesScreenState extends ConsumerState<GradesScreen> {
-  bool _pickerHovered = false;
-
   String? _sortKey;
   bool _sortAsc = true;
 
@@ -777,107 +775,142 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     final isLoading = ref.watch(_gradesProvider(state.params)).isLoading;
     final showPicker = state.timeLimit != TimeLimit.sinceEnrollment;
 
+    Widget _wrapGroup(List<Widget> children) =>
+        Row(mainAxisSize: MainAxisSize.min, children: children);
+
+    final groups = <Widget>[
+      // Group 1: 年份 + 时间范围 + 学期
+      _wrapGroup([
+        if (showPicker)
+          AcademicYearPicker(
+            startYear: 2018,
+            endYear: 2030,
+            initialYear: state.academicYear,
+            onChanged: vm.setAcademicYear,
+          ),
+        const SizedBox(width: 8),
+        _dropdown<TimeLimit>(
+          context,
+          value: state.timeLimit,
+          items: TimeLimit.values,
+          label: (t) => t.label,
+          onChanged: (v) => vm.setTimeLimit(v!),
+        ),
+        if (state.timeLimit == TimeLimit.semester) ...[
+          const SizedBox(width: 8),
+          _dropdown<String>(
+            context,
+            value: state.semesterXq,
+            items: const ['0', '1', '2'],
+            label: (s) => s == '0'
+                ? '第一学期'
+                : s == '1'
+                ? '第二学期'
+                : '第二阶段',
+            onChanged: (v) => vm.setSemesterXq(v!),
+          ),
+        ],
+      ]),
+      // Group 2: 主修 辅修 微专
+      _wrapGroup([
+        _toggle(
+          context,
+          '主修',
+          state.selectMajor,
+          () => vm.toggleCategory('major'),
+        ),
+        const SizedBox(width: 8),
+        _toggle(
+          context,
+          '辅修',
+          state.selectMinor,
+          () => vm.toggleCategory('minor'),
+        ),
+        const SizedBox(width: 8),
+        _toggle(
+          context,
+          '微专',
+          state.selectWeiZhuan,
+          () => vm.toggleCategory('weizhuan'),
+        ),
+      ]),
+      // Group 3: 仅未通过 + 有效成绩 + 刷新
+      _wrapGroup([
+        _toggle(context, '仅未通过', state.onlyNotPassed, vm.toggleOnlyNotPassed),
+        const SizedBox(width: 8),
+        _toggle(
+          context,
+          state.showRawGrade ? '原始成绩' : '有效成绩',
+          !state.showRawGrade,
+          vm.toggleShowRawGrade,
+        ),
+        const SizedBox(width: 8),
+        IconButton(
+          key: _refreshBtnKey,
+          icon: isLoading
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.refresh, size: 20),
+          tooltip: '刷新',
+          onPressed: isLoading
+              ? null
+              : () {
+                  _refreshRequested = true;
+                  ref.invalidate(_gradesProvider(state.params));
+                },
+          visualDensity: VisualDensity.compact,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+        ),
+      ]),
+    ];
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 4,
-        alignment: WrapAlignment.center,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          if (showPicker)
-            AcademicYearPicker(
-              startYear: 2018,
-              endYear: 2030,
-              initialYear: state.academicYear,
-              onChanged: vm.setAcademicYear,
-              onHoverChanged: (v) => setState(() => _pickerHovered = v),
-            ),
-          AnimatedOpacity(
-            duration: const Duration(milliseconds: 200),
-            opacity: _pickerHovered ? 0.0 : 1.0,
-            child: Wrap(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final w = constraints.maxWidth;
+          if (w >= 720) {
+            // 一行的空间：三组并排
+            return Wrap(
               spacing: 8,
               runSpacing: 4,
               alignment: WrapAlignment.center,
               crossAxisAlignment: WrapCrossAlignment.center,
+              children: groups,
+            );
+          } else if (w >= 450) {
+            // 两行的空间：第一组独占一行，二、三组同行
+            return Column(
               children: [
-                _dropdown<TimeLimit>(
-                  context,
-                  value: state.timeLimit,
-                  items: TimeLimit.values,
-                  label: (t) => t.label,
-                  onChanged: (v) => vm.setTimeLimit(v!),
-                ),
-                if (state.timeLimit == TimeLimit.semester)
-                  _dropdown<String>(
-                    context,
-                    value: state.semesterXq,
-                    items: const ['0', '1', '2'],
-                    label: (s) => s == '0'
-                        ? '第一学期'
-                        : s == '1'
-                        ? '第二学期'
-                        : '第二阶段',
-                    onChanged: (v) => vm.setSemesterXq(v!),
-                  ),
-                _toggle(
-                  context,
-                  '主修',
-                  state.selectMajor,
-                  () => vm.toggleCategory('major'),
-                ),
-                _toggle(
-                  context,
-                  '辅修',
-                  state.selectMinor,
-                  () => vm.toggleCategory('minor'),
-                ),
-                _toggle(
-                  context,
-                  '微专',
-                  state.selectWeiZhuan,
-                  () => vm.toggleCategory('weizhuan'),
-                ),
-                _toggle(
-                  context,
-                  '仅未通过',
-                  state.onlyNotPassed,
-                  vm.toggleOnlyNotPassed,
-                ),
-                _toggle(
-                  context,
-                  state.showRawGrade ? '原始成绩' : '有效成绩',
-                  !state.showRawGrade,
-                  vm.toggleShowRawGrade,
-                ),
-                IconButton(
-                  key: _refreshBtnKey,
-                  icon: isLoading
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.refresh, size: 20),
-                  tooltip: '刷新',
-                  onPressed: isLoading
-                      ? null
-                      : () {
-                          _refreshRequested = true;
-                          ref.invalidate(_gradesProvider(state.params));
-                        },
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 36,
-                    minHeight: 36,
+                Center(child: groups[0]),
+                const SizedBox(height: 4),
+                Center(
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [groups[1], groups[2]],
                   ),
                 ),
               ],
-            ),
-          ),
-        ],
+            );
+          } else {
+            // 三行：每组独占一行
+            return Column(
+              children: [
+                for (int i = 0; i < groups.length; i++) ...[
+                  if (i > 0) const SizedBox(height: 4),
+                  Center(child: groups[i]),
+                ],
+              ],
+            );
+          }
+        },
       ),
     );
   }
