@@ -460,16 +460,17 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     }
     final avgGp = totalCredit > 0 ? totalGpCredit / totalCredit : 0;
 
+    final baseStyle = TextStyle(
+      fontSize: 15,
+      fontWeight: FontWeight.bold,
+      color: Theme.of(context).colorScheme.error,
+    );
+
     Widget _statCard(String label, String value, {bool dashed = false}) {
       final borderColor = Theme.of(
         context,
       ).colorScheme.error.withValues(alpha: 0.7);
       final dotIndex = value.indexOf('.');
-      final baseStyle = TextStyle(
-        fontSize: 15,
-        fontWeight: FontWeight.bold,
-        color: Theme.of(context).colorScheme.error,
-      );
       return Container(
         margin: const EdgeInsets.all(4),
         decoration: BoxDecoration(
@@ -522,7 +523,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
       ('课程', '${filtered.length}', false),
       ('总学分', totalCredit.toStringAsFixed(1), false),
       ('课程加权', avgScore.toStringAsFixed(5), hasRetake),
-      ('加权绩点', avgGp.toStringAsFixed(2), hasRetake),
+      ('GPA', avgGp.toStringAsFixed(2), hasRetake),
     ];
     if (hasImportanceMap) {
       cardData.add(('推免加权', recommendationScore.toStringAsFixed(5), false));
@@ -552,12 +553,86 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
                 ..layout();
               if (painter.width > maxW) maxW = painter.width;
             }
-            final w = maxW + 32;
+            final w = maxW + 16;
             widths.add(w);
             intrinsicSum += w;
           }
           final extra = (totalWidth - intrinsicSum) / cardData.length;
           final extraPerCard = extra > 0 ? extra : 0.0;
+
+          if (constraints.maxWidth < 400) {
+            // 窄屏：共享外侧框线，竖线分隔，沿用原宽度计算
+            return Card(
+              color: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.error.withValues(alpha: 0.7),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                child: IntrinsicHeight(
+                  child: Row(
+                    children: [
+                      for (int i = 0; i < cardData.length; i++) ...[
+                        if (i > 0)
+                          VerticalDivider(
+                            width: 1,
+                            color: Theme.of(
+                              context,
+                            ).dividerColor.withValues(alpha: 0.3),
+                          ),
+                        SizedBox(
+                          width: widths[i] + extraPerCard,
+                          child: Column(
+                            children: [
+                              Text.rich(
+                                TextSpan(
+                                  text: cardData[i].$2.contains('.')
+                                      ? cardData[i].$2.substring(
+                                          0,
+                                          cardData[i].$2.indexOf('.'),
+                                        )
+                                      : cardData[i].$2,
+                                  style: baseStyle,
+                                  children: cardData[i].$2.contains('.')
+                                      ? [
+                                          TextSpan(
+                                            text: cardData[i].$2.substring(
+                                              cardData[i].$2.indexOf('.'),
+                                            ),
+                                            style: baseStyle.copyWith(
+                                              fontSize: 11,
+                                            ),
+                                          ),
+                                        ]
+                                      : null,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                cardData[i].$1,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Theme.of(context).colorScheme.onSurface
+                                      .withValues(alpha: 0.6),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }
 
           return Row(
             children: [
