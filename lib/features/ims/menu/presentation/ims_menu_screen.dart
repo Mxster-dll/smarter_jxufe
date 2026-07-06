@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/features/ims/menu/domain/ims_tab.dart';
 import 'package:smarter_jxufe/features/ims/menu/presentation/ims_tab_container.dart';
+import 'package:smarter_jxufe/features/platform/presentation/platform_selection_screen.dart';
 
 class ImsMenuScreen extends ConsumerWidget {
   const ImsMenuScreen({super.key});
@@ -13,7 +14,14 @@ class ImsMenuScreen extends ConsumerWidget {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: Navigator.of(context).maybePop,
+          onPressed: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const PlatformSelectionScreen(),
+              ),
+            );
+          },
         ),
         title: const Text('教学信息服务'),
         centerTitle: true,

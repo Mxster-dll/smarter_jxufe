@@ -6,8 +6,8 @@ import 'package:smarter_jxufe/core/storage/hive_initializer.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/account_repository_provider.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_provider.dart';
 import 'package:smarter_jxufe/features/auth/presentation/login_screen.dart';
-import 'package:smarter_jxufe/features/ims/splash/presentation/ims_splash_screen.dart';
 import 'package:smarter_jxufe/features/ims/student_info/data/providers/student_info_repository_provider.dart';
+import 'package:smarter_jxufe/features/platform/presentation/platform_selection_screen.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/qr_login_viewmodel.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -105,7 +105,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         if (mounted) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const ImsSplashScreen()),
+            MaterialPageRoute(builder: (_) => const PlatformSelectionScreen()),
           );
         }
       });
