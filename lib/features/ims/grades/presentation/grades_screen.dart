@@ -584,7 +584,11 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     const gradeTotal = 7902;
     final isLoading = wg == null;
 
-    Widget _rankCard(int rank, int total) {
+    final classRank = wg?.classRank ?? 0;
+    final majorRank = wg?.majorRank ?? 0;
+    final gradeRank = wg?.gradeRank ?? 0;
+
+    Widget _wideCard(int rank, int total) {
       final ratio = rank / total;
       return Expanded(
         child: Card(
@@ -662,18 +666,151 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
       );
     }
 
-    final classRank = wg?.classRank ?? 0;
-    final majorRank = wg?.majorRank ?? 0;
-    final gradeRank = wg?.gradeRank ?? 0;
+    Widget _narrowRow(int rank, int total, double rankWidth, double pctWidth) {
+      final ratio = rank / total;
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: [
+            SizedBox(
+              width: rankWidth,
+              child: isLoading
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Row(
+                      children: [
+                        Text(
+                          '$rank',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '/ $total',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.5),
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(3),
+                child: LinearProgressIndicator(
+                  value: isLoading ? 0 : ratio.clamp(0.0, 1.0),
+                  minHeight: 6,
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Theme.of(context).colorScheme.error,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: pctWidth,
+              child: Text(
+                '${(ratio * 100).toStringAsFixed(1)}%',
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.5),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
-      child: Row(
-        children: [
-          _rankCard(classRank, classTotal),
-          _rankCard(majorRank, majorTotal),
-          _rankCard(gradeRank, gradeTotal),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth < 400) {
+            // 计算最宽行的排名和百分比宽度，使进度条对齐
+            final tp = TextPainter(textDirection: TextDirection.ltr);
+            double maxRankW = 0, maxPctW = 0;
+            for (final (r, t) in [
+              (classRank, classTotal),
+              (majorRank, majorTotal),
+              (gradeRank, gradeTotal),
+            ]) {
+              // 排名用20px bold + 4px间距 + "/ total"用12px
+              tp.text = TextSpan(
+                text: '$r',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              );
+              tp.layout();
+              double w = tp.width + 4;
+              tp.text = TextSpan(
+                text: '/ $t',
+                style: const TextStyle(fontSize: 12),
+              );
+              tp.layout();
+              w += tp.width;
+              if (w > maxRankW) maxRankW = w;
+              tp.text = TextSpan(
+                text: '${(r / t * 100).toStringAsFixed(1)}%',
+                style: const TextStyle(fontSize: 11),
+              );
+              tp.layout();
+              if (tp.width > maxPctW) maxPctW = tp.width;
+            }
+            maxRankW += 18;
+            maxPctW += 8;
+
+            return Card(
+              color: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.error.withValues(alpha: 0.7),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                child: Column(
+                  children: [
+                    _narrowRow(classRank, classTotal, maxRankW, maxPctW),
+                    _narrowRow(majorRank, majorTotal, maxRankW, maxPctW),
+                    _narrowRow(gradeRank, gradeTotal, maxRankW, maxPctW),
+                  ],
+                ),
+              ),
+            );
+          }
+          return Row(
+            children: [
+              _wideCard(classRank, classTotal),
+              _wideCard(majorRank, majorTotal),
+              _wideCard(gradeRank, gradeTotal),
+            ],
+          );
+        },
       ),
     );
   }
