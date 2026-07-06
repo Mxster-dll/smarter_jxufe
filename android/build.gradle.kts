@@ -5,6 +5,9 @@ allprojects {
         maven {
             url = uri("https://storage.googleapis.com/flutter_infra_release/maven")
         }
+        maven {
+            url = uri("https://storage.flutter-io.cn/download.flutter.io")
+        }
     }
 }
 
