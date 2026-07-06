@@ -97,15 +97,6 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
   /// 已提示过的 diff 哈希，避免同一次变更重复弹 SnackBar。
   int? _lastShownDiffHash;
 
-  /// 用户是否主动点击了刷新按钮。
-  bool _refreshRequested = false;
-
-  /// 筛选栏刷新按钮的 key，用于定位 Overlay 提示。
-  final _refreshBtnKey = GlobalKey();
-
-  /// 「无更新」浮层。
-  OverlayEntry? _noUpdateOverlay;
-
   static const _excludedCourses = <String>{'军事训练', '创新创业实践活动', '毕业设计', '毕业论文'};
 
   List<Grade> _sortGrades(List<Grade> grades, double avgScore) {
@@ -192,70 +183,16 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     );
   }
 
-  void _showNoUpdateHint() {
-    if (!mounted) return;
-    _removeNoUpdateOverlay();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final renderBox =
-          _refreshBtnKey.currentContext?.findRenderObject() as RenderBox?;
-      if (renderBox == null) return;
-      final pos = renderBox.localToGlobal(Offset.zero);
-      final overlay = Overlay.of(context);
-      _noUpdateOverlay = OverlayEntry(
-        builder: (ctx) => Positioned(
-          top: pos.dy - 28,
-          left: pos.dx + renderBox.size.width / 2,
-          child: FractionalTranslation(
-            translation: const Offset(-0.5, 0),
-            child: Material(
-              color: Colors.transparent,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.error.withValues(alpha: 0.9),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '无更新',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Theme.of(context).colorScheme.onError,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-      overlay.insert(_noUpdateOverlay!);
-      Future.delayed(const Duration(seconds: 2), _removeNoUpdateOverlay);
-    });
-  }
-
-  void _removeNoUpdateOverlay() {
-    _noUpdateOverlay?.remove();
-    _noUpdateOverlay = null;
-  }
-
-  @override
-  void dispose() {
-    _removeNoUpdateOverlay();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(gradesViewModelProvider);
-    final gradesAsync = ref.watch(_gradesProvider(state.params));
+    final gradesAsync = ref.watch(gradesProvider(state.params));
     final importanceMapAsync = ref.watch(_curriculumImportanceMapProvider);
     final importanceMap = importanceMapAsync.valueOrNull;
     final rankingAsync = ref.watch(weightedGradeRankingProvider(1));
 
     // 监听成绩变更（新增 / 撤回），通过 SnackBar 提示
-    ref.listen(_gradesProvider(state.params), (prev, next) {
+    ref.listen(gradesProvider(state.params), (prev, next) {
       if (next is AsyncData) {
         final result = next.value;
         if (result == null) return;
@@ -273,12 +210,15 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     });
 
     // 刷新完成后无变更时显示「无更新」提示
-    if (_refreshRequested && !gradesAsync.isLoading) {
-      _refreshRequested = false;
-      final result = gradesAsync.valueOrNull;
-      if (result != null && !result.hasChanges) {
-        _showNoUpdateHint();
-      }
+    if (ref.read(refreshRequestedProvider) && !gradesAsync.isLoading) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref.read(refreshRequestedProvider.notifier).state = false;
+        final result = gradesAsync.valueOrNull;
+        if (result != null && !result.hasChanges) {
+          ref.read(noUpdateSignalProvider.notifier).state++;
+        }
+      });
     }
 
     double avgScore = 0;
@@ -739,7 +679,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
   Widget _wrapWithScaffold(BuildContext context, Widget child) {
     if (widget.showAppBar) {
       final params = ref.read(gradesViewModelProvider).params;
-      final isLoading = ref.watch(_gradesProvider(params)).isLoading;
+      final isLoading = ref.watch(gradesProvider(params)).isLoading;
       return Scaffold(
         appBar: AppBar(
           title: const Text('成绩'),
@@ -757,8 +697,8 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
               onPressed: isLoading
                   ? null
                   : () {
-                      _refreshRequested = true;
-                      ref.invalidate(_gradesProvider(params));
+                      ref.read(refreshRequestedProvider.notifier).state = true;
+                      ref.invalidate(gradesProvider(params));
                     },
             ),
           ],
@@ -772,7 +712,6 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
   Widget _buildFilters(BuildContext context) {
     final vm = ref.watch(gradesViewModelProvider.notifier);
     final state = ref.watch(gradesViewModelProvider);
-    final isLoading = ref.watch(_gradesProvider(state.params)).isLoading;
     final showPicker = state.timeLimit != TimeLimit.sinceEnrollment;
 
     Widget _wrapGroup(List<Widget> children) =>
@@ -843,27 +782,6 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
           state.showRawGrade ? '原始成绩' : '有效成绩',
           !state.showRawGrade,
           vm.toggleShowRawGrade,
-        ),
-        const SizedBox(width: 8),
-        IconButton(
-          key: _refreshBtnKey,
-          icon: isLoading
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.refresh, size: 20),
-          tooltip: '刷新',
-          onPressed: isLoading
-              ? null
-              : () {
-                  _refreshRequested = true;
-                  ref.invalidate(_gradesProvider(state.params));
-                },
-          visualDensity: VisualDensity.compact,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
         ),
       ]),
     ];
@@ -965,7 +883,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     Map<String, CourseImportance>? importanceMap,
   ) {
     final state = ref.watch(gradesViewModelProvider);
-    final resultAsync = ref.watch(_gradesProvider(state.params));
+    final resultAsync = ref.watch(gradesProvider(state.params));
 
     return resultAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -977,8 +895,8 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
-                _refreshRequested = true;
-                ref.invalidate(_gradesProvider(state.params));
+                ref.read(refreshRequestedProvider.notifier).state = true;
+                ref.invalidate(gradesProvider(state.params));
               },
               child: const Text('重试'),
             ),
@@ -1508,7 +1426,7 @@ class _DashedBoxPainter extends BoxPainter {
   }
 }
 
-final _gradesProvider = FutureProvider.family<GradesResult, GradesQueryParams>((
+final gradesProvider = FutureProvider.family<GradesResult, GradesQueryParams>((
   ref,
   params,
 ) async {
@@ -1522,3 +1440,9 @@ final _gradesProvider = FutureProvider.family<GradesResult, GradesQueryParams>((
     (gradesResult) => gradesResult,
   );
 });
+
+/// 递增以通知标题栏显示「无更新」提示。
+final noUpdateSignalProvider = StateProvider<int>((ref) => 0);
+
+/// 标记用户主动请求刷新（用于判断是否显示「无更新」）。
+final refreshRequestedProvider = StateProvider<bool>((ref) => false);
