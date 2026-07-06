@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/features/splash/presentation/splash_screen.dart';
+import 'package:smarter_jxufe/shared/services/notification_service.dart';
 
-void main() async {
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  NotificationService.instance.init().catchError((_) {});
   runApp(const ProviderScope(child: SmarterJxUFE()));
 }
 
