@@ -52,36 +52,28 @@ class ImsMenuScreen extends ConsumerWidget {
                 style: TextStyle(color: Colors.grey[600], fontSize: 14),
               ),
               const SizedBox(height: 48),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 340),
-                child: GridView.count(
-                  crossAxisCount: 2,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  mainAxisSpacing: 10,
-                  crossAxisSpacing: 10,
-                  childAspectRatio: 1.35,
-                  children: ImsTab.values
-                      .map(
-                        (tab) => _buildFunctionButton(
-                          context,
-                          icon: tab.icon,
-                          label: tab.title,
-                          subtitle: tab.subtitle,
-                          color: tab.color,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    ImsTabContainer(initialTab: tab),
-                              ),
-                            );
-                          },
-                        ),
-                      )
-                      .toList(),
-                ),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: ImsTab.values
+                    .map(
+                      (tab) => _buildFunctionButton(
+                        context,
+                        icon: tab.icon,
+                        label: tab.title,
+                        subtitle: tab.subtitle,
+                        color: tab.color,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ImsTabContainer(initialTab: tab),
+                            ),
+                          );
+                        },
+                      ),
+                    )
+                    .toList(),
               ),
             ],
           ),
