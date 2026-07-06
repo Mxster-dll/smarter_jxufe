@@ -524,6 +524,12 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
       final borderColor = Theme.of(
         context,
       ).colorScheme.error.withValues(alpha: 0.7);
+      final dotIndex = value.indexOf('.');
+      final baseStyle = TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.bold,
+        color: Theme.of(context).colorScheme.error,
+      );
       return Container(
         margin: const EdgeInsets.all(4),
         decoration: BoxDecoration(
@@ -542,12 +548,18 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           child: Column(
             children: [
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.error,
+              Text.rich(
+                TextSpan(
+                  text: dotIndex == -1 ? value : value.substring(0, dotIndex),
+                  style: baseStyle,
+                  children: dotIndex == -1
+                      ? null
+                      : [
+                          TextSpan(
+                            text: value.substring(dotIndex),
+                            style: baseStyle.copyWith(fontSize: 11),
+                          ),
+                        ],
                 ),
               ),
               const SizedBox(height: 2),
