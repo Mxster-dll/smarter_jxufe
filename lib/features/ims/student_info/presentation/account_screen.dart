@@ -198,16 +198,20 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       }, (r) => r);
       if (mfaState == null) return;
 
-      // 第二步：MFA 验证（手机验证码模式）
+      // 第二步：MFA 验证（扫码/短信可切换）
       String? trustAgent;
       if (mfaState.needMfa) {
         if (!mounted) return;
         final qrViewModel = ref.read(qrLoginViewModelProvider.notifier);
-        final result = await qrViewModel.mobileMfaVerify(
+        final isDesktop =
+            Theme.of(context).platform != TargetPlatform.iOS &&
+            Theme.of(context).platform != TargetPlatform.android;
+        final result = await qrViewModel.unifiedMfaVerify(
           context,
           account.cardNumber,
           account.password,
           mfaState.mfaState,
+          startInQrMode: isDesktop,
         );
         if (!result.authorized) return;
         trustAgent = result.trustDevice ? 'true' : '';

@@ -70,16 +70,20 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         return;
       }
 
-      // 需要 MFA → 手机验证码模式
+      // 需要 MFA → 扫码/短信可切换
       String? trustAgent;
       if (mfaState.needMfa) {
         if (!mounted) return;
         final qrViewModel = ref.read(qrLoginViewModelProvider.notifier);
-        final result = await qrViewModel.mobileMfaVerify(
+        final isDesktop =
+            Theme.of(context).platform != TargetPlatform.iOS &&
+            Theme.of(context).platform != TargetPlatform.android;
+        final result = await qrViewModel.unifiedMfaVerify(
           context,
           account.cardNumber,
           account.password,
           mfaState.mfaState,
+          startInQrMode: isDesktop,
         );
         if (!result.authorized) {
           _goToLogin();
@@ -111,9 +115,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
               accountRepo.updateDisplayName(account.cardNumber, info.name),
         );
         if (mounted) {
-          Navigator.pushReplacement(
-            context,
+          Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => const PlatformSelectionScreen()),
+            (_) => false,
           );
         }
       });
@@ -145,9 +149,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   void _goToLogin() {
     if (mounted) {
-      Navigator.pushReplacement(
-        context,
+      Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (_) => false,
       );
     }
   }
