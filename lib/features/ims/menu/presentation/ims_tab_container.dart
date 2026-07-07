@@ -7,6 +7,7 @@ import 'package:smarter_jxufe/features/ims/schedule/presentation/schedule_screen
 import 'package:smarter_jxufe/features/ims/student_info/presentation/student_info_screen.dart';
 import 'package:smarter_jxufe/features/ims/grades/presentation/grades_screen.dart';
 import 'package:smarter_jxufe/features/ims/grades/presentation/grades_viewmodel.dart';
+import 'package:smarter_jxufe/features/ims/graduation_requirements/presentation/graduation_requirements_screen.dart';
 
 class ImsTabContainer extends ConsumerStatefulWidget {
   final ImsTab initialTab;
@@ -178,6 +179,7 @@ class _ImsTabContainerState extends ConsumerState<ImsTabContainer> {
     .curriculum => CurriculumScreen(showAppBar: false),
     .grade => GradesScreen(showAppBar: false),
     .schedule => ScheduleScreen(showAppBar: false),
+    .graduationRequirements => GraduationRequirementsScreen(showAppBar: false),
     .studentInfo => StudentInfoScreen(showAppBar: false),
   };
 }
