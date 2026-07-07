@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:smarter_jxufe/core/errors/failures.dart';
@@ -80,11 +82,11 @@ class LoginViewModel extends _$LoginViewModel {
       }, (result) => result);
       if (mfaState == null) return; // detectMfa 失败
 
-      // 第二步：如果需要 MFA，显示二维码
+      // 第二步：如果需要 MFA，手机验证码模式
       String? trustAgent;
       if (mfaState.needMfa) {
         final qrViewModel = ref.read(qrLoginViewModelProvider.notifier);
-        final result = await qrViewModel.mfaVerify(
+        final result = await qrViewModel.mobileMfaVerify(
           context,
           account,
           password,
@@ -163,4 +165,21 @@ class LoginViewModel extends _$LoginViewModel {
       const SnackBar(content: Text('暂未开放企业微信登录'), backgroundColor: Colors.red),
     );
   }
+}
+
+/// 调试开关：电脑端强制使用手机验证码 MFA。
+/// 改为 [true] 后在 Windows/macOS 上也会走手机验证码流程。
+const _debugForceMobileMfa = false;
+
+/// 判断当前是否为手机平台。
+/// 电脑端可通过窗口宽度 < 600 模拟手机模式。
+bool _isMobilePlatform(BuildContext context) {
+  if (_debugForceMobileMfa) return true;
+  if (defaultTargetPlatform == TargetPlatform.iOS ||
+      defaultTargetPlatform == TargetPlatform.android) {
+    return true;
+  }
+  // 桌面端窗口较窄时也走手机模式（方便调试）
+  final size = MediaQuery.of(context).size;
+  return size.width < 600;
 }
