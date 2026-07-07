@@ -15,11 +15,13 @@ class ImsAuthInterceptor extends Interceptor {
     _refreshCallback = callback;
   }
 
+  /// IMS 服务端返回的凭证失效提示前缀（精确匹配）。
+  static const _expiredPrefix = "<script>alert('温馨提示：凭证已失效，请重新登录!');";
+
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
     final data = response.data;
-    // 仅当响应体为字符串且包含"凭证失效"时才处理
-    if (data is String && data.contains('凭证失效')) {
+    if (data is String && data.startsWith(_expiredPrefix)) {
       _handleRetry(response, handler);
       return;
     }
@@ -33,8 +35,8 @@ class ImsAuthInterceptor extends Interceptor {
     final extra = response.requestOptions.extra;
     final retryCount = (extra['_ims_retry_count'] as int?) ?? 0;
 
-    // 已重试过或未注入刷新回调，直接拒绝
-    if (retryCount >= 1 || _refreshCallback == null) {
+    // 已达最大重试次数（3 次）或未注入刷新回调，直接拒绝
+    if (retryCount >= 3 || _refreshCallback == null) {
       handler.reject(
         DioException(
           requestOptions: response.requestOptions,
