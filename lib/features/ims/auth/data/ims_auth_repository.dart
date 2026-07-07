@@ -13,6 +13,9 @@ class ImsAuthRepository {
   final ImsAuthLocalDataSource _localDataSource;
   final ImsAuthRemoteDataSource _remoteDataSource;
 
+  /// 从 CAS→IMS 重定向 URL 中提取的 gid_，提取失败则为 null。
+  String? _cachedGid;
+
   ImsAuthRepository({
     required Dio dio,
     required AuthRepository authRepository,
@@ -23,11 +26,15 @@ class ImsAuthRepository {
        _localDataSource = localDataSource,
        _remoteDataSource = remoteDataSource;
 
+  /// 尝试从 CAS 重定向 URL 中提取并缓存 [gid_]。
+  Future<void> _tryCacheGid() async {
+    if (_cachedGid != null) return;
+    final result = await _authRepository.getImsRedirectInfo();
+    result.fold((_) => null, (info) => _cachedGid = info.$2);
+  }
+
   /// 登录 IMS：使用已存储的 TGC 换取 JSESSIONID
-  /// 前提：全局认证已完成，TGC 已存在于 AuthRepository 中
-  /// 如果 TGC 缺失或无效，抛出异常
   Future<Either<Failure, void>> _activateJsessionId(String jsessionId) async {
-    // 1. 从统一认证获取重定向 URL
     final redirectUrlEither = await _authRepository.getImsRedirectUrl();
     if (redirectUrlEither.isLeft()) {
       return Left(
@@ -44,13 +51,13 @@ class ImsAuthRepository {
 
       return const Right(unit);
     } catch (e) {
-      // 网络或 Dio 异常
       return Left(NetworkFailure(e.toString()));
     }
   }
 
   Future<String> refreshJsessionId() async {
-    final jsessionId = await _remoteDataSource.fetchJsessionId();
+    await _tryCacheGid(); // 先尝试提取 gid_
+    final jsessionId = await _remoteDataSource.fetchJsessionId(gid: _cachedGid);
     await _localDataSource.saveJsessionId(jsessionId);
 
     await _activateJsessionId(jsessionId);

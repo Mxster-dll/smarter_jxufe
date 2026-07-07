@@ -47,6 +47,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       // 有本地账号 → 尝试自动登录
       final authRepo = await ref.read(authRepositoryProvider.future);
 
+      // 第〇步：预请求 CAS 登录页面
+      final prepareResult = await authRepo.prepareLogin();
+      if (prepareResult.isLeft()) {
+        final msg = prepareResult.fold((f) => f.message ?? '未知错误', (_) => '');
+        _showErrorThenLogin(msg);
+        return;
+      }
+
       // 第一步：检测 MFA
       final mfaResult = await authRepo.detectMfa(
         account.cardNumber,
