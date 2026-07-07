@@ -52,7 +52,7 @@ final imsDioProvider = Provider.family<Dio, String>((ref, account) {
   );
   // 添加凭证失效自动重试拦截器
   dio.interceptors.add(_imsAuthInterceptor);
-  _applyFiddlerProxy(dio); // [DEBUG] 抓包用，发布前注释掉
+  // _applyFiddlerProxy(dio); // [DEBUG] 抓包用，发布前取消注释
   return dio;
 });
 
@@ -69,7 +69,7 @@ final loginDioProvider = Provider.family<Dio, String>((ref, account) {
       headers: {'User-Agent': deviceProfileRepo.userAgent},
     ),
   );
-  _applyFiddlerProxy(dio); // [DEBUG] 抓包用，发布前注释掉
+  // _applyFiddlerProxy(dio); // [DEBUG] 抓包用，发布前取消注释
   return dio;
 });
 
