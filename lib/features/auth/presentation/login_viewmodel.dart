@@ -55,6 +55,19 @@ class LoginViewModel extends _$LoginViewModel {
     try {
       final authRepo = await ref.read(authRepositoryProvider.future);
 
+      // 第〇步：获取 CAS 登录页面，提取 execution 和 loginUrl
+      final prepareResult = await authRepo.prepareLogin();
+      if (prepareResult.isLeft()) {
+        final failure = prepareResult.swap().getOrElse(
+          () => UnknownFailure('??'),
+        );
+        state = state.copyWith(
+          errorMessage: '${failure.message}',
+          errorVersion: state.errorVersion + 1,
+        );
+        return;
+      }
+
       // 第一步：检测是否需要 MFA
       final mfaResult = await authRepo.detectMfa(account, password);
 

@@ -13,6 +13,10 @@ class AuthRepository {
 
   String? _tgc;
 
+  /// 登录页预请求结果，包含 execution 和 loginUrl。
+  /// 每次登录流程开始前通过 [prepareLogin] 设置。
+  CasLoginPageInfo? _casLoginPage;
+
   AuthRepository({
     required AuthLocalDataSource localDataSource,
     required AuthRemoteDataSource remoteDataSource,
@@ -23,11 +27,28 @@ class AuthRepository {
     _tgc = _localDataSource.getTgc();
   }
 
+  /// 预请求：获取 CAS 登录页面，提取 [execution] 和 [loginUrl]。
+  ///
+  /// 在每次登录之前必须调用。此方法将结果缓存在内部，
+  /// 后续 [detectMfa] 和 [login] 会自动使用。
+  Future<Either<Failure, void>> prepareLogin() async {
+    try {
+      _casLoginPage = await _remoteDataSource.fetchCasLoginPage();
+      return const Right(null);
+    } catch (e) {
+      return Left(UnknownFailure('获取登录页失败: $e'));
+    }
+  }
+
   /// 第一步：检测是否需要 MFA
   Future<Either<Failure, MfaResult>> detectMfa(
     String username,
     String password,
   ) async {
+    if (_casLoginPage == null) {
+      return Left(UnknownFailure('请先调用 prepareLogin()'));
+    }
+
     final fpVisitorId = _deviceProfileRepo.fpVisitorId;
 
     try {
@@ -35,6 +56,7 @@ class AuthRepository {
         username: username,
         password: password,
         fpVisitorId: fpVisitorId,
+        referer: _casLoginPage!.loginUrl,
       );
 
       if (mfaResponse.statusCode != 200) {
@@ -67,6 +89,10 @@ class AuthRepository {
     String mfaState, {
     String trustAgent = '',
   }) async {
+    if (_casLoginPage == null) {
+      return Left(UnknownFailure('请先调用 prepareLogin()'));
+    }
+
     final fpVisitorId = _deviceProfileRepo.fpVisitorId;
 
     try {
@@ -75,6 +101,8 @@ class AuthRepository {
         password: password,
         fpVisitorId: fpVisitorId,
         mfaState: mfaState,
+        execution: _casLoginPage!.execution,
+        loginUrl: _casLoginPage!.loginUrl,
         trustAgent: trustAgent,
       );
 
@@ -124,14 +152,23 @@ class AuthRepository {
     }
   }
 
-  Future<Either<Failure, String>> getImsRedirectUrl() async {
+  /// 获取 IMS 重定向 URL 及 [gid_]。
+  /// 返回 (重定向URL, gid_字符串或null)
+  Future<Either<Failure, (String, String?)>> getImsRedirectInfo() async {
     try {
-      if (_tgc == null) return Left(UnknownFailure("尚未授权，getImsRedirectUrl失败"));
+      if (_tgc == null) {
+        return Left(UnknownFailure('尚未授权，getImsRedirectInfo 失败'));
+      }
 
-      final url = await _remoteDataSource.getRedirectImsUrl(_tgc!);
-      return Right(url);
+      final (url, gid) = await _remoteDataSource.getRedirectImsUrl(_tgc!);
+      return Right((url, gid));
     } catch (e) {
-      return Left(UnknownFailure("login 错误：$e"));
+      return Left(UnknownFailure('IMS 重定向错误：$e'));
     }
+  }
+
+  Future<Either<Failure, String>> getImsRedirectUrl() async {
+    final result = await getImsRedirectInfo();
+    return result.fold((f) => Left(f), (info) => Right(info.$1));
   }
 }

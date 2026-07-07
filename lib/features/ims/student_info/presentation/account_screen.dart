@@ -179,6 +179,14 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
         studentInfoRepositoryProvider.future,
       );
 
+      // 第〇步：预请求 CAS 登录页面
+      final prepareResult = await authRepo.prepareLogin();
+      if (prepareResult.isLeft()) {
+        final msg = prepareResult.fold((f) => f.message ?? '未知错误', (_) => '');
+        _showError(context, msg);
+        return;
+      }
+
       // 第一步：检测 MFA
       final mfaResult = await authRepo.detectMfa(
         account.cardNumber,

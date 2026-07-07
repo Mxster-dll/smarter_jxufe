@@ -1,92 +1,119 @@
+import 'dart:math';
+
 import 'package:dio/dio.dart';
+
+/// CAS 登录页面的关键信息，从 HTML 中提取。
+class CasLoginPageInfo {
+  /// 登录表单的 action URL（含 service 参数和 sessionToken）
+  final String loginUrl;
+
+  /// 服务端生成的 execution token（每次页面加载都会变化）
+  final String execution;
+
+  const CasLoginPageInfo({required this.loginUrl, required this.execution});
+}
 
 class AuthRemoteDataSource {
   final Dio _dio;
 
   AuthRemoteDataSource(this._dio);
 
-  /// 第一步：检测是否需要 MFA（多因素认证），返回原始响应（由 Repository 层判断结果）
+  // ---- CAS 登录入口 ----
+  // ehall 门户首页是纯 HTML（JS 驱动跳转，非 HTTP 302），无法程序化跟踪。
+  // 因此直接请求 CAS 登录页，service 参数指向 ehall 的回调地址。
+  // CAS 协议本身不强制要求 sessionToken —— 它仅由 ehall 侧用于会话匹配。
+  static const _casLoginPageUrl =
+      'https://ssl.jxufe.edu.cn/cas/login'
+      '?service=http%3A%2F%2Fehall.jxufe.edu.cn'
+      '%2Famp-auth-adapter%2FloginSuccess';
+
+  /// 预请求：获取 CAS 登录页面，从中提取 [execution] 和表单提交的 [loginUrl]。
+  ///
+  /// 直接访问 CAS 登录页（绕过 ehall 的 JS 重定向）。
+  /// 如果 CAS 返回了带 sessionToken 的重定向，循环跟踪之。
+  Future<CasLoginPageInfo> fetchCasLoginPage() async {
+    String currentUrl = _casLoginPageUrl;
+
+    for (int i = 0; i < 5; i++) {
+      final response = await _dio.get(
+        currentUrl,
+        options: Options(followRedirects: false, validateStatus: (s) => true),
+      );
+
+      final status = response.statusCode;
+
+      // 3xx → 继续追踪重定向（如 CAS 补全 sessionToken）
+      if (status != null && status >= 300 && status < 400) {
+        final location = response.headers.value('location');
+        if (location == null) {
+          throw Exception('重定向缺少 Location 头: $currentUrl');
+        }
+        currentUrl = _resolveUrl(currentUrl, location);
+        continue;
+      }
+
+      // 非重定向 → 视为终到页，尝试提取 execution
+      final html = response.data?.toString() ?? '';
+      if (html.isEmpty) {
+        throw Exception('空响应: $currentUrl (status=$status)');
+      }
+
+      // 从 HTML 中提取 execution token
+      final execMatch = RegExp(
+        r'name="execution"\s+value="([^"]+)"',
+      ).firstMatch(html);
+      final execution = execMatch?.group(1);
+      if (execution != null && execution.isNotEmpty) {
+        return CasLoginPageInfo(loginUrl: currentUrl, execution: execution);
+      }
+
+      // 页面不含 execution 且不是重定向 → 异常
+      final preview = html.substring(0, min(300, html.length));
+      throw Exception('非 CAS 登录页: $currentUrl (status=$status)\n$preview');
+    }
+
+    throw Exception('重定向次数过多，最后 URL: $currentUrl');
+  }
+
+  /// 将相对 URL 解析为绝对 URL
+  static String _resolveUrl(String base, String target) {
+    final uri = Uri.parse(target);
+    if (uri.hasScheme) return target; // 已是绝对 URL
+    return Uri.parse(base).resolve(target).toString();
+  }
+
+  /// 第一步：检测是否需要 MFA（多因素认证）。
   Future<Response> detectMfa({
     required String username,
     required String password,
     required String fpVisitorId,
+    required String referer,
   }) async {
-    const url = 'https://ssl.jxufe.edu.cn/cas/mfa/detect';
-    final headers = {
-      'Host': 'ssl.jxufe.edu.cn',
-      'Connection': 'keep-alive',
-      'sec-ch-ua-platform': '"Windows"',
-      'X-Requested-With': 'XMLHttpRequest',
-      'Accept': 'application/json, text/javascript, */*; q=0.01',
-      'sec-ch-ua':
-          '"Chromium";v="148", "Microsoft Edge";v="148", "Not/A)Brand";v="99"',
-      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-      'sec-ch-ua-mobile': '?0',
-      'Origin': 'https://ssl.jxufe.edu.cn',
-      'Sec-Fetch-Site': 'same-origin',
-      'Sec-Fetch-Mode': 'cors',
-      'Sec-Fetch-Dest': 'empty',
-      'Referer':
-          'https://ssl.jxufe.edu.cn/cas/login?service=http%3A%2F%2Fehall.jxufe.edu.cn%2Famp-auth-adapter%2FloginSuccess%3FsessionToken%3Db4b30f75e159454ebc89186e1cd0773b',
-      'Accept-Encoding': 'gzip, deflate, br, zstd',
-      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
-    };
-
-    final body = {
-      'username': username,
-      'password': password,
-      'fpVisitorId': fpVisitorId,
-    };
+    const mfaUrl = 'https://ssl.jxufe.edu.cn/cas/mfa/detect';
 
     final response = await _dio.post(
-      url,
-      options: Options(headers: headers),
-      data: body,
+      mfaUrl,
+      options: Options(headers: _ajaxHeaders(referer: referer)),
+      data: {
+        'username': username,
+        'password': password,
+        'fpVisitorId': fpVisitorId,
+      },
     );
 
     return response;
   }
 
-  /// 第二步：提交登录，返回原始响应（由 Repository 层判断结果）
+  /// 第二步：提交登录表单。
   Future<Response> login({
     required String username,
     required String password,
     required String fpVisitorId,
     required String mfaState,
+    required String execution,
+    required String loginUrl,
     String trustAgent = '',
   }) async {
-    const url =
-        'https://ssl.jxufe.edu.cn/cas/login?service=http%3A%2F%2Fehall.jxufe.edu.cn%2Famp-auth-adapter%2FloginSuccess%3FsessionToken%3Db4b30f75e159454ebc89186e1cd0773b';
-    final headers = {
-      'Host': 'ssl.jxufe.edu.cn',
-      'Connection': 'keep-alive',
-      'Cache-Control': 'max-age=0',
-      'sec-ch-ua':
-          '"Chromium";v="148", "Microsoft Edge";v="148", "Not/A)Brand";v="99"',
-      'sec-ch-ua-mobile': '?0',
-      'sec-ch-ua-platform': '"Windows"',
-      'Upgrade-Insecure-Requests': '1',
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Origin': 'https://ssl.jxufe.edu.cn',
-      'Accept':
-          'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-      'Sec-Fetch-Site': 'same-origin',
-      'Sec-Fetch-Mode': 'navigate',
-      'Sec-Fetch-User': '?1',
-      'Sec-Fetch-Dest': 'document',
-      'Referer':
-          'https://ssl.jxufe.edu.cn/cas/login?service=http%3A%2F%2Fehall.jxufe.edu.cn%2Famp-auth-adapter%2FloginSuccess%3FsessionToken%3Db4b30f75e159454ebc89186e1cd0773b',
-      'Accept-Encoding': 'gzip, deflate, br, zstd',
-      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
-    };
-
-    // 固定参数（实际应从登录页面预请求获取，此处为示例）
-    const execution =
-        '64d7f11d-ae4d-49e5-99a0-68d75217acb3_ZXlKaGJHY2lPaUpJVXpVeE1pSjkuVnlsVkFNMVBiU0dWWUtsOG42WjdzaDRYU1pOcTdlNDh4cXBraVMyTXlVMGlXZHhSN0JWVGVpZmlXVy9RSWdaYmtubkhPaFN2cjRRblBsNjdXMS9vZ05aTGFmMXNhU1BPNWhWNTlpQUlmMmdLb0VYMTdXQjBnM3FWbmlOMTRZYmJqNFpLT0ZON0V5YURqa1pkRFpKZGtuRmZFL1E3bmx2dHJYOTMvcW0xclVWZVlJZ0V0M1dBVEpYV3pPc1lMSjlhZkFBR0J6NTdNY0pSVXFWZEZlQy9XM3QrNVNHRDRXOW9YRDlINFAvOXlDbGJNUjJRTmxKYjBPNll2TlVvUlR5SHdLTVVVMzhkVVVLWTV5SkJyaCtSN203Y2lxVWhET0NRZERaaUc4QjhoQnBvWWxDekcxTS9vTEg3c1NPOUk4Wm9NUjJJamNnOU9BeFVhLzN5dWRNTWhrWXhvYnZOSmo0N3VLR2duc2g1YVNKSmxvRkxoVTdDY2VBUENMNVhyLzNsTERUVnRVOXZnMVpxUzBuL0FKTUhYNGJQMitwSVIxWUpyUGdJT1dNN2JvL051bVVqdzlITlNBek9jN0x0aFFvRVlNV2ZQdGxCdmJIRWJTakFaay9vQXRaVVUrQ0dzM0hRWEZxeTRLZEI0dUdMYlUzN09yTEhVSFF4Z1l3R2ExNHdoSHJ2Tyt3ckdIa01kaHFCUVM2a1ZlcXZndFA3L2kzZHByaU80a2ZHU05XVUx2V3RMbDFHaG9qTktoYlR4elF2bTVyaXNrR3FDMHZhSnFoMXFZMWdBb0tmMlBaUHRLWXBWb0pDRGVyd3dVR1RDMjBRVUVtQlk2TzIxcER1eFBFM1E2cmZYbWNtN0VnbkRXbG9JVTB1eEhjeGdQSUx0K085cHdQeE9xR1JCek8yM1Izcy9kU1gzTGMzVFhGR3dQL3pITmpRNUxIekthUy8zTm1HMGs0aWd2Qm9HeGNjc1hyMlZXeHBDVkRKd1I5OGVrbE1Oa0lueXNNeDAyQjlnUVAzMjJ2Ylh6YVVxall3czdDOFdZcHpUcmZRVTZkNWFtbHUvanBMNUpsY01PRGFnOUs2cmovU3ZTemFEdktPd3JjUTg3Qk9ocGtQb3hJTFFTQklyamFTZWJZb243bE1FUklzcmV5eGZQSUNqa1NzWlpub1JwaHVDYTNlb3p5NjliUkgwcTI3VXJaQ0ttWHpoK1h1dDdDK2ZvaXlqN3ZnejlTN0FmUCtoT1NiOVpTeVVIcUxRbEwzZ2lKUGdKV1ZwcDhCTElRTUJGOVA2bGx6ZWRCUGlML2NPdGUvS0RibDRubmxYSDUyVWNUcnpPaUZWRmwrUzhsb2FCS3lmMmZ0KzRtMzI2Vi9DVHpmdWpRbkFGcXVoWmQxYXBLM05LTExRaUNiL21udEZGT3NTUzlqZFo5RmwrVm04U1lMU09ob0w3Y2FOQTFpT0RiaitpM3JSV2hsZy9KNFhrZVBwUnpyRFprVXl0eUxreHV1L0wwVUZXN3M0Z2NNZW9XdG1GQ0U1OVBxOEtja2kyWjBQWnN1MzRoZjhmSnZpNlVNMGg2WWhuMlFBcll1SlVpbXJlWjlEUHhvZk1JQ1JlRTFOMXVQUU05eDdKTnhQbmQ0WGNmdmRFU0ZuYW4wUkE3NWk2ZEw3OFRmWHhtZ0dzQUtMS1hqNDk4R3liV1ZwUEVsRWlHdWh6a0RJN1lXTDlCY3h5WG5NL1ZxUzRtSUx3Z3p0d0txVTJ2SS94OFJMT0RIZFN5cHZ5WFBnR1JlbUJOREJjOUZmM3JzbDVPbkZxQ29oSTdVU3N1UThZSm9hbk5QdFBRc1oya1VBTzl1MEZwQXJvbXM3VndoYWhmcTJiYjM1S1dpTjZZNFE3WVMrWmY3ZzRGZ0Y2TjhIdTZOWWsxVFliU2I1SzFwaGluTkRRL3MvQ2lZYldOcHVXc01kaVJuUUw0LzBoUVNXYUVidUF0Q1h0QU1hcElsdWR2Q3FPS3RQTWlZbTV3RG8xS3FhTlYrbGliekZMczJRNEQwdWlLd2V4R0w1Ymp5TC9oOFJmNGlmZGNJNm1STVNQK1RoV3ZpQkZvVEFkZjVqc3BrTmphRmpPYTFuajJ6bTg0RXRSZ2g3ZnF6VFJudVkybWtFNHk2LzIxZ1JwMG05cFBmQ3JjVVhRRlR1bExVcHR3MDBOcXR3RFkrbWR5UEhKMFdweFhzMUU5eXdzUTJnY1pWK2pNME1KMjJGSDVNMEdVZzJFaXJJRGlkZEhxbnpOR2hqWThBa1VUZHg4ZVdoWUVzeXJXTXA3ZGMrcmxDaXlNZnlSRmRKSXIrMlIwYTRiK2hjOE9VTlVFbFpTLzVrUjZEQVFXV2QzcTcrUVJmNXRQbEpVenNQNGM5SjhFakdnNlZsWGtRQ2o4bTRQQlpsK2hWdzZHb2x4V09jUGU3TnozTDdLRGVSL0NVYkMyc3pJeEJVZ0FvK1cxVGFXTmtzcFB0Yzl5ZlprTGZtOFp2Y3hYRFUwcTNsazBxN1FXSXhrTDl1UTQxZnZjMGZxWnZvYjB0a0hVV3lWU09IazgwYTZjd3lHcXlPQTNhWXUyWHhzcitqdHdVOXBsR1ByOHJqMG9LbDlUSjNaeHZYY1dTdmcyZWdNNUxvbkN2TUpVZ0NWR0pEZERKdGNSTzZpWk91Ri9RMlN4MHNlT0JDNE5RaHJxOXUzWUhXU0g1K2YvTlB1cElCOGt2RDZCVXJkZFhFT09IL2MxYVdCaGtEMzB6emVrVkk4c0cxalRtMXdDS2dUdVhrUlVPdE5Fc3VhMXQ5TzUwUWxMdHorMHgyNlZ0elVKRjNGYUlITDRHRUZsOTBPQVJ0Kzd6WFp2MFZST1N1QW9SRFVUbk5yQzl4MG9WWURLT2J0QTNvemFFOFM4TVFCWXhMSWg2TTViU0JBcFQwUkhtcCtjOVlWQzdjYVlTOElUY3FkWWRJbktYSkNldlpjN0pyVk54WDRETnAwRFBDOHJvS2libXdOMGVxK3R5YjZmRFpVU292OWRFYXFDZWdiT2ZDNTFWcVQrbkptQ01iQ0loMUwyekNBOXBhYWNvdHlybjNiVjA3dlA3Ym96TlQzcVNRNEEzWERYRUhsaWdzQXVIVUN6YnIrOHByRzB2YUtIbVlOK2ExRGhGY3hxdmF2UkRkY29PeExPS1ZEVTlDbTYzMi8rNEVUbmRQbXVkcndjS0ZSWTREdHZjOEFaMlpxclRaUHY4aUh6cTAyVmcwMWt0ZFFBc2VCRWZKNFRTaXdQbHduclE5RXJZb2xtRTVxQkNKa0VyT1BrcXFQVE9lcVUyZEt3bFl0eHRKekFWU3p3NDBwVjByNnlERXpjbFh2Wm8rVDMzamlucTgwY1FwS3B2ZUIyZk9JTW5KYmJVNDRPaDV3L1QvVlJSQSs1SGZCZU1WMXpYQkJhamFQUWdia0hJZC9PNlRsdFFqU04xdVp3UWhhOXpzYnJ0a05PUytzand2SmtyZG5jWUJTV0hDZHZ0dUJuckdCVG5DdGtXWSt4RHNzc2o1eHNGUlN6UkM3Q3RKdTloUWVmOHA2bmVCVGRsZ3dYTDl4M3hWSE1PZXg3TDdlR0RzS0ZMWS9jcmE4cW1WUUI3ZndndDhOb1N2MlpCM2JIWTNjaHFMVXRnRWhZSk0yK2xRTGhFcktlb1YzYjMrblE0U1ZWQnMxWlhiOE55S2plNjN6RWFmZWNxTXkxK1hub2RvWWcvalgwYUpuclkzZUJ5RkxrN21yaTU3ZHVxVWJMRCtWWnQ0RFVIWUFLZFc2Nm5KZEdaQ1dsWjNidUpuY2VZdlZ3a1lubFZUS0doRHJtUi91ZlhVNXBINzhiaHU4cEpLTWV4RzljVThrcGhMVzEraCtpUjdaZDhOR3FUeVUxeEdyWld0ellZMHF4TmFnT0hvaGNxTlBubC9pN0FIbHVERWJRQjFKZW9KZmxKbWptN0JndEJ2SGNFbXNLTGxyWGtKWnV6a1NQSHFRVWVJTVJFRjgySmhucjBJS3FSOFNyd21lTEVTbXdKU3VvbjlHNzBXU0h3SnFWTHFuL0hhOVhUK3lraTBjMnZrTFZxQm1UTE4wcVdEb291QTlUc29pNlVkT2pncHFuZlRIdlAxSzNiKy9wR2psZkNGMEw2T21BV05MMmhrQVE3d0FLbDRxbVY3UE8yK1FWMU85SmNyUVE3SStoWEFJVmxWNTl6aFBKMjVaVUwwWTQyZjJjaFRhVzVIbUhjM1V2S0dDcU5NcXFCVUxkSHk3UlpNeVhiMXBmVmNwOGtvSVJMZDNSeGNHRjZDMS9aWUZ1ZjFmdXQvQ214RnA3Zittb2FMM2VCbUt5Wm5yWGRaS3lJOTdycUhWVzU3NUI0Vll4YTZJOVAxZm1RdjJqSmsvVlUva1lEc0MrVzZxSDYzaTRoOXpJRnprV04wL29nd1VjSG0rYmVUQ1htTlhUZlNSZ1JrMklGOEVqWlNNZ0ZWbW1xaEJQenZtMkQ5MGhtM2lPYkkzSHA4YTRGeDk1YklKd0pVMEYwR0sxT2F4Z254Q2lYcmRVZTNORkpOS0I5SnU0L0ZrSGVscEU5K3NmWXRDRnNYTE1TZlljN2dvK3F4U0lYbDdwYkR5RXBmTlhJZkdLbk5mSUN4UVFiTW1oRWJnZ1BYVUpxSEp2ODN5Q2pHZ29MYjlJTDFyVUtmRTlWcmYvNS8vWHZsS0VFaTJqenhlMzBrU1lkVzQxcVkrZ1llVHI1MWZ1R1pJVjJURXU3S1lHVjYvK3FrYzRVWng1V281YXp3RWJtRTd4RWNLL01UZm5UY1lEQXdCWG5RbFVNaUVhU0V3WXF2N0FOd3dBMC9DWWN3S3UyS1lPT1MyUTh6eGk1YXhucVJBVHNvOEl6dTJSV1hyNE1EdWhETFJJbFBsYzdNRXVPeldUZlFuK0VGT21uSHlPRHZGYm1EbVF2VnFWdEZVc3c3MlFrQnJaTHQ5K2dQNHE3a2RZWmljWFZtL2hSZmpmMEFlM0pPZjkyU1h6MWxTblZ2MFFveDBYWlg2SFZZeFFwcVZCQ1cramZYV2NYNWZPRXI3eWZHc1Zacjdmd1VYL2tkcjREUG81WGdQdjNLbXpMZkoxMTQ5L1pEb1JEcWVPS0IrKzJiWTh1UUNVRjg3OStkL1RiVlR4MElSTXdKS0lKT05KSm1JMVFLTS9lWHlsVWJlVnk0VGoxQWVOQWlJWEpmcERIaXF4NVRoODdUUXU2cWJFKzBqbTZDUTNkMEZ4Smw4Zm5kV3ZhWmp3QkJJWWE2dC8wU2l4K0JpSzNVdk1KTVF5a0pLem5nNmlIUDcwTUE5YTVsQm5aS1NBdEJSTEg5Q3owdzdIbmhobVJtUHpoc094ZWpCc0ZGMmpEakdrUHAwaTRqbXk2TDV4aklBcjhjTkg0UTY1YTJsQWhrTVRkK3krZFNMK09yekpCZ1hpQ0xHRER5bXB2eFNsSTlEYWpXOExFMUZnM0dTVUh1THpvM2ZKL1R3MGlLR3M3SGVwdkhpYmhNdE1ZWVdkQTA4UVlRaGgwZ09WclRRTnE5QVFBNkpHRHRvM3hKVllQZXZDQlJsQlF2QzVuc0ZIQ3ByL1hWd2I4dS85WEJaRmFsWDh1Yjg5QTVnR1ozeXNLdXV1Vk02WlNPNEtxVUpzaE9kZHNkN3BPaEhZbys2OUZXbi9HSkhiTkxSZ0xNMGpWWU5oSnpQR0VlMGxhdjhHSDgvSVVEU2lTNGNuTFUraVBYM3gxUml6SWV4S3BnMkJhL2RzVmFhTFhuNG1rb05TZ1Y3aHpZSDRnOGcwdmIxamg0SDd0NXRXd3dUcHg2RlFrSG84Y1psR2ZqQnozdlRnSHEremJmTzN6bW9TYjVHWk5WdXV3d2o3RGFseVBkVndZSGRBcSs1Q3luWHZEL1B5eG0zeS9iTmNac1RQYlQrTmhTbThnV0RGOFA5RExrVVR4dFNCcTJaT1RjQmNUMDV5REJXY1Z0a0twOXVPMFJxR0hoK1RhYkhzUmYrNXU2VWVBb0l2U1UyNFpkMi9Xc0x2bWhkL1k1RkhXb3JldzhKa0t0N2VEUnpiamF2TUx6OHhmb2o1K1pqalBsK1J0blZxVWtNZjE1cEI0QWlYdFJ2elZOYlIreVJlWXkwL0RzNVMvT05pcmFRajAwK21PTWdkb1RkV1JHYng3WmhQcXJ2UTFVYWZnL3VMeEU4UGhrcnRFMjd1akZhSFg3ekpBUDExNGZsVGlqNXdEakhQRlJHQUo4c0d4dmRTdUNBWWhZMmUvR0g4dGdMaFlGVHk3VzBsd0hXVVVzbXczV2VFWTg4R1loUFZWYkVYd1BBc0RUU2tOSjk0R0l6N1pIVVA1NEpXNTFuQzBNT2t0Z1dXSjZuRGt0YjZUYUxyOUVvNnZrUDFlYkxzYVl1YW05L2c3d3BsU3ZjVnhudjNGOU5EenJaZk5hSEUxZ2ZNZ04vRDZEeHRsZ2RkdUdXc1QyeE1NekdzZ09CUDRxNHJlYlF4eTQyVHpFRVBDNTdUQlpGSXVtNjk5aXA3TEFpWnlybGp4MHR4dzRBVHN6aTc5ejBmdkxKUk9oVmJLaFl6UzJmSFpwTFdOZkRGbGlLZkRISEY1aWM4M0g2Z1hBTzFTNGphMEF6K0o3bnhib3FkbXRFMlZtV1FEbEZYd2FLaEtIVWhpdzI2YkdiQjdEUHhYcjA3L2NOTlFocmRjcU1ZRmxtT1kzVE9kTkFQS0hMbnhyYUtVRFB3blAvMUYraFhlNHN2enp6YTREMjhGWm9BZFVqemhrUVhxYlJQdHZKLzJ2d1JQM1k4UzNOdXdUbEs5dmp4UXZCZjA1ZXRKV3Axd2o5U1pEbVYzNWNtUlJKQ05LNGdRczd1RXZMckZZWGhoK2tpOTVlbUthVEx3bi9VclBZYUxTaW5yaWxHczkyVEpHdXh4S3Z6WkpsaG1HZ3hEUitHUm9kRkFkYXlMVVkyczJ1c3NodGJScXlVQW1vYnV2djc4cXc1YlNscnRiY0V1eko2cGlPWmRLUG14MXg0MklBY1JuTytPWk5hUGx5RW1uZ3pOVFltbGFSVUwxNko5R2hqLzhDejRydXBURjBob3ZQMmh0b0lpbkRSNldjWmRYSUUzVzd0YVY5WkdBcUpWRkFmUjQwaUhRWkVGeExXbWxneHZLYW9wU2dyZThPdmZoTHJGaFMyTDFSNlZHMDNMbElvR1dTNFJvOHRJTG1pcjBYc3owK0R3a3JLb0dLb0htcEs2SDJFSTE5K3ZuRDUzRGg1Y2s1bGZTMXZrZjB0RWlPWGVnWVFJajJWTWgxcG1HaXl4RW9ndkQ3Rk45R0VOanhxa3IzdGp6ZFlBd1IwOHVGRkNXcEZIbmd0VTVnZ2Nhd295YzVDZGg3WEhjNEVzWmZzT1BlYlNMZkwvNmNzdzRxK280RmQwR3diZlRmeXFGMFh0d0FoQ1I5OWR1cVQzTnRFTkkyYm8vWW9tRjF0QlUrVlBHNjc2bkIyS1ZIcHE5ek0zS09xdjM4OUpnR0VKQ2l1NGNQZno4VGJtQmFzaTJKOXFaU0Z3WWRRVFJNRGt5U2QvRjg1VE1CNGViMDhRaHVabTZERWRHUkVPZWp3V0c1QW9PZmNLZjAwRTdGcUxmdFZpNWI1cElla081WDAzUnptMHNQWllTMUp1SnNnUWVkS29yQXp0N3FKem4yS1F5TUN1bWxSL0NzZDdXVmVyZHVHRDc2aHY1VzJIZ0FpZ0hqRy84b2VUQVNwKzcyb21GSnY4WC9nSlpvWkROcllqQU44S1NCOXJiSVNob2xIeDEzTVdHRGJPZTh0MWIrUVRTN3IweDUxWXhFOUxSWUhSaWtHSnB1eXdlWjZDZGlvV0djQWp5bGM0ZGR6MStFWmZNZDN1Qk52akNDd2w4RFlTcWpiQzI2a01uUEo5bzIrYlVGT01UQWNnTEV3ZG11aTFueTJSM3dRQWJUL0JBZ0dxakd2MDd6VWlaMXc4Szc2YVdmYjR5RHJ4eHg5N3duZGttQW5ncDlhL1ZQZ2JSYllCbXV2M2hzbUdTNmZpcGYzRm1kQUlxM0JwYnRKUXZjbU9UODhVeGRMUnVqTzd0Y1dNQThmSGFwRUxTTXpKWjBiTnJISkFVVE9sZlBHa0QxcXdKTFVhSjRvbkZGelhCN1huVHJvOGljelp4ZFZZOWhWL2tleXhDL2hNbDRzWXZZblo0RXlwcFpUMHZrY2JwcW93MFdGazF3RkRLcDBDVXkxZGVwWVJZYXNrMTgybkIrTmZBRkloNVV5RndzZkwzQTFNM05ia0Nrb29RM211Q0U1WHpqZ3kwTTYxRjkyK0tPYnV2bXdYSkZ1OGFSQ3BkN05adDV2eEtSSk9NdlBBUHdRMFBIQ2c5VEphRmFQcUMyVnNCR2NZZnBWaWtNRGJyTEhXMlY2Z0RrWXZMTElNTlpWck0rMGFESXVlMlkwcmk4cjRpUVJaaUJsbGtvNWJpVUVOdGJVQnhUSERtdzRkb3JNQzVwRko3VWhsMlRzSkNVTlVsYWJPOVVpL1lmRlJYZVBacVpGRHZXbEZ1TVRmbTBSVEFaVC9LQmUrdTZCK2tGMG5vYko1emhWTWpnSDUxSFBpcUd6S0xoK2xjMFNrdXdLWjNMSWhOTy9BbHBzSlJtWm9SbG1XOFN0ZWtqVjdEUzZDMm5tMk1XSVJaZlZzMHlvckJxeGlWazNsQ2tTc2Vud3pMTVNvREloc3YxTldmZXFUMFdFblAzMzM0NXRUaGxqdTRDM1B6QXNtalgzUnc0SjMzdGRUSmp1MGY2cXNtS29PcDg1YVpXenYzNEI3Sm9mQWdUeWw3UWNOai92RjhxNDA4QTRsMDBYMWFuV0lucFVhTGRHL1Qyc2p0UXVDNjdzWVF0N2dFZGJFWFp0eXIwckdFR2R3NEI2bGFrc1c1MEJCbkIyem42Rmt2YkIwaCt1a3FiSyt1YnZaZXhheFFkVkcrU3FZT1FSQUF3ZzVQeGxpSFkyWW1zd1lEbEtmOThselVnQ0t2ZHh1bFBVZk5OaDBVb3R6TXVHb0hsby8xTHhEdDhNQ3NpcEpBVEVaYW1oOFVlb1VMWTVGZUYrandrTDN4NW1xNmFVSkpLejl5Tkd2ZHFWckRVUlFETVJmWHNyMnhYd2xoS2VQMmYvNUpyV1o4WlFpbDhNeUpuS3l4cTR6NTUyczd2dW9wUUh1SDVvVThjSUIzZ2kxaDllWWNtNDAyOUJWcEFLZHhQdWVNcFBYc0RPeExJaElwWC9xMi9zOXF0aENKMWxoeXZlaHArZ1FlVXZKRVVnQjBycjJtem9OLzBlRWVhQkpMY2tMNHBrYWFYbGFJc1hGNWxxR3NINVlONmxoeEUwa1ZmSU02ZHd0UDFLeitmTVFSdXExbFJ4Mlg2cnBGL1B4cjQyMUdld1I3RTcrVTRCMXVoeTIrS1BobS9XU3I4QmVlWTlBbEZ0cFFZMjJVbEtWa0plTjFDS0FWNjhJQmZMc2xUV0MySjVibFQ2OHM2Z3IyMC9OMW1UdHdjb2R3ZnlzdTlhYWJLTFRsaGtkdWl6c2VYM3hYTFlFZ1V0bkJwQVFWQTZ3ajNWMHJxUEQwbEJzSkFwZEMzbDV3ZVZEcG9YRUltV2h0REdTc0RsV29RU0EzUjNuakxjREg5WHdaUzZNWGtoSzFwNFlRUG14ZEpaRWkyTVptUHNTM3RzbVdjbzNENmw3Z0hSdFNnTmk3WVJVWHpkMW83RDNNTUFLS0NFdXJVTks0eWJBWkJhOVZZcEJYWm9jRllXbmhKVVpvellPWjlRSEtwV3JjeG1JNkg4QnF6ZUhRdnhieDczS21Pd1J2ckpKS0NPMzVMZWxOL0lJRlQ0R1NDV0tnby9UWVgxVlhmT01uZjVPSHM0RkQyRnQvVmZQS29LaUN5N3NOVlJNMGowVm1BR2V0NklaM3Z1akliTldaU1dqSzREaTJmWkNRY1ZaZ1o5THljTjNoOXBSaDJ1RFgxdm1TWDlJYlYxbWF6cG9oK1lqcG85RmFnSUhDSEhlVjB3R1daMDZXakpuZVd0Yll1Y2JZUHl1S2NFaytsVW1ib3BQOUt3TmZTU0dJUGtOK2tLTkk4RVIvb0F2RVpQcTcxYTlKdlc3NlorTTFZdmdLRFJhcFdPbjBZTlRSWENuNXFiREpSMWplS29mSytqcUowb1B5MURkZHNNVWRYN2RDV2d4Y2MvVDUrYUxJM2tnT0lBZ2ZSVVE2RGh2ZC9aOU55U2hLWG5FNVVFdStrdmVnMmlHbHV6Wm1WTm9jWWtCcjU1djE4U284dTNhRSsyQUNnWXlVL1lieEdOdVhFalppZUtqeGkyRjR3emdyYTc1K0pOVmJpQTRYdjNPMVpEbjZUb21HNFd2YUVadGZOS2FGUC9reEFJa1RWMTZSSG5ZM3R4anhRNnJ5RGFZeUd6ZUZGSGI2d0JWVG9NdHQycDBjeFRpbFNDaUxEc3FJNFZDcFloc3pBcmhHOE9YS3cxQ1hkdUtEMUU4SFpURWpCZFJGOTNrKzIzYkIyUklTUjBHUzVwV3hqaGx6b25BV2lMV2RxWng4eEk2eEN1bmRvRkRSMmVnbDRPR1RWZW1qSlNGWDNva0UwRUJGS24vK3plMnlieDEvM2lWNXdQZkhNWnZYOVhTYXB0SStBR2ZVMElJY0x2R2x1amNJN0grdWNKZ3JmS0RIRy9xZncrSnBHM1pCdGtQcVY3bHVza0Y4ZCs2cTZLdmFJS2xXZEVYRlBxampXTTFaUnBkZkJ1Vloyd3pNc01zdk1LREFHWjNjbDM0QllpS2dhcUNFc3A4cnp0ZXZYb2lZdE5hYUxCOXk5VERjRyt0ODRpdE8yZkZPMExNM28yQk1LMk96cVcxNWtwL2srMHd4eFBwaUIyNHJuMlZpRWxnaVhWM29ZZVBHZkhqdjhjeWZOZE1IOG53WEtFMFRDS2dPR01OZlJ5ZSt4RmtoMjlpS0E2MHM2S2xrR1RCeXlEMzFoNmlmYkxIS0pZNFg1Y2ZsTDJ4UnE5Y2Q0TFUxMUN6d0NJL2ROQ2NlS01wV3lhQk1XaUhvQzBCMW41aGM4Ly9VakF0ajJjb0tORXJjczgrV3MzcnhvVmRXRXVuaE9lWXQ2TmlWZU96UzhZbFUyMCtKY05IcnJzcTc5eVJTYW4rZDJuYURBUm81UXpOamxwR2lOZGc4WVZIM0Y3UXhSQkdCRm0rK2MwVkdkUVB5OExTUzdKVnJ1KzlnYW1Td1QyNkFuRjlERCtISzQ3L00rMDZveGpOUGRkQ1JqclQ2UlVya1FKTTJWYkN3WHNOY3hqdlVpeHZSOWxmcU92K2Rhc1VIRnh2NDluQzF2VWEzY0xXcjREYTEyYXlDSXVqN2NIYmowbG8vUkY3dE5jT0J4RzQrLzN3QUVnaGZkYmV3V0NGbmJxTExFYW5LeTdiODU3dzZoV1V4QTdMQ1RJTnhqWStFNWd0cUVkQjAwWTJKbGtFRWhkZzVaOTU0cWRDRStBQ1RzK09FTzd4WURpeUIzam9CUmpFVFM3YW9VNnBnVUpVWGcxN2RXZU53Qk9WZHBwU1pScGV0SjU1V29URC9FUjFibjE5NU1uQWZpN2cvOFZFa3A2RVZLWldOZkFSdmlJdDZxVFF5WUxGWVU2eUxDSGlqWUZMK1VzOFFaZjFsRzQwREhzcms1OTkrMmlrcjd6M0VTL3ozNlE3cVlKV0JiRXU4RjdmTklZQ1RYczZVN3J6WlB2dDRiRVQ3ck1EdVdsTU5UTlpiY09OZmRJazYxZ2dJQ245eVVoRlpERWVTMGdBWlJnZEJtWThLeXVyaGRSaU9NNlllYkNTb3NHM2V3T0dxNnA2YkVMaURXS1NTdU5WSWwwa0xRRm8wb01QMGRIRG9VL3lVUkFEdjRxSXBMUzlLOEhFcGJ2TVllS0JNRkhSWWszVEdQRVBKaEh1MWJLenFzeE9XUmZoYUI0SnRVdms3eUxpOWdpMFFSYTlCNXVhZWFtdEhaMDJDS0laQlFybkRSMWdraHNRVjFlVDM3R0hWT0JGUUVpTWxXVmRSVCs2eDFFOWZjSUZPeFprWGpMK00zYldISWVheUZaaVUyY1NobmhYSUd4ekQ2OEZRVXdZKzEyT0gxaG1keTZCMTVCNzJheHE0R0RVbTRKRjJoM1NLeVVwblhXbzdDZ0ZjYkh1ZUs0SDd0YXJ0UUNSaW1RNndodldWdmZmWVNYNUVsTEVOdHY3ZS9iMUZxSjRCVmc3NU1DeHlZWUpkK2w0WkpIdisycWhqSkJTcG1vRFQyUDlHUnJFaWR5MjZNTmFZdFByZlYzMEFOVFVDN2JsK04yMnFJUHVDMklNcm9HR0R6YzU2a0VRNUEycUdTQm9STlN6Wk9hVDFPYkVCRzc4bUYyblFNTVlhYVFEMHEzL2xkZ2VwSlZIV0w2bVkwcXUvcVFSSERSVEZqRmZScjhjMXBidHZxelp3Rlh4WndSRGtHZ1o3RUVJTHVlanRJekZJV1l0Z3JSZTVESFJwKzBXdkFUNzFTOUZRUHJjcWwyQS9xT3kzdDJCSGNwNTVUNU5OVEpaRE9zS0dIL01rb1FWcEdOdmZJYkUrM0VCVEJ0K1lLV1hrSVhNbkMzemRWNUZsUlFUNzBPWmIyL0Y5Z29OcHZ4NGo3VmYvcmZOQ0Fldm5rY3REMmxUU2xvdjRqb0lqMitycDB4djFad1BKb05EdGkvbGhOVFdYdkFCcWpjUS94Y3d5TmhCWTlFZ1VLbDcyejZDSEN6R1RlYnNWd2V0K28zUUhDUXVpTVgwMitzTFJZVW4xbUxMUFVKNGQ1b0tnQW1DSTE3UDJKK2JpTzBlOGpPU0dLMkVnTS8rdkJZSVF3dDN4NVNiZE9wOGt2dnY4ayt2WElYNDB1T2VFUFRkdDh3bFROK1U2VFJoTDNUdTBvallGa09nVW1oR1luTTRZTDBGSUNOTnFuUjU5aTFNRHA2WndWdTVUR2Z1MUZ4dWE5bTlHUk1yOFVsNWVBR2hFNHEvbTZnbWNuY0tFWlpwQU5RcDZSQmJhV0tHOVArTkQzRjNSRTdWZmYxWmx5VmJKU3N5NmJWMU44Y1dxOElVL3BZOVlaRjNUcUxqL2U4b0NaZVYxUFJMZ1A5amQ3YlNZUFlCK1JFbldadHoySG9NaFVSaWo4c1k3a3paa2Q4bWJ5YTAxZDVubVRoejUwcmZIbFlNQm9RTFVGZWtWSm4xSkk2Smt3ek5TcjlWdWxmWGdHUTZwOUMwVjA5YjNUSEw3SXVNSy9mVmhkbXpsWThDeTQzZ3A5L0dMdGJ3dmdrSk9pRWo3elBkdHAvYkFqRHI4WTNnMjQwS3l1bnAwSXFjNSt6blZYYXpFRjVseC9EYnZRYlFjVXhRTkN0WTN4akxzRWVKWU5DLzZIbExxblh5dnkvb05KRy9XTkFlcXlvWWhlSlRjK3NhdTNXN3pCam8yRHB3QjFvWmgwZktLdGhiSG9SbDJTRStpY3U5UlFzRXYxMnR6cUd6STd5YjdVRFZ1eHpldGpKVzMwbXZvTHpVUUxrejUxbnBKM3BaK0hjaFZqZmREVjc5Z0VoQmRydUNIM081R1MrVzA3VmNVUFVCNWRjUkg4TFArWVhNbVZtZ3VlcGRLbnhlR0FXWEU4Nng4WmFORWhMYlg0OWVremNUYmI4ZnBKaHY4ZVNwWk1uQ0l1NFVpd3lTdVFRQUV5czc4bXlwSXNrSzYzTGEyWEx4cS9JVlo3b1dQNDNMYXRyT2w1a0hNZENZcUovS1ViT09ZeU1hMmJwdGNhM0JBRmRaWXJQZWRXNXl1QUZnZU41KzBKMDFOZCtrSnBNVXd6d2VKVFhvYlhmclptTzUvUWR3aVVXQ0IrVT0uQlI2VEdjdVp3bmZya21qdlY2TnFDRWhDZE9TcHNXQ1F5Q0FvdEVQOU9EYzhXT2gyOWtLNTJDVHZ5czAxcGJodjJSQWJjVExfbnZFUHZZQ3Buc3RYcWc=';
-    const eventId = 'submit';
-    const geolocation = '';
-    const submit1 = 'Login1';
-
     final body = {
       'username': username,
       'password': password,
@@ -95,18 +122,18 @@ class AuthRemoteDataSource {
       'failN': '0',
       'mfaState': mfaState,
       'execution': execution,
-      '_eventId': eventId,
-      'geolocation': geolocation,
+      '_eventId': 'submit',
+      'geolocation': '',
       'fpVisitorId': fpVisitorId,
       'trustAgent': trustAgent,
-      'submit1': submit1,
+      'submit1': 'Login1',
     };
 
     final response = await _dio.post(
-      url,
+      loginUrl,
       options: Options(
-        headers: headers,
-        followRedirects: false, // 不自动跟随重定向，以便获取 Location 和 Set-Cookie
+        headers: _formHeaders(referer: loginUrl),
+        followRedirects: false,
       ),
       data: body,
     );
@@ -114,16 +141,26 @@ class AuthRemoteDataSource {
     return response;
   }
 
-  Future<String> getRedirectImsUrl(String token) async {
+  /// 通过 TGC 获取 IMS（教务系统）的重定向 URL，同时从中提取 [gid_]。
+  ///
+  /// 返回 (重定向URL, gid_字符串)。
+  /// [gid_] 为 null 时调用方应回退到内置默认值。
+  Future<(String url, String? gid)> getRedirectImsUrl(String tgc) async {
+    const imsServiceUrl =
+        'https://ssl.jxufe.edu.cn/cas/login'
+        '?service=https%3A%2F%2Fjwxt.jxufe.edu.cn%2F%2Fjxcjcaslogin';
+
     final response = await _dio.get(
-      'https://ssl.jxufe.edu.cn/cas/login?service=https%3A%2F%2Fjwxt.jxufe.edu.cn%2F%2Fjxcjcaslogin',
+      imsServiceUrl,
       options: Options(
         headers: {
           'Host': 'ssl.jxufe.edu.cn',
           'Connection': 'keep-alive',
           'Upgrade-Insecure-Requests': '1',
           'Accept':
-              'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+              'text/html,application/xhtml+xml,application/xml;'
+              'q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,'
+              'application/signed-exchange;v=b3;q=0.7',
           'Sec-Fetch-Site': 'cross-site',
           'Sec-Fetch-Mode': 'navigate',
           'Sec-Fetch-User': '?1',
@@ -135,16 +172,67 @@ class AuthRemoteDataSource {
           'Referer': 'http://ehall.jxufe.edu.cn/',
           'Accept-Encoding': 'gzip, deflate, br, zstd',
           'Accept-Language': 'zh-CN,zh;q=0.9',
-          'Cookie': 'TGC=$token; ',
+          'Cookie': 'TGC=$tgc; ',
         },
         followRedirects: false,
       ),
     );
 
     final location = response.headers.value('location');
-    if (location == null) throw Exception('location == null\n${response.data}');
-    // 这里报错要考虑是不是统一登录的 Cookie 过期了
+    if (location == null) {
+      throw Exception('IMS 重定向失败（TGC 可能已过期）\n${response.data}');
+    }
 
-    return location;
+    // 从重定向 URL 的查询参数中提取 gid_
+    final gid = Uri.parse(location).queryParameters['gid_'];
+
+    return (location, gid);
   }
+
+  // ---- 请求头构建 ----
+
+  /// MFA detect 接口的 AJAX 请求头
+  static Map<String, String> _ajaxHeaders({required String referer}) => {
+    'Host': 'ssl.jxufe.edu.cn',
+    'Connection': 'keep-alive',
+    'sec-ch-ua-platform': '"Windows"',
+    'X-Requested-With': 'XMLHttpRequest',
+    'Accept': 'application/json, text/javascript, */*; q=0.01',
+    'sec-ch-ua':
+        '"Chromium";v="148", "Microsoft Edge";v="148", "Not/A)Brand";v="99"',
+    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+    'sec-ch-ua-mobile': '?0',
+    'Origin': 'https://ssl.jxufe.edu.cn',
+    'Sec-Fetch-Site': 'same-origin',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Dest': 'empty',
+    'Referer': referer,
+    'Accept-Encoding': 'gzip, deflate, br, zstd',
+    'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
+  };
+
+  /// 表单 POST 登录的请求头
+  static Map<String, String> _formHeaders({required String referer}) => {
+    'Host': 'ssl.jxufe.edu.cn',
+    'Connection': 'keep-alive',
+    'Cache-Control': 'max-age=0',
+    'sec-ch-ua':
+        '"Chromium";v="148", "Microsoft Edge";v="148", "Not/A)Brand";v="99"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"Windows"',
+    'Upgrade-Insecure-Requests': '1',
+    'Content-Type': 'application/x-www-form-urlencoded',
+    'Origin': 'https://ssl.jxufe.edu.cn',
+    'Accept':
+        'text/html,application/xhtml+xml,application/xml;'
+        'q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,'
+        'application/signed-exchange;v=b3;q=0.7',
+    'Sec-Fetch-Site': 'same-origin',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-User': '?1',
+    'Sec-Fetch-Dest': 'document',
+    'Referer': referer,
+    'Accept-Encoding': 'gzip, deflate, br, zstd',
+    'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
+  };
 }
