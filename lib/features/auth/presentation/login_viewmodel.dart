@@ -82,15 +82,19 @@ class LoginViewModel extends _$LoginViewModel {
       }, (result) => result);
       if (mfaState == null) return; // detectMfa 失败
 
-      // 第二步：如果需要 MFA，手机验证码模式
+      // 第二步：如果需要 MFA（扫码/短信可切换）
       String? trustAgent;
       if (mfaState.needMfa) {
         final qrViewModel = ref.read(qrLoginViewModelProvider.notifier);
-        final result = await qrViewModel.mobileMfaVerify(
+        final isDesktop =
+            defaultTargetPlatform != TargetPlatform.iOS &&
+            defaultTargetPlatform != TargetPlatform.android;
+        final result = await qrViewModel.unifiedMfaVerify(
           context,
           account,
           password,
           mfaState.mfaState,
+          startInQrMode: isDesktop,
         );
 
         // 用户手动关闭对话框 → 不做任何事，等用户再次点击登录

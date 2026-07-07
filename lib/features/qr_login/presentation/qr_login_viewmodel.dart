@@ -9,6 +9,7 @@ import 'package:smarter_jxufe/features/qr_login/domain/entities/qr_code_status.d
 import 'package:smarter_jxufe/features/qr_login/presentation/qr_login_state.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/widgets/qr_code_dialog.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/widgets/mobile_mfa_dialog.dart';
+import 'package:smarter_jxufe/features/qr_login/presentation/widgets/unified_mfa_dialog.dart';
 
 part 'qr_login_viewmodel.g.dart';
 
@@ -144,6 +145,72 @@ class QrLoginViewModel extends _$QrLoginViewModel {
           _repository.validateMobileMfaCode(attestServer, gid, code),
     );
 
+    return result;
+  }
+
+  /// 统一 MFA 验证（扫码 + 短信，用户可自行切换）。
+  /// 返回 (是否授权成功, 是否信任设备)
+  Future<({bool authorized, bool trustDevice})> unifiedMfaVerify(
+    BuildContext context,
+    String account,
+    String password,
+    String mfaState, {
+    bool startInQrMode = true,
+  }) async {
+    // ── 先初始化扫码模式 ──
+    state = state.copyWith(
+      status: QrCodeStatus.loading,
+      title: '安全验证',
+      info: '当前登录环境异常，需通过安全验证确认是本人操作',
+      username: account,
+    );
+
+    await _repository.startMfaVerification(account, password, mfaState);
+    _syncFromRepository();
+
+    // 短信模式的 state（延迟初始化，切换时才请求）
+    String? smsAttestServer;
+    String? smsGid;
+
+    // 显示统一对话框（对话框内部处理扫码状态监听和 auto-close）
+    final result = await UnifiedMfaDialog.show(
+      context,
+      title: '安全验证',
+      info: '当前登录环境异常，需通过安全验证确认是本人操作',
+      startInQrMode: startInQrMode,
+      getQrImage: () => _repository.qrCodeData?.img,
+      qrStatusStream: _repository.statusStream,
+      onSwitchToQr: () async {
+        // 重新初始化扫码
+        await _repository.startMfaVerification(account, password, mfaState);
+        _syncFromRepository();
+      },
+      onSwitchToSms: () async {
+        // 初始化短信模式
+        final (server, gid, phone) = await _repository.initMobileMfa(mfaState);
+        smsAttestServer = server;
+        smsGid = gid;
+        return '安全手机：$phone';
+      },
+      onSendCode: () async {
+        if (smsAttestServer == null || smsGid == null) {
+          throw Exception('请先切换至短信验证模式');
+        }
+        await _repository.sendMobileMfaCode(smsAttestServer!, smsGid!);
+      },
+      onValidate: (code) {
+        if (smsAttestServer == null || smsGid == null) {
+          throw Exception('请先切换至短信验证模式');
+        }
+        return _repository.validateMobileMfaCode(
+          smsAttestServer!,
+          smsGid!,
+          code,
+        );
+      },
+    );
+
+    stopPolling();
     return result;
   }
 
