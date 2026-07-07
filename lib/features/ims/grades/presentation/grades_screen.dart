@@ -109,6 +109,9 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
   /// 上一帧的统计哈希，避免重复触发。
   int? _lastStatsHash;
 
+  /// 首次进入时是否已触发自动后台刷新（检测与上次缓存的数据差异）。
+  bool _initialAutoRefreshDone = false;
+
   static const _excludedCourses = <String>{'军事训练', '创新创业实践活动', '毕业设计', '毕业论文'};
 
   List<Grade> _sortGrades(List<Grade> grades, double avgScore) {
@@ -232,6 +235,17 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
       });
     }
 
+    // 首次进入成绩页时自动触发一次后台刷新，
+    // 用于检测自上次退出应用后是否有新增/撤回的成绩
+    if (!_initialAutoRefreshDone && gradesAsync.hasValue) {
+      _initialAutoRefreshDone = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref.read(refreshRequestedProvider.notifier).state = true;
+        ref.invalidate(gradesProvider(state.params));
+      });
+    }
+
     double avgScore = 0;
     double recommendationScore = 0;
     double totalCredit = 0;
@@ -262,40 +276,42 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
       avgGp = tc > 0 ? tgc / tc : 0;
     });
 
-    // 计算汇总差值并显示浮动提示
-    final currentStats = <String, double>{
-      '课程': courseCount.toDouble(),
-      '总学分': double.parse(totalCredit.toStringAsFixed(1)),
-      '课程加权': double.parse(avgScore.toStringAsFixed(5)),
-      'GPA': double.parse(avgGp.toStringAsFixed(2)),
-      if (importanceMap != null)
-        '推免加权': double.parse(recommendationScore.toStringAsFixed(5)),
-    };
-    final statsHash = Object.hashAll(
-      currentStats.entries.expand((e) => [e.key, e.value]),
-    );
+    // 计算汇总差值并显示浮动提示（仅在数据就绪时计算，避免 loading 帧的零值污染）
+    if (gradesAsync.hasValue) {
+      final currentStats = <String, double>{
+        '课程': courseCount.toDouble(),
+        '总学分': double.parse(totalCredit.toStringAsFixed(1)),
+        '课程加权': double.parse(avgScore.toStringAsFixed(5)),
+        'GPA': double.parse(avgGp.toStringAsFixed(2)),
+        if (importanceMap != null)
+          '推免加权': double.parse(recommendationScore.toStringAsFixed(5)),
+      };
+      final statsHash = Object.hashAll(
+        currentStats.entries.expand((e) => [e.key, e.value]),
+      );
 
-    if (_lastStatsHash != null && statsHash != _lastStatsHash) {
-      final deltas = <String, double>{};
-      for (final e in currentStats.entries) {
-        final prev = _prevStats[e.key];
-        if (prev != null) {
-          final diff = e.value - prev;
-          if (diff.abs() > 0.0001) deltas[e.key] = diff;
+      if (_lastStatsHash != null && statsHash != _lastStatsHash) {
+        final deltas = <String, double>{};
+        for (final e in currentStats.entries) {
+          final prev = _prevStats[e.key];
+          if (prev != null) {
+            final diff = e.value - prev;
+            if (diff.abs() > 0.0001) deltas[e.key] = diff;
+          }
         }
-      }
-      if (deltas.isNotEmpty) {
-        _deltaValues = deltas;
-        _showDeltas = true;
+        if (deltas.isNotEmpty) {
+          _deltaValues = deltas;
+          _showDeltas = true;
+          _prevStats = Map.from(currentStats);
+          _lastStatsHash = statsHash;
+          Future.delayed(const Duration(seconds: 2), () {
+            if (mounted) setState(() => _showDeltas = false);
+          });
+        }
+      } else if (_lastStatsHash == null) {
         _prevStats = Map.from(currentStats);
         _lastStatsHash = statsHash;
-        Future.delayed(const Duration(seconds: 2), () {
-          if (mounted) setState(() => _showDeltas = false);
-        });
       }
-    } else if (_lastStatsHash == null) {
-      _prevStats = Map.from(currentStats);
-      _lastStatsHash = statsHash;
     }
 
     final content = Column(
@@ -312,7 +328,18 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
             _retakeScores.isNotEmpty,
             _showDeltas ? _deltaValues : const {},
           ),
-          loading: () => const SizedBox.shrink(),
+          // 刷新期间保持旧数据可见，避免页面闪动
+          loading: () => gradesAsync.hasValue
+              ? _buildSummary(
+                  context,
+                  gradesAsync.value!.grades,
+                  avgScore,
+                  recommendationScore,
+                  importanceMap != null,
+                  _retakeScores.isNotEmpty,
+                  _showDeltas ? _deltaValues : const {},
+                )
+              : const SizedBox.shrink(),
           error: (_, _2) => const SizedBox.shrink(),
         ),
         rankingAsync.when(
@@ -1814,10 +1841,11 @@ final gradesProvider = FutureProvider.family<GradesResult, GradesQueryParams>((
   params,
 ) async {
   final repo = await ref.watch(gradesRepositoryProvider.future);
-  final result = await repo.getGrades(
-    params,
-    forceRefresh: true,
-  ); // [DEBUG] 测试完恢复为 getGrades(params)
+  // ref.read（非 ref.watch）：不建立依赖关系。
+  // refreshRequested 重置为 false 时不会触发 provider 重新执行，
+  // 避免缓存数据覆盖刚拉取的含 diff 的新数据。
+  final forceRefresh = ref.read(refreshRequestedProvider);
+  final result = await repo.getGrades(params, forceRefresh: forceRefresh);
   return result.fold(
     (failure) => throw Exception(failure.message ?? '获取成绩失败'),
     (gradesResult) => gradesResult,
