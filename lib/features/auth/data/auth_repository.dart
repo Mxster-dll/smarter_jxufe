@@ -57,6 +57,7 @@ class AuthRepository {
         password: password,
         fpVisitorId: fpVisitorId,
         referer: _casLoginPage!.loginUrl,
+        sessionCookie: _casLoginPage!.sessionCookie,
       );
 
       if (mfaResponse.statusCode != 200) {
@@ -103,6 +104,7 @@ class AuthRepository {
         mfaState: mfaState,
         execution: _casLoginPage!.execution,
         loginUrl: _casLoginPage!.loginUrl,
+        sessionCookie: _casLoginPage!.sessionCookie,
         trustAgent: trustAgent,
       );
 
