@@ -1,0 +1,3011 @@
+<html class="mobile" style="font-family: Microsoft YaHei, PingFangSC-Regular, PingFang SC, sans-serif;">
+
+<head>
+    <title>登录 - 江西财经大学统一身份认证</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="icon" href="/cas/file/ico/webFavicon.ico" type="image/x-icon">
+    <script src="https://hm.baidu.com/hm.js?d605d8df6bf5ca8a54fe078683196518"></script>
+    <script type="text/javascript">
+        // var hmSiteId = "d605d8df6bf5ca8a54fe078683196518";
+        var hmSiteId = "d605d8df6bf5ca8a54fe078683196518";
+        if (hmSiteId) {
+            var _hmt = _hmt || [];
+            (function () {
+                var hm = document.createElement("script");
+                hm.src = "https://hm.baidu.com/hm.js?" + hmSiteId;
+                var s = document.getElementsByTagName("script")[0];
+                s.parentNode.insertBefore(hm, s);
+            })();
+        }
+    </script>
+
+    <script type="text/javascript" src="/cas/webjars/jquery/3.6.0/jquery.min.js"></script>
+
+    <script src="/cas/deps/js/babel.min.js"></script>
+    <script src="/cas/deps/js/babel.polyfill.js"></script>
+    <script src="/cas/deps/js/vue/dist/vue.min.js"></script>
+
+    <script src="/cas/deps/js/vant/vant.min.js"></script>
+
+    <script src="/cas/deps/js/sw-ui/lib/index.js"></script>
+
+    <link rel="stylesheet" type="text/css" href="/cas/deps/js/vant/index.css">
+    <link rel="stylesheet" type="text/css" href="/cas/deps/js/sw-ui/lib/theme-chalk/index.css">
+    <link rel="stylesheet" type="text/css" href="/cas/schemes/C3282E/index.css">
+    <style>
+        [v-cloak] {
+            display: none;
+        }
+    </style>
+
+    <script src="https://authx-service.jxufe.edu.cn/fido2/webauthn/lib/text-encoding-0.7.0/encoding.js"></script>
+
+    <script
+        src="https://authx-service.jxufe.edu.cn/fido2/webauthn/lib/text-encoding-0.7.0/encoding-indexes.js"></script>
+
+    <script src="https://authx-service.jxufe.edu.cn/fido2/webauthn/lib/base64js/base64js-1.3.0.min.js"></script>
+
+    <script src="https://authx-service.jxufe.edu.cn/fido2/webauthn/js/base64url.js"></script>
+
+    <script type="text/javascript">
+        var webauthnServerPrefix = "https:\/\/authx-service.jxufe.edu.cn\/fido2";
+
+        (async () => {
+            // import * as webauthnJson from "\/cas\/webauthn\/lib\/webauthn-json-0.6.1\/dist\/esm\/webauthn-json.js";
+            const webauthnJson = await import(webauthnServerPrefix + '/webauthn/lib/webauthn-json-0.6.1/dist/esm/webauthn-json.js');
+            console.log("webauthnJson", webauthnJson)
+            console.log("supported", webauthnJson.supported())
+
+            window.webauthnJson = webauthnJson;
+
+            var isConditionalMediationAvailable = await PublicKeyCredential.isConditionalMediationAvailable();
+            var isUserVerifyingPlatformAuthenticatorAvailable = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+
+            var isPasskeySupport = isConditionalMediationAvailable && isUserVerifyingPlatformAuthenticatorAvailable;
+            console.log("isPasskeySupport", isPasskeySupport);
+            window.isPasskeySupport = isPasskeySupport;
+        })();
+
+        function rejectIfNotSuccess(response) {
+            if (response.success) {
+                return response;
+            } else {
+                return new Promise((resolve, reject) => reject(response));
+            }
+        }
+
+        function rejected(err) {
+            return new Promise((resolve, reject) => reject(err));
+        }
+
+        function setStatus(statusText) {
+            //document.getElementById('status').textContent = statusText;
+            console.log("status", statusText);
+        }
+
+        function extend(obj, more) {
+            return Object.assign({}, obj, more);
+        }
+
+        function showJson(name, data) {
+            // const el = document.getElementById(name).textContent = JSON.stringify(data, false, 2);
+            console.log(JSON.stringify(data, false, 2));
+        }
+
+        function showRequest(data) {
+            return showJson('request', data);
+        }
+        function showAuthenticatorResponse(data) {
+            const clientDataJson = data && (data.response && data.response.clientDataJSON);
+            return showJson('authenticator-response', extend(
+                data, {
+                _clientDataJson: data && JSON.parse(new TextDecoder('utf-8').decode(base64url.toByteArray(clientDataJson))),
+            }));
+        }
+        function showServerResponse(data) {
+            if (data && data.messages) {
+                // addMessages(data.messages);
+            }
+            return showJson('server-response', data);
+        }
+
+        function getIndexActions() {
+            /*
+            return fetch('api/v1/')
+              .then(response => response.json())
+              .then(data => data.actions)
+            ;
+          qrcode : "\/cas\/themes\/mf\/images\/qrcode.svg",
+            */
+
+            let actions = {
+                //          register: webauthnServerPrefix+'/webauthn/register',
+                authenticate: webauthnServerPrefix + '/webauthn/authenticate'
+            };
+            return new Promise((resolve, reject) => resolve(actions)).then(data => {
+                return data;
+            });
+
+        }
+
+        async function submitResponse(url, request, response) {
+            console.log('submitResponse', url, request, response);
+
+            const body = {
+                requestId: request.requestId,
+                credential: response,
+                sessionToken: request.sessionToken || session.sessionToken || null,
+            };
+
+            /* return fetch(url, {
+              method: 'POST',
+              body: JSON.stringify(body),
+            })
+              .then(response => response.json())
+              .then(updateSession)
+            ; */
+            const res = await fetch(url, {
+                method: 'POST',
+                body: JSON.stringify(body),
+            });
+            if (!res.ok) {
+                console.log("res", res);
+                return { "success": false };
+            }
+
+            const data = await res.json();
+
+            return updateSession(data);
+        }
+
+        let ceremonyState = {};
+
+        async function performCeremony(params) {
+            const callbacks = params.callbacks || {}; /* { init, authenticatorRequest, serverRequest } */
+            const getIndexActions = params.getIndexActions; /* function(): object */
+            const getRequest = params.getRequest; /* function(urls: object): { publicKeyCredentialCreationOptions: object } | { publicKeyCredentialRequestOptions: object } */
+            const statusStrings = params.statusStrings; /* { init, authenticatorRequest, serverRequest, success, } */
+            const executeRequest = params.executeRequest; /* function({ publicKeyCredentialCreationOptions: object } | { publicKeyCredentialRequestOptions: object }): Promise[PublicKeyCredential] */
+            const handleError = params.handleError; /* function(err): ? */
+
+            //setStatus('Looking up API paths...');
+            //resetDisplays();
+
+            const rootUrls = await getIndexActions();
+
+            //setStatus(statusStrings.int);
+            if (callbacks.init) {
+                callbacks.init(rootUrls);
+            }
+            const { request, actions: urls } = await getRequest(rootUrls);
+
+            //setStatus(statusStrings.authenticatorRequest);
+            if (callbacks.authenticatorRequest) {
+                callbacks.authenticatorRequest({ request, urls });
+            }
+            // showRequest(request);
+            ceremonyState = {
+                callbacks,
+                request,
+                statusStrings,
+                urls,
+            };
+
+            const webauthnResponse = await executeRequest(request);
+            const serverResponse = await finishCeremony(webauthnResponse);
+
+            return serverResponse;
+        }
+
+        async function finishCeremony(response) {
+            const callbacks = ceremonyState.callbacks;
+            const request = ceremonyState.request;
+            const statusStrings = ceremonyState.statusStrings;
+            const urls = ceremonyState.urls;
+
+            //setStatus(statusStrings.serverRequest || 'Sending response to server...');
+            if (callbacks.serverRequest) {
+                callbacks.serverRequest({ urls, request, response });
+            }
+            // showAuthenticatorResponse(response);
+
+            const data = await submitResponse(webauthnServerPrefix + "/" + urls.finish, request, response);
+
+            /* if (data && data.success) {
+              setStatus(statusStrings.success);
+            } else {
+              setStatus('Error!');
+            } */
+            // showServerResponse(data);
+
+            return data;
+        }
+
+
+
+        let session = {};
+
+        function updateSession(response) {
+            if (response.sessionToken) {
+                session.sessionToken = response.sessionToken;
+            }
+            if (response.username) {
+                session.username = response.username;
+            }
+            // updateSessionBox();
+            // updateRegisterButtons();
+            return response;
+        }
+
+        function getAuthenticateRequest(urls, username) {
+            console.log('getAuthenticateRequest', urls, username);
+
+            return fetch(urls.authenticate, {
+                body: new URLSearchParams(username ? { username } : {}),
+                method: 'POST',
+            })
+                .then(response => response.json())
+                .then(updateSession)
+                .then(rejectIfNotSuccess)
+                ;
+        }
+
+        function executeAuthenticateRequest(request) {
+            console.log('executeAuthenticateRequest', request);
+
+            return webauthnJson.get({ publicKey: request.publicKeyCredentialRequestOptions });
+        }
+
+        // 发起登录请求，
+        // 获取 username ， 向认证服务 发起 认证请求，调用 /webauthn/authenticate 接口（getAuthenticateRequest）
+        // 获取 request ， 向设备（浏览器）获取 ，调用 webauthnJson.get（executeAuthenticateRequest）
+        // 获取 webauthnResponse ， 向认证服务 进行认证， 调用 登录接口
+        async function authenticate(username) {
+            try {
+                /* const rootUrls = await getIndexActions();
+                const { request } = await getAuthenticateRequest(rootUrls, username);
+                const webauthnResponse = await executeAuthenticateRequest(request);
+          
+                const body = {
+                  requestId: request.requestId,
+                  credential: webauthnResponse,
+                  sessionToken: request.sessionToken || session.sessionToken || null,
+                };
+          
+                return JSON.stringify(body);  // 返回 调用 登录接口 */
+
+                const data = await performCeremony({
+                    getIndexActions,
+                    getRequest: urls => getAuthenticateRequest(urls, username),
+                    statusStrings: {
+                        init: 'Initiating authentication ceremony with server...',
+                        authenticatorRequest: 'Asking authenticators to perform assertion...',
+                        success: 'Authentication successful!',
+                    },
+                    executeRequest: executeAuthenticateRequest,
+                });
+
+                /* if (data.registrations) {
+                  // addMessage(`Authenticated as: ${data.registrations[0].username}`);
+                  console.log('Authenticated as:', data.registrations[0].username);
+                } */
+                return data;
+            } catch (err) {
+                // setStatus('Authentication failed.');
+                /* if (err.name === 'InvalidStateError') {
+                  addMessage(`This authenticator is not registered for the account "${username}". Please try again with a registered authenticator.`)
+                } else if (err.message) {
+                  addMessage(`${err.name}: ${err.message}`);
+                } else if (err.messages) {
+                  addMessages(err.messages);
+                } */
+                console.error('Authentication failed', err);
+                return rejected(err);
+            }
+        }
+
+    </script>
+
+    <script src="/cas/deps/js/jsencrypt/3.0.0-rc.1/jsencrypt.min.js" type="text/javascript"></script>
+
+    <script type="text/javascript">
+        var encryptEnabled = false;
+
+        var encrypt = new JSEncrypt();
+
+        var url = "\/cas\/jwt\/publicKey";
+        $.get(url, function (publicKey) {
+            // console.log(publicKey);
+            encrypt.setPublicKey(publicKey);
+        });
+    </script>
+
+    <script type="text/javascript">
+        var loginError = {};
+    </script>
+
+    <link rel="stylesheet" type="text/css" href="/cas/themes/mf/css/mobile.css">
+    <link rel="stylesheet" type="text/css" href="/cas/themes/mf/css/mfa-mobile.css">
+    <style>
+        [v-cloak] {
+            display: none;
+        }
+    </style>
+
+</head>
+
+<body class="van-overflow-hidden">
+
+
+    <main role="main">
+        <div id="content">
+
+            <div id="vue_main">
+                <div style="display: none;"><button type="button" class="el-button el-button--default is-plain"
+                        id="showErrorMessagePasskeyNotSupport"><!----><!----><span>打开消息提示</span></button> <button
+                        type="button" class="el-button el-button--default is-plain"
+                        id="showErrorMessagePasskeyFail"><!----><!----><span>打开消息提示</span></button> <button
+                        type="button" class="el-button el-button--default is-plain"
+                        id="showErrorMessageUsername"><!----><!----><span>打开消息提示</span></button> <button type="button"
+                        class="el-button el-button--default is-plain"
+                        id="showErrorMessagePassword"><!----><!----><span>打开消息提示</span></button> <button type="button"
+                        class="el-button el-button--default is-plain"
+                        id="showErrorMessageCaptcha"><!----><!----><span>打开消息提示</span></button> <button type="button"
+                        class="el-button el-button--default is-plain"
+                        id="showErrorMessageMobile"><!----><!----><span>打开消息提示</span></button> <button type="button"
+                        class="el-button el-button--default is-plain"
+                        id="showErrorMessageDynamicCode"><!----><!----><span>打开消息提示</span></button> <button
+                        type="button" class="el-button el-button--default is-plain"
+                        id="showSuccessMessageSendCode"><!----><!----><span>打开消息提示</span></button> <button type="button"
+                        class="el-button el-button--default is-plain"
+                        id="showFailureMessageSendCode"><!----><!----><span>打开消息提示</span></button> <button type="button"
+                        class="el-button el-button--default is-plain"
+                        id="showGuardDialog"><!----><!----><span>打开消息提示</span></button></div>
+                <div>
+                    <div style="position: relative;">
+                        <div class="wrap"
+                            style="background: url(&quot;/cas/file/png/bgM.png?cas-server-site-ui__20250728__b7bcfeae-3a01-49e7-92e0-5cef07c832c2__APP.png&quot;) center center / cover no-repeat;">
+                            <div class="white-wrap"></div>
+                        </div>
+                        <div class="main">
+                            <div style="display: flex; align-items: center; justify-content: center; margin: 8rem 0px;">
+                                <img src="/cas/file/png/logoM.png" style="width: auto; height: 8rem;">
+                            </div>
+                            <div>
+                                <div class="card">
+                                    <div class="van-tabs van-tabs--line">
+                                        <div class="van-tabs__wrap">
+                                            <div role="tablist" class="van-tabs__nav van-tabs__nav--line"
+                                                style="border-color: rgb(195, 40, 46); background: transparent;">
+                                                <div role="tab" aria-selected="true" class="van-tab van-tab--active"
+                                                    style="color: rgb(195, 40, 46);"><span
+                                                        class="van-tab__text van-tab__text--ellipsis">账号密码</span></div>
+                                                <div class="van-tabs__line"
+                                                    style="background-color: rgb(195, 40, 46); width: 5.8rem; transform: translateX(692.5px) translateX(-50%);">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="van-tabs__content">
+                                            <div role="tabpanel" class="van-tab__pane" style="">
+                                                <div style="padding: 0px 4rem; font-size: 2.2rem;">
+                                                    <form class="el-form" method="post" id="fm1"
+                                                        action="https://ssl.jxufe.edu.cn/cas/login?service=http%3A%2F%2Fehall.jxufe.edu.cn%2Famp-auth-adapter%2FloginSuccess%3FsessionToken%3Dac0c5b822f54425792837523d049b655"
+                                                        style="width: 0px; height: 0px; border: 0px; margin: 0px; padding: 0px;">
+                                                        <input type="hidden" id="username" name="username"
+                                                            value="2202502514" autocomplete="new-username"><input
+                                                            type="hidden" id="password" name="password"
+                                                            value="@Huang821024" autocomplete="new-password"><input
+                                                            type="hidden" id="captcha" name="captcha" value=""
+                                                            autocomplete="new-captcha"><input type="hidden"
+                                                            name="mfaState" value="5uNNK6"><input type="hidden"
+                                                            name="currentMenu" value="1"><input type="hidden"
+                                                            name="failN" value="0"><input type="hidden" name="execution"
+                                                            value="bb8e069b-2de2-46df-94a4-4b053ff083de_ZXlKaGJHY2lPaUpJVXpVeE1pSjkuTWw5SGhWTW5JTGJiVk16ZG43OGhjWHZZU29ieXJ3QjlqQjNtWUhORmZXT0pSRkZ1WFhrZjU3bUcrcDZPMjNINktvczMwdGJPcHk2c2N5YXpZSTZRbDBtUW1SNzVMWUExSjNGdFZqVlFTL2JBOWY3VmNzUEUrUFJlUFhPRmNNOWFud0Z0bHRDcXRtT1JDSkd5WmZISHIxOWFpdlV4YVM2OUw5NklVY3NsMWtBTmYwL291WjJpK3M5OWVHZXQ1dHkra1RldW80dFZZWEFMczdBSUF4cEtwRWlsQ2hRK0ViUUMwbFZGSnFVWUxKcjdqNGIyY3pLczlWejlZa0JkU1YzNDNwZ1dKKzlGUE9jNDBLdWZBOFIzZGE2RmVPdHdMV0lHUFptdWFkMEM4MEFlSUEyQ29zRWhwcGx5TURad29EMmlEZ0lRUm1iaWQ1Qmd6WjlWVDRUSzVaWUtMdkthVDBTRVdYYWt0NThVeU1KT0c5UzRsWGlBUXYrM1o4WWhIbGhrS2J0LzduRXg4OS9EVDlPQ21wRTlWNTlqTXYyV01pYTZCMVpTWC92ZXVwdXV6aW9KNzBJZzFRQzM1RHVtUzFYTnlYbzZaRk1UWWFSc3V3eWdqTG51NzVqWDMrWVFua2gwRVh2RjJyMUEvOEJLNnNLUnk4M2hxeGQyMVJzeEJnUkV2T0k0VmU3ekVyV3ZQcnFoSnArWVVYNEdza29EOXBFUDRPVndkTy8wNkEwamJpcXJvckVlUzJUT3I1ODVPRnZyQU16bmI3czJSemZpS2VuZHYveDErNCt5eWdQMm5OekpyTHBkZWl2L0xEVkQ5clhMZGZUdDk0WE1rUlhhcUc1Um9YSFV1TmI1UGhsYmllc3k2YkxWUGVyemNTa0NUS2d6SlMwd2tYVHZTUG9kYnBDdmxrWVlTcXVKWlFqRVFyTnA4elhWaDJZY3pZNHp3MUh2MFN1MHA2RDZrMjhock5XOFBGTEJ2dU9YWm1palRNZlU1cE1STFc4Umo5amRYOVd4b204Z2xSa05RMlpPNEdCQXEreHRqanFYN1J3TlREWnZxZ085SkxGcnl6QW5jdUtzejg0VUtiNUF0S0Jqejd5aVZmWTJUSzg2S0VqZUtGME1oRFI4VVZ1VURyVHl6VzFTUzBsVGtpRW1jRjEzczMxVUR2T1huNFcxKzFoWW5TZCtSb0xHVkZjSlp2YkFyU1NkbHdzZ3hqalorM2lEOVRZK3M3LzRlMS9rU29ya1BLVy9Wb05GUmplY1QwZUUvU01leTR4L2RrTWhqVEoyMndpam9mbnl4OXV6RmhrMkFKeDlXQkdZUkxXMkp6RUIyR2xpeTJac0s5RXBOT2E3cWo0TW1SUG1SVFNldVpvVVJXWXQvZUdZc1lZTkpFWlNwRmszcUllQ25qTHdzd0FZak1XZno5b3h6Z1RrdWY2WTc2ejEzcTQxdHZMdHV2cDA3QmU0ODBoTC9sTll2MVJyVXFhSXBNNi90a1pKTmx3elJEOWorN3YyNWJSSXlpU0VxTUVYTWV3L2lUb296VkszODZQL1RIcXlnZmJwQXNuSmViNEpYNmVDKytOMTJ4ZFZvVDZycDhCaStQUDFiZ2xxK0lZRDRuRmN4dFVDUGtvYmk4c21IamFTZndIa05jMEZqODBLNVlVOERMOHNWVm9MVzFxeFg4a3dDaGpLVCtCVWU3NklIQTJ4S0JROEZheXZyUkRHVUFicDVnNjIrV2VjV0xBNW5oM011blBRWkxGTGJjWUZBUjVzancyQUJhNGhsTmlwcytEdi9ackNoNnFDWmVoalpVNHBNSXAreTRaTzVCYmpPVjcwbVZJRmtaTUMrTmd2dVdBcFlGdkFCWC9kVVk3dmRCTnNLd3F6eStnU0oyc0Q4K2JaYlh3dFlBQ2JLdHhyYjJYWjZDS21zUmF2V0F2MXJZcWg1RTU4RVhnNDMwWjdkKzNiRmN5WU1FWDBZUmw2ZGhMa2JRWmRWVk1vaUhCZ2FMRmlYRXdIN0R6RkdpM3RNUDYyQ3d2UzRxbU14VjFXOFVxVlBEUmwvR3RPQmg3OUpGQjNGUHl6VU5LaGI3ZXV1VWpBRkxQRko1amRKQ3ExQU5ld3BpdzFEUWNPNXBlVUVCWi83ME4yTDJKVTBTeEdHZGdBaGJ5WGgxWWR3MFQwc2tHY05FU2ZaaEhYMXNTenNZT2NEUmVoRE8xdTljcFJHbGkwbXdUV0xoMEJDV0JRR0JRZk52YzdwOHcyb054Qnluck9Ja1cweGE1WjB5aWJZMnlZbm1IUFJMODcycEdQeTZPK096NVc2VWp2eU50WmV4QTBneVhpUmoxWTVnaWlRR2k4WFExNzl2R21PRzdBbHVZd0hEWjZRT0ZReUFYdEE2L0tHSmFiSTZiK1FTWlV2b2dSeXlVK25McDlFQnFUaS9VOVl6cVd6YWRjVmQyS0R3OW9EVUdINnFzVHdkc2NsMU4vc0FHWnQ0NUN1cW04eHRCMThjVGpKcnZEMlNiV0NqTHJja1NzN3g1Q3ZzcmVPNUladkxQVDRCbnJwM1liSzdRcm5rRnZQbFpMM3Y0OC8vVEVuZkZUOFlITllwNGhGbXVjRW0zeXp6QUlpelFvOTVkT0VSZEY0RXlkUTF1OWlJN1NjZ2lwUU9Yc3RydjlGSUR0SEZ6d0dLZC9CRmZBOGMyKzFiVnpaOXVoY0xVelpuT0R2TzZ3S2RVaE9SaWdvWGpLd0RuQVA2OFJJZ3E4NGlSRUpSMFdmMlBneTl0VGNhTWdFZGlXRFJIT1RRRjdsVFIxREZBa2J5aTNTU3lDN05rQURYZFA2ZVFEaTNSMmRBa1NJUm5LVE9SeStKUGpvOFRRMW5nekVjUDM2dzVVeDQyZHRZaHpFZGkreDhGdXhYT3Q4bHdyTWhnMkRoWWpSSkt5d3ZZTy9Td292Y1lBVDV1ZlJNN1lZRmI1VWNPN1U2WmxoYkZrRFp0RWZ1ai9KcUdXdDArMFM2cGkrZDhqVU1HV3lJM0ZucWtlSnRhTVFZaFVMaE9TdlBhZjhOSjJEY29qZkp6TWxCYjNreUhOVTIxWlVlSlRDVGFWM0FDRXRhMk5WRGNCbmhOeWxhMDFVakhYK3pqME5VWHNKS1orclJvanFEdExrOTY5U090L1gvQTJPSytvQlEzVi92QTdubkhXamc5bDBhclVqaDlEVHR5RVJsRXdUKzF2b2VlZEJsdUdNcHZGdHd6ZjVkczgwYUlKOHFGaHFyVW9UdHRSVXA4RHdyRUtlV2UzVWpTalpJcTNGUnJaSTQ2Ykx2THhlTkVtV25Wa1JkZE0waDVkOG9iQ0MzM0NwMHE3cVhOWEp4YTNUVE9BK2RWL3E3WlN4ZnRZeUlDRkpSOUhMUUpMYXA0ejlsbXFUaHJUb0M0WGlWRS9wcVpnMUpOMk9Gb1ZuSVBTN3lDb3V5cFBFVE1YSkxtUWJPZE52N1RmL3VGbkJsZ0JlVGZkYThaQkxYaGRoWVRUeWxEemZhVjFlcXNPNGhBdGt2dVYwMXp0ZGFEaWJGUnhTVHRtZXgwQnUwT2UwNzlRZkNJcUx4K3UzNGJmay96UUxLMXBsYldxSzc4KzJ1eFRlNmcwckVSamtQTGh2bS9uSWdHaVdxQmhMclFNd0NYWnFURnJMNDNVUmNEYURvRDkxKzRDbytGaHErakllM0VIYlNFRjdkS0swS0tkaThTbzFRNmVNZVJ2dHZJN05mb0F4TVRieHpBQ0N0Qlo1TUdTUk9DeDJwL3NhWjNyNDNjcHQyalFVbWM1SlpHbkJocGFLRnROSitOTzZNU1dzMnllc1ZGaThQWW9qOWxlcFlVZnRKbTFTRTEybVhJL1R2aXRwUmRPL1lyaGRjNVpRM3ZUQnUrcUFIZElBVlZ3UVZRYmtQNE5tQjZnY3YzVldRbmZiTkJxT0tTcjNJNDBmR2VSdTdUYmRWcm9IbGtZZCtOUUV2Z1p6NXd0L1N0aWh6Wk1WZm9sNGxZa3AzV3k5TzVBcTVkbjdRZHZaRis1WVE4U3FoYjZVTjF6MVJBR09jSVBCazB5SDI4ampqVDNLcy9UZUhPR1hCWWxER1BNMWQ0bHVMZVM5dUpHRCtZY004Z3poK0tpSlU5WlVEam1Kb2NRdmlMK0ZxUXRVUVhGcEJMRmVxT3pOVTFJczBWVFhsMkhRZERxZ1cveGpPeGlyMkthU3ZPZFhlanE0KzZlY3lObUpmblM3YUxUbjRoTHgvYmlTdG5GcGdxRU8xZERDWGtFakNqUS94cE5odnM5QTFRT1RSR1dLY0dYUFlPbjBONEU0Ulp0VjduUlY1UHF3YXFyTzlreFJzUys4M3pVMnRQVnhSWDVqVGZHWkg1eEFwR3ZGSzZuRndDTUZMSzh4RUxVSkYrUmttWFlkeXpuMFNWcFBWOXZlaU43RERRTjc4MW1NakVTUEtZNC9NM01UUGRqMFpkcEVzTlo5eVhPWlhGME5ZYUZROE05M0NTZk0veTBIY1oxaU5XN3laWk9VQ2NQMjc4TWg5ZWlUUm1lVTRaOW05enQyRHV5cCt6NUp2Ujk2a0VuWmdiYUNVbnZyRnRCMS85N2RwaFZQRDdRbXBrNis0Y3pZdTIrM243dmtoREQzbGxUbHNzV3REZmtaM0had3lFTmY2Ny9IWmxjaVRjYXZCaDg3K2x6Y0dyZGJzUG9hSUtlRVdsb2JnWkMrYzR2SnJpMU4ybmFFR1psUEZlOE1UV0JkUWo3SytUL05oWU1hN3JseUh0Y3RBL2VrbnNKeitCZGQwWkRrdmR5RThJQ1dZbnp4Y3B5ckJoTHpqTHpvdVhSMWF2VE8rRlhKSXlialhpVXB5OGUrUHdFaFQxTmdjRitjUURsM29zRStXQXlVNjVyNGw1cElGdHp1YWNCd2ZmWGNlaDFYN0g0RkhGWGdRZDJEa3ZnekE1c3lKbmtQdUd0VVJOenY4WFpyZDBYQStQZVhKZURhSTcrQ1pyTTh3TmtnVzhEbVpyOW1BSVp1Z1NYNDlCNklZeWRHUXJPVkhpUWpyTFBwMkV3VEJwMURucW9JQWR4bnM4bTVZU3pOODFNc2t1dk1GaW9JY1ZOQ2FKSTlrM01aZzR3NjdGVFRCN2IzQU8wT1ZVQ0dtUUR2L1o1cGptaGc0M014V1k1V2UySVhEVHpQbUpHQVJUb3VpdUlpSk5UVWdzdjNRNk41eTRWajdncVJUWFhrdWo3YURjcUxDWnlXbWQ0UjlubUVuL3ZSMVUvNHJ1UE9DUkFYZUgxZnlHaFZWaTRuWW9ubldCbXN5dlZsWXNYKzVSYUNRZ3ZHQkhxbG5Ka3ljOUY0L3hCL1VYOVZjRm4xbU1PYkw0Q1VLMnRZZWFhRExTcnlCc0prTGhleURvSExSSlhwSURtS2NaY1NwNFBQZjdyRkh6aDlmRm1zQjRvVGJhcVY2MFZDcDdJVG1wdE5QZDQ1MUtiOGtycDJCT0JINnRPYlJIb1hqSWt6MURVZzdEZko4b0FUdnhLbHJXWEQyVGs3L3hGTGprRkNhWHpWeUJLOERXSElsMlVKelpYcGV2R1diT3BWWk5McVBuOUlVTWl2d0ZCK3NmZEIyU0NSUktXRnRrMjV0WGRsanQ1aUovWUhzdDUrVWJ5UUlFMXM3cmlack90dnFVdmhyTmZqWE9aSkdPcDM4RnhOZVFDTlRRYzBqWld5bHR3eUYvNVIzMFhtcG1yK1MwOVBnQ0xQUUxSQUZpWFQvWElWdjIwOThrZGxxamZ5VWNINkdPUmFvMmU1bGJPRTU4MHhQMGlJV1NzcU1UUk5yVE9YV3lLRVRGRVZDWjVSdXdyZzh2eWQvZm8vb2F0UXpLZmIzVUxBSjFod05JQVdiNm84RHd5enA5T2FjYit4MmF2VW9UbExIeUJvNWxqMjkxU3ZKK0VpdEM2LzZTT2RyQWwraHhhZ2xjcmRYRTIxMGxyNW9sK2hUei8vODVxa1hUeUF6aEx3ZUtOZFhhZXhnMG1HSjF0WFE1ZUNIeDluZVlab0t2WktTcmdyTUFoTDJ3NzM4ajN4UkNFM3NiZk1yUzY0UlBtcXR3S1NWQi9xZmRNcUtiL2svYTZXdDJEQnUzbGZQQjFWVDZpaG9sWUNXU1lrYTYyd1NWSGNOTzhOSkJ2ZUVhbWN4NXA5dUJ1MnJSMDZFMkxSV2FONEhLWFMxT2J4ZzlBL003dFR5Q2lsNG10SXUxVHVnN0dYQlNlV0k2OVQvWGNiaWFnVU5VdDhGZDNmNy9BQ2htWjJRcHlIRFU4SWNZUVBoS3pkU2dKd25hQVhOWVFsSGhrVnAvVktnNWxWdjdaZmtlcjgxRDJGRTdEN2g4WS90dEFPNnFxMW8wamJ2T0VuSm5DU0NPV2RLQ0FuQXdodzF5QnBDSHhYRG9ka0ZlT0JSWU5UcTJOOXNRS1dVOW8vd0d5anN0bGQyNVd2ZXFnaDJtS3pZaGRxNThSK1VPcHFpekNROVVsdm5aM2NLblhGd3pQNkNxTjVadUZkc28rTVVQb1lQdlJ4ZzQ4WjAycmRDUmtOaE54V0k5bFhLMXpEbzNPb3Y2TnJGT0U5WWRJcWpvQ0dkYTZyMGxEV0tzVVVMQTVTS3I3VWdmRTVqdi9SK20xVkhXVC96cGwyZEEvMFFUbGJvT01Hd0V6MGJ2YUhudVE2NXJBY3p0V3dxdm1xYVNrZVZEWnIzTnpRQjNubk5mUTFOd09lTHRxWUZDdHdkZ3NoallPNHU1U0NRVFRSQVVaMjU0ZjI0cktLeUtwUEtkK0ZmMUJGbGdZZG5pdUp6ZStEdUJrZmFVNUx4KzRUQjU2bEVtR2RHOTNoUUZoS0xEQ0V6cC9NSkp5aUF5NnhpUjFaeVFoR2d1UjZOZEpPN1dxRWlMUE82Y2FOOXBIL0dqUFpPN0JsMDA2a0Y5ZHZpa0RGSEJKTUNmeXVuS3oza0haaDVOcmphOWZQV0ZPa3B4QytLempPVVA1MzMyMFR6VkVCWVZsMm5kRTNENy9Xb3g3OWoyeU5HUElMU3RGOE5SL3NvRFNiOUM2ZmxJeTZsTEsxWUhpVUMwY3pBRWxOSFdKT3JMWU1BSnFUa0UyNlhpb05nOGI4YXB3L2JtN3B3dEYyUzg5akowclJEem01Mm1sUDZjYkhLWnpFdkorakdac2V2eFpWelAvaU9GNnMwbXZ0SGRxMndpbVpKNEdNbzduS3c5OGxKL290Z1VhREU3NEV5TjBHeTl5Q1pqZWRjUHowY2tuRXJuRVJLT1dRSEwrL0RKUTVFZkVpKzJWUUdIZjUyazg1cVFHM0grdXZQMTlFVnBzK3A1NW9rdVpxYkNVVVVYdVFoeUlScWs0NFRQR3RabG40QXRHMjh0bXdyUm8vY2hzWXI0eHV5OXJTR2hDMVhISWM0bXZpa3h3R0JjZHJWcUFiWGM3UUM0MVUyVWQ0RUw0ZUc5MUwrMy94SklMcWNac3hsYm1nK0J2ZnZ5QmNwWWtxRHdlNEVuOGtTUEVXb2ZqWlBDcHloeW9UVXlJVG5IYmxMRDNCUHN6MWZYZjBoTVZERjNlM1pobk9UQm5jbndaSXBZbll0Y1h5bXNaQTVWdmNYWlFPL1BpaDhiR3JGKzU2bi9oYVdmaXZubzg4Yk9GcVh0MWZzUVRCNzFlbzFqeU9RMVpoNUdBU0ZEckppbk1PT2tuNzdXeXJtb0U2MUpMRnMvb0VUdHk2aE9iajdJV0wvR3pUcTdrRDlSZm5Ud1FYMXRIRkFyaW5wQjRXMTUzWWYvYmtqYkxzaWI3QmdUUlRBTVhxK3FwRGFESFN2TjVJVGw4WjB0WGl1WDV4SGRNRVJ4WWduNzJkaG9NZXVKaXlPc1JkSlA4dXEyVlBxR0N4WE9CZ0xyMkFTM3FpanpPcVM2TjNMWXgwWDRSRitUcDZ3Q2ZoV000OGJFeHptSGtXNVB1MVhMYzN0WlJ4L244OG9aSERpSTdQNmd2TXNmZXN0S21ZZURzNm9tM0Z6emZycFNrNVpwdGlKU0tnMVg4RS9CSjFuZkhQYnJtZjh3WVhxZ29sQlRQKzR5bklHbnlCRlpmYmdsMGYxcUhseDNQTEI0U2NPNjJteUZQbVBJRk11c1l0VVBPZTN1ektiL2VWQ01XOTRGYnd1ZmR0NzdnNDBLbWZtVENPcmZWZWUvaUJEU0VkRkhSdXhMOWQ5V3BqMUZ4ZVloZFc1VFBscHhDcEErc3doV3RNL1oxWlBzWFNnVkhsU0QvRXVFaVVhQmU2eXE2QkkxaUNsOVdNNVFVdnVnSWRJZUZLMXZla1FBN0pHVk9YSmgwdlNzZmU2QkxyS2NCR2RVRFg1LzNlNzVTYkVnWlNIWXdwQ2liSmU4bUo3WFYrbi9hSWpPN0RFUHlSNERadFJDSktqZTh4enNMVEhUR2xsWDNLS2V6TVhiN05OdmZGaTMwTnZYVis1UEkxMnE0OEkwWGVZeGowczhZb1BKM3JiWWxTa04xejhqbklqRDN1TzY4Tkh5MWl4cm1TQWcxUVUvYWFJNWp4RWxGZzJSbklZdnkvQy9WYllldmpXZHdEMEhEYThmM3pqc05JTHZEeXFKZERJalZFL0hGaTRnOGZYQURrZTV5dmJvSGIwRzAvYVJRUU5PajF1Yy9mRGtmZ3J0ekJxUlY5M3JGN0UwMGtkSm5HMEJXWUU4NWV2MEFRQWxTQ2l4bGpFaXBwWTJqWHUzQTZpa3lGVTBhL3dEQ0ZZTlY4NGR2M3lpOElhWGJoLzd6Sm5NSkRNM090ekFMNGVnWGFDaTlRTEw5eVAzU2dURlBuVjRxZ045YkliRHlpS2daRStyRHhUK01BNkVwcXhYMkUrdEpNcGtFTGlTZk5NVHNFVy9FYW9CQUVxU2NPRmJ2SWw4QkFLWS9tTjgzdjNYUk1NZFYyUGd1aFZtWjAvOEUyMjI4WGovTWR2NUVXYTBRZjJjYXMwbzV4b3RxajNhS1A0UkNiWlpGWWZIWGhLMWpnZXpDcldPcGxrRTlROHhDb0wzWFRpaTVWY1ZMeDcxR1MzcjM1aW5NcjZheVdvLzdIRWlCMStQNFlrYTVaVnRJUUNXQVkwSlJBZ2dib2xoeE5QY1dJcGlYNUVHYjJLVnJMSzFiYnl2SkhQY0NzWWVmZ09vcklXWSt0ZkxiVVNSVXRrTVZQYUxIYWRLaWFIbEtnUzlxbU80MWpCMWxvYWlTZWo0NE0vSWw2Y0ROZlVFNk5FcHgrL0s4ckhhNE00dGdBSkpKdW5rQUo3NG5HQ2psZ0t0K3ZwQkdhV2pOV1MwalhMdFM3L29TMUJ0YjJGRGxjTVo3dTU5VytUMFlGR2c5c1k3azMvSWtKN3EyWVJqZXdPMDd5R0pPNHFaMWpzdml4OFR4QTkrSFhMMFNDRVVqKzdKdDc3WXJjS1M0WFBrMko5TUVqWkFmOUlJTEtDS2xXa3NocGVQUTJTcUVmSEhMOWR2YlliZ1lxNVRWSUdaOEJTRkZmRzFvVUJ6RnJIRDJ1Y1ZnMTNXN1lGTFNwSVlQVXAwdHViWnU2bk5CdTIwSFVDZHlkOWFsci9WMTZSV3NyNDNwL2VXdzhlaUc0UHhWTHNsZGJjN2xsbDRMa1VHczd6WUZ6YjQwUTliQUQ3QkhmckRFSE9tY2kzazRwVTc2aFgvU1pzbzV2amdlempEbGtkZzM5NHluR042c2xubGZKZXFiT0xObUNtQk50RUhYQ1ZoYXp0WkRUcDF4TUtId2M3TmFETlZQei9DclhxSnRaQnR6RVJ3NmI0Mk5KYmlNeXJTTTVpZ2lxMlpnTjczaDV5MndtK0ZpTUswSnoxVjJ0cDRxZTlmQW8ybFZQNUl1SmM4VmVsZHB3YnR3dmppYk80ZTVPek9sUUkwK0VFd1NwOVVWRjJFblRQWmc5UXJXY1N6STJ0VHJBMW10ZTE2VjFOVU4zNy9XNDRkK0RjOFBNOXEvLzlmM3hZNForY3JiY1ZHUFNDdU0xOVltKytKcEYxWnpkMExoWjN2K2x5dk1FQU1YRzEzTUpuLzEzUlh6aFNRMGRocnNZOGM2alJIWXIxdjFHTEZFNUQwejRvWStMT3VDTjhUWmt5Zm9ISTdhTGl6Q2FETnduZWJudGFsbDlHQ0EvbFp3Sm5CamxRZXZUMkE0bHdVV3B1MjhGZzJvaUNUcEh3MTduWmx4SGxjWDc1ZHpXKzE5L2hHekFhWVFlQzNlS1VibW5nZHM3R3pmOXhtQ0ttUXBLeC9nV3JGellOdE02bit0bVlIQmRCdk9UcnpCSTVNcS8wN2xERWtUUnpHM3ZsbEI2TzRjdG1LUDQ1ZXBhMUtwQmxPQm5PTC9zSHFlRlJ2REJhRjlUcGt3anRRaCtBd09LMDBSaStDb1kzMEszQkZwUEhYZDBQRXhJTDZpTVF5akNuY1o5SHRTU1lsYy9sc1dWUmtiS0xBZ2RwajdTR09CeSsyVmVoTjAvYzFoa05JUUY4UzkxdU1JTVN1bHVJRTJhLzVEa1pqZzlndUt3S2ZJWS9wcUROaGNvRmlkNkxDUXFQYVNoeHhCK0N1V1ovd3l6Y1pkdkJjNVhaQXRBSjRnckNSaGJpcGt5NTU3WUpPb3dmZHMyNEl5RzhoWXBsdzJnUkRtVkxRVW1mdHVDKzl3ZlFoK0lsc2lZQnZITGJGb0ZMR0NQV3pjWnhrL1NKL0wzd2dWaXp6ektsWVhwSVF6cEhuZHd1aEk4cTZwb3dVcXBVUC9kZUMwZ2xqWHd2MkdDZTZvYmw3MHJjQXpOUER6bE01dUF0eVQrSWtYVEJpNUlaeTI4ZDcrKzB6b0E5UXlESVBNQ3YyUkxiclpBSmF0aHBPb0I1STNKa1ZtVC9DMWx3QlcyaGplUUJERTJ3OHV2QkFqL1lORUw4ZEdHeFR3cUhFKzkxc3pHQ24rczRIbXlQU25KYVlHak01Vk9zSW9lRm1pN0RoUmNtMlE3dURBbnR0c2NEZGxTeU4yaEVFUHRYeWJ6TnorY21KSXhJaG5LRkRRVUNwVU1DcVo5SzR2NlluUFlxRkRhamRXVHVPZmhpY2Mwc2d3M0NldDhZRlNabDZ0dDR1dUhrOUFiWjdFeWU0b2VDTXo1cG4wSFdhWlgvaUFDOUR1TCt3QzFYUnVnL3MraTliRzVZakN4bllDb0x0ZThPMXJWOXg2ZWZDa2xHby81TG83YWpkMDZyZU5sVDJIbDFHNWdIMjJhU0NBd1VHRG5GQlcySkxCZkk3emRUVEpRRW5vY3NXbzN4b29RaWdFd21vUzRjb0hqdm53OFJ2Tjd1cmJaT0R6Mk5mUDhHSldjZ2RnUGs1TXhJc2YzZjNYRUdrY1JmWmxwZ0thZlQ2WEtMMXVCQStobWZlc09DTmJyQ3o2OXZ5c2J1UjRFaFBJcEhTc1lWdTQ3WGNxU2pZV1U3LzQ0YjgyZlNiSy9JZ3BlcjNVcmo1dWFSM003QnkzU1dXRTlhVElTNFNxdUM3MkNBV2RHWk9CcHZmR3lqb0ltUktzcTJwdGs1dS9mRlpERjJBWWpUQmhQQkI0aWIrTzNoQ085SVNUQ2FldndZQ1k0Vm4wMXIrdWc4VzI1bVJJTlFBa2Z5VlJ2QzBZNHJjYVhlbklUZis0VjRwT2I1eXNaY3NmeWVyOHMwVHh3dHVSU2xHbXduSXllMjY4eGMzRSs0bzFJVmErMzhWaUxMNk9SckhKQ0d6T3EvQkZUS2FpVjk1dDJQSkd5M0czMUFvOHBjVzBvN0RlTklkN1RFeHZtMVcxdHhDQmc4Qnl2S1RKcHdWK0ZJOU01aVJuTDJqZE9nZlFhSWNKbitpQ1VpK2JXK1JqN0kzRndyVjlhSkthVW9lQTZERzBYQTNtLzVYd3R1MFdWd3lrdUd1MU1CR1RBVm9ZZm04U3pteVpnZDYrTUdpdGRwRGg0MzZoQ3VPdURvOWJRTDF4c09tUlRQVkJJYWplb0lOcFdKS2dIL2U2MlBOU0ViNytWSk0xbVRGU2VobDErWkgvLzZHTkg1SUVGK0xXb0REU05pZ3JFWHVwTnRrZHpOZTE4WkQ0Y2pFckc0Z0lSRjNCRDk5WFJUdEJ1bndncFAyLzI4SEpGTG96QjQvKzhNblUxUktLMXNjam1Jd0hxZXRhTFkzN2RDeks1RnorUzZINHJqQnd6ZnAyOXRaS1llb2M4akZENm8xRmFsbnc4akloSzhuNXUzUmdzbjNkMHhmaDVCTGNERGNCR0NXY0QvNG5hbG03a3hhZ0xTTXRtMEU5Uy83bWd5OUZaNVpWMnRwUkhrTEVwZi95alpkQU4zL3Q3YTAzQXFldjJnVWM5QW5Bb3hON2FkWlFtRFRRalBRUU9XMTdJQmlmYU1DaWtQUzJaUElsZTRWcDJnczRWOUxodzQyR2ttVTlMTUZxaTkrcUtKbTJGaVFISTA1VmhEWmE2MFdZckdnLzRNeG9iWEdQeE1mV2FIOE9RTnVjdVR5ZjZ3PT0uRGVyRUpHdmlmbE9FcnMxNXppbVIxa0JYdnRVWDQ4V0Juak1BREkzZ1d2cmZKVURoLTV2bXRkNW8wN0lEY0xlR0dMNFBoaEdjQWRvVjIxbnRSNDBzWkE="><input
+                                                            type="hidden" name="_eventId" value="submit"><input
+                                                            type="hidden" name="geolocation"><input type="hidden"
+                                                            name="fpVisitorId"
+                                                            value="c2787158719ee1a9c4a75189c6532c56"><input
+                                                            type="hidden" name="trustAgent" value=""><input
+                                                            name="submit" type="submit" value="Login1_m"
+                                                            style="display: none; width: 100%;">
+                                                    </form>
+                                                    <form class="el-form login-form" method="post" id="fm1Input"
+                                                        action="login">
+                                                        <div style="margin: 3rem 0px;">
+                                                            <div
+                                                                class="sw-input el-input el-input--prefix sw-input--circular">
+                                                                <div>
+                                                                    <div><input placeholder="请输入校园卡号" title="请输入校园卡号"
+                                                                            id="username" size="25" tabindex="1"
+                                                                            type="text" accesskey="n" autocomplete="off"
+                                                                            name="username" value=""
+                                                                            class="el-input__inner"></div>
+                                                                </div> <span class="el-input__prefix"><i
+                                                                        class="su-input-icon black su-input-icon-prefix el-input__icon su-icon-people"></i></span>
+                                                            </div>
+                                                        </div>
+                                                        <div style="margin: 3rem 0px 2rem;">
+                                                            <div
+                                                                class="sw-input el-input el-input--prefix el-input--suffix sw-input--circular">
+                                                                <div><input placeholder="请输入登录密码" title="请输入登录密码"
+                                                                        type="text" id="password" size="25" tabindex="2"
+                                                                        accesskey="p" autocomplete="off" name="password"
+                                                                        value="" class="el-input__inner"></div> <span
+                                                                    class="el-input__prefix"><i
+                                                                        class="su-input-icon black su-input-icon-prefix el-input__icon su-icon-lock"></i></span>
+                                                                <span class="el-input__suffix"><span
+                                                                        class="el-input__suffix-inner"
+                                                                        style="display: inline-block;"><i
+                                                                            onclick="javascript: togglePassword(this);"
+                                                                            class="el-input__icon el-input__clear su-icon-display"></i></span></span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="captcha-input-container"
+                                                            style="margin: 3rem 0px 2rem; display: none;">
+                                                            <div
+                                                                class="sw-input el-input el-input--prefix sw-input--circular">
+                                                                <div class="captcha-input"><input placeholder="请输入图片验证码"
+                                                                        title="请输入图片验证码" type="text" id="captcha"
+                                                                        name="captcha" tabindex="3" accesskey="c"
+                                                                        autocomplete="new-captcha"
+                                                                        class="form-control required el-input__inner"
+                                                                        style="width: 75%; display: inline-block;"><img
+                                                                        src="/cas/captcha.jpg" id="captcha_img"
+                                                                        onclick="javascript:refreshCaptcha(this);"
+                                                                        title="看不清，换一张！"
+                                                                        style="width: 20%; height: 6rem; display: inline-block; float: right;">
+                                                                </div> <span class="el-input__prefix"><i
+                                                                        class="su-input-icon black su-input-icon-prefix el-input__icon su-icon-dyncode"></i></span>
+                                                            </div>
+                                                        </div>
+                                                        <div style="display: flex; justify-content: flex-start;">
+                                                            <div id="loginError1" style="width: 100%;"></div>
+                                                        </div>
+                                                        <div style="margin: 3rem 0px 2rem;"><input name="button"
+                                                                accesskey="l" tabindex="6" type="button" value="登录"
+                                                                class="el-button el-button--primary el-button--medium is-round"
+                                                                style="width: 100%;"></div>
+                                                        <div style="display: flex; justify-content: space-between;">
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div> <!----> <!---->
+                        </div>
+                    </div>
+                    <div class="card mfa-m">
+                        <div class="van-overlay" style="z-index: 2001;"></div>
+                        <div class="van-popup van-popup--bottom" style="z-index: 2002;">
+                            <div class="sw-cas-safe-pop" style="width: 100%;">
+                                <div class="type-wrap">安全验证</div>
+                                <div class="check-tips"><img
+                                        src="/cas/themes/mf/images/tip.svg">当前登录环境异常，需通过安全验证确认是本人操作后才可继续登录。请选择安全验证方式！
+                                </div>
+                                <div class="check-tips" style="align-self: start;"><label class="el-checkbox"><span
+                                            class="el-checkbox__input"><span class="el-checkbox__inner"></span><input
+                                                type="checkbox" aria-hidden="false" class="el-checkbox__original"
+                                                value="true"></span><span
+                                            class="el-checkbox__label">登录成功后，设为可信客户端<!----></span></label></div>
+                                <div class="type-wrap">
+                                    <div class="el-row is-justify-space-between is-align-center el-row--flex">
+                                        <div class="safe-flex el-col el-col-12"><img
+                                                src="/cas/themes/mf/images/safe/qywx.png" alt="安全手机" title="安全手机"
+                                                class="safe-title-icon"><span class="type-title">使用企业微信验证</span></div>
+                                        <div class="safe-flex safe-flex2 el-col el-col-12"></div>
+                                    </div>
+                                </div> <!---->
+                                <div class="phone-style-wrap safe-wrap-content"
+                                    style="height: 10rem; padding-bottom: 0.2rem;">
+                                    <div class="phone-style" style=""><span>请在企业微信查看消息验证码</span><br> <a
+                                            href="http://m.nic.jxufe.edu.cn/news-show-1270.html" target="_blank"
+                                            style="color: rgb(102, 102, 102); font-size: 12px;">如有问题？点此求助</a></div>
+                                    <div class="code-wrap">
+                                        <div class="input-style el-input" style=""><!----><input type="text"
+                                                autocomplete="off" placeholder="请输入企微验证码"
+                                                class="el-input__inner"><!----><!----><!----><!----></div> <button
+                                            type="button" class="el-button code-text el-button--text"
+                                            style=""><!----><!----><span>获取验证码</span></button>
+                                        <div class="error-text"
+                                            style="position: relative; text-align: center; font-size: 2.4rem; display: none;">
+                                        </div>
+                                        <div class="error-text"
+                                            style="position: relative; text-align: center; font-size: 2.4rem; display: none;">
+                                            安全手机未绑定，无法使用安全手机验证</div>
+                                    </div>
+                                </div> <!----> <!---->
+                                <div class="btn-wrap" style="height: 5.5rem;"><!----> <button disabled="disabled"
+                                        type="button" class="el-button el-button--primary is-disabled is-round"
+                                        style=""><!----><!----><span>确 定</span></button> <!----> <!----></div>
+                            </div><i role="button" tabindex="0"
+                                class="van-icon van-icon-cross van-popup__close-icon van-popup__close-icon--top-right"><!----></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <script type="text/javascript">
+                var vant_ = vant;
+                Vue.use(vant_);
+            </script>
+
+
+            <script type="text/javascript">
+
+                function getQueryString(paramName) {
+                    var reg = new RegExp("(^|&)" + paramName + "=([^&]*)(&|$)");
+                    var r = window.location.search.substr(1).match(reg);
+                    if (r != null) return unescape(r[2]);
+                    return "";
+                }
+
+                var isDebug = getQueryString("debug") != null && getQueryString("debug") != "";
+
+                var isMobile = navigator.userAgent.match(/(phone|pad|pod|iPhone|iPod|ios|iPad|Android|Mobile|BlackBerry|IEMobile|MQQBrowser|JUC|Fennec|wOSBrowser|BrowserNG|WebOS|Symbian|Windows Phone)/i) != null;
+
+                var mobilePattern = new RegExp("^1[0-9]{10}$", 'i');
+
+                var registeredServiceName = "\u667A\u6167\u6C5F\u8D22\u7EFC\u5408\u670D\u52A1\u95E8\u6237\u5E73\u53F0";
+                console.log("registeredServiceName", registeredServiceName);
+
+                var globalI18n = eval('(' + "{\"screen.pm.button.forgotpwd\":\"\u5FD8\u8BB0\u5BC6\u7801\uFF1F\",\"screen.rememberme.checkbox.title\":\"\u8BB0\u4F4F\u6211\",\"screen.pm.button.submit\":\"\u63D0\u4EA4\",\"kimxz\":\"WPS \u534F\u4F5C\",\"screen.welcome.label.browsersupport\":\"\u6D4F\u89C8\u5668\u652F\u6301\",\"screen.captcha.warning\":\"\u60A8\u7684\u64CD\u4F5C\u7591\u4F3C\u5F02\u5E38\uFF0C\u8BF7\u8F93\u5165\u56FE\u5F62\u9A8C\u8BC1\u7801\",\"screen.welcome.label.password\":\"\u5BC6\u3000\u7801:\",\"workweixin\":\"\u4F01\u4E1A\u5FAE\u4FE1\",\"screen.scan.message.cancel\":\"\u53D6\u6D88\u767B\u5F55\",\"screen.scan.message.scaned\":\"\u626B\u7801\u6210\u529F\",\"screen.loginnotice.button.close\":\"\u6211\u77E5\u9053\u4E86\",\"qq\":\"\u817E\u8BAFQQ\",\"screen.sms.captcha.warning\":\"\u8BF7\u8F93\u5165\u56FE\u5F62\u9A8C\u8BC1\u7801\",\"screen.welcome.label.captcha\":\"\u9A8C\u8BC1\u7801:\",\"screen.welcome.label.netid\":\"\u7528\u6237\u540D:\",\"screen.captcha.title\":\"\u5B89\u5168\u9A8C\u8BC1\",\"screen.welcome.button.send.token\":\"\u53D1\u9001\u52A8\u6001\u7801\",\"screen.welcome.label.dynamiccode\":\"\u52A8\u6001\u7801:\",\"screen.welcome.label.netid.placeholder\":\"\u8BF7\u8F93\u5165\u7528\u6237\u540D\",\"screen.welcome.label.loginwith\":\"\u5176\u4ED6\u65B9\u5F0F\u767B\u5F55\",\"screen.notice.button.close\":\"\u6211\u77E5\u9053\u4E86\",\"screen.welcome.button.loginwip\":\"\u7A0D\u7B49\u7247\u523B\u2026\u2026\",\"screen.pm.button.downloadapp\":\"\u4E0B\u8F7D APP\",\"screen.pm.button.cancel\":\"\u53D6\u6D88\",\"cas.login.by.password\":\"\u8D26\u53F7\u5BC6\u7801\",\"screen.scan.message.submit\":\"\u786E\u8BA4\u767B\u5F55\",\"screen.welcome.label.mobile.placeholder\":\"\u8BF7\u8F93\u5165\u624B\u673A\u53F7\",\"dingtalk\":\"\u9489\u9489\",\"screen.rememberpass.checkbox.title\":\"\u8BB0\u4F4F\u5BC6\u7801\",\"cas.login.by.scan\":\"\u626B\u7801\u767B\u5F55\",\"screen.welcome.label.captcha.placeholder\":\"\u8BF7\u8F93\u5165\u56FE\u7247\u9A8C\u8BC1\u7801\",\"screen.welcome.label.dynamiccode.placeholder\":\"\u8BF7\u8F93\u5165\u52A8\u6001\u5BC6\u7801\",\"alipay\":\"\u652F\u4ED8\u5B9D\",\"screen.loginnotice.button.view\":\"\u67E5\u770B\",\"screen.notice.title\":\"\u8FD0\u7EF4\u516C\u544A\",\"cas.login.by.sms\":\"\u624B\u673A\u52A8\u6001\u7801\",\"screen.welcome.label.captcha.refresh\":\"\u770B\u4E0D\u6E05\uFF0C\u6362\u4E00\u5F20\uFF01\",\"screen.welcome.label.password.placeholder\":\"\u8BF7\u8F93\u5165\u767B\u5F55\u5BC6\u7801\",\"screen.scan.message.expired\":\"\u4E8C\u7EF4\u7801\u5DF2\u5931\u6548\uFF0C\u70B9\u51FB\u5237\u65B0\",\"screen.scan.button.refresh\":\"\u5237\u65B0\u4E8C\u7EF4\u7801\",\"openweixin\":\"\u5FAE\u4FE1\",\"screen.scan.message.error\":\"\u51FA\u73B0\u5F02\u5E38\uFF0C\u70B9\u51FB\u5237\u65B0\",\"screen.welcome.label.mobile\":\"\u624B\u673A\u53F7:\",\"screen.pm.button.activeaccount\":\"\u6FC0\u6D3B\u8D26\u53F7\",\"screen.sms.captcha.title\":\"\u5B89\u5168\u9A8C\u8BC1\",\"screen.welcome.button.sendwip\":\"\u5DF2\u53D1\u9001\",\"screen.welcome.button.sending\":\"\u53D1\u9001\u4E2D\u2026\u2026\",\"screen.welcome.button.login\":\"\u767B\u5F55\",\"screen.loginnotice.title\":\"\u767B\u5F55\u516C\u544A\"}" + ')');
+                console.log("globalI18n", globalI18n);
+                var globalConfig = eval('(' + "{\"requestPerIPRateLimiter_enabled\":\"false\",\"mfaStrategyDynamic_usedAgentDetectorEnabled\":\"false\",\"casServerPrefix\":\"https:\/\/ssl.jxufe.edu.cn\/cas\",\"userLogin.kickoutEnabled\":\"false\",\"hmSiteId\":\"d605d8df6bf5ca8a54fe078683196518\",\"requestPerIPRateLimiter.requestsPerRateTime\":\"500\",\"isSuperApp\":false,\"lockTimeIntervalInfo\":\"1 \u5206\u949F\",\"isWechat\":false,\"secStrategyDynamic\":\"true\",\"mfaStrategyDynamic_externalNetworkLogin\":\"false\",\"mfaStrategyDynamic.usedAgentDetectorEnabled\":\"false\",\"copyrightContent\":\"\u6C5F\u897F\u8D22\u7ECF\u5927\u5B66  \u7248\u6743\u6240\u6709  \u00A92025\",\"secTypeFaceVerify\":\"false\",\"scanClientInfo\":\"\u4F7F\u7528\u5FAE\u4FE1\u6216\u8005\u4F01\u4E1A\u5FAE\u4FE1\u626B\u4E00\u626B\u767B\u5F55\",\"accountAbnormal.kickoutEnabled\":\"false\",\"refererLimit\":\"false\",\"superappName\":\"\u8D85\u7EA7APP\",\"localeEnabled\":\"false\",\"mfaEnabled\":\"true\",\"isMobile\":true,\"secTypeSecurePhone\":\"true\",\"logoM\":\"cas-server-site-ui__20250728__b9800e0c-d264-4f3c-8324-ad045198f850__56635fd14399311c33d5ff4317d3892c.png\",\"netidPlaceholder\":\"\u8BF7\u8F93\u5165\u6821\u56ED\u5361\u53F7\",\"passkeyEnabled\":true,\"lockTimeIntervalInSecond\":60,\"rememberMe_timeToKillInSeconds\":\"0\",\"captchaSkipN\":\"3\",\"mfaTypeQrCode\":\"true\",\"mfaStrategyDynamic.longTermNoLogin\":\"false\",\"authxServiceRedirectUrl\":\"https:\/\/authx-service.jxufe.edu.cn\/\",\"mfaStrategyWhitelistGroup\":\"62fc4d50920111f0a38586e7b1e4f870\",\"userPasswordChanged_kickoutEnabled\":\"false\",\"secTypeAppPush\":\"false\",\"bg\":\"cas-server-site-ui__20260120__dad3a801-2d62-4179-9b69-09bab20a9195__\u8BA4\u8BC1\u767B\u5F55\u98751.png\",\"isDingtalk\":false,\"mobileEnabled\":false,\"passwordPlaceholder\":\"\u8BF7\u8F93\u5165\u767B\u5F55\u5BC6\u7801\",\"mfaStrategyDynamic_userNonCompletedSkip\":\"true\",\"mfaStrategyStatic\":\"false\",\"loginNoticeShowMode\":\"2\",\"rememberMe.timeToKillInSeconds\":\"0\",\"inputMessageType\":\"custom\",\"encryptEnabled\":\"false\",\"mfaStrategyDynamic.userNonCompletedSkip\":\"true\",\"mfaStrategyDynamic_longTermNoLogin\":\"false\",\"mfaTypeAppPush\":\"false\",\"inputMessage\":\"\u8BF7\u8F93\u5165\u6821\u56ED\u5361\u53F7\",\"mfaTypeSecureEmail\":\"false\",\"customEntryName\":\"\u5FEB\u901F\u5165\u53E3\",\"mfaStrategyDynamic.trustAgentDetectorEnabled\":\"true\",\"secTypeOtp\":\"false\",\"mfaStrategyDynamic.ipDetectorType\":\"false\",\"mfaStrategyDynamic.recentSilenceInDays\":\"30\",\"mfaStrategyDynamic.recentIpSilenceInDays\":\"30\",\"showLogo\":\"true\",\"successRedirectUrl\":\"http:\/\/ehall.jxufe.edu.cn\",\"mfaStrategyDynamic_trustIpDetectorEnabled\":\"false\",\"iconImageUrl\":\"cas-server-site-ui__20250724__8e14f618-cd21-47d1-9b80-6d062202d47b__logo-login_-_\u526F\u672C.png\",\"loginNoticeContent\":\"\u767B\u5F55\u9047\u5230\u95EE\u9898\u8BF7\u70B9\u51FB\u53F3\u8FB9\u201C\u667A\u6167\u6C5F\u8D22\u5BA2\u670D\u201D\u54A8\u8BE2\uFF01\",\"language\":\"zh\",\"mfaStrategyDynamic_loginIpDetectorEnabled\":\"false\",\"rememberPasswordEnabled\":\"false\",\"tracePathSuffix\":\"\",\"lockTimeLengthInSecond\":300,\"mfaStrategyDynamic\":\"true\",\"emailAddressEnabled\":false,\"isWxamp\":false,\"mfaStrategyDynamic.externalNetworkLogin\":\"false\",\"logo\":\"cas-server-site-ui__20250728__27524363-410d-41f7-9ca9-27c91b477430__56635fd14399311c33d5ff4317d3892c.png\",\"mfaStrategyDynamic.loginIpDetectorEnabled\":\"false\",\"hideWrittenoffAccount\":\"false\",\"requestPerIPRateLimiter.enabled\":\"false\",\"requestPerIPRateLimiter.rateTime\":\"5\",\"mfaStrategyDynamic_recentSilenceInDays\":\"30\",\"webFavicon\":\"cas-server-site-ui__20250801__1c504847-4350-4de6-959d-7e721d89c87d__favicon_(1).ico\",\"useDefaultEnabled\":\"true\",\"secTimeSilenceInMinutes\":\"10\",\"bgM\":\"cas-server-site-ui__20250728__b7bcfeae-3a01-49e7-92e0-5cef07c832c2__APP.png\",\"secTypeSecureEmail\":\"true\",\"mfaFirstNeed\":\"true\",\"requestUriForRateLimit\":\"POST \/cas\/mfa\/detect,POST \/cas\/login\",\"userLogin_kickoutEnabled\":\"false\",\"mfaStrategyDynamic.trustIpDetectorEnabled\":\"false\",\"mfaTypeOtp\":\"false\",\"schemeColor\":\"C3282E\",\"mfaTypeFaceVerify\":\"false\",\"MF_SERVER_URL\":\"https:\/\/ssl.jxufe.edu.cn\/mf\",\"secSkipIfSecAccountsNull\":\"false\",\"smsCodeEnabled\":false,\"mfServerUrl\":\"https:\/\/ssl.jxufe.edu.cn\/mf\",\"requestPerIPRateLimiter_requestsPerRateTime\":\"500\",\"lockErrorTimes\":1000,\"qrCodeEnabled\":true,\"traceNode\":\"NONE\",\"userPasswordChanged.kickoutEnabled\":\"false\",\"mfaTypeSecurePhone\":\"true\",\"mfaStrategyDynamic.longTermNoLoginDays\":\"180\",\"passkeyRegisterRedirectUrl\":\"https:\/\/authx-service.jxufe.edu.cn\/security-center\/safe-config\",\"lockTimeLengthInfo\":\"5 \u5206\u949F\",\"mfaStrategyDynamic_ipDetectorType\":\"false\",\"mfaStrategyDynamic_longTermNoLoginDays\":\"180\",\"mfaStrategyDynamic_usedIpDetectorEnabled\":\"false\",\"webTitle\":\"\u6C5F\u897F\u8D22\u7ECF\u5927\u5B66\u7EDF\u4E00\u8EAB\u4EFD\u8BA4\u8BC1\",\"mfaStrategyDynamic_recentIpSilenceInDays\":\"30\",\"secEnabled\":\"false\",\"isWorkweixin\":false,\"mfaStrategyDynamic.usedIpDetectorEnabled\":\"false\",\"secStrategyStaticFirst\":\"false\",\"priorityPcWay\":\"account\",\"mfLayout\":\"newCenter\",\"requestPerIPRateLimiter_rateTime\":\"5\",\"identityNoEnabled\":false,\"accountAbnormal_kickoutEnabled\":\"false\",\"mfaStrategyDynamic_trustAgentDetectorEnabled\":\"true\"}" + ')');
+                globalConfig.registeredServiceName = registeredServiceName;
+                console.log("globalConfig", globalConfig);
+
+                // globalConfig.passkeyEnabled = true;
+                /* 
+                console.log("window.isPasskeySupport", window.isPasskeySupport);
+                if (!window.isPasskeySupport) {
+                  globalConfig.passkeyEnabled = false;
+                }
+                */
+
+
+                var dialogVisible = false;
+
+                var superappName = "\u8D85\u7EA7APP";
+
+                // account 账号密码、smsCode 手机动态密码、qrCode 扫码登录、passkey 通行密码
+                var priorityPcWay = "account";
+
+                // 1 账号密码、2 手机动态密码、3 扫码登录、4 通行密码
+                var defaultMenu = "1";
+                if (priorityPcWay) {
+                    if (priorityPcWay == "account") {
+                        defaultMenu = "1";
+                    }
+                    else if (priorityPcWay == "smsCode") {
+                        defaultMenu = "2";
+                    }
+                    else if (priorityPcWay == "qrCode") {
+                        if (!isMobile) {
+                            defaultMenu = "3";
+                        }
+                    }
+                    else if (priorityPcWay == "passkey") {
+                        defaultMenu = "4";
+                    }
+                }
+                console.log("defaultMenu", defaultMenu);
+
+
+                var loginType = getQueryString("loginType");
+
+                var qrCodeEnabled = true;
+                var isQrcode = false;
+
+                // var currentMenu = null;
+                var currentMenu = localStorage.currentMenu;
+
+                if (currentMenu) {
+
+                } else {
+                    if (loginType === "") {
+                        currentMenu = defaultMenu;
+                    } else {
+                        currentMenu = loginType;
+                    }
+                }
+
+                if (currentMenu == 3) {
+                    if (qrCodeEnabled == true || qrCodeEnabled == 'true') {
+                        currentMenu = defaultMenu;
+                        isQrcode = true;
+                    } else {
+                        currentMenu = defaultMenu;
+                        isQrcode = false;
+                    }
+                }
+                console.log("isQrcode", isQrcode);
+                console.log("currentMenu", currentMenu);
+
+                localStorage.currentMenu = this.currentMenu;
+
+                var activeMenu = parseInt(localStorage.activeMenu || "0");
+
+                var rememberPasswordEnabled = "false" == 'true';
+                var rememberPassword = localStorage.rememberPassword == "true";
+                console.log("rememberPassword", rememberPasswordEnabled, rememberPassword);
+
+                var localeEnabled = "false";
+                var language = "zh";
+                console.log("language", language);
+
+
+                // var icon = "\/cas\/file\/png\/icon.png";
+                var logo = "\/cas\/file\/png\/logo.png" + "?" + encodeURIComponent(globalConfig.logo);
+                var bg = "\/cas\/file\/png\/bg.png" + "?" + encodeURIComponent(globalConfig.bg);
+
+                var logoM = "\/cas\/file\/png\/logoM.png" + "?" + encodeURIComponent(globalConfig.logoM);
+                var bgM = "\/cas\/file\/png\/bgM.png" + "?" + encodeURIComponent(globalConfig.bgM);
+
+                var bg1 = "\/cas\/file\/png\/bg1.png" + "?" + encodeURIComponent(globalConfig.bg1);
+                var bg2 = "\/cas\/file\/png\/bg2.png" + "?" + encodeURIComponent(globalConfig.bg2);
+                var bg3 = "\/cas\/file\/png\/bg3.png" + "?" + encodeURIComponent(globalConfig.bg3);
+
+                var ppts = [];
+                var backgrounds = [];
+
+                if (ppts != null) {
+                    for (var i = 0; i < ppts.length; i++) {
+                        backgrounds[i] = ppts[i].fileurl;
+                    }
+                }
+
+                if (backgrounds == null || backgrounds.length == 0) {
+                    backgrounds = [bg];
+                    if (globalConfig.bg1) {
+                        backgrounds.push(bg1);
+                    }
+                    if (globalConfig.bg2) {
+                        backgrounds.push(bg2);
+                    }
+                    if (globalConfig.bg3) {
+                        backgrounds.push(bg3);
+                    }
+                }
+
+
+                var customEntryLinks = [];
+
+                var customEntryLink1Name = null;
+                var customEntryLink1Url = null;
+                var customEntryLink2Name = null;
+                var customEntryLink2Url = null;
+                var customEntryLink3Name = null;
+                var customEntryLink3Url = null;
+                var customEntryLink4Name = null;
+                var customEntryLink4Url = null;
+
+                if ((customEntryLink1Name != null && customEntryLink1Name != '') && (customEntryLink1Url != null && customEntryLink1Url != '')) {
+                    customEntryLinks.push({ "name": customEntryLink1Name, "url": customEntryLink1Url });
+                }
+                if ((customEntryLink2Name != null && customEntryLink2Name != '') && (customEntryLink2Url != null && customEntryLink2Url != '')) {
+                    customEntryLinks.push({ "name": customEntryLink2Name, "url": customEntryLink2Url });
+                }
+                if ((customEntryLink3Name != null && customEntryLink3Name != '') && (customEntryLink3Url != null && customEntryLink3Url != '')) {
+                    customEntryLinks.push({ "name": customEntryLink3Name, "url": customEntryLink3Url });
+                }
+                if ((customEntryLink4Name != null && customEntryLink4Name != '') && (customEntryLink4Url != null && customEntryLink4Url != '')) {
+                    customEntryLinks.push({ "name": customEntryLink4Name, "url": customEntryLink4Url });
+                }
+
+                var showLink = customEntryLinks.length > 0;
+                var showLessLink = customEntryLinks.length < 4;
+
+
+                var loadComponent = null;
+
+                var showQrCode = false;
+
+                //
+                var layoutCom = null;
+                var backgroudCom = null;
+                var logoCom = null;
+                var languageCom = null;
+                var announcementCom = null;
+                var noticeCom = null;
+                var customLinkCom = null;
+                var copyrightCom = null;
+                var browserSupportCom = null;
+
+                var passwordLoginCom = null;
+                var smsCodeLoginCom = null;
+                var passkeyLoginCom = null;
+                var scanLoginCom = null;
+                var federatedLoginCom = null;
+                var quickLinkCom = null;
+                var noticeBoardCom = null;
+
+
+                var _superappDownloadQrCodeImgUrl = "\/cas\/qr\/generator.png";
+
+                var _federatedUrls = [{ "name": "\u5FAE\u4FE1", "redirectUrl": "\/federatedRedirect?service=http:\/\/ehall.jxufe.edu.cn\/amp-auth-adapter\/loginSuccess?sessionToken%3Dac0c5b822f54425792837523d049b655\u0026federatedName=openweixin", "type": "openweixin", "cssClass": "", "autoRedirect": false }, { "name": "\u4F01\u4E1A\u5FAE\u4FE1", "redirectUrl": "\/federatedRedirect?service=http:\/\/ehall.jxufe.edu.cn\/amp-auth-adapter\/loginSuccess?sessionToken%3Dac0c5b822f54425792837523d049b655\u0026federatedName=workweixin", "type": "workweixin", "cssClass": "", "autoRedirect": false }];
+
+                var _backgrounds = backgrounds;
+                var _logo = logo;
+                var _language = language;
+
+
+                var _i18n = globalI18n;
+                var _config = globalConfig;
+
+            </script>
+
+            <!-- 登录表单 提交 -->
+            <script type="text/javascript">
+
+                function submitFm1() {
+                    // $("#fm1").submit();
+                    $("#fm1").find(":submit").click();
+                }
+                function submitFm2() {
+                    // $("#fm2").submit();
+                    $("#fm2").find(":submit").click();
+                }
+                function submitFm4() {
+                    // $("#fm4").submit();
+                    $("#fm4").find(":submit").click();
+                }
+
+                <!-- 城市热点 -->
+                function submitFm9() {
+                    // $("#fm9").submit();
+                    $("#fm9").find(":submit").click();
+                }
+
+            </script>
+
+            <!-- 城市热点 -->
+            <script type="text/javascript">
+
+                var drcomIPLoginEnabled = false == true;
+                var drcomIPSuccess = null == true;
+                var isDrcomIPLoginAuto = drcomIPLoginEnabled && drcomIPSuccess && ((localStorage.isDrcomIPLoginAuto || "false") == "true");
+
+            </script>
+
+
+            <!-- 双因子 -->
+            <script type="text/javascript">
+
+                //双因子
+                var mfaEnabled = "true" == "true";
+
+                var mfaTypeAppPush = "false" == "true";
+                var mfaTypeSecurePhone = "true" == "true";
+                var mfaTypeSecureEmail = "false" == "true";
+                var mfaTypeQrCode = "true" == "true";
+                var mfaTypeFaceVerify = "false" == "true";
+                var mfaTypeOtp = "false" == "true";
+
+                if (isMobile) {
+                    mfaTypeQrCode = false;
+                    mfaTypeFaceVerify = false;
+                }
+
+                var typeList = ['使用App推送认证', '使用安全手机认证', '使用安全邮箱认证', '使用客户端扫码', '使用人脸识别认证'];
+
+                var safeIcon2 = [
+                    "\/cas\/themes\/mf\/images\/safe\/app2.png",
+                    "\/cas\/themes\/mf\/images\/safe\/phone2.png",
+                    "\/cas\/themes\/mf\/images\/safe\/email2.png",
+                    "\/cas\/themes\/mf\/images\/safe\/qrcode2.png",
+                    "\/cas\/themes\/mf\/images\/safe\/face2.png",
+                    "\/cas\/themes\/mf\/images\/safe\/otp2.png"
+                ];
+                var safeIcon = [
+                    "\/cas\/themes\/mf\/images\/safe\/app.png",
+                    "\/cas\/themes\/mf\/images\/safe\/phone.png",
+                    "\/cas\/themes\/mf\/images\/safe\/email.png",
+                    "\/cas\/themes\/mf\/images\/safe\/qrcode.png",
+                    "\/cas\/themes\/mf\/images\/safe\/face.png",
+                    "\/cas\/themes\/mf\/images\/safe\/otp.png"
+                ];
+                var typeInfo = [
+                    { 'type': 'apppush', 'enabled': mfaTypeAppPush, 'title': 'APP推送', 'info': '使用APP推送验证', 'icon': "\/cas\/themes\/mf\/images\/safe\/app.png", 'icon2': "\/cas\/themes\/mf\/images\/safe\/app2.png" },
+                    { 'type': 'securephone', 'enabled': mfaTypeSecurePhone, 'title': '安全手机', 'info': '使用安全手机验证', 'icon': "\/cas\/themes\/mf\/images\/safe\/phone.png", 'icon2': "\/cas\/themes\/mf\/images\/safe\/phone2.png" },
+                    { 'type': 'secureemail', 'enabled': mfaTypeSecureEmail, 'title': '安全邮箱', 'info': '使用安全邮箱验证', 'icon': "\/cas\/themes\/mf\/images\/safe\/email.png", 'icon2': "\/cas\/themes\/mf\/images\/safe\/email2.png" },
+                    { 'type': 'qrcode', 'enabled': mfaTypeQrCode, 'title': '客户端扫码', 'info': '使用客户端扫码', 'icon': "\/cas\/themes\/mf\/images\/safe\/qrcode.png", 'icon2': "\/cas\/themes\/mf\/images\/safe\/qrcode2.png" },
+                    { 'type': 'faceverify', 'enabled': mfaTypeFaceVerify, 'title': '人脸识别', 'info': '使用人脸识别验证', 'icon': "\/cas\/themes\/mf\/images\/safe\/face.png", 'icon2': "\/cas\/themes\/mf\/images\/safe\/face2.png" },
+                    { 'type': 'otp', 'enabled': mfaTypeOtp, 'title': 'OTP令牌', 'info': '使用OTP令牌验证', 'icon': "\/cas\/themes\/mf\/images\/safe\/otp.png", 'icon2': "\/cas\/themes\/mf\/images\/safe\/otp2.png" },
+                ];
+
+                var defaultTypeIndex = -1;
+                if (mfaTypeAppPush) {
+                    defaultTypeIndex = 0;
+                } else if (mfaTypeSecurePhone) {
+                    defaultTypeIndex = 1;
+                } else if (mfaTypeSecureEmail) {
+                    defaultTypeIndex = 2;
+                } else if (mfaTypeQrCode) {
+                    defaultTypeIndex = 3;
+                } else if (mfaTypeFaceVerify) {
+                    defaultTypeIndex = 4;
+                } else if (mfaTypeOtp) {
+                    defaultTypeIndex = 5;
+                }
+
+                if (!isMobile) {
+                    defaultTypeIndex = 3;
+                }
+
+                if (isMobile) {
+                    var typeInfo = [
+                        { 'type': 'apppush', 'enabled': mfaTypeAppPush, 'title': 'APP推送', 'info': '使用APP推送验证', 'icon': "\/cas\/themes\/mf\/images\/safe\/app.png", 'icon2': "\/cas\/themes\/mf\/images\/safe\/app2.png" },
+                        { 'type': 'securephone', 'enabled': mfaTypeSecurePhone, 'title': '安全手机', 'info': '使用企业微信验证', 'icon': "\/cas\/themes\/mf\/images\/safe\/qywx.png", 'icon2': "\/cas\/themes\/mf\/images\/safe\/phone2.png" },
+                        { 'type': 'secureemail', 'enabled': mfaTypeSecureEmail, 'title': '安全邮箱', 'info': '使用安全邮箱验证', 'icon': "\/cas\/themes\/mf\/images\/safe\/email.png", 'icon2': "\/cas\/themes\/mf\/images\/safe\/email2.png" },
+                        { 'type': 'qrcode', 'enabled': mfaTypeQrCode, 'title': '客户端扫码', 'info': '使用客户端扫码', 'icon': "\/cas\/themes\/mf\/images\/safe\/qrcode.png", 'icon2': "\/cas\/themes\/mf\/images\/safe\/qrcode2.png" },
+                        { 'type': 'faceverify', 'enabled': mfaTypeFaceVerify, 'title': '人脸识别', 'info': '使用人脸识别验证', 'icon': "\/cas\/themes\/mf\/images\/safe\/face.png", 'icon2': "\/cas\/themes\/mf\/images\/safe\/face2.png" },
+                        { 'type': 'otp', 'enabled': mfaTypeOtp, 'title': 'OTP令牌', 'info': '使用OTP令牌验证', 'icon': "\/cas\/themes\/mf\/images\/safe\/otp.png", 'icon2': "\/cas\/themes\/mf\/images\/safe\/otp2.png" },
+                    ];
+                }
+
+                function mfaDetect() {
+                    if (!mfaEnabled) {
+                        submitFm1();
+                        return;
+                    }
+
+                    var username = $("#fm1").find("#username").val();
+                    var password = $("#fm1").find("#password").val();
+                    var fpVisitorId = $("#fm1").find('[name="fpVisitorId"]').val();
+
+                    var fpVisitorId = $("#fm1").find('[name="fpVisitorId"]').val();
+
+                    if (encryptEnabled && password.indexOf('__RSA__') < 0) {
+                        var encodedPassword = "__RSA__" + encrypt.encrypt(password);
+                        password = encodedPassword;
+                    }
+
+                    var url = "\/cas\/mfa\/detect";
+                    //  url += "?username=" + username;
+                    $.ajax({
+                        url: url,
+                        type: "POST",
+                        dataType: "json",
+                        data: "username=" + encodeURIComponent(username) + "&password=" + encodeURIComponent(password) + "&fpVisitorId=" + encodeURIComponent(fpVisitorId),
+                        success: function success(r) {
+                            console.log(url, r);
+                            if (r && r.code == 0) {
+                                var state = r.data.state;
+                                $("#fm1").find('[name="mfaState"]').val(state);
+
+                                var need = r.data.need;
+                                if (need == true) {
+                                    $("#showGuardDialog").click();
+                                } else {
+                                    submitFm1();
+                                }
+                            } else {
+                                console.log(r);
+                                // submitFm1();
+                            }
+                        },
+                        error: function error(err) {
+                            console.log(err);
+                            // submitFm1();
+                        }
+                    });
+
+                }
+            </script>
+
+            <!-- 账号激活、忘记密码 链接地址 -->
+            <script type="text/javascript">
+                function __newForgotYourPassword() {
+                    return "\/cas\/personal\/forgotYourPassword?service=http:\/\/ehall.jxufe.edu.cn\/amp-auth-adapter\/loginSuccess?sessionToken%3Dac0c5b822f54425792837523d049b655";
+                }
+
+                function __newActiveYourAccount() {
+                    return "\/cas\/personal\/activeYourAccount?service=http:\/\/ehall.jxufe.edu.cn\/amp-auth-adapter\/loginSuccess?sessionToken%3Dac0c5b822f54425792837523d049b655";
+                }
+            </script>
+
+            <!-- 扫码登录 -->
+            <script type="text/javascript">
+
+                // 扫码成功
+                // 确认登录
+                // 取消登录
+                // 二维码已失效，点击刷新
+                // 出现异常，点击刷新
+                var scanMessageScaned = "\u626B\u7801\u6210\u529F"
+                var scanMessageSubmit = "\u786E\u8BA4\u767B\u5F55"
+                var scanMessageCancel = "\u53D6\u6D88\u767B\u5F55"
+                var scanMessageExpired = "\u4E8C\u7EF4\u7801\u5DF2\u5931\u6548\uFF0C\u70B9\u51FB\u5237\u65B0"
+                var scanMessageError = "\u51FA\u73B0\u5F02\u5E38\uFF0C\u70B9\u51FB\u5237\u65B0"
+
+                var __qrcodeImgUrl = "\/cas\/qr\/qrcode";
+                var __qrCometUrl = "\/cas\/qr\/comet";
+
+                var __qrcodeCometTimeout = 0;
+
+                function __newQrCodeImgUrl() {
+                    var qrcodeImgUrl = __qrcodeImgUrl + "?r=" + (new Date()).getTime() + Math.floor(Math.random() * 24) + (isDebug ? "&debug=debug" : "");
+                    return qrcodeImgUrl;
+                }
+
+                function __renewQrCodeStatus(isQrcodeAlert, qrcodeAlertMessage, stateKey, clearTimeout) {
+                    scanLoginCom.isQrcodeAlert = isQrcodeAlert;
+                    scanLoginCom.qrcodeAlertMessage = qrcodeAlertMessage;
+
+                    vm.qrCodeStateKey = stateKey; // console.log(vm.qrCodeStateKey, stateKey);
+
+                    if (clearTimeout) {
+                        window.clearTimeout(__qrcodeCometTimeout);
+                    }
+                }
+
+                function __refreshQrCode() {
+                    scanLoginCom.qrcodeImgUrl = __newQrCodeImgUrl();
+
+                    __renewQrCodeStatus(false, '', '', true);
+
+                    __startQrComet();
+                }
+
+                function __startQrComet() {
+                    window.clearTimeout(__qrcodeCometTimeout); // 开启定时
+
+                    function qrComet() {
+                        var url = __qrCometUrl;
+                        $.ajax({
+                            url: url,
+                            type: "POST",
+                            dataType: "json",
+                            timeout: 1000,
+                            success: function success(r) {
+                                // console.log(r);
+                                if (r && r.code == 0) {
+                                    var stateKey = r.data.stateKey;
+                                    var qrCode = r.data.qrCode;
+
+                                    if (qrCode.status == "1") {
+                                        // 1 创建、未扫码
+                                        __renewQrCodeStatus(false, '', '');
+                                    } else if (qrCode.status == "2") {
+                                        // 2 已扫码
+                                        __renewQrCodeStatus(true, scanMessageScaned, '');
+                                    } else if (qrCode.status == "3") {
+                                        // 3 已授权
+                                        __renewQrCodeStatus(true, scanMessageSubmit, stateKey, true);
+                                        window.setTimeout(function () {
+                                            $("#fm3").submit();
+                                        }, 500);
+                                    } else if (qrCode.status == "4") {
+                                        // 4 已取消
+                                        __renewQrCodeStatus(true, scanMessageCancel, '', true);
+                                    }
+                                } else if (r && r.code == 1) {
+                                    __renewQrCodeStatus(true, scanMessageExpired, '', true);
+                                } else {
+                                    __renewQrCodeStatus(true, scanMessageError, '', true);
+                                }
+                            }
+                        });
+                        __qrcodeCometTimeout = window.setTimeout(qrComet, 2000);
+                    }
+
+                    __qrcodeCometTimeout = window.setTimeout(qrComet, 2000);
+                }
+
+                var _qrcodeImage = {
+                    qrcode: "\/cas\/themes\/mf\/images\/qrcode.svg",
+                    normal: "\/cas\/themes\/mf\/images\/pc-login.svg"
+                };
+
+                function _changeMenu(index) {
+                    this.currentMenu = index;
+                    // TODO: refreshCaptchaInMenu(this.currentMenu);
+                    localStorage.currentMenu = this.currentMenu;
+
+                    currentMenu = this.currentMenu;
+                    localStorage.currentMenu = this.currentMenu;
+                }
+
+                function _openOrCloseQrCode() {
+                    this.isQrcode = !this.isQrcode;
+
+                    __renewQrCodeStatus(false, '', '', true);
+
+                    if (this.isQrcode) {
+                        __refreshQrCode();
+                        localStorage.currentMenu = 3;
+                    } else {
+                        if (currentMenu == 3) {
+                            this.currentMenu = 1;
+                        } else {
+                            this.currentMenu = currentMenu;
+                        }
+                        localStorage.currentMenu = this.currentMenu;
+                    }
+
+                    currentMenu = this.currentMenu;
+                }
+
+                function _showQrCode() {
+                    showQrCode = true;
+                }
+
+            </script>
+
+            <!-- 密码登录、手机动态码登录 -->
+            <script type="text/javascript">
+                async function _passkeyLogin() {
+                    if (!webauthnJson.supported() || !isPasskeySupport) {
+                        $("#showErrorMessagePasskeyNotSupport").click();
+                        return false;
+                    }
+
+                    var username = $("#fm4").find("#username").val();
+                    if (username == null || username == '') {
+                        // $("#showErrorMessageUsername").click();
+                        // return false;
+                        $("#fm4").find("#username").val("passkey");
+                    }
+
+                    var data = await authenticate();
+                    // console.log("authenticate data", data);
+                    if (data && data.success) {
+                        $("#fm4").find("#token").val(data.sessionToken);
+
+                        window.setTimeout(function () {
+                            submitFm4();
+                        }, 500);
+                    } else {
+                        $("#showErrorMessagePasskeyFail").click();
+                        return false;
+                    }
+
+                    return false;
+                }
+
+                function _passwordLogin() {
+                    console.log("submit button click");
+                    var username = $("#fm1").find("#username").val();
+                    var password = $("#fm1").find("#password").val();
+                    if (username == null || username == '') {
+                        $("#showErrorMessageUsername").click();
+                        return false;
+                    }
+
+                    if (password == null || password == '') {
+                        $("#showErrorMessagePassword").click();
+                        return false;
+                    }
+
+                    window.setTimeout(function () {
+                        mfaDetect();
+                    }, 500);
+
+                    return false;
+                }
+
+
+                var i_sendToken = "\u53D1\u9001\u52A8\u6001\u7801"
+                var i_sending = "\u53D1\u9001\u4E2D\u2026\u2026"
+                var i_send = "\u5DF2\u53D1\u9001"
+
+                function _smsCodeSend() {
+                    var self = this;
+
+                    var mobile = $("#fm2").find("#username").val();
+                    var captcha = $("#fm2").find("#captcha").val();
+
+                    if (mobile == null || mobile == '') {
+                        self.disableSendToken = false;
+                        $("#showErrorMessageMobile").click();
+                        return;
+                    }
+                    if (!mobilePattern.test(mobile)) {
+                        self.disableSendToken = false;
+                        $("#showErrorMessageMobile").click();
+                        return;
+                    }
+
+                    var time = 60;
+                    var setSended = function () {
+                        self.sendButtonText = (i_send + '(' + time + ')');
+
+                        time--;
+                        if (time > 0) {
+                            setTimeout(setSended, 1000);
+                        } else {
+                            self.disableSendToken = false;
+
+                            self.sendButtonDisable = false;
+                            self.sendButtonText = i_sendToken;
+                        }
+                    }
+
+                    $.ajax({
+                        url: "\/cas\/passwordlessTokenSend",
+                        type: "POST",
+                        data: { "username": mobile, "captcha": captcha },
+                        dataType: "json",
+                        success: function (r) {
+                            console.log(r);
+
+                            if (r.data.success) {
+                                // 提示信息
+                                $("#showSuccessMessageSendCode").click();
+                                // 倒计时 60s
+                                time = 60;
+                                setSended();
+                            }
+
+                            if (r.data.error) {
+                                $("#showFailureMessageSendCode").click();
+                                time = 0;
+                                setSended();
+                            }
+                        }
+                    });
+                }
+
+                function _smsCodeLogin() {
+                    var mobile = $("#fm2").find("#username").val();
+                    var dynamiccode = $("#fm2").find("#password").val();
+                    var captcha = $("#fm2").find("#captcha").val();
+
+                    if (mobile == null || mobile == '') {
+                        $("#showErrorMessageMobile").click();
+                        return false;
+                    }
+                    if (!mobilePattern.test(mobile)) {
+                        $("#showErrorMessageMobile").click();
+                        return false;
+                    }
+
+                    if (dynamiccode == null || dynamiccode == '') {
+                        $("#showErrorMessageDynamicCode").click();
+                        return false;
+                    }
+
+                    window.setTimeout(function () {
+                        submitFm2();
+                    }, 500);
+
+                    return false;
+                }
+            </script>
+
+            <!-- 公告 -->
+            <script type="text/javascript">
+
+                function _openNotice() {
+                    vm.noticeDialogVisible = true;
+                }
+
+            </script>
+
+
+            <!-- 图片验证码 -->
+            <script type="text/javascript">
+
+                var __captchaImgUrl = "\/cas\/captcha.jpg";
+                function __newCaptchaImgUrl() {
+                    var captchaImgUrl = __captchaImgUrl + "?r=" + (new Date()).getTime() + Math.floor(Math.random() * 24);
+                    return captchaImgUrl;
+                }
+
+                function __refreshCaptcha(loginType) {
+                    if ("passwordLogin" == loginType) {
+                        passwordLoginCom.captcha = ""
+                        passwordLoginCom.captchaImgUrl = __newCaptchaImgUrl();
+                    } else if ("smsCodeLogin" == loginType) {
+                        smsCodeLoginCom.captcha = ""
+                        smsCodeLoginCom.captchaImgUrl = __newCaptchaImgUrl();
+                    }
+                }
+
+            </script>
+
+
+            <!-- 记住密码，仅 移动浏览器 -->
+            <script type="text/javascript">
+                function doRememberPassword(username, password) {
+                    var containerFormInput = $("#fm1Input");
+                    var rememberPasswordObj = containerFormInput.find('[name="rememberPassword"]');
+                    if (rememberPasswordObj && rememberPasswordObj.length > 0) {
+                        var rememberPassword = rememberPasswordObj.prop('checked');
+                        if (rememberPassword) {
+                            var savedUsername = username;
+                            var savedPassword = password.indexOf('__RSA__') < 0 ? "__RSA__" + encrypt.encrypt(password) : password;
+
+                            localStorage.rememberPassword = true;
+                            localStorage.savedUsername = savedUsername;
+                            localStorage.savedPassword = savedPassword;
+                        } else {
+                            localStorage.rememberPassword = false;
+                            localStorage.savedUsername = "";
+                            localStorage.savedPassword = "";
+                        }
+                    }
+                }
+
+                function initRememberPassword() {
+                    var containerFormInput = $("#fm1Input");
+                    var rememberPasswordObj = containerFormInput.find('[name="rememberPassword"]');
+                    if (rememberPasswordObj && rememberPasswordObj.length > 0) {
+                        var rememberPassword = localStorage.rememberPassword == "true";
+                        if (rememberPassword) {
+                            var savedUsername = localStorage.savedUsername || "";
+                            var savedPassword = localStorage.savedPassword || "";
+
+                            containerFormInput.find('[name="username"]').val(savedUsername);
+                            containerFormInput.find('[name="password"]').val(savedPassword);
+
+                            containerFormInput.find('[name="username"]').focus(function () { this.select(); });
+                            containerFormInput.find('[name="password"]').focus(function () { this.select(); });
+
+                            containerFormInput.find('[name="username"]').keyup(function () {
+                                var thisUsername = containerFormInput.find('[name="username"]').val();
+                                if (thisUsername == savedUsername) {
+                                    containerFormInput.find('[name="password"]').val(savedPassword);
+                                } else {
+                                    containerFormInput.find('[name="password"]').val("");
+                                }
+                            });
+                        }
+                    }
+                }
+            </script>
+
+            <!-- 登录失败，处理失败 --><!-- 图片验证码 -->
+            <script type="text/javascript">
+                // 登录失败，处理失败
+                function processLoginError(containerFormInput, containerForm, originalUsername, hasErrors, errors, loginType) {
+                    console.log(containerForm);
+                    console.log(originalUsername);
+                    console.log(hasErrors);
+                    console.log(errors);
+
+                    doLoginFailN(containerFormInput, containerForm, originalUsername, hasErrors, errors, loginType);
+                }
+
+                var casServerPasswordlessCaptchaEnabled = null;
+
+                var casServerCaptchaEnabled = true;
+                var casServerCaptchaSkipN = true;
+                var captchaSkipN = "3";
+
+                var casServerCaptchaShow = false;
+
+                // 提交登录时，记录登录次数、登录时间
+                function doLogin() {
+                    var loginN = (localStorage.loginN || "0");
+                    if (loginN == null) {
+                        loginN = "0";
+                    }
+
+                    loginN = parseInt(loginN) + 1;
+                    localStorage.loginN = loginN;
+
+                    var nowTimestamp = new Date().getTime();
+                    localStorage.loginNTimestamp = nowTimestamp;
+                }
+
+                //登录失败时，记录失败次数、失败时间，并显示 图片验证码
+                function doLoginFailN(containerFormInput, containerForm, originalUsername, hasErrors, errors, loginType) {
+
+                    var failN = (localStorage.failN || "0");
+                    if (failN == null) {
+                        failN = "0";
+                    }
+
+                    if (hasErrors) {
+                        failN = parseInt(failN) + 1;
+                        localStorage.failN = failN;
+
+                        var nowTimestamp = new Date().getTime();
+                        localStorage.failNTimestamp = nowTimestamp;
+                    }
+
+                    doErrorShow(containerForm, hasErrors, errors, loginType);
+                    doCaptchaShow(containerFormInput, containerForm, failN, loginType);
+                }
+
+                function doErrorShow(containerForm, hasErrors, errors, loginType) {
+                    if (!hasErrors) {
+                        return;
+                    }
+
+                    // 显示错误信息
+                    var error = errors[0];
+
+                    if ("passwordLogin" == loginType) {
+                        if (passwordLoginCom) {
+                            passwordLoginCom.loginError = error;
+                        }
+                    } else if ("smsCodeLogin" == loginType) {
+                        if (smsCodeLoginCom) {
+                            smsCodeLoginCom.loginError = error;
+                        }
+                    }
+
+                }
+
+                // 显示 图片验证码
+                function doCaptchaShow(containerFormInput, containerForm, failN, loginType) {
+                    console.log('show captcha, failN=' + failN + ", captchaSkipN=" + captchaSkipN);
+
+                    var fialNInput = containerForm.find('[name="failN"]');
+                    fialNInput.val(failN);
+
+                    /* var captchaInput = containerFormInput.find('[name="captcha"]');  // console.log(captchaInput.parents("div.el-form-item"));
+                    if (captchaInput.length <= 0) {
+                      return;
+                    }
+                    
+                    captchaInput.parents("div.captcha-input-container").hide();
+                  
+                    if (failN < 0) {
+                      captchaInput.parents("div.captcha-input-container").show();
+                    } else if (failN >= captchaSkipN) {
+                      captchaInput.parents("div.captcha-input-container").show();
+                    } */
+
+                    var isCaptchaShow = false;
+                    if (failN < 0) {
+                        isCaptchaShow = true;
+                    } else if (failN >= captchaSkipN) {
+                        isCaptchaShow = true;
+                    }
+
+                    if ("passwordLogin" == loginType) {
+                        if (passwordLoginCom) {
+                            passwordLoginCom.isCaptchaShow = isCaptchaShow;
+                        }
+                    } else if ("smsCodeLogin" == loginType) {
+                        if (smsCodeLoginCom) {
+                            smsCodeLoginCom.isCaptchaShow = isCaptchaShow;
+                        }
+                    }
+
+                    var captchaInput = containerFormInput.find('[name="captcha"]');
+                    if (captchaInput.length <= 0) {
+                        return;
+                    }
+
+                    captchaInput.parents("div.captcha-input-container").hide();
+                    casServerCaptchaShow = false;
+                    if (isCaptchaShow) {
+                        captchaInput.parents("div.captcha-input-container").show();
+                        casServerCaptchaShow = true;
+                    }
+                }
+
+                // 判断是否显示 图片验证码
+                function initCaptchaShow(containerFormInput, containerForm, loginType) {
+                    if (casServerCaptchaEnabled) {
+                        if (casServerCaptchaSkipN) {
+                            var loginN = (localStorage.loginN || "0");
+                            if (loginN == null) {
+                                loginN = "0";
+                            }
+                            loginN = parseInt(loginN);
+
+                            var failN = (localStorage.failN || "0");
+                            if (failN == null) {
+                                failN = "0";
+                            }
+                            failN = parseInt(failN);
+
+                            var failNTimestamp = (localStorage.failNTimestamp || "0");
+                            if (failNTimestamp == null) {
+                                failNTimestamp = "0";
+                            }
+
+                            var nowTimestamp = new Date().getTime();
+                            console.log('init captcha, failNTimestamp=' + failNTimestamp + ", nowTimestamp=" + nowTimestamp);
+                            if (failNTimestamp < (nowTimestamp - (1000 * 60 * 60 * 1))) { // FIXME: 如果 1小时后，再登录，则清空 failN
+                                loginN = 0;
+                                localStorage.loginN = loginN;
+                                failN = 0;
+                                localStorage.failN = failN;
+                            }
+
+                            if (failN < loginN) {
+                                loginN = 0;
+                                localStorage.loginN = loginN;
+                                failN = 0;
+                                localStorage.failN = failN;
+                            }
+
+                            doCaptchaShow(containerFormInput, containerForm, failN, loginType); // 显示
+                        } else {
+                            doCaptchaShow(containerFormInput, containerForm, -1, loginType); // 始终显示
+                        }
+                    }
+                }
+            </script>
+
+
+            <!-- PC登录页面 加载 -->
+            <script type="text/javascript">
+                var SwUI = SWUI;
+                Vue.use(SwUI)
+
+                var vm = new Vue({
+                    el: '#vue_main',
+                    data: function data() {
+                        return {
+                            isMobile: isMobile,
+
+                            customEntryLinks: customEntryLinks,
+                            showLink: showLink,
+                            showLessLink: showLessLink,
+
+                            dialogVisible: dialogVisible,
+
+                            noticeDialogVisible: false,
+
+                            passwordLoginUsername: "",
+                            passwordLoginPassword: "",
+                            passwordLoginCaptcha: "",
+                            passwordLoginRememberMe: false,
+
+                            smsCodeLoginUsername: "",
+                            smsCodeLoginPassword: "",
+                            smsCodeLoginCaptcha: "",
+
+                            passkeyLoginUsername: "",
+
+                            qrCodeStateKey: "",
+
+
+                            active: activeMenu,
+
+                            logoM: logoM,
+                            bgM: bgM,
+
+                            jointActive: -1,
+                            loading: false,
+
+                            rememberPassword: localStorage.rememberPassword == "true",
+
+                            // 城市热点
+                            drcomIPLoginEnabled: drcomIPLoginEnabled,
+                            drcomIPDialogVisible: drcomIPSuccess,
+                            isDrcomIPLoginAuto: isDrcomIPLoginAuto,
+                            drcomIPLoginAutoEnabled: isDrcomIPLoginAuto,
+                            drcomIPLoginAutoTimeout: 0,
+                            drcomIPLoginButtonText: "上网账号快速登录",
+
+                            // 双因子认证
+                            mfaEnabled: mfaEnabled,
+                            guardDialogVisible: false,
+
+                            typeList: typeList,
+                            iconIndex: 0,  //安全验证方式   0：app 推送；1：安全手机； 2：安全邮箱  3：人脸识别
+                            safeIcon2: safeIcon2,
+                            safeIcon: safeIcon,
+                            typeInfo: typeInfo,
+                            typeIndex: defaultTypeIndex,  //安全验证方式   0：app 推送；1：安全手机； 2：安全邮箱  3：客户端扫码  4：人脸识别
+
+                            showError: false,  //是否显示验证码错误
+                            faceType: 1,  // 人脸识别认证状态  1  扫描二维码  2 刷新二维码  3 扫描成功
+
+
+                            attestServerUrl: null,
+                            gid: null,
+
+                            trustAgent: false,
+
+                            appPushSendTimeout: 0,
+                            appPushSendDisabled: false,
+                            appPushSendText: "点击发送验证请求",
+                            appPushSendSeconds: 30,
+                            appPushStatusTimeout: 0,
+                            appPushStatusShowAlert: false,
+                            appPushStatusAlertMessage: null,
+                            appPushCallbackCode: null,
+
+                            otpSecret: '',
+                            otpSendTimeout: 0,
+                            otpSendDisabled: false,
+                            otpSendText: "获取验证码",
+                            otpSendSeconds: 60,
+                            otpCode: '',
+                            otpValidShowAlert: false,
+                            otpValidAlertMessage: null,
+
+                            securePhone: '',
+                            securePhoneSendTimeout: 0,
+                            securePhoneSendDisabled: false,
+                            securePhoneSendText: "获取验证码",
+                            securePhoneSendSeconds: 60,
+                            securePhoneCode: '',
+                            securePhoneValidShowAlert: false,
+                            securePhoneValidAlertMessage: null,
+
+                            secureEmail: '',
+                            secureEmailSendTimeout: 0,
+                            secureEmailSendDisabled: false,
+                            secureEmailSendText: "获取验证码",
+                            secureEmailSendSeconds: 60,
+                            secureEmailCode: '',
+                            secureEmailValidShowAlert: false,
+                            secureEmailValidAlertMessage: null,
+
+                            qrCode: null,
+                            qrCodeScanTypeNames: "",
+                            qrCodeScanQrcode: null,
+                            qrCodeScanSuccess: false,
+                            qrCodeStatusTimeout: 0,
+                            qrCodeStatusShowAlert: false,
+                            qrCodeStatusAlertMessage: null,
+                            qrCodeCallbackCode: null,
+
+
+                            faceVerify: null,
+                            faceVerifyScanFaceverify: null,
+                            faceVerifyScanSuccess: false,
+                            faceVerifyStatusTimeout: 0,
+                            faceVerifyStatusShowAlert: false,
+                            faceVerifyStatusAlertMessage: null,
+                            faceVerifyCallbackCode: null,
+
+                        };
+                    },
+                    mounted: function mounted() {
+                        if (!isMobile) {
+                            if (loadComponent) {
+                                loadComponent();
+                            }
+
+                            /* if (this.isQrcode) {
+                              // 显示二维码
+                              var self = this;
+                              self.isQrcodeAlert = false;
+                              self.qrcodeAlertMessage = "";
+                              self.stateKey = "";
+                              this.qrcodeImgUrl = "\/cas\/qr\/qrcode"+"?r=" +(new Date()).getTime()+ Math.floor(Math.random()*24) + (isDebug?"&debug=debug":"");
+                              this.startQrComet();
+                            } */
+
+                            // 城市热点
+                            if (this.isDrcomIPLoginAuto) {
+                                var drcomIPCloseButton = $("#drcomIPClose");
+                                var drcomIPLoginButton = $("#drcomIPLogin");
+
+                                drcomIPCloseButton.css("display", "none")
+                                drcomIPLoginButton.css("display", "inline")
+
+                                this.drcomIPLoginAutoSubmit();
+                            } else {
+                                var drcomIPCloseButton = $("#drcomIPClose");
+                                var drcomIPLoginButton = $("#drcomIPLogin");
+
+                                drcomIPCloseButton.css("display", "inline-block")
+                                drcomIPLoginButton.css("display", "inline-block")
+                            }
+
+                        }
+                    },
+                    methods: {
+                        changeActive: function changeActive(index) {
+                            localStorage.activeMenu = index
+                        },
+                        // 城市热点
+                        drcomIPLogin: function drcomIPLogin() {
+                            if (this.isDrcomIPLoginAuto) {
+                                this.drcomIPLoginAutoCancel();
+                            } else {
+                                if (this.drcomIPLoginAutoEnabled) {
+                                    localStorage.isDrcomIPLoginAuto = "true";
+                                } else {
+                                    localStorage.isDrcomIPLoginAuto = "false";
+                                }
+                                submitFm9();
+                            }
+                        },
+                        drcomIPLoginAutoSubmit: function drcomIPLoginAutoSubmit() {
+                            var self = this;
+                            var isDrcomIPLoginAuto = localStorage.isDrcomIPLoginAuto || "false";
+                            if (isDrcomIPLoginAuto == "true") {
+                                var drcomIPLoginButton = $("#drcomIPLogin");
+
+                                var time = 5;
+                                var autoSubmit = function () {
+                                    drcomIPLoginButton.find('span').text(self.drcomIPLoginButtonText + '(' + time + ' 秒后自动登录，点击可取消)');
+
+                                    time--;
+                                    if (time >= 0) {
+                                        self.drcomIPLoginAutoTimeout = window.setTimeout(autoSubmit, 1000);
+                                    } else {
+                                        submitFm9();
+                                    }
+                                }
+
+                                self.drcomIPLoginAutoTimeout = window.setTimeout(autoSubmit, 1);
+                            }
+                        },
+                        drcomIPLoginAutoCancel: function drcomIPLoginAutoCancel() {
+                            var self = this;
+
+                            window.clearTimeout(self.drcomIPLoginAutoTimeout);
+                            self.isDrcomIPLoginAuto = false;
+                            self.drcomIPLoginAutoEnabled = false;
+
+                            var drcomIPLoginButton = $("#drcomIPLogin");
+                            drcomIPLoginButton.find('span').text(self.drcomIPLoginButtonText);
+
+                            var drcomIPCloseButton = $("#drcomIPClose");
+                            var drcomIPLoginButton = $("#drcomIPLogin");
+
+                            drcomIPCloseButton.css("display", "inline-block")
+                            drcomIPLoginButton.css("display", "inline-block")
+
+                            localStorage.isDrcomIPLoginAuto = "false";
+                        },
+
+                        /* closeNotice: function closeNotice() {
+                          this.noticeDialogVisible = false;
+                        }, */
+
+                        /* handleClose: function handleClose() {
+                          this.dialogVisible = false;
+                        }, */
+
+                        showErrorMessageUsername: function showErrorMessageUsername() {
+                            // var message = "\u8BF7\u8F93\u5165\u7528\u6237\u540D" + "\u8BF7\u8F93\u5165\u6821\u56ED\u5361\u53F7";
+                            var message = "\u8BF7\u8F93\u5165\u6821\u56ED\u5361\u53F7";
+                            this.$message.error(message);
+                        },
+                        showErrorMessagePassword: function showErrorMessagePassword() {
+                            // var message = "\u8BF7\u8F93\u5165\u767B\u5F55\u5BC6\u7801";
+                            var message = "\u8BF7\u8F93\u5165\u767B\u5F55\u5BC6\u7801";
+                            this.$message.error(message);
+                        },
+                        showErrorMessageCaptcha: function showErrorMessageCaptcha() {
+                            var message = "\u8BF7\u8F93\u5165\u56FE\u7247\u9A8C\u8BC1\u7801";
+                            this.$message.error(message);
+                        },
+                        showErrorMessageMobile: function showErrorMessageMobile() {
+                            var message = "\u8BF7\u8F93\u5165\u624B\u673A\u53F7";
+                            this.$message.error(message);
+                        },
+                        showErrorMessageDynamicCode: function showErrorMessageDynamicCode() {
+                            var message = "\u8BF7\u8F93\u5165\u52A8\u6001\u5BC6\u7801";
+                            this.$message.error(message);
+                        },
+                        showSuccessMessageSendCode: function showSuccessMessageSendCode() {
+                            var message = "\u5DF2\u53D1\u9001";
+                            this.$message.info(message);
+                        },
+                        showFailureMessageSendCode: function showFailureMessageSendCode() {
+                            var message = "\u53D1\u9001\u5931\u8D25";
+                            this.$message.error(message);
+                        },
+
+                        showErrorMessagePasskeyNotSupport: function showErrorMessagePasskeyNotSupport() {
+                            var message = "当前设备不支持通行密钥";
+                            this.$message.error(message);
+                        },
+                        showErrorMessagePasskeyFail: function showErrorMessagePasskeyFail() {
+                            var message = "通行密钥验证失败，请确认当前设备的通行密钥和您的账号是否已绑定、或绑定关系是否已删除";
+                            this.$message.error(message);
+                        },
+
+
+                        // 双因子
+                        showGuardDialog: function showGuardDialog() {
+                            var self = this;
+                            this.clearAppPushStatus();
+                            this.clearSecurePhone();
+                            this.clearSecureEmail();
+                            this.clearQrCode();
+                            this.clearFaceVerify();
+                            this.clearOtp();
+
+                            this.typeIndex = defaultTypeIndex;
+                            this.guardDialogVisible = true;
+
+                            this.trustAgent = false;
+
+                            this.changeGuard(defaultTypeIndex);
+                        },
+                        hideGuardDialog: function hideGuardDialog() {
+                            var self = this;
+                            this.clearAppPushStatus();
+                            this.clearSecurePhone();
+                            this.clearSecureEmail();
+                            this.clearQrCode();
+                            this.clearFaceVerify();
+                            this.clearOtp();
+
+                            this.typeIndex = defaultTypeIndex;
+                            this.guardDialogVisible = false;
+
+                            $("#fm1").find('[name="mfaState"]').val('');
+                            $("#fm1").find('[name="trustAgent"]').val('');
+                        },
+
+                        submitForm: function submitForm() {
+                            $("#fm1").find('[name="trustAgent"]').val(this.trustAgent);
+                            submitFm1();
+                        },
+
+                        changeGuard: function changeGuard(index) {
+                            var self = this;
+                            this.clearAppPushStatus();
+                            this.clearSecurePhone();
+                            this.clearSecureEmail();
+                            this.clearQrCode();
+                            this.clearFaceVerify();
+                            this.clearOtp();
+
+                            this.typeIndex = index;
+
+                            this.initGuard();
+                        },
+
+                        initGuard: function initGuard() {
+                            var self = this;
+
+                            var type = this.typeInfo[this.typeIndex].type;
+                            var state = $("#fm1").find('[name="mfaState"]').val();
+
+                            var url = "\/cas\/mfa\/initByType" + "/" + type;
+                            url += "?state=" + state;
+                            $.ajax({
+                                type: "GET",
+                                url: url,
+                                dataType: "json",
+                                success: function success(r) {
+                                    console.log(url, r);
+                                    if (r && r.code == 0) {
+                                        self.attestServerUrl = r.data.attestServerUrl;
+                                        self.gid = r.data.gid;
+
+                                        if (type == "apppush") {
+
+                                        } else if (type == "securephone") {
+                                            self.securePhone = r.data.securePhone;
+                                        } else if (type == "secureemail") {
+                                            self.secureEmail = r.data.secureEmail;
+                                        } else if (type == "qrcode") {
+                                            self.qrCode = r.data.qrCode;
+                                            self.qrCodeInit();
+                                        } else if (type == "faceverify") {
+                                            self.faceVerifyInit();
+                                        } else if (type == "otp") {
+                                            self.otpSecret = r.data.otpSecret;
+                                            if (self.otpSecret) {
+                                                self.otpSend();
+                                            }
+                                        }
+                                    } else {
+                                        self.attestServerUrl = null;
+                                        self.gid = null;
+
+                                        self.securePhone = null;
+                                        self.secureEmail = null;
+
+                                        self.qrCode = null;
+
+                                        self.otpSecret = null;
+                                    }
+                                },
+                                error: function error(err) {
+                                    self.attestServerUrl = null;
+                                    self.gid = null;
+
+                                    self.securePhone = null;
+                                    self.secureEmail = null;
+
+                                    self.qrCode = null;
+
+                                    self.otpSecret = null;
+                                }
+                            });
+                        },
+
+                        appPushSend: function appPushSend() {
+                            var self = this;
+
+                            function appPushSendCountDown() {
+                                self.appPushSendSeconds--;
+
+                                self.appPushSendDisabled = true;
+                                self.appPushSendText = "点击发送验证请求" + "(" + self.appPushSendSeconds + ")";
+
+                                self.appPushSendTimeout = window.setTimeout(appPushSendCountDown, 1000);
+
+                                if (self.appPushSendSeconds <= 0) {
+                                    window.clearTimeout(self.appPushSendTimeout);
+
+                                    self.appPushSendDisabled = false;
+                                    self.appPushSendText = "点击发送验证请求";
+                                    self.appPushSendSeconds = 30;
+                                }
+                            }
+
+                            self.appPushSendDisabled = true;
+
+                            var url = self.attestServerUrl + '/api/guard/apppush/send';
+                            var postdata = { "gid": self.gid };
+
+                            $.ajax({
+                                type: "POST",
+                                url: url,
+                                contentType: 'application/json; charset=UTF-8',
+                                data: JSON.stringify(postdata),
+                                dataType: "json",
+                                success: function success(r) {
+                                    console.log(url, r);
+
+                                    self.appPushSendDisabled = false;
+
+                                    if (r && r.code == 0 && r.data.callbackCode) {
+                                        self.appPushStatusShowAlert = false;
+                                        self.appPushStatusAlertMessage = "";
+
+                                        self.appPushCallbackCode = r.data.callbackCode;
+
+                                        self.startAppPushStatus();
+
+                                        appPushSendCountDown();
+                                    } else {
+
+                                        self.startAppPushStatus();
+                                    }
+                                },
+                                error: function error(err) {
+                                    console.log(err);
+
+                                    self.appPushSendDisabled = false;
+                                }
+                            });
+                        },
+                        startAppPushStatus: function startAppPushStatus() {
+                            var self = this;
+
+                            window.clearTimeout(self.appPushStatusTimeout); // 定时
+
+                            /*
+                             * status 
+                             * 0 init 新建、初始化, 
+                             * 1 sent 已发送、已扫码等, 
+                             * 2 valid 验证通过, 
+                             * 3 fail 验证失败, 
+                             * 5 cancel 取消, 
+                             * 9 expired 已过期、不存在
+                             */
+                            function appPushStatus() {
+                                var url = self.attestServerUrl + '/api/guard/apppush/status';
+                                var postdata = { "gid": self.gid };
+
+                                $.ajax({
+                                    type: "POST",
+                                    url: url,
+                                    contentType: 'application/json; charset=UTF-8',
+                                    data: JSON.stringify(postdata),
+                                    dataType: "json",
+                                    timeout: 1000,
+                                    success: function success(r) {
+                                        // console.log(url, r);
+                                        if (r && r.code == 0) {
+                                            var status = r.data.status;
+
+                                            if (status == 0) {
+
+                                                self.appPushStatusShowAlert = false;
+                                                self.appPushStatusAlertMessage = "";
+                                            } else if (status == 1) {
+
+                                                self.appPushStatusShowAlert = true;
+                                                self.appPushStatusAlertMessage = "等待确认";
+                                            } else if (status == 2) {
+
+                                                self.appPushStatusShowAlert = true;
+                                                self.appPushStatusAlertMessage = "已确认";
+
+                                                window.clearTimeout(self.appPushStatusTimeout);
+                                                window.setTimeout(function () {
+                                                    self.submitForm();
+                                                }, 500);
+                                            } else if (status == 3) {
+
+                                                self.appPushStatusShowAlert = true;
+                                                self.appPushStatusAlertMessage = "确认失败";
+
+                                                window.clearTimeout(self.appPushStatusTimeout);
+                                            } else if (status == 5) {
+
+                                                self.appPushStatusShowAlert = true;
+                                                self.appPushStatusAlertMessage = "已取消";
+
+                                                window.clearTimeout(self.appPushStatusTimeout);
+                                            } else if (status == 9) {
+
+                                                self.appPushStatusShowAlert = true;
+                                                self.appPushStatusAlertMessage = "已失效，请重新发送";
+
+                                                self.appPushCallbackCode = null;
+
+                                                window.clearTimeout(self.appPushStatusTimeout);
+
+                                                window.setTimeout(function () {
+                                                    self.initGuard();
+                                                }, 500);
+
+                                            }
+
+                                        } else {
+                                            window.clearTimeout(self.appPushStatusTimeout);
+                                        }
+                                    },
+                                    error: function error(err) {
+                                        console.log(err);
+                                        window.clearTimeout(self.appPushStatusTimeout);
+                                    }
+                                });
+
+                                self.appPushStatusTimeout = window.setTimeout(appPushStatus, 2000);
+                            }
+
+                            self.appPushStatusTimeout = window.setTimeout(appPushStatus, 100);
+                        },
+
+                        clearAppPushStatus: function clearAppPushStatus() {
+                            var self = this;
+
+                            window.clearTimeout(self.appPushSendTimeout);
+
+                            self.appPushSendDisabled = false;
+                            self.appPushSendText = "点击发送验证请求";
+                            self.appPushSendSeconds = 30;
+
+                            window.clearTimeout(self.appPushStatusTimeout);
+                            self.appPushStatusShowAlert = false;
+                            self.appPushStatusAlertMessage = "";
+
+                            self.appPushCallbackCode = null;
+                        },
+
+
+                        otpSend: function otpSend() {
+                            var self = this;
+
+                            var url = self.attestServerUrl + '/api/guard/otp/send';
+                            var postdata = { "gid": self.gid };
+
+                            $.ajax({
+                                type: "POST",
+                                url: url,
+                                contentType: 'application/json; charset=UTF-8',
+                                data: JSON.stringify(postdata),
+                                dataType: "json",
+                                success: function success(r) {
+                                    console.log(url, r);
+
+                                    /* if (r && r.code == 0) {
+                                      self.otpValidShowAlert = true;
+                                      self.otpValidAlertMessage = "已发送";
+                                    } else if (r && r.code != 0 && r.data.result == 'expired') {
+                                      self.otpValidShowAlert = true;
+                                      self.otpValidAlertMessage = "发送失败，已过期，请重新获取验证码";
+                                      
+                                      window.setTimeout(function () {
+                                        self.initGuard();
+                                      }, 500);
+                                    } else {
+                                      self.otpValidShowAlert = true;
+                                      self.otpValidAlertMessage = "发送失败";
+                                    } */
+                                },
+                                error: function error(err) {
+                                    console.log(err);
+
+                                    self.otpValidShowAlert = true;
+                                    self.otpValidAlertMessage = "发送失败";
+                                }
+                            });
+                        },
+                        otpValid: function otpValid() {
+                            var self = this;
+
+                            var url = self.attestServerUrl + '/api/guard/otp/valid';
+                            var postdata = { "gid": self.gid, "code": self.otpCode };
+
+                            $.ajax({
+                                type: "POST",
+                                url: url,
+                                contentType: 'application/json; charset=UTF-8',
+                                data: JSON.stringify(postdata),
+                                dataType: "json",
+                                success: function success(r) {
+                                    console.log(url, r);
+
+                                    if (r && r.code == 0) {
+                                        var status = r.data.status;
+
+                                        if (status == 2) {
+                                            // self.clearOtp();
+
+                                            window.setTimeout(function () {
+                                                self.submitForm();
+                                            }, 500);
+                                        } else {
+                                            self.otpValidShowAlert = true;
+                                            self.otpValidAlertMessage = "验证失败";
+                                        }
+                                    }
+
+                                },
+                                error: function error(err) {
+                                    console.log(err);
+                                }
+                            });
+                        },
+
+                        clearOtp: function clearOtp() {
+                            var self = this;
+
+                            self.otpSendDisabled = false;
+                            self.otpSendText = "获取验证码";
+                            self.otpSendSeconds = 60;
+
+                            self.otpCode = '';
+                            self.otpValidShowAlert = false;
+                            self.otpValidAlertMessage = "";
+                        },
+
+
+                        securePhoneSend: function securePhoneSend() {
+                            var self = this;
+
+                            function securePhoneSendCountDown() {
+                                self.securePhoneSendSeconds--;
+
+                                self.securePhoneSendDisabled = true;
+                                self.securePhoneSendText = "获取验证码" + "(" + self.securePhoneSendSeconds + ")";
+
+                                self.securePhoneSendTimeout = window.setTimeout(securePhoneSendCountDown, 1000);
+
+                                if (self.securePhoneSendSeconds <= 0) {
+                                    window.clearTimeout(self.securePhoneSendTimeout);
+
+                                    self.securePhoneSendDisabled = false;
+                                    self.securePhoneSendText = "获取验证码";
+                                    self.securePhoneSendSeconds = 60;
+                                }
+                            }
+
+                            self.securePhoneSendDisabled = true;
+
+                            var url = self.attestServerUrl + '/api/guard/securephone/send';
+                            var postdata = { "gid": self.gid };
+
+                            $.ajax({
+                                type: "POST",
+                                url: url,
+                                contentType: 'application/json; charset=UTF-8',
+                                data: JSON.stringify(postdata),
+                                dataType: "json",
+                                success: function success(r) {
+                                    console.log(url, r);
+
+                                    self.securePhoneSendDisabled = false;
+
+                                    if (r && r.code == 0) {
+                                        self.securePhoneValidShowAlert = true;
+                                        self.securePhoneValidAlertMessage = "已发送";
+
+                                        securePhoneSendCountDown();
+                                    } else if (r && r.code != 0 && r.data.result == 'expired') {
+                                        self.securePhoneValidShowAlert = true;
+                                        self.securePhoneValidAlertMessage = "发送失败，已过期，请重新获取验证码";
+
+                                        window.setTimeout(function () {
+                                            self.initGuard();
+                                        }, 500);
+                                    } else {
+                                        self.securePhoneValidShowAlert = true;
+                                        self.securePhoneValidAlertMessage = "发送失败";
+                                    }
+                                },
+                                error: function error(err) {
+                                    console.log(err);
+
+                                    self.securePhoneSendDisabled = false;
+
+                                    self.securePhoneValidShowAlert = true;
+                                    self.securePhoneValidAlertMessage = "发送失败";
+                                }
+                            });
+                        },
+                        securePhoneValid: function securePhoneValid() {
+                            var self = this;
+
+                            var url = self.attestServerUrl + '/api/guard/securephone/valid';
+                            var postdata = { "gid": self.gid, "code": self.securePhoneCode };
+
+                            $.ajax({
+                                type: "POST",
+                                url: url,
+                                contentType: 'application/json; charset=UTF-8',
+                                data: JSON.stringify(postdata),
+                                dataType: "json",
+                                success: function success(r) {
+                                    console.log(url, r);
+
+                                    if (r && r.code == 0) {
+                                        var status = r.data.status;
+
+                                        if (status == 2) {
+                                            // self.clearSecurePhone();
+
+                                            window.setTimeout(function () {
+                                                self.submitForm();
+                                            }, 500);
+                                        } else {
+                                            self.securePhoneValidShowAlert = true;
+                                            self.securePhoneValidAlertMessage = "验证失败";
+                                        }
+                                    }
+
+                                },
+                                error: function error(err) {
+                                    console.log(err);
+                                }
+                            });
+                        },
+
+                        clearSecurePhone: function clearSecurePhone() {
+                            var self = this;
+
+                            window.clearTimeout(self.securePhoneSendTimeout);
+
+                            self.securePhoneSendDisabled = false;
+                            self.securePhoneSendText = "获取验证码";
+                            self.securePhoneSendSeconds = 60;
+
+                            self.securePhoneCode = '';
+                            self.securePhoneValidShowAlert = false;
+                            self.securePhoneValidAlertMessage = "";
+                        },
+
+
+                        secureEmailSend: function secureEmailSend() {
+                            var self = this;
+
+                            function secureEmailSendCountDown() {
+                                self.secureEmailSendSeconds--;
+
+                                self.secureEmailSendDisabled = true;
+                                self.secureEmailSendText = "获取验证码" + "(" + self.secureEmailSendSeconds + ")";
+
+                                self.secureEmailSendTimeout = window.setTimeout(secureEmailSendCountDown, 1000);
+
+                                if (self.secureEmailSendSeconds <= 0) {
+                                    window.clearTimeout(self.secureEmailSendTimeout);
+
+                                    self.secureEmailSendDisabled = false;
+                                    self.secureEmailSendText = "获取验证码";
+                                    self.secureEmailSendSeconds = 60;
+                                }
+                            }
+
+                            self.secureEmailSendDisabled = true;
+
+                            var url = self.attestServerUrl + '/api/guard/secureemail/send';
+                            var postdata = { "gid": self.gid };
+
+                            $.ajax({
+                                type: "POST",
+                                url: url,
+                                contentType: 'application/json; charset=UTF-8',
+                                data: JSON.stringify(postdata),
+                                dataType: "json",
+                                success: function success(r) {
+                                    console.log(url, r);
+
+                                    self.secureEmailSendDisabled = false;
+
+                                    if (r && r.code == 0) {
+                                        self.secureEmailValidShowAlert = true;
+                                        self.secureEmailValidAlertMessage = "已发送";
+
+                                        secureEmailSendCountDown();
+                                    } else if (r && r.code != 0 && r.data.result == 'expired') {
+                                        self.securePhoneValidShowAlert = true;
+                                        self.securePhoneValidAlertMessage = "发送失败，已过期，请重新获取验证码";
+
+                                        window.setTimeout(function () {
+                                            self.initGuard();
+                                        }, 500);
+                                    } else {
+                                        self.secureEmailValidShowAlert = true;
+                                        self.secureEmailValidAlertMessage = "发送失败";
+                                    }
+                                },
+                                error: function error(err) {
+                                    console.log(err);
+
+                                    self.secureEmailSendDisabled = false;
+
+                                    self.secureEmailValidShowAlert = true;
+                                    self.secureEmailValidAlertMessage = "发送失败";
+                                }
+                            });
+                        },
+                        secureEmailValid: function secureEmailValid() {
+                            var self = this;
+
+                            var url = self.attestServerUrl + '/api/guard/secureemail/valid';
+                            var postdata = { "gid": self.gid, "code": self.secureEmailCode };
+
+                            $.ajax({
+                                type: "POST",
+                                url: url,
+                                contentType: 'application/json; charset=UTF-8',
+                                data: JSON.stringify(postdata),
+                                dataType: "json",
+                                success: function success(r) {
+                                    console.log(url, r);
+
+                                    if (r && r.code == 0) {
+                                        var status = r.data.status;
+
+                                        if (status == 2) {
+                                            // self.clearSecureEmail();
+
+                                            window.setTimeout(function () {
+                                                self.submitForm();
+                                            }, 500);
+                                        } else {
+                                            self.secureEmailValidShowAlert = true;
+                                            self.secureEmailValidAlertMessage = "验证失败";
+                                        }
+                                    }
+                                },
+                                error: function error(err) {
+                                    console.log(err);
+                                }
+                            });
+                        },
+
+                        clearSecureEmail: function clearSecureEmail() {
+                            var self = this;
+
+                            window.clearTimeout(self.secureEmailSendTimeout);
+
+                            self.secureEmailSendDisabled = false;
+                            self.secureEmailSendText = "获取验证码";
+                            self.secureEmailSendSeconds = 60;
+
+                            self.secureEmailCode = '';
+                            self.secureEmailValidShowAlert = false;
+                            self.secureEmailValidAlertMessage = "";
+                        },
+
+
+                        qrCodeInit: function qrCodeInit() {
+                            var self = this;
+
+                            if (self.qrCode == null || self.qrCode.scanTypes == null || self.qrCode.scanTypes.length == 0) {
+                                return;
+                            }
+
+                            var scanTypeNames = "";
+                            for (var i = 0; i < self.qrCode.scanTypes.length; i++) {
+                                var scanType = self.qrCode.scanTypes[i];
+                                if (scanType == "superapp") {
+                                    scanTypeNames += "、" + superappName;
+                                } else if (scanType == "qq") {
+                                    scanTypeNames += "、QQ";
+                                } else if (scanType == "weixinmp") {
+                                    scanTypeNames += "、微信";
+                                } else if (scanType == "workweixinh5") {
+                                    scanTypeNames += "、企业微信";
+                                } else if (scanType == "dingtalkh5") {
+                                    scanTypeNames += "、钉钉";
+                                }
+                            }
+                            if (scanTypeNames != "") {
+                                scanTypeNames = scanTypeNames.substring(1);
+                            }
+
+                            self.qrCodeScanTypeNames = scanTypeNames;
+
+                            self.qrCodeSend();
+                        },
+
+                        qrCodeSend: function qrCodeSend() {
+                            var self = this;
+
+                            var url = self.attestServerUrl + '/api/guard/qrcode/send';
+                            var postdata = { "gid": self.gid };
+
+                            $.ajax({
+                                type: "POST",
+                                url: url,
+                                contentType: 'application/json; charset=UTF-8',
+                                data: JSON.stringify(postdata),
+                                dataType: "json",
+                                success: function success(r) {
+                                    console.log(url, r);
+
+                                    if (r && r.code == 0 && r.data.scanQrcode) {
+                                        self.qrCodeStatusShowAlert = false;
+                                        self.qrCodeStatusAlertMessage = "";
+
+                                        self.qrCodeScanQrcode = r.data.scanQrcode;
+                                        self.qrCodeCallbackCode = r.data.callbackCode;
+
+                                        self.startQrCodeStatus();
+                                    } else {
+
+                                        self.startQrCodeStatus();
+                                    }
+                                },
+                                error: function error(err) {
+                                    console.log(err);
+                                }
+                            });
+                        },
+
+                        qrCodeRefresh: function qrCodeRefresh() {
+                            var self = this;
+
+                            self.clearQrCode();
+                            self.initGuard();
+                        },
+
+                        startQrCodeStatus: function startQrCodeStatus() {
+                            var self = this;
+
+                            window.clearTimeout(self.appPushStatusTimeout); // 定时
+
+                            /*
+                             * status 
+                             * 0 init 新建、初始化, 
+                             * 1 sent 已发送、已扫码等, 
+                             * 2 valid 验证通过, 
+                             * 3 fail 验证失败, 
+                             * 5 cancel 取消, 
+                             * 8 scaned 已扫码
+                             * 9 expired 已过期、不存在
+                             */
+                            function qrCodeStatus() {
+                                var url = self.attestServerUrl + '/api/guard/qrcode/status';
+                                var postdata = { "gid": self.gid };
+
+                                $.ajax({
+                                    type: "POST",
+                                    url: url,
+                                    contentType: 'application/json; charset=UTF-8',
+                                    data: JSON.stringify(postdata),
+                                    dataType: "json",
+                                    timeout: 1000,
+                                    success: function success(r) {
+                                        // console.log(url, r);
+                                        if (r && r.code == 0) {
+                                            var status = r.data.status;
+
+                                            if (status == 0) {
+
+                                                self.qrCodeScanSuccess = false;
+                                                self.qrCodeStatusShowAlert = false;
+                                                self.qrCodeStatusAlertMessage = "";
+                                            } else if (status == 1) {
+
+                                                self.qrCodeScanSuccess = false;
+                                                self.qrCodeStatusShowAlert = false;
+                                                self.qrCodeStatusAlertMessage = "";
+                                            } else if (status == 2) {
+
+                                                self.qrCodeScanSuccess = true;
+                                                self.qrCodeStatusShowAlert = true;
+                                                self.qrCodeStatusAlertMessage = "已确认";
+
+                                                window.clearTimeout(self.qrCodeStatusTimeout);
+                                                window.setTimeout(function () {
+                                                    self.submitForm();
+                                                }, 500);
+                                            } else if (status == 3) {
+
+                                                self.qrCodeScanSuccess = false;
+                                                self.qrCodeStatusShowAlert = true;
+                                                self.qrCodeStatusAlertMessage = "确认失败";
+
+                                                window.clearTimeout(self.qrCodeStatusTimeout);
+                                            } else if (status == 5) {
+
+                                                self.qrCodeScanSuccess = false;
+                                                self.qrCodeStatusShowAlert = true;
+                                                self.qrCodeStatusAlertMessage = "已拒绝";
+
+                                                window.clearTimeout(self.qrCodeStatusTimeout);
+                                            } else if (status == 8) {
+
+                                                self.qrCodeScanSuccess = true;
+                                                self.qrCodeStatusShowAlert = true;
+                                                self.qrCodeStatusAlertMessage = "已扫码，等待确认";
+                                            } else if (status == 9) {
+
+                                                self.qrCodeScanSuccess = false;
+                                                self.qrCodeStatusShowAlert = true;
+                                                self.qrCodeStatusAlertMessage = "已失效，请重新发送";
+
+                                                self.qrCodeCallbackCode = null;
+
+                                                window.clearTimeout(self.qrCodeStatusTimeout);
+
+                                                /* window.setTimeout(function () {
+                                                  self.initGuard();
+                                                }, 500); */
+
+                                            }
+
+                                        } else {
+                                            window.clearTimeout(self.qrCodeStatusTimeout);
+                                        }
+                                    },
+                                    error: function error(err) {
+                                        console.log(err);
+                                        window.clearTimeout(self.qrCodeStatusTimeout);
+                                    }
+                                });
+
+                                self.qrCodeStatusTimeout = window.setTimeout(qrCodeStatus, 2000);
+                            }
+
+                            self.qrCodeStatusTimeout = window.setTimeout(qrCodeStatus, 100);
+                        },
+
+                        clearQrCode: function clearQrCode() {
+                            var self = this;
+
+                            window.clearTimeout(self.qrCodeStatusTimeout);
+
+                            self.qrCodeScanQrcode = null;
+                            self.qrCodeScanSuccess = false;
+                            self.qrCodeStatusShowAlert = false;
+                            self.qrCodeStatusAlertMessage = "";
+
+                            self.qrCodeCallbackCode = null;
+                        },
+
+
+                        faceVerifyInit: function faceVerifyInit() {
+                            var self = this;
+
+                            self.faceVerifySend();
+                        },
+
+                        faceVerifySend: function faceVerifySend() {
+                            var self = this;
+
+                            var url = self.attestServerUrl + '/api/guard/faceverify/send';
+                            var postdata = { "gid": self.gid };
+
+                            $.ajax({
+                                type: "POST",
+                                url: url,
+                                contentType: 'application/json; charset=UTF-8',
+                                data: JSON.stringify(postdata),
+                                dataType: "json",
+                                success: function success(r) {
+                                    console.log(url, r);
+
+                                    if (r && r.code == 0 && r.data.scanFaceverify) {
+                                        self.faceVerifyStatusShowAlert = false;
+                                        self.faceVerifyStatusAlertMessage = "";
+
+                                        self.faceVerifyScanFaceverify = r.data.scanFaceverify;
+                                        self.faceVerifyCallbackCode = r.data.callbackCode;
+
+                                        self.startFaceVerifyStatus();
+                                    } else {
+
+                                        self.startFaceVerifyStatus();
+                                    }
+                                },
+                                error: function error(err) {
+                                    console.log(err);
+                                }
+                            });
+                        },
+
+                        faceVerifyRefresh: function faceVerifyRefresh() {
+                            var self = this;
+
+                            self.clearFaceVerify();
+                            self.initGuard();
+                        },
+
+                        startFaceVerifyStatus: function startFaceVerifyStatus() {
+                            var self = this;
+
+                            window.clearTimeout(self.appPushStatusTimeout); // 定时
+
+                            /*
+                             * status 
+                             * 0 init 新建、初始化, 
+                             * 1 sent 已发送、已扫码等, 
+                             * 2 valid 验证通过, 
+                             * 3 fail 验证失败, 
+                             * 5 cancel 取消, 
+                             * 8 scaned 已扫码
+                             * 9 expired 已过期、不存在
+                             */
+                            function faceVerifyStatus() {
+                                var url = self.attestServerUrl + '/api/guard/faceverify/status';
+                                var postdata = { "gid": self.gid };
+
+                                $.ajax({
+                                    type: "POST",
+                                    url: url,
+                                    contentType: 'application/json; charset=UTF-8',
+                                    data: JSON.stringify(postdata),
+                                    dataType: "json",
+                                    timeout: 1000,
+                                    success: function success(r) {
+                                        // console.log(url, r);
+                                        if (r && r.code == 0) {
+                                            var status = r.data.status;
+
+                                            if (status == 0) {
+
+                                                self.faceVerifyScanSuccess = false;
+                                                self.faceVerifyStatusShowAlert = false;
+                                                self.faceVerifyStatusAlertMessage = "";
+                                            } else if (status == 1) {
+
+                                                self.faceVerifyScanSuccess = false;
+                                                self.faceVerifyStatusShowAlert = false;
+                                                self.faceVerifyStatusAlertMessage = "";
+                                            } else if (status == 2) {
+
+                                                self.faceVerifyScanSuccess = true;
+                                                self.faceVerifyStatusShowAlert = true;
+                                                self.faceVerifyStatusAlertMessage = "人脸识别成功";
+
+                                                window.clearTimeout(self.faceVerifyStatusTimeout);
+                                                window.setTimeout(function () {
+                                                    self.submitForm();
+                                                }, 500);
+                                            } else if (status == 3) {
+
+                                                self.faceVerifyScanSuccess = false;
+                                                self.faceVerifyStatusShowAlert = true;
+                                                self.faceVerifyStatusAlertMessage = "人脸识别失败";
+
+                                                window.clearTimeout(self.faceVerifyStatusTimeout);
+
+                                            } else if (status == 11) {
+
+                                                self.faceVerifyScanSuccess = true;
+                                                self.faceVerifyStatusShowAlert = true;
+                                                self.faceVerifyStatusAlertMessage = "人脸识别中…";
+                                            } else if (status == 9) {
+
+                                                self.faceVerifyScanSuccess = false;
+                                                self.faceVerifyStatusShowAlert = true;
+                                                self.faceVerifyStatusAlertMessage = "已失效，请刷新二维码";
+
+                                                self.faceVerifyCallbackCode = null;
+
+                                                window.clearTimeout(self.faceVerifyStatusTimeout);
+
+                                                /* window.setTimeout(function () {
+                                                  self.initGuard();
+                                                }, 500); */
+
+                                            }
+
+                                        } else {
+                                            window.clearTimeout(self.faceVerifyStatusTimeout);
+                                        }
+                                    },
+                                    error: function error(err) {
+                                        console.log(err);
+                                        window.clearTimeout(self.faceVerifyStatusTimeout);
+                                    }
+                                });
+
+                                self.faceVerifyStatusTimeout = window.setTimeout(faceVerifyStatus, 2000);
+                            }
+
+                            self.faceVerifyStatusTimeout = window.setTimeout(faceVerifyStatus, 100);
+                        },
+
+                        clearFaceVerify: function clearFaceVerify() {
+                            var self = this;
+
+                            window.clearTimeout(self.faceVerifyStatusTimeout);
+
+                            self.faceVerifyScanQrcode = null;
+                            self.faceVerifyScanSuccess = false;
+                            self.faceVerifyStatusShowAlert = false;
+                            self.faceVerifyStatusAlertMessage = "";
+
+                            self.faceVerifyCallbackCode = null;
+                        },
+
+
+                    }
+                });
+            </script>
+
+
+            <script type="text/javascript">
+                // 页面加载，判断是否显示 图片验证码
+                $(document).ready(function () {
+                    console.log("trigger initCaptchaShow");
+                    initCaptchaShow($("#fm1Input"), $("#fm1"), "passwordLogin");
+
+                    if (loginError && loginError.loginType == "passwordLogin") {
+                        console.log("trigger processLoginError", loginError.loginType);
+                        processLoginError(loginError.containerFormInput, loginError.containerForm, loginError.originalUsername, loginError.hasErrors, loginError.errors, loginError.loginType);
+                    }
+                });
+            </script>
+
+            <script type="text/javascript">
+                console.log("fm1Input button", $("#fm1Input").find('[name="button"]'));
+                $("#fm1Input").find('[name="button"]').click(function () {
+                    console.log("submit button click");
+                    var username = $("#fm1Input").find("#username").val();
+                    var password = $("#fm1Input").find("#password").val();
+                    if (username == null || username == '') {
+                        $("#showErrorMessageUsername").click();
+                        return false;
+                    }
+
+                    if (password == null || password == '') {
+                        $("#showErrorMessagePassword").click();
+                        return false;
+                    }
+
+                    var captcha = $("#fm1Input").find("#captcha").val();
+                    if (casServerCaptchaEnabled && casServerCaptchaShow) {
+                        if (captcha == null || captcha == '') {
+                            $("#showErrorMessageCaptcha").click();
+                            return false;
+                        }
+                    }
+
+                    $("#fm1").find("#username").val(username);
+                    $("#fm1").find("#password").val(password);
+                    $("#fm1").find("#captcha").val(captcha);
+
+                    window.setTimeout(function () {
+                        if (mfaEnabled) {
+                            mfaDetect();
+                            return;
+                        }
+
+                        submitFm1();
+                    }, 500);
+
+                    return false;
+                });
+
+                var disableSendToken = false;
+                function sendToken(obj) {
+                    if (disableSendToken) {
+                        return;
+                    }
+
+                    var mobile = $("#fm2Input").find("#mobile").val();
+                    var captcha = $("#fm2Input").find("#captcha").val();
+
+                    if (mobile == null || mobile == '') {
+                        $("#showErrorMessageMobile").click();
+                        return;
+                    }
+                    if (!mobilePattern.test(mobile)) {
+                        $("#showErrorMessageMobile").click();
+                        return;
+                    }
+
+                    if (casServerPasswordlessCaptchaEnabled) {
+                        if (captcha == null || captcha == '') {
+                            $("#showErrorMessageCaptcha").click();
+                            return false;
+                        }
+                    }
+
+                    var sendButton = $(obj);
+
+                    disableSendToken = true;
+                    sendButton.attr("disabled", true);
+                    sendButton.find('span').text(i_sending);
+
+                    var time = 60;
+                    var setSended = function () {
+                        sendButton.find('span').text(i_send + '(' + time + ')');
+
+                        time--;
+                        if (time > 0) {
+                            setTimeout(setSended, 1000);
+                        } else {
+                            disableSendToken = false;
+                            sendButton.attr("disabled", false);
+                            sendButton.find('span').text(i_sendToken);
+                        }
+
+                    }
+
+                    $.ajax({
+                        url: "\/cas\/passwordlessTokenSend",
+                        type: "POST",
+                        data: { "username": mobile, "captcha": captcha },
+                        dataType: "json",
+                        success: function (r) {
+                            console.log(r);
+
+                            if (r.data.success) {
+                                // 提示信息
+                                //alert(r.data.success);
+                                $("#showSuccessMessageSendCode").click();
+                                // 倒计时 60s
+                                time = 60;
+                                setSended();
+                            }
+
+                            if (r.data.error) {
+                                //alert(r.data.error);
+                                $("#showFailureMessageSendCode").click();
+                                time = 0;
+                                setSended();
+                            }
+                        }
+                    });
+
+                }
+
+                console.log("fm2Input button", $("#fm2Input").find('[name="button"]'));
+                $("#fm2Input").find('[name="button"]').click(function () {
+                    var mobile = $("#fm2Input").find("#mobile").val();
+                    var dynamiccode = $("#fm2Input").find("#dynamiccode").val();
+
+                    if (mobile == null || mobile == '') {
+                        $("#showErrorMessageMobile").click();
+                        return false;
+                    }
+                    if (!mobilePattern.test(mobile)) {
+                        $("#showErrorMessageMobile").click();
+                        return false;
+                    }
+
+                    if (dynamiccode == null || dynamiccode == '') {
+                        $("#showErrorMessageDynamicCode").click();
+                        return false;
+                    }
+
+                    var captcha = $("#fm2Input").find("#captcha").val();
+                    if (casServerPasswordlessCaptchaEnabled) {
+                        if (captcha == null || captcha == '') {
+                            $("#showErrorMessageCaptcha").click();
+                            return false;
+                        }
+                    }
+
+                    $("#fm2").find("#username").val(mobile);
+                    $("#fm2").find("#password").val(dynamiccode);
+                    $("#fm2").find("#captcha").val(captcha);
+
+                    window.setTimeout(function () {
+                        submitFm2();
+                    }, 500);
+
+                    return false;
+                });
+
+            </script>
+
+            <script type="text/javascript">
+
+                var i_login = "\u7A0D\u7B49\u7247\u523B\u2026\u2026";
+                $(document).ready(function () {
+
+                    $("#fm1").submit(function () {
+                        var username = $("#fm1").find("#username").val();
+                        var password = $("#fm1").find("#password").val();
+                        if (username == null || username == '') {
+                            $("#showErrorMessageUsername").click();
+                            return false;
+                        }
+
+                        if (password == null || password == '') {
+                            $("#showErrorMessagePassword").click();
+                            return false;
+                        }
+
+                        if (mfaEnabled) {
+                            var mfaState = $("#fm1").find('[name="mfaState"]').val();
+                            if (mfaState == null || mfaState == '') {
+                                mfaDetect();
+                                return false;
+                            }
+                        }
+
+                        // 前端密码加密
+                        if (encryptEnabled && password.indexOf('__RSA__') < 0) {
+                            var encodedPassword = "__RSA__" + encrypt.encrypt(password);
+                            $("#fm1").find("#password").val(encodedPassword);
+                        }
+
+                        //$("#fm1").find(":submit").attr("disabled", true);
+                        //$("#fm1").find(":submit").attr("value", i_login);
+                        //console.log(i_login);
+
+                        // 处理记住密码
+                        doRememberPassword(username, password);
+
+                        doLogin();
+                        return true;
+                    });
+
+                    $("#fm2").submit(function () {
+                        var mobile = $("#fm2").find("#username").val();
+                        var dynamiccode = $("#fm2").find("#password").val();
+                        if (mobile == null || mobile == '') {
+                            $("#showErrorMessageMobile").click();
+                            return false;
+                        }
+                        if (!mobilePattern.test(mobile)) {
+                            $("#showErrorMessageMobile").click();
+                            return false;
+                        }
+
+                        if (dynamiccode == null || dynamiccode == '') {
+                            $("#showErrorMessageDynamicCode").click();
+                            return false;
+                        }
+
+                        //$("#fm2").find(":submit").attr("disabled", true);
+                        //$("#fm2").find(":submit").attr("value", i_login);
+                        //console.log(i_login);
+
+                        doLogin();
+                        return true;
+                    });
+                });
+            </script>
+
+            <script type="text/javascript">
+                function refreshCaptchaInMenu(currentMenu) {
+                    refreshCaptcha($("#fm" + currentMenu + "Input").find("#captcha_img"));
+                }
+                function refreshCaptcha(obj) { // console.log(obj);
+                    var captcha_img = $(obj);
+                    var captcha_input = captcha_img.parents("div.captcha-input");
+                    captcha_input.find("#captcha_img").attr("src", "\/cas\/captcha.jpg" + "?r=" + (new Date()).getTime() + Math.floor(Math.random() * 24));
+                    captcha_input.find("#captcha").val("");
+                    captcha_input.find("#captcha").focus();
+                }
+                function togglePassword(obj) {
+                    var $obj = $(obj);
+
+                    var $password = $(obj).parents('.sw-input').find("#password");
+
+                    if ($password.attr('type') == 'password') {
+                        $password.attr('type', 'text');
+                        $obj.removeClass('su-icon-hide').addClass('su-icon-display');
+                    } else {
+                        $password.attr('type', 'password');
+                        $obj.removeClass('su-icon-display').addClass('su-icon-hide');
+                    }
+                }
+            </script>
+
+
+
+            <script type="text/javascript">
+                $(document).ready(function () {
+                    var location = self.document.location;
+                    var hash = decodeURIComponent(location.hash);
+
+                    if (hash != undefined && hash != '' && hash.indexOf('#') === -1) {
+                        hash = '#' + hash;
+                    }
+
+                    var action = location.href;
+
+                    /* var action = $('#fm1').attr('action');
+                    if (action == undefined) {
+                        action = location.href;
+                    } else {
+                        var qidx = location.href.indexOf('?');
+                        if (qidx != -1) {
+                            var queryParams = location.href.substring(qidx);
+                            action += queryParams;
+                        }
+                    } */
+                    action += hash;
+
+                    $('#fm1').attr('action', action);
+                    $('#fm2').attr('action', action);
+                    $('#fm4').attr('action', action);
+
+                    $('#fm3').attr('action', action);
+
+                    $('#fm9').attr('action', action);
+
+                    initRememberPassword();
+                });
+            </script>
+
+            <script type="text/javascript">
+                function submitByEnter(event, fmId) {
+                    if (event.which === 13 || event.keyCode === 13) {
+                        $(fmId).find('[name="button"]').click();
+                    }
+                }
+                $(document).ready(function () {
+                    $("#fm1Input").find("#username").keyup(function (event) {
+                        submitByEnter(event, "#fm1Input");
+                    });
+                    $("#fm1Input").find("#password").keyup(function (event) {
+                        submitByEnter(event, "#fm1Input");
+                    });
+                    $("#fm1Input").find("#captcha").keyup(function (event) {
+                        submitByEnter(event, "#fm1Input");
+                    });
+                    $("#fm2Input").find("#mobile").keyup(function (event) {
+                        submitByEnter(event, "#fm2Input");
+                    });
+                    $("#fm2Input").find("#dynamiccode").keyup(function (event) {
+                        submitByEnter(event, "#fm2Input");
+                    });
+                });
+            </script>
+
+            <script type="text/javascript">
+                /* $( document ).ready(function() {
+                  $(".el-carousel__container").css({"max-height":"1080px", "min-height":"660px"});
+                }); */
+            </script>
+
+        </div>
+    </main>
+
+
+
+
+
+    <script type="text/javascript">
+        function back() {
+            window.location.href = "\/cas\/login?service=http:\/\/ehall.jxufe.edu.cn\/amp-auth-adapter\/loginSuccess?sessionToken%3Dac0c5b822f54425792837523d049b655";
+        }
+    </script>
+
+    <script src="/cas/deps/js/fingerprintjs/v3/iife.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            var fpVisitorId = (localStorage.fpVisitorId || "");
+            if (fpVisitorId == "") {
+                var fpPromise = FingerprintJS.load();
+                fpPromise
+                    .then(function (fp) { return fp.get() })
+                    .then(function (result) {
+                        // Handle the result
+                        //console.log(result)
+                        localStorage.fpVisitorId = result.visitorId;
+                        $('[name="fpVisitorId"]').val(result.visitorId);
+                    });
+            } else {
+                $('[name="fpVisitorId"]').val(fpVisitorId);
+            }
+        });
+    </script>
+
+
+
+</body>
+
+</html>

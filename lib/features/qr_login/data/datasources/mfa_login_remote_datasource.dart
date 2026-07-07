@@ -57,6 +57,63 @@ class MfaLoginRemoteDataSource {
     }
   }
 
+  /// ──── 手机验证码 MFA ────
+
+  /// 初始化手机验证码 MFA。
+  /// 返回 (attestServerUrl, gid, 手机号掩码)
+  Future<(String, String, String)> initSecurePhone(String mfaState) async {
+    try {
+      final response = await _dio.get(
+        '$baseUrl/cas/mfa/initByType/securephone',
+        queryParameters: {'state': mfaState},
+      );
+
+      final result = response.data as Map<String, dynamic>;
+      final data = result['data'] as Map<String, dynamic>;
+
+      final attestServer = data['attestServerUrl'] as String;
+      final gid = data['gid'] as String;
+      final securePhone = data['securePhone'] as String;
+
+      return (attestServer, gid, securePhone);
+    } catch (e) {
+      throw Exception('手机验证码初始化失败: $e');
+    }
+  }
+
+  /// 发送手机验证码。
+  Future<void> sendSecurePhoneCode(String attestServer, String gid) async {
+    final response = await _dio.post(
+      '$attestServer/api/guard/securephone/send',
+      data: {'gid': gid},
+    );
+
+    final result = response.data as Map<String, dynamic>;
+    if (result['code'] != 0) {
+      final msg = result['data']?['result'] as String?;
+      throw Exception(msg ?? '验证码发送失败');
+    }
+  }
+
+  /// 验证手机验证码。
+  /// 返回 true 表示验证通过。
+  Future<bool> validateSecurePhoneCode(
+    String attestServer,
+    String gid,
+    String code,
+  ) async {
+    final response = await _dio.post(
+      '$attestServer/api/guard/securephone/valid',
+      data: {'gid': gid, 'code': code},
+    );
+
+    final result = response.data as Map<String, dynamic>;
+    if (result['code'] != 0) return false;
+
+    final data = result['data'] as Map<String, dynamic>;
+    return data['status'] == 2;
+  }
+
   /// 第三步：获取二维码信息（verifyCode 和 imgUrl）
   /// 返回 (verifyCode, imgUrl)
   Future<(String, String)> fetchQrCode(String attestServer, String gid) async {

@@ -198,12 +198,12 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       }, (r) => r);
       if (mfaState == null) return;
 
-      // 第二步：MFA 验证
+      // 第二步：MFA 验证（手机验证码模式）
       String? trustAgent;
       if (mfaState.needMfa) {
         if (!mounted) return;
         final qrViewModel = ref.read(qrLoginViewModelProvider.notifier);
-        final result = await qrViewModel.mfaVerify(
+        final result = await qrViewModel.mobileMfaVerify(
           context,
           account.cardNumber,
           account.password,

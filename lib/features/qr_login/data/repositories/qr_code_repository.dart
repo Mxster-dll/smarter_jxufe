@@ -194,7 +194,23 @@ class QrCodeRepository {
     _startPolling();
   }
 
-  // ═══ 通用方法 ═══
+  // ═══ 手机验证码 MFA ═══
+
+  /// 初始化手机验证码 MFA，返回 (attestServer, gid, 手机号掩码)。
+  Future<(String, String, String)> initMobileMfa(String mfaState) async {
+    return _mfaLoginDs.initSecurePhone(mfaState);
+  }
+
+  /// 发送手机验证码。
+  Future<void> sendMobileMfaCode(String attestServer, String gid) =>
+      _mfaLoginDs.sendSecurePhoneCode(attestServer, gid);
+
+  /// 验证手机验证码。
+  Future<bool> validateMobileMfaCode(
+    String attestServer,
+    String gid,
+    String code,
+  ) => _mfaLoginDs.validateSecurePhoneCode(attestServer, gid, code);
 
   /// 刷新当前活跃的二维码
   Future<void> refresh() async {
