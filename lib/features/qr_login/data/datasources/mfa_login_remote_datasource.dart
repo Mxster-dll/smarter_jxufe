@@ -20,10 +20,7 @@ class MfaLoginRemoteDataSource {
     try {
       final response = await _dio.post(
         '$baseUrl/cas/mfa/detect',
-        data: {
-          'username': account,
-          'password': password,
-        },
+        data: {'username': account, 'password': password},
         options: Options(contentType: Headers.formUrlEncodedContentType),
       );
 
@@ -62,10 +59,7 @@ class MfaLoginRemoteDataSource {
 
   /// 第三步：获取二维码信息（verifyCode 和 imgUrl）
   /// 返回 (verifyCode, imgUrl)
-  Future<(String, String)> fetchQrCode(
-    String attestServer,
-    String gid,
-  ) async {
+  Future<(String, String)> fetchQrCode(String attestServer, String gid) async {
     try {
       final response = await _dio.post(
         '$attestServer/api/guard/qrcode/send',

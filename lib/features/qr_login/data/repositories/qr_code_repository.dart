@@ -52,6 +52,7 @@ class QrCodeRepository {
   String? _mfaGid;
   String? _mfaAccount;
   String? _mfaPassword;
+  String? _mfaMfaState;
 
   void _setStatus(QrCodeStatus status) {
     if (!_statusSubject.isClosed) {
@@ -117,22 +118,21 @@ class QrCodeRepository {
   // ═══ MFA 验证 ═══
 
   /// 发起 MFA 验证流程
+  /// [mfaState] 由 AuthRepository.detectMfa() 返回，复用已有的检测结果
   /// 返回 true 表示需要 MFA（已弹出二维码），false 表示无需 MFA
   Future<bool> startMfaVerification(
     String account,
-    String password, {
+    String password,
+    String mfaState, {
     int pollingInterval = 1500,
   }) async {
     _activeLoginType = _LoginType.mfa;
     _pollingInterval = pollingInterval;
     _mfaAccount = account;
     _mfaPassword = password;
+    _mfaMfaState = mfaState;
 
     _setStatus(QrCodeStatus.loading);
-
-    final (need, mfaState) = await _mfaLoginDs.detectMfa(account, password);
-    if (!need) return false;
-
 
     final (attestServer, gid) = await _mfaLoginDs.initQrCode(mfaState);
     _mfaAttestServer = attestServer;
@@ -229,9 +229,9 @@ class QrCodeRepository {
         _LoginType.scan => await _scanLoginDs.pollStatus(_scanCookie!),
         _LoginType.wechat => await _wechatLoginDs.pollStatus(_wechatUuid!),
         _LoginType.mfa => await _mfaLoginDs.pollStatus(
-            _mfaAttestServer!,
-            _mfaGid!,
-          ),
+          _mfaAttestServer!,
+          _mfaGid!,
+        ),
         null => null,
       };
 
