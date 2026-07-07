@@ -99,6 +99,16 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
   /// 已提示过的 diff 哈希，避免同一次变更重复弹 SnackBar。
   int? _lastShownDiffHash;
 
+  /// 上一次的汇总统计值，用于计算变动差值。
+  Map<String, double> _prevStats = {};
+
+  /// 当前差值，用于右上角浮动显示。
+  Map<String, double> _deltaValues = {};
+  bool _showDeltas = false;
+
+  /// 上一帧的统计哈希，避免重复触发。
+  int? _lastStatsHash;
+
   static const _excludedCourses = <String>{'军事训练', '创新创业实践活动', '毕业设计', '毕业论文'};
 
   List<Grade> _sortGrades(List<Grade> grades, double avgScore) {
@@ -224,6 +234,9 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
 
     double avgScore = 0;
     double recommendationScore = 0;
+    double totalCredit = 0;
+    double avgGp = 0;
+    int courseCount = 0;
     gradesAsync.whenData((result) {
       avgScore = _calcAvgScore(result.grades);
       if (importanceMap != null) {
@@ -232,41 +245,92 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
           importanceMap,
         );
       }
+      final filtered = result.grades
+          .where((g) => !_excludedCourses.contains(g.courseName))
+          .toList();
+      courseCount = filtered.length;
+      double tc = 0, tgc = 0;
+      for (final g in filtered) {
+        final c = double.tryParse(g.credit) ?? 0;
+        final rawScore =
+            double.tryParse(_retakeScores[g.courseCode] ?? g.score) ?? 0;
+        final gp = rawScore >= 60 ? c * (rawScore / 10 - 5) : 0;
+        tc += c;
+        tgc += gp;
+      }
+      totalCredit = tc;
+      avgGp = tc > 0 ? tgc / tc : 0;
     });
 
-    return _wrapWithScaffold(
-      context,
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildFilters(context),
-          gradesAsync.when(
-            data: (result) => _buildSummary(
-              context,
-              result.grades,
-              avgScore,
-              recommendationScore,
-              importanceMap != null,
-              _retakeScores.isNotEmpty,
-            ),
-            loading: () => const SizedBox.shrink(),
-            error: (_, _2) => const SizedBox.shrink(),
-          ),
-          rankingAsync.when(
-            data: (wg) => _buildRankingRow(context, wg),
-            loading: () => _buildRankingRow(context, null),
-            error: (e, _) => _buildRankingRow(context, null),
-          ),
-          Flexible(
-            fit: FlexFit.loose,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: _buildGradeTable(context, avgScore, importanceMap),
-            ),
-          ),
-        ],
-      ),
+    // 计算汇总差值并显示浮动提示
+    final currentStats = <String, double>{
+      '课程': courseCount.toDouble(),
+      '总学分': double.parse(totalCredit.toStringAsFixed(1)),
+      '课程加权': double.parse(avgScore.toStringAsFixed(5)),
+      'GPA': double.parse(avgGp.toStringAsFixed(2)),
+      if (importanceMap != null)
+        '推免加权': double.parse(recommendationScore.toStringAsFixed(5)),
+    };
+    final statsHash = Object.hashAll(
+      currentStats.entries.expand((e) => [e.key, e.value]),
     );
+
+    if (_lastStatsHash != null && statsHash != _lastStatsHash) {
+      final deltas = <String, double>{};
+      for (final e in currentStats.entries) {
+        final prev = _prevStats[e.key];
+        if (prev != null) {
+          final diff = e.value - prev;
+          if (diff.abs() > 0.0001) deltas[e.key] = diff;
+        }
+      }
+      if (deltas.isNotEmpty) {
+        _deltaValues = deltas;
+        _showDeltas = true;
+        _prevStats = Map.from(currentStats);
+        _lastStatsHash = statsHash;
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) setState(() => _showDeltas = false);
+        });
+      }
+    } else if (_lastStatsHash == null) {
+      _prevStats = Map.from(currentStats);
+      _lastStatsHash = statsHash;
+    }
+
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildFilters(context),
+        gradesAsync.when(
+          data: (result) => _buildSummary(
+            context,
+            result.grades,
+            avgScore,
+            recommendationScore,
+            importanceMap != null,
+            _retakeScores.isNotEmpty,
+            _showDeltas ? _deltaValues : const {},
+          ),
+          loading: () => const SizedBox.shrink(),
+          error: (_, _2) => const SizedBox.shrink(),
+        ),
+        rankingAsync.when(
+          data: (wg) => _buildRankingRow(context, wg),
+          loading: () => _buildRankingRow(context, null),
+          error: (e, _) => _buildRankingRow(context, null),
+        ),
+        Flexible(
+          fit: FlexFit.loose,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: _buildGradeTable(context, avgScore, importanceMap),
+          ),
+        ),
+      ],
+    );
+
+    return _wrapWithScaffold(context, content);
   }
 
   double _calcAvgScore(List<Grade> grades) {
@@ -439,6 +503,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     double recommendationScore,
     bool hasImportanceMap,
     bool hasRetake,
+    Map<String, double> deltas,
   ) {
     if (grades.isEmpty) return const SizedBox.shrink();
     final filtered = grades
@@ -465,11 +530,19 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
       color: Theme.of(context).colorScheme.error,
     );
 
+    int _decimalsForLabel(String label) => switch (label) {
+      '课程' => 0,
+      '总学分' => 1,
+      'GPA' => 2,
+      _ => 2,
+    };
+
     Widget _statCard(String label, String value, {bool dashed = false}) {
       final borderColor = Theme.of(
         context,
       ).colorScheme.error.withValues(alpha: 0.7);
       final dotIndex = value.indexOf('.');
+      final delta = deltas[label];
       return Container(
         margin: const EdgeInsets.all(4),
         decoration: BoxDecoration(
@@ -484,6 +557,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
                 radius: 12,
               )
             : null,
+
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           child: Column(
@@ -503,13 +577,48 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
                 ),
               ),
               const SizedBox(height: 2),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.6),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                transitionBuilder: (child, animation) {
+                  final keyStr = (child.key as ValueKey<String>).value;
+                  final isDelta = keyStr.startsWith('d_');
+                  final isCurrent = isDelta == _showDeltas;
+                  final begin = isCurrent
+                      ? const Offset(0, -1)
+                      : const Offset(0, 1);
+                  return SlideTransition(
+                    position: Tween<Offset>(
+                      begin: begin,
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: FadeTransition(opacity: animation, child: child),
+                  );
+                },
+                child: Text(
+                  delta != null
+                      ? '${delta > 0 ? '+' : ''}${delta.toStringAsFixed(_decimalsForLabel(label))}'
+                      : label,
+                  key: ValueKey(
+                    delta != null
+                        ? 'd_${delta.toStringAsFixed(_decimalsForLabel(label))}'
+                        : 'l_$label',
+                  ),
+                  style: delta != null
+                      ? TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: delta > 0
+                              ? Colors.green.shade700
+                              : Colors.red.shade700,
+                        )
+                      : TextStyle(
+                          fontSize: 11,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.6),
+                        ),
                 ),
               ),
             ],
@@ -617,13 +726,58 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
                                 textAlign: TextAlign.center,
                               ),
                               const SizedBox(height: 2),
-                              Text(
-                                cardData[i].$1,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Theme.of(context).colorScheme.onSurface
-                                      .withValues(alpha: 0.6),
+                              AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 200),
+                                switchInCurve: Curves.easeOut,
+                                switchOutCurve: Curves.easeIn,
+                                transitionBuilder: (child, animation) {
+                                  final keyStr =
+                                      (child.key as ValueKey<String>).value;
+                                  final isDelta = keyStr.startsWith('d_');
+                                  final isCurrent = isDelta == _showDeltas;
+                                  final begin = isCurrent
+                                      ? const Offset(0, -1)
+                                      : const Offset(0, 1);
+                                  return SlideTransition(
+                                    position: Tween<Offset>(
+                                      begin: begin,
+                                      end: Offset.zero,
+                                    ).animate(animation),
+                                    child: FadeTransition(
+                                      opacity: animation,
+                                      child: child,
+                                    ),
+                                  );
+                                },
+                                child: Text(
+                                  deltas[cardData[i].$1] != null
+                                      ? '${deltas[cardData[i].$1]! > 0 ? '+' : ''}${deltas[cardData[i].$1]!.toStringAsFixed(cardData[i].$1 == '课程'
+                                            ? 0
+                                            : cardData[i].$1 == '总学分'
+                                            ? 1
+                                            : 2)}'
+                                      : cardData[i].$1,
+                                  key: ValueKey(
+                                    deltas[cardData[i].$1] != null
+                                        ? 'd_${deltas[cardData[i].$1]!.toStringAsFixed(2)}'
+                                        : 'l_${cardData[i].$1}',
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  style: deltas[cardData[i].$1] != null
+                                      ? TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: deltas[cardData[i].$1]! > 0
+                                              ? Colors.green.shade700
+                                              : Colors.red.shade700,
+                                        )
+                                      : TextStyle(
+                                          fontSize: 11,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurface
+                                              .withValues(alpha: 0.6),
+                                        ),
                                 ),
                               ),
                             ],
