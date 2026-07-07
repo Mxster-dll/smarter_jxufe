@@ -79,6 +79,7 @@ class QrLoginViewModel extends _$QrLoginViewModel {
     BuildContext context,
     String account,
     String password,
+    String mfaState,
   ) async {
     state = state.copyWith(
       status: QrCodeStatus.loading,
@@ -89,8 +90,7 @@ class QrLoginViewModel extends _$QrLoginViewModel {
     );
 
     try {
-      final needMfa = await _repository.startMfaVerification(account, password);
-      if (!needMfa) return (authorized: false, trustDevice: false);
+      await _repository.startMfaVerification(account, password, mfaState);
       _syncFromRepository();
     } catch (e) {
       state = state.copyWith(status: QrCodeStatus.error);

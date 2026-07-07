@@ -10,7 +10,15 @@ class CasLoginPageInfo {
   /// 服务端生成的 execution token（每次页面加载都会变化）
   final String execution;
 
-  const CasLoginPageInfo({required this.loginUrl, required this.execution});
+  /// CAS 服务端分配的 SESSION cookie。
+  /// 后续 detectMfa / login 请求必须携带，否则服务端拒绝。
+  final String sessionCookie;
+
+  const CasLoginPageInfo({
+    required this.loginUrl,
+    required this.execution,
+    required this.sessionCookie,
+  });
 }
 
 class AuthRemoteDataSource {
@@ -19,20 +27,38 @@ class AuthRemoteDataSource {
   AuthRemoteDataSource(this._dio);
 
   // ---- CAS 登录入口 ----
-  // ehall 门户首页是纯 HTML（JS 驱动跳转，非 HTTP 302），无法程序化跟踪。
-  // 因此直接请求 CAS 登录页，service 参数指向 ehall 的回调地址。
-  // CAS 协议本身不强制要求 sessionToken —— 它仅由 ehall 侧用于会话匹配。
-  static const _casLoginPageUrl =
-      'https://ssl.jxufe.edu.cn/cas/login'
-      '?service=http%3A%2F%2Fehall.jxufe.edu.cn'
-      '%2Famp-auth-adapter%2FloginSuccess';
+  // 先请求 ehall 的 /amp-auth-adapter/login，服务端返回 302 Location
+  // 指向 CAS 登录页（含动态 sessionToken），再用该 URL 获取登录页 HTML。
+  static const _ehallLoginEntry =
+      'http://ehall.jxufe.edu.cn/amp-auth-adapter/login'
+      '?service=http%3A%2F%2Fehall.jxufe.edu.cn%2F';
 
-  /// 预请求：获取 CAS 登录页面，从中提取 [execution] 和表单提交的 [loginUrl]。
-  ///
-  /// 直接访问 CAS 登录页（绕过 ehall 的 JS 重定向）。
-  /// 如果 CAS 返回了带 sessionToken 的重定向，循环跟踪之。
+  /// 预请求：通过 ehall 获取 CAS 登录页 URL，再从中提取 [execution] 和 [loginUrl]。
   Future<CasLoginPageInfo> fetchCasLoginPage() async {
-    String currentUrl = _casLoginPageUrl;
+    // 第一步：请求 ehall → 获取 CAS 登录页的重定向 URL（含 sessionToken）
+    final ehallResponse = await _dio.get(
+      _ehallLoginEntry,
+      options: Options(
+        followRedirects: false,
+        validateStatus: (s) => true,
+        headers: {
+          'Host': 'ehall.jxufe.edu.cn',
+          'Accept': 'application/json, text/javascript, */*; q=0.01',
+          'X-Requested-With': 'XMLHttpRequest',
+          'Referer': 'http://ehall.jxufe.edu.cn/new/index.html',
+          'Accept-Encoding': 'gzip, deflate',
+          'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
+        },
+      ),
+    );
+
+    final casLoginUrl = ehallResponse.headers.value('location');
+    if (casLoginUrl == null) {
+      throw Exception('ehall 未返回 CAS 重定向 URL，状态码=${ehallResponse.statusCode}');
+    }
+
+    // 第二步：访问 CAS 登录页，提取 execution 和 SESSION
+    String currentUrl = casLoginUrl;
 
     for (int i = 0; i < 5; i++) {
       final response = await _dio.get(
@@ -64,7 +90,23 @@ class AuthRemoteDataSource {
       ).firstMatch(html);
       final execution = execMatch?.group(1);
       if (execution != null && execution.isNotEmpty) {
-        return CasLoginPageInfo(loginUrl: currentUrl, execution: execution);
+        // 初始 SESSION（登录页返回）
+        var sessionCookie = _extractSessionCookie(response);
+
+        // 请求二维码图片，将 SESSION 绑定到扫码会话。
+        // 网页版登录时浏览器会自动加载 <img src="/cas/qr/qrcode?r=...">，
+        // 这一步会更新/激活 SESSION，后续 login 请求必须携带绑定后的 cookie。
+        final boundCookie = await _bindSessionViaQrCode(
+          currentUrl,
+          sessionCookie,
+        );
+        if (boundCookie != null) sessionCookie = boundCookie;
+
+        return CasLoginPageInfo(
+          loginUrl: currentUrl,
+          execution: execution,
+          sessionCookie: sessionCookie,
+        );
       }
 
       // 页面不含 execution 且不是重定向 → 异常
@@ -82,18 +124,75 @@ class AuthRemoteDataSource {
     return Uri.parse(base).resolve(target).toString();
   }
 
+  /// 从响应 Set-Cookie 中提取 SESSION= 值。
+  static String _extractSessionCookie(Response response) {
+    final cookies = response.headers['set-cookie'];
+    if (cookies == null || cookies.isEmpty) return '';
+    for (final c in cookies) {
+      final match = RegExp(r'SESSION=([^;]+)').firstMatch(c);
+      if (match != null) return 'SESSION=${match.group(1)}';
+    }
+    return '';
+  }
+
+  /// 请求二维码图片以绑定 SESSION。
+  ///
+  /// 网页版登录时浏览器自动加载 `<img src="/cas/qr/qrcode?r=...">`，
+  /// 这一步使 CAS 服务端将当前的 SESSION 绑定为"允许提交登录"的状态。
+  /// 返回绑定后更新的 SESSION；失败时返回 null（调用方回退到原值）。
+  Future<String?> _bindSessionViaQrCode(
+    String loginUrl,
+    String sessionCookie,
+  ) async {
+    try {
+      final r = DateTime.now().millisecondsSinceEpoch.toString();
+      final headers = <String, String>{
+        'Host': 'ssl.jxufe.edu.cn',
+        'Accept':
+            'image/avif,image/webp,image/apng,image/svg+xml,'
+            'image/*,*/*;q=0.8',
+        'sec-ch-ua':
+            '"Not;A=Brand";v="8", "Chromium";v="150", "Microsoft Edge";v="150"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"Windows"',
+        'Sec-Fetch-Site': 'same-origin',
+        'Sec-Fetch-Mode': 'no-cors',
+        'Sec-Fetch-Dest': 'image',
+        'Referer': loginUrl,
+        'Accept-Encoding': 'gzip, deflate, br, zstd',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
+      };
+      if (sessionCookie.isNotEmpty) headers['Cookie'] = sessionCookie;
+
+      final response = await _dio.get(
+        'https://ssl.jxufe.edu.cn/cas/qr/qrcode',
+        queryParameters: {'r': r},
+        options: Options(headers: headers, validateStatus: (s) => true),
+      );
+
+      // 检查响应中是否有更新后的 SESSION
+      final updated = _extractSessionCookie(response);
+      return updated.isNotEmpty ? updated : null;
+    } catch (_) {
+      return null; // 非关键步骤，失败不影响后续流程
+    }
+  }
+
   /// 第一步：检测是否需要 MFA（多因素认证）。
   Future<Response> detectMfa({
     required String username,
     required String password,
     required String fpVisitorId,
     required String referer,
+    required String sessionCookie,
   }) async {
     const mfaUrl = 'https://ssl.jxufe.edu.cn/cas/mfa/detect';
+    final headers = _ajaxHeaders(referer: referer);
+    if (sessionCookie.isNotEmpty) headers['Cookie'] = sessionCookie;
 
     final response = await _dio.post(
       mfaUrl,
-      options: Options(headers: _ajaxHeaders(referer: referer)),
+      options: Options(headers: headers),
       data: {
         'username': username,
         'password': password,
@@ -112,8 +211,12 @@ class AuthRemoteDataSource {
     required String mfaState,
     required String execution,
     required String loginUrl,
+    required String sessionCookie,
     String trustAgent = '',
   }) async {
+    final headers = _formHeaders(referer: loginUrl);
+    if (sessionCookie.isNotEmpty) headers['Cookie'] = sessionCookie;
+
     final body = {
       'username': username,
       'password': password,
@@ -131,10 +234,7 @@ class AuthRemoteDataSource {
 
     final response = await _dio.post(
       loginUrl,
-      options: Options(
-        headers: _formHeaders(referer: loginUrl),
-        followRedirects: false,
-      ),
+      options: Options(headers: headers, followRedirects: false),
       data: body,
     );
 
@@ -217,11 +317,14 @@ class AuthRemoteDataSource {
     'Connection': 'keep-alive',
     'Cache-Control': 'max-age=0',
     'sec-ch-ua':
-        '"Chromium";v="148", "Microsoft Edge";v="148", "Not/A)Brand";v="99"',
+        '"Not;A=Brand";v="8", "Chromium";v="150", "Microsoft Edge";v="150"',
     'sec-ch-ua-mobile': '?0',
     'sec-ch-ua-platform': '"Windows"',
     'Upgrade-Insecure-Requests': '1',
     'Content-Type': 'application/x-www-form-urlencoded',
+    'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        ' (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36 Edg/150.0.0.0',
     'Origin': 'https://ssl.jxufe.edu.cn',
     'Accept':
         'text/html,application/xhtml+xml,application/xml;'
@@ -229,7 +332,6 @@ class AuthRemoteDataSource {
         'application/signed-exchange;v=b3;q=0.7',
     'Sec-Fetch-Site': 'same-origin',
     'Sec-Fetch-Mode': 'navigate',
-    'Sec-Fetch-User': '?1',
     'Sec-Fetch-Dest': 'document',
     'Referer': referer,
     'Accept-Encoding': 'gzip, deflate, br, zstd',

@@ -84,7 +84,12 @@ class LoginViewModel extends _$LoginViewModel {
       String? trustAgent;
       if (mfaState.needMfa) {
         final qrViewModel = ref.read(qrLoginViewModelProvider.notifier);
-        final result = await qrViewModel.mfaVerify(context, account, password);
+        final result = await qrViewModel.mfaVerify(
+          context,
+          account,
+          password,
+          mfaState.mfaState,
+        );
 
         // 用户手动关闭对话框 → 不做任何事，等用户再次点击登录
         if (!result.authorized) return;

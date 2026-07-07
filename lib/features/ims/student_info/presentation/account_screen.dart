@@ -207,6 +207,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           context,
           account.cardNumber,
           account.password,
+          mfaState.mfaState,
         );
         if (!result.authorized) return;
         trustAgent = result.trustDevice ? 'true' : '';

@@ -79,6 +79,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           context,
           account.cardNumber,
           account.password,
+          mfaState.mfaState,
         );
         if (!result.authorized) {
           // 用户手动关闭 → 跳转登录页
