@@ -70,19 +70,18 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         return;
       }
 
-      // 需要 MFA → 显示二维码（复用 login_viewmodel 的逻辑）
+      // 需要 MFA → 手机验证码模式
       String? trustAgent;
       if (mfaState.needMfa) {
         if (!mounted) return;
         final qrViewModel = ref.read(qrLoginViewModelProvider.notifier);
-        final result = await qrViewModel.mfaVerify(
+        final result = await qrViewModel.mobileMfaVerify(
           context,
           account.cardNumber,
           account.password,
           mfaState.mfaState,
         );
         if (!result.authorized) {
-          // 用户手动关闭 → 跳转登录页
           _goToLogin();
           return;
         }

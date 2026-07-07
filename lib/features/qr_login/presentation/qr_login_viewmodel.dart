@@ -8,6 +8,7 @@ import 'package:smarter_jxufe/features/qr_login/data/repositories/qr_code_reposi
 import 'package:smarter_jxufe/features/qr_login/domain/entities/qr_code_status.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/qr_login_state.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/widgets/qr_code_dialog.dart';
+import 'package:smarter_jxufe/features/qr_login/presentation/widgets/mobile_mfa_dialog.dart';
 
 part 'qr_login_viewmodel.g.dart';
 
@@ -117,6 +118,33 @@ class QrLoginViewModel extends _$QrLoginViewModel {
     stopPolling();
 
     return (authorized: authorized, trustDevice: state.trustDevice);
+  }
+
+  /// 手机验证码 MFA 验证。
+  /// 返回 (是否授权成功, 是否信任设备)
+  Future<({bool authorized, bool trustDevice})> mobileMfaVerify(
+    BuildContext context,
+    String account,
+    String password,
+    String mfaState,
+  ) async {
+    // 初始化
+    final (attestServer, gid, phoneNumber) = await _repository.initMobileMfa(
+      mfaState,
+    );
+
+    // 显示对话框，回调处理发送/验证
+    final result = await MobileMfaDialog.show(
+      context,
+      title: '安全验证',
+      info: '当前登录环境异常，需通过安全验证确认是本人操作',
+      phoneNumber: phoneNumber,
+      onSendCode: () => _repository.sendMobileMfaCode(attestServer, gid),
+      onValidate: (code) =>
+          _repository.validateMobileMfaCode(attestServer, gid, code),
+    );
+
+    return result;
   }
 
   /// 从 repository 同步数据到 state
