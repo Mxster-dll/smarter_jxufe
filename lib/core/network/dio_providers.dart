@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io' show HttpClient;
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:fast_gbk/fast_gbk.dart';
 import 'package:riverpod/riverpod.dart';
 
@@ -50,13 +52,14 @@ final imsDioProvider = Provider.family<Dio, String>((ref, account) {
   );
   // 添加凭证失效自动重试拦截器
   dio.interceptors.add(_imsAuthInterceptor);
+  _applyFiddlerProxy(dio); // [DEBUG] 抓包用，发布前注释掉
   return dio;
 });
 
 /// 按账户卡号分例的 Login Dio。
 final loginDioProvider = Provider.family<Dio, String>((ref, account) {
   final deviceProfileRepo = ref.watch(deviceProfileRepositoryProvider);
-  return Dio(
+  final dio = Dio(
     BaseOptions(
       baseUrl: 'https://ssl.jxufe.edu.cn',
       connectTimeout: const Duration(seconds: 10),
@@ -66,6 +69,8 @@ final loginDioProvider = Provider.family<Dio, String>((ref, account) {
       headers: {'User-Agent': deviceProfileRepo.userAgent},
     ),
   );
+  _applyFiddlerProxy(dio); // [DEBUG] 抓包用，发布前注释掉
+  return dio;
 });
 
 /// 当前账户的 IMS Dio，由 [currentAccountProvider] 驱动。
@@ -86,4 +91,18 @@ String _extractCharset(String? contentType) {
     r'charset=([^;]+)',
   ).firstMatch(contentType.toLowerCase());
   return match?.group(1)?.trim() ?? '';
+}
+
+/// [DEBUG] 将所有 Dio 请求代理到 Fiddler（127.0.0.1:8888），
+/// 用于抓包调试。发布前删除此函数及其调用。
+void _applyFiddlerProxy(Dio dio) {
+  final adapter = dio.httpClientAdapter;
+  if (adapter is IOHttpClientAdapter) {
+    adapter.createHttpClient = () {
+      final client = HttpClient();
+      client.findProxy = (uri) => 'PROXY 127.0.0.1:8888';
+      client.badCertificateCallback = (_, __, ___) => true;
+      return client;
+    };
+  }
 }

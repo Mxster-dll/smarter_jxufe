@@ -22,11 +22,36 @@ class ScanLoginRemoteDataSource {
   String getQrCodeUrl(String id) => '$baseUrl/qr/qrcode?r=$id';
 
   /// 下载二维码图片，返回 (图片字节, session cookie)
-  Future<(Uint8List, String)> downloadQrCode(String id) async {
+  Future<(Uint8List, String)> downloadQrCode(
+    String id, {
+    String referer = '',
+    String sessionCookie = '',
+  }) async {
+    final headers = <String, String>{
+      'Host': 'ssl.jxufe.edu.cn',
+      'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          ' (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36 Edg/150.0.0.0',
+      'Accept':
+          'image/avif,image/webp,image/apng,image/svg+xml,image/*,'
+          '*/*;q=0.8',
+      'sec-ch-ua':
+          '"Not;A=Brand";v="8", "Chromium";v="150", "Microsoft Edge";v="150"',
+      'sec-ch-ua-mobile': '?0',
+      'sec-ch-ua-platform': '"Windows"',
+      'Sec-Fetch-Site': 'same-origin',
+      'Sec-Fetch-Mode': 'no-cors',
+      'Sec-Fetch-Dest': 'image',
+      'Accept-Encoding': 'gzip, deflate, br, zstd',
+      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
+    };
+    if (referer.isNotEmpty) headers['Referer'] = referer;
+    if (sessionCookie.isNotEmpty) headers['Cookie'] = sessionCookie;
+
     final response = await _dio.get(
       '$baseUrl/cas/qr/qrcode',
-      data: {'r': int.parse(id)},
-      options: Options(responseType: ResponseType.bytes),
+      queryParameters: {'r': id},
+      options: Options(headers: headers, responseType: ResponseType.bytes),
     );
 
     if (response.statusCode != 200) {
