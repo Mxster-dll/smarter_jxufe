@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:dartz/dartz.dart';
+import 'package:flutter/foundation.dart';
 
 import 'package:smarter_jxufe/core/errors/failures.dart';
 import 'package:smarter_jxufe/core/network/device_profile_repository.dart';
 import 'package:smarter_jxufe/features/auth/data/datasources/auth_local_datasource.dart';
 import 'package:smarter_jxufe/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:smarter_jxufe/features/auth/domain/entities/mfa_result.dart';
+import 'package:smarter_jxufe/features/auth/data/mfa_relogin_service.dart';
 
 class AuthRepository {
   final AuthLocalDataSource _localDataSource;
@@ -16,6 +20,14 @@ class AuthRepository {
   /// 缓存的登录凭据，用于 TGC 过期后自动重新登录。
   String? _cachedUsername;
   String? _cachedPassword;
+
+  /// MFA 回调。当自动重登需要 MFA 验证时调用。
+  /// 参数为 mfaState，回调应处理 MFA 验证流程（如显示统一 MFA 对话框）。
+  /// 回调成功返回后，自动继续登录流程；若抛出异常则视为 MFA 失败。
+  Future<void> Function(String mfaState)? onMfaRequired;
+
+  /// 防重入：重登正在进行中时，后续请求等待而非直接失败。
+  Completer<Either<Failure, void>>? _reloginCompleter;
 
   /// 登录页预请求结果，包含 execution 和 loginUrl。
   /// 每次登录流程开始前通过 [prepareLogin] 设置。
@@ -29,6 +41,19 @@ class AuthRepository {
        _remoteDataSource = remoteDataSource,
        _deviceProfileRepo = deviceProfileRepo {
     _tgc = _localDataSource.getTgc();
+    final (user, pass) = _localDataSource.getCachedCredentials();
+    _cachedUsername = user;
+    _cachedPassword = pass;
+  }
+
+  /// 缓存登录凭据，供后续 TGC 过期时自动重登使用。
+  /// 应在获取到账户密码后尽早调用（不依赖 login 成功）。
+  /// 同时持久化到 Hive，防止 AuthRepository 实例被重建后丢失。
+  void cacheCredentials(String username, String password) {
+    debugPrint('[AuthRepo] cacheCredentials: $username');
+    _cachedUsername = username;
+    _cachedPassword = password;
+    _localDataSource.saveCachedCredentials(username, password);
   }
 
   /// 预请求：获取 CAS 登录页面，提取 [execution] 和 [loginUrl]。
@@ -195,28 +220,88 @@ class AuthRepository {
 
   /// 使用缓存凭据自动重新登录。
   Future<Either<Failure, void>> _relogin() async {
+    debugPrint('[AuthRepo] _relogin 触发');
+    // 已有重登在进行中 → 等待其结果
+    if (_reloginCompleter != null) {
+      debugPrint('[AuthRepo] _relogin 等待中...');
+      return _reloginCompleter!.future;
+    }
     if (_cachedUsername == null || _cachedPassword == null) {
+      debugPrint('[AuthRepo] _relogin 跳过：缺少缓存凭据');
       return Left(UnknownFailure('缺少缓存凭据，无法自动重登'));
     }
 
-    // 重新获取 CAS 登录页
-    final prepareResult = await prepareLogin();
-    if (prepareResult.isLeft()) return prepareResult;
+    final completer = Completer<Either<Failure, void>>();
+    _reloginCompleter = completer;
+    debugPrint('[AuthRepo] _relogin 开始，用户=$_cachedUsername');
+    try {
+      // 重新获取 CAS 登录页
+      final prepareResult = await prepareLogin();
+      if (prepareResult.isLeft()) {
+        debugPrint('[AuthRepo] _relogin 失败：获取登录页失败');
+        completer.complete(prepareResult);
+        return prepareResult;
+      }
 
-    // MFA 检测
-    final mfaResult = await detectMfa(_cachedUsername!, _cachedPassword!);
-    if (mfaResult.isLeft()) {
-      return Left(mfaResult.fold((f) => f, (_) => UnknownFailure('MFA检测失败')));
+      // MFA 检测
+      final mfaResult = await detectMfa(_cachedUsername!, _cachedPassword!);
+      if (mfaResult.isLeft()) {
+        debugPrint('[AuthRepo] _relogin 失败：MFA检测失败');
+        final r = Left<Failure, void>(
+          mfaResult.fold((f) => f, (_) => UnknownFailure('MFA检测失败')),
+        );
+        completer.complete(r);
+        return r;
+      }
+      final mfa = mfaResult.getOrElse(() => throw 'unreachable');
+
+      // 如果重登需要 MFA，通过回调启动 MFA 对话框
+      if (mfa.needMfa) {
+        debugPrint('[AuthRepo] _relogin 需要 MFA');
+        if (onMfaRequired != null) {
+          try {
+            await onMfaRequired!(mfa.mfaState);
+            debugPrint('[AuthRepo] MFA 完成');
+          } catch (e) {
+            debugPrint('[AuthRepo] MFA 取消/失败: $e');
+            final r = Left<Failure, void>(UnknownFailure('MFA 验证失败或已取消: $e'));
+            completer.complete(r);
+            return r;
+          }
+        } else {
+          try {
+            await mfaReloginService.execute(
+              mfa.mfaState,
+              _cachedUsername!,
+              _cachedPassword!,
+            );
+            debugPrint('[AuthRepo] MFA 完成（兜底）');
+          } catch (e) {
+            debugPrint('[AuthRepo] MFA 取消/失败（兜底）: $e');
+            final r = Left<Failure, void>(UnknownFailure('MFA 验证失败或已取消: $e'));
+            completer.complete(r);
+            return r;
+          }
+        }
+      }
+
+      // 提交登录
+      debugPrint('[AuthRepo] _relogin 提交登录');
+      final result = await login(
+        _cachedUsername!,
+        _cachedPassword!,
+        mfa.mfaState,
+      );
+      debugPrint('[AuthRepo] _relogin 结果: ${result.isRight() ? "成功" : "失败"}');
+      completer.complete(result);
+      return result;
+    } catch (e) {
+      final r = Left<Failure, void>(UnknownFailure('重登异常: $e'));
+      completer.complete(r);
+      return r;
+    } finally {
+      _reloginCompleter = null;
     }
-    final mfa = mfaResult.getOrElse(() => throw 'unreachable');
-
-    // 如果重登需要 MFA，暂不支持自动处理（需用户交互）
-    if (mfa.needMfa) {
-      return Left(UnknownFailure('重登需要 MFA 验证，请手动重新登录'));
-    }
-
-    // 提交登录
-    return login(_cachedUsername!, _cachedPassword!, mfa.mfaState);
   }
 
   Future<Either<Failure, String>> getImsRedirectUrl() async {

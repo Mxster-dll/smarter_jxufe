@@ -71,6 +71,11 @@ class AccountLocalDataSource {
     return accounts[index];
   }
 
+  /// 清除当前账户标记（不会删除账户数据本身）。
+  Future<void> clearCurrentAccount() async {
+    await _box.delete(_keyCurrentIndex);
+  }
+
   /// 清空所有账户。
   Future<void> clearAll() async {
     await _box.delete(_keyAccounts);
