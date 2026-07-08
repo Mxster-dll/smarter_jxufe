@@ -13,6 +13,10 @@ class AuthRepository {
 
   String? _tgc;
 
+  /// 缓存的登录凭据，用于 TGC 过期后自动重新登录。
+  String? _cachedUsername;
+  String? _cachedPassword;
+
   /// 登录页预请求结果，包含 execution 和 loginUrl。
   /// 每次登录流程开始前通过 [prepareLogin] 设置。
   CasLoginPageInfo? _casLoginPage;
@@ -90,6 +94,9 @@ class AuthRepository {
     String mfaState, {
     String trustAgent = '',
   }) async {
+    _cachedUsername = username;
+    _cachedPassword = password;
+
     if (_casLoginPage == null) {
       return Left(UnknownFailure('请先调用 prepareLogin()'));
     }
@@ -155,7 +162,8 @@ class AuthRepository {
   }
 
   /// 获取 IMS 重定向 URL 及 [gid_]。
-  /// 返回 (重定向URL, gid_字符串或null)
+  /// 若 TGC 已过期（CAS 返回 HTML 登录页而非 302 重定向），
+  /// 自动使用缓存的凭据重新执行统一登录后重试。
   Future<Either<Failure, (String, String?)>> getImsRedirectInfo() async {
     try {
       if (_tgc == null) {
@@ -164,9 +172,51 @@ class AuthRepository {
 
       final (url, gid) = await _remoteDataSource.getRedirectImsUrl(_tgc!);
       return Right((url, gid));
+    } on TgcExpiredException {
+      // TGC 过期 → 尝试用缓存凭据重新登录
+      final reloginResult = await _relogin();
+      if (reloginResult.isLeft()) {
+        return Left(
+          reloginResult.fold((f) => f, (_) => UnknownFailure('重登失败')),
+        );
+      }
+      // 重登成功，用新 TGC 重试
+      try {
+        final (url, gid) = await _remoteDataSource.getRedirectImsUrl(_tgc!);
+        return Right((url, gid));
+      } catch (e) {
+        return Left(UnknownFailure('IMS 重定向错误（重登后）：$e'));
+      }
     } catch (e) {
+      if (e is TgcExpiredException) rethrow;
       return Left(UnknownFailure('IMS 重定向错误：$e'));
     }
+  }
+
+  /// 使用缓存凭据自动重新登录。
+  Future<Either<Failure, void>> _relogin() async {
+    if (_cachedUsername == null || _cachedPassword == null) {
+      return Left(UnknownFailure('缺少缓存凭据，无法自动重登'));
+    }
+
+    // 重新获取 CAS 登录页
+    final prepareResult = await prepareLogin();
+    if (prepareResult.isLeft()) return prepareResult;
+
+    // MFA 检测
+    final mfaResult = await detectMfa(_cachedUsername!, _cachedPassword!);
+    if (mfaResult.isLeft()) {
+      return Left(mfaResult.fold((f) => f, (_) => UnknownFailure('MFA检测失败')));
+    }
+    final mfa = mfaResult.getOrElse(() => throw 'unreachable');
+
+    // 如果重登需要 MFA，暂不支持自动处理（需用户交互）
+    if (mfa.needMfa) {
+      return Left(UnknownFailure('重登需要 MFA 验证，请手动重新登录'));
+    }
+
+    // 提交登录
+    return login(_cachedUsername!, _cachedPassword!, mfa.mfaState);
   }
 
   Future<Either<Failure, String>> getImsRedirectUrl() async {

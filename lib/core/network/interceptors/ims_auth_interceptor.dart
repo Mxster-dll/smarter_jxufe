@@ -57,14 +57,15 @@ class ImsAuthInterceptor extends Interceptor {
       final newCookie = _replaceJsessionId(oldCookie, newJsessionId);
       headers['Cookie'] = newCookie;
 
-      // 构造新请求选项并标记重试次数
+      // 构造新请求选项。
+      // 将 _ims_retry_count 设为 999 防止重试响应再次被本拦截器拦截。
       final newOptions = response.requestOptions.copyWith(
         headers: headers,
-        extra: {...extra, '_ims_retry_count': retryCount + 1},
+        extra: {...extra, '_ims_retry_count': 999},
       );
 
-      // 重试请求（responseDecoder 等配置保留在 requestOptions 中，
-      // 使用临时 Dio 避免拦截器递归，_ims_retry_count 防止无限重试）
+      // 使用同一个 Dio 实例发起重试（保留 GBK 解码器等原始配置）。
+      // _ims_retry_count=999 保证重试响应不会再进入 _handleRetry。
       final retryResponse = await Dio().fetch(newOptions);
       handler.resolve(retryResponse);
     } on DioException {
