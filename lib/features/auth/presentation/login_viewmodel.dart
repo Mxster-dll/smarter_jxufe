@@ -11,6 +11,8 @@ import 'package:smarter_jxufe/core/network/dio_providers.dart';
 
 import 'package:smarter_jxufe/features/auth/presentation/login_state.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/qr_login_viewmodel.dart';
+import 'package:smarter_jxufe/core/navigation/navigator_key.dart';
+import 'package:smarter_jxufe/features/auth/data/mfa_relogin_service.dart';
 
 part 'login_viewmodel.g.dart';
 
@@ -56,6 +58,40 @@ class LoginViewModel extends _$LoginViewModel {
 
     try {
       final authRepo = await ref.read(authRepositoryProvider.future);
+      authRepo.cacheCredentials(account, password);
+
+      // 注入 MFA 回调，供后续自动重登时使用。
+      // 使用全局 navigatorKey 获取当前 context，避免原 widget 销毁后 context 失效。
+      final qrVm = ref.read(qrLoginViewModelProvider.notifier);
+      final isDesktop =
+          defaultTargetPlatform != TargetPlatform.iOS &&
+          defaultTargetPlatform != TargetPlatform.android;
+      authRepo.onMfaRequired = (mfaState) async {
+        final ctx = navigatorKey.currentContext;
+        if (ctx == null) throw Exception('无法获取当前页面上下文');
+        final result = await qrVm.unifiedMfaVerify(
+          ctx,
+          account,
+          password,
+          mfaState,
+          startInQrMode: isDesktop,
+        );
+        if (!result.authorized) throw Exception('用户取消 MFA 验证');
+      };
+      mfaReloginService.setHandler((mfaState) async {
+        final ctx = navigatorKey.currentContext;
+        if (ctx == null) throw Exception('无法获取当前页面上下文');
+        final result = await qrVm.unifiedMfaVerify(
+          ctx,
+          account,
+          password,
+          mfaState,
+          startInQrMode: isDesktop,
+        );
+        if (!result.authorized) {
+          throw Exception('用户取消 MFA 验证');
+        }
+      });
 
       // 第〇步：获取 CAS 登录页面，提取 execution 和 loginUrl
       final prepareResult = await authRepo.prepareLogin();
@@ -97,7 +133,7 @@ class LoginViewModel extends _$LoginViewModel {
           startInQrMode: isDesktop,
         );
 
-        // 用户手动关闭对话框 → 不做任何事，等用户再次点击登录
+        // 用户取消 → 不做任何事，等用户再次点击登录（切换用户由对话框内部处理）
         if (!result.authorized) return;
         trustAgent = result.trustDevice ? 'true' : '';
       }

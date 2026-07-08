@@ -10,6 +10,14 @@ class ImsAuthInterceptor extends Interceptor {
   /// 用于刷新 JSESSIONID 的回调，由外部注入。
   Future<String> Function()? _refreshCallback;
 
+  /// 发起请求的 Dio 实例，用于重试时保留原始配置（GBK 解码器等）。
+  Dio _dio = Dio();
+
+  /// 更新重试用的 Dio 实例（当账户切换需重建 Dio 时调用）。
+  void setDio(Dio dio) {
+    _dio = dio;
+  }
+
   /// 注入刷新回调。应在 [ImsAuthRepository] 初始化完成后立即调用。
   void setRefreshCallback(Future<String> Function() callback) {
     _refreshCallback = callback;
@@ -66,7 +74,7 @@ class ImsAuthInterceptor extends Interceptor {
 
       // 使用同一个 Dio 实例发起重试（保留 GBK 解码器等原始配置）。
       // _ims_retry_count=999 保证重试响应不会再进入 _handleRetry。
-      final retryResponse = await Dio().fetch(newOptions);
+      final retryResponse = await _dio.fetch(newOptions);
       handler.resolve(retryResponse);
     } on DioException {
       // 重试本身也失败了

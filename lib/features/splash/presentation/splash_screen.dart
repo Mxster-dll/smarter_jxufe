@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -6,9 +8,12 @@ import 'package:smarter_jxufe/core/storage/hive_initializer.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/account_repository_provider.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_provider.dart';
 import 'package:smarter_jxufe/features/auth/presentation/login_screen.dart';
+import 'package:smarter_jxufe/features/ims/student_info/presentation/account_screen.dart';
 import 'package:smarter_jxufe/features/ims/student_info/data/providers/student_info_repository_provider.dart';
 import 'package:smarter_jxufe/features/platform/presentation/platform_selection_screen.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/qr_login_viewmodel.dart';
+import 'package:smarter_jxufe/core/navigation/navigator_key.dart';
+import 'package:smarter_jxufe/features/auth/data/mfa_relogin_service.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -41,11 +46,30 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         return;
       }
 
-      // 初始化当前账户 Provider
-      ref.read(currentAccountProvider.notifier).state = account.cardNumber;
-
       // 有本地账号 → 尝试自动登录
       final authRepo = await ref.read(authRepositoryProvider.future);
+      authRepo.cacheCredentials(account.cardNumber, account.password);
+
+      // 注入 MFA 回调，供后续自动重登时使用。
+      // 使用全局 navigatorKey 获取当前 context，避免原 widget 销毁后 context 失效。
+      final qrVm = ref.read(qrLoginViewModelProvider.notifier);
+      final isDesktop =
+          defaultTargetPlatform != TargetPlatform.iOS &&
+          defaultTargetPlatform != TargetPlatform.android;
+      final mfaHandler = (String mfaState) async {
+        final ctx = navigatorKey.currentContext;
+        if (ctx == null) throw Exception('无法获取当前页面上下文');
+        final result = await qrVm.unifiedMfaVerify(
+          ctx,
+          account.cardNumber,
+          account.password,
+          mfaState,
+          startInQrMode: isDesktop,
+        );
+        if (!result.authorized) throw Exception('用户取消 MFA 验证');
+      };
+      authRepo.onMfaRequired = mfaHandler;
+      mfaReloginService.setHandler(mfaHandler);
 
       // 第〇步：预请求 CAS 登录页面
       final prepareResult = await authRepo.prepareLogin();
@@ -85,8 +109,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           mfaState.mfaState,
           startInQrMode: isDesktop,
         );
+        // 用户取消 → 回退到账户管理页（此时尚无账户登录，无需清状态）
         if (!result.authorized) {
-          _goToLogin();
+          if (mounted) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const AccountScreen()),
+              (_) => false,
+            );
+          }
           return;
         }
         trustAgent = result.trustDevice ? 'true' : '';
@@ -101,6 +131,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       );
 
       loginResult.fold((failure) => _goToLogin(), (_) async {
+        // 登录成功 → 标记为已登录账户
+        ref.read(currentAccountProvider.notifier).state = account.cardNumber;
         // 刷新学生信息并更新账户显示名称
         final studentInfoRepo = await ref.read(
           studentInfoRepositoryProvider.future,
