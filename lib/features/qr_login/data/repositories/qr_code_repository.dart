@@ -134,7 +134,7 @@ class QrCodeRepository {
 
     _setStatus(QrCodeStatus.loading);
 
-    final (attestServer, gid) = await _mfaLoginDs.initQrCode(mfaState);
+    final (attestServer, gid) = await _initMfaQrCode(mfaState);
     _mfaAttestServer = attestServer;
     _mfaGid = gid;
 
@@ -154,6 +154,23 @@ class QrCodeRepository {
     _startPolling();
 
     return true;
+  }
+
+  Future<(String, String)> _initMfaQrCode(String mfaState) async {
+    try {
+      return await _mfaLoginDs.initQrCode(mfaState);
+    } catch (e) {
+      if (_mfaAccount == null || _mfaPassword == null) rethrow;
+      final (need, newState) = await _mfaLoginDs.detectMfa(
+        _mfaAccount!,
+        _mfaPassword!,
+      );
+      if (!need) {
+        throw Exception('MFA 状态已失效，无法重新初始化二维码');
+      }
+      _mfaMfaState = newState;
+      return await _mfaLoginDs.initQrCode(newState);
+    }
   }
 
   /// 刷新 MFA 二维码
@@ -177,6 +194,7 @@ class QrCodeRepository {
     final (attestServer, gid) = await _mfaLoginDs.initQrCode(mfaState);
     _mfaAttestServer = attestServer;
     _mfaGid = gid;
+    _mfaMfaState = mfaState;
 
     final (verifyCode, imgUrl) = await _mfaLoginDs.fetchQrCode(
       attestServer,
@@ -198,7 +216,20 @@ class QrCodeRepository {
 
   /// 初始化手机验证码 MFA，返回 (attestServer, gid, 手机号掩码)。
   Future<(String, String, String)> initMobileMfa(String mfaState) async {
-    return _mfaLoginDs.initSecurePhone(mfaState);
+    try {
+      return await _mfaLoginDs.initSecurePhone(mfaState);
+    } catch (e) {
+      if (_mfaAccount == null || _mfaPassword == null) rethrow;
+      final (need, newState) = await _mfaLoginDs.detectMfa(
+        _mfaAccount!,
+        _mfaPassword!,
+      );
+      if (!need) {
+        throw Exception('手机验证码初始化失败，MFA 状态已失效');
+      }
+      _mfaMfaState = newState;
+      return await _mfaLoginDs.initSecurePhone(newState);
+    }
   }
 
   /// 发送手机验证码。
@@ -217,10 +248,13 @@ class QrCodeRepository {
     switch (_activeLoginType) {
       case _LoginType.scan:
         await refreshScanLogin();
+        return;
       case _LoginType.wechat:
         await _wechatLoginDs.refreshQrCode(); // 目前抛出 UnimplementedError
+        return;
       case _LoginType.mfa:
         await refreshMfa();
+        return;
       case null:
         throw Exception('没有活跃的登录流程');
     }
