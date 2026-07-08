@@ -67,13 +67,23 @@ class MfaLoginRemoteDataSource {
         '$baseUrl/cas/mfa/initByType/securephone',
         queryParameters: {'state': mfaState},
       );
+      final result = response.data;
+      if (result == null || result is! Map<String, dynamic>) {
+        throw Exception('手机验证码初始化失败: 返回数据为空或格式不正确');
+      }
 
-      final result = response.data as Map<String, dynamic>;
-      final data = result['data'] as Map<String, dynamic>;
+      final data = result['data'];
+      if (data == null || data is! Map<String, dynamic>) {
+        throw Exception('手机验证码初始化失败: data 字段为空或格式不正确');
+      }
 
-      final attestServer = data['attestServerUrl'] as String;
-      final gid = data['gid'] as String;
-      final securePhone = data['securePhone'] as String;
+      final attestServer = data['attestServerUrl'] as String?;
+      final gid = data['gid'] as String?;
+      final securePhone = data['securePhone'] as String?;
+
+      if (attestServer == null || gid == null || securePhone == null) {
+        throw Exception('手机验证码初始化失败: 响应缺少必要字段');
+      }
 
       return (attestServer, gid, securePhone);
     } catch (e) {
