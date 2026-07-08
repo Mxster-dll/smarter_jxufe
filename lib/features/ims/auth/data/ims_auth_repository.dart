@@ -60,7 +60,12 @@ class ImsAuthRepository {
     final jsessionId = await _remoteDataSource.fetchJsessionId(gid: _cachedGid);
     await _localDataSource.saveJsessionId(jsessionId);
 
-    await _activateJsessionId(jsessionId);
+    final activateResult = await _activateJsessionId(jsessionId);
+    if (activateResult.isLeft()) {
+      throw Exception(
+        'JSESSIONID 激活失败: ${activateResult.swap().getOrElse(() => UnknownFailure("?"))}',
+      );
+    }
     return jsessionId;
   }
 
