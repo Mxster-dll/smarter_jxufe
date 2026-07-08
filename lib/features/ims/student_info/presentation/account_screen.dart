@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -11,6 +13,8 @@ import 'package:smarter_jxufe/features/ims/student_info/domain/student_info.dart
 import 'package:smarter_jxufe/features/ims/auth/data/providers/ims_auth_repository_provider.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/qr_login_viewmodel.dart';
 import 'package:smarter_jxufe/core/network/dio_providers.dart';
+import 'package:smarter_jxufe/core/navigation/navigator_key.dart';
+import 'package:smarter_jxufe/features/auth/data/mfa_relogin_service.dart';
 
 /// 账户管理页面 —— 多账户卡片 + 添加账户。
 class AccountScreen extends ConsumerStatefulWidget {
@@ -34,7 +38,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
   @override
   Widget build(BuildContext context) {
     final accountsAsync = ref.watch(_accountsProvider);
-    final currentAsync = ref.watch(_currentAccountProvider);
+    final currentCardNumber = ref.watch(_currentAccountProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -49,7 +53,6 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('$e')),
         data: (accounts) {
-          final current = currentAsync.valueOrNull;
           return Column(
             children: [
               Expanded(
@@ -58,7 +61,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                     : ListView(
                         padding: const EdgeInsets.all(16),
                         children: accounts.map((a) {
-                          final isCurrent = current?.cardNumber == a.cardNumber;
+                          final isCurrent = currentCardNumber == a.cardNumber;
                           return _buildAccountCard(context, ref, a, isCurrent);
                         }).toList(),
                       ),
@@ -178,6 +181,28 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       final studentInfoRepo = await ref.read(
         studentInfoRepositoryProvider.future,
       );
+      authRepo.cacheCredentials(account.cardNumber, account.password);
+
+      // 注入 MFA 回调，供后续自动重登时使用。
+      // 使用全局 navigatorKey 获取当前 context，避免原 widget 销毁后 context 失效。
+      final qrVm = ref.read(qrLoginViewModelProvider.notifier);
+      final isDesktop =
+          defaultTargetPlatform != TargetPlatform.iOS &&
+          defaultTargetPlatform != TargetPlatform.android;
+      final mfaHandler = (String mfaState) async {
+        final ctx = navigatorKey.currentContext;
+        if (ctx == null) throw Exception('无法获取当前页面上下文');
+        final result = await qrVm.unifiedMfaVerify(
+          ctx,
+          account.cardNumber,
+          account.password,
+          mfaState,
+          startInQrMode: isDesktop,
+        );
+        if (!result.authorized) throw Exception('用户取消 MFA 验证');
+      };
+      authRepo.onMfaRequired = mfaHandler;
+      mfaReloginService.setHandler(mfaHandler);
 
       // 第〇步：预请求 CAS 登录页面
       final prepareResult = await authRepo.prepareLogin();
@@ -212,7 +237,9 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           account.password,
           mfaState.mfaState,
           startInQrMode: isDesktop,
+          showSwitchAccount: false,
         );
+        // 用户取消 → 留在账户页（切换用户由对话框内部处理）
         if (!result.authorized) return;
         trustAgent = result.trustDevice ? 'true' : '';
       }
@@ -285,13 +312,9 @@ final _accountsProvider = FutureProvider<List<Account>>((ref) async {
   );
 });
 
-final _currentAccountProvider = FutureProvider<Account?>((ref) async {
-  final repo = await ref.watch(accountRepositoryProvider.future);
-  final result = repo.getCurrentAccount();
-  return result.fold(
-    (failure) => throw Exception(failure.message),
-    (account) => account,
-  );
+final _currentAccountProvider = Provider<String?>((ref) {
+  final cardNumber = ref.watch(currentAccountProvider);
+  return cardNumber.isEmpty ? null : cardNumber;
 });
 
 /// 从本地缓存读取学生信息（不触发网络请求）。

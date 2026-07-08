@@ -55,6 +55,16 @@ class AccountRepository {
     }
   }
 
+  /// 清除当前账户标记（登录失败时调用，避免错误显示"已登录"状态）。
+  Future<Either<Failure, void>> clearCurrentAccount() async {
+    try {
+      await _localDataSource.clearCurrentAccount();
+      return const Right(null);
+    } catch (e) {
+      return Left(UnknownFailure('清除当前账户失败: $e'));
+    }
+  }
+
   /// 删除账户。
   Future<Either<Failure, void>> deleteAccount(String cardNumber) async {
     try {
