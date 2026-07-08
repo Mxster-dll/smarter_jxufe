@@ -15,7 +15,8 @@ part 'qr_login_viewmodel.g.dart';
 
 @Riverpod(keepAlive: true)
 class QrLoginViewModel extends _$QrLoginViewModel {
-  late final QrCodeRepository _repository;
+  // 用 late（非 final）替代 late final，允许 build() 重复调用时重新赋值
+  late QrCodeRepository _repository;
   StreamSubscription<QrCodeStatus>? _statusSubscription;
 
   @override
@@ -156,6 +157,7 @@ class QrLoginViewModel extends _$QrLoginViewModel {
     String password,
     String mfaState, {
     bool startInQrMode = true,
+    bool showSwitchAccount = true,
   }) async {
     // ── 先初始化扫码模式 ──
     state = state.copyWith(
@@ -178,6 +180,7 @@ class QrLoginViewModel extends _$QrLoginViewModel {
       title: '安全验证',
       info: '当前登录环境异常，需通过安全验证确认是本人操作',
       startInQrMode: startInQrMode,
+      showSwitchAccount: showSwitchAccount,
       getQrImage: () => _repository.qrCodeData?.img,
       qrStatusStream: _repository.statusStream,
       onSwitchToQr: () async {
@@ -208,7 +211,7 @@ class QrLoginViewModel extends _$QrLoginViewModel {
           code,
         );
       },
-    );
+    ).catchError((_) => (authorized: false, trustDevice: false));
 
     stopPolling();
     return result;

@@ -298,7 +298,7 @@ class AuthRemoteDataSource {
     // 200 + HTML 登录页 → TGC 已过期，需重新执行统一登录
     if (response.statusCode == 200) {
       final body = response.data?.toString() ?? '';
-      if (body.contains('<!DOCTYPE html>') || body.contains('<html')) {
+      if (body.startsWith('<!DOCTYPE html>')) {
         throw TgcExpiredException(body);
       }
     }
