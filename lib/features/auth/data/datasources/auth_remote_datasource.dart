@@ -2,6 +2,15 @@ import 'dart:math';
 
 import 'package:dio/dio.dart';
 
+/// 表示 TGC（统一登录凭证）已过期，需重新执行 CAS 登录流程。
+class TgcExpiredException implements Exception {
+  final String? responseBody;
+  TgcExpiredException([this.responseBody]);
+
+  @override
+  String toString() => 'TgcExpiredException: TGC 已过期，需要重新登录';
+}
+
 /// CAS 登录页面的关键信息，从 HTML 中提取。
 class CasLoginPageInfo {
   /// 登录表单的 action URL（含 service 参数和 sessionToken）
@@ -275,18 +284,28 @@ class AuthRemoteDataSource {
           'Cookie': 'TGC=$tgc; ',
         },
         followRedirects: false,
+        // validateStatus 在 Dio 实例级别已设为 true，所有状态码都会返回
       ),
     );
 
+    // 302 重定向 → 成功，提取 Location 和 gid_
     final location = response.headers.value('location');
-    if (location == null) {
-      throw Exception('IMS 重定向失败（TGC 可能已过期）\n${response.data}');
+    if (location != null) {
+      final gid = Uri.parse(location).queryParameters['gid_'];
+      return (location, gid);
     }
 
-    // 从重定向 URL 的查询参数中提取 gid_
-    final gid = Uri.parse(location).queryParameters['gid_'];
+    // 200 + HTML 登录页 → TGC 已过期，需重新执行统一登录
+    if (response.statusCode == 200) {
+      final body = response.data?.toString() ?? '';
+      if (body.contains('<!DOCTYPE html>') || body.contains('<html')) {
+        throw TgcExpiredException(body);
+      }
+    }
 
-    return (location, gid);
+    throw Exception(
+      'IMS 重定向失败（status=${response.statusCode}）\n${response.data}',
+    );
   }
 
   // ---- 请求头构建 ----

@@ -99,3 +99,22 @@ username=REDACTED_USERNAME
 &fpVisitorId=35d989bb1abd3f2001d01f2566b4b5c7
 &trustAgent=
 &submit1=Login1
+
+### 失效登录
+GET https://ssl.jxufe.edu.cn/cas/login?service=https%3A%2F%2Fjwxt.jxufe.edu.cn%2F%2Fjxcjcaslogin HTTP/1.1
+Host: ssl.jxufe.edu.cn
+Connection: keep-alive
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36 Edg/150.0.0.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Sec-Fetch-Site: cross-site
+Sec-Fetch-Mode: navigate
+Sec-Fetch-User: ?1
+Sec-Fetch-Dest: document
+sec-ch-ua: "Not;A=Brand";v="8", "Chromium";v="150", "Microsoft Edge";v="150"
+sec-ch-ua-mobile: ?0
+sec-ch-ua-platform: "Windows"
+Referer: http://ehall.jxufe.edu.cn/
+Accept-Encoding: gzip, deflate, br, zstd
+Accept-Language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6
+Cookie: TGC=TGT-114010-5qzjldJFnv-y-JMULScRKyWSIzbRGwFo51vMiMVSN5KGHudD4au22utwYbJZItngUUgcas-server-webapp-7cb76cdf65-2dv99
