@@ -8,7 +8,7 @@ import 'package:smarter_jxufe/features/qr_login/presentation/qr_login_viewmodel.
 import 'package:smarter_jxufe/features/qr_login/presentation/widgets/qr_code_card.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/widgets/verification_code_input.dart';
 import 'package:smarter_jxufe/features/ims/student_info/presentation/account_screen.dart';
-import 'package:smarter_jxufe/shared/widgets/slide_switcher.dart';
+import 'package:smarter_jxufe/shared/widgets/carousel_switcher.dart';
 
 /// 修复与整理后的统一 MFA 对话框
 class UnifiedMfaDialog extends ConsumerStatefulWidget {
@@ -102,6 +102,8 @@ class _UnifiedMfaDialogState extends ConsumerState<UnifiedMfaDialog>
 
   late final AnimationController _collapseCtrl;
   late final Animation<double> _shrinkAnim;
+  late final SlideCarouselController _bodyCtrl;
+  late final SlideCarouselController _hintCtrl;
 
   @override
   void initState() {
@@ -119,6 +121,8 @@ class _UnifiedMfaDialogState extends ConsumerState<UnifiedMfaDialog>
     // 强制绑定到当前 tick，避免首帧闪动
     _shrinkAnim.addListener(() {});
     _collapseCtrl.addStatusListener(_onCollapseDone);
+    _bodyCtrl = SlideCarouselController(totalItems: 2);
+    _hintCtrl = SlideCarouselController(totalItems: 2);
     if (_qrMode) _listenQrStatus();
   }
 
@@ -189,22 +193,26 @@ class _UnifiedMfaDialogState extends ConsumerState<UnifiedMfaDialog>
   Future<void> _switchToQr() async {
     if (_dismissed || _transitioning || _collapseRunning) return;
     _qrMode = true;
-    _targetIsQr = true; // 立即触发 AnimatedAlign 滑动
+    _targetIsQr = true;
+    _bodyCtrl.previous(); // 内容区：倒向（新QR从左入，旧SMS向右出）
+    _hintCtrl.forward(1); // 信息条：始终正向
     _listenQrStatus();
     setState(() {
       _transitioning = true;
     });
-    _collapseCtrl.forward(); // 同时触发收缩
+    _collapseCtrl.forward();
   }
 
   Future<void> _switchToSms() async {
     if (_dismissed || _transitioning || _collapseRunning) return;
     _qrMode = false;
-    _targetIsQr = false; // 立即触发 AnimatedAlign 滑动
+    _targetIsQr = false;
+    _bodyCtrl.forward(1); // 内容区：正向（新SMS从右入，旧QR向左出）
+    _hintCtrl.forward(1); // 信息条：始终正向
     setState(() {
       _transitioning = true;
     });
-    _collapseCtrl.forward(); // 同时触发收缩
+    _collapseCtrl.forward();
   }
 
   Future<void> _sendCode() async {
@@ -509,6 +517,14 @@ class _UnifiedMfaDialogState extends ConsumerState<UnifiedMfaDialog>
     );
   }
 
+  Widget _qrHintBar() =>
+      _buildHintBar(icon: Icons.info_outline, spans: _qrHintSpans);
+
+  Widget _smsHintBar() {
+    if ((_phoneHint ?? '').isEmpty) return const SizedBox.shrink();
+    return _buildHintBar(icon: Icons.info_outline, spans: _smsHintSpans);
+  }
+
   // ── SMS 模式 ──
 
   Widget _buildSmsBody() {
@@ -804,18 +820,23 @@ class _UnifiedMfaDialogState extends ConsumerState<UnifiedMfaDialog>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       _buildActionChip(),
-                      // 主体区：左右推入
-                      SlideSwitcher(
-                        index: _qrMode ? 0 : 1,
+                      // 主体区
+                      CarouselSwitcher(
+                        totalItems: 2,
+                        controller: _bodyCtrl,
                         isHorizontal: true,
                         distanceScale: 0.15,
-                        child: _qrMode ? _buildQrBody() : _buildSmsBody(),
+                        itemBuilder: (_, i) =>
+                            i == 0 ? _buildQrBody() : _buildSmsBody(),
                       ),
                       const SizedBox(height: 12),
-                      SlideSwitcher(
-                        index: _qrMode ? 0 : 1,
+                      // 提示条
+                      CarouselSwitcher(
+                        totalItems: 2,
+                        controller: _hintCtrl,
                         distanceScale: 0.4,
-                        child: _buildHint(),
+                        itemBuilder: (_, i) =>
+                            i == 0 ? _qrHintBar() : _smsHintBar(),
                       ),
                     ],
                   ),
