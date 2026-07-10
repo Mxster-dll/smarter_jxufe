@@ -11,7 +11,7 @@ import 'package:smarter_jxufe/features/ims/student_info/presentation/account_scr
 import 'package:smarter_jxufe/shared/widgets/carousel_switcher.dart';
 
 /// 修复与整理后的统一 MFA 对话框
-class UnifiedMfaDialog extends ConsumerStatefulWidget {
+class UnifiedMfaPage extends ConsumerStatefulWidget {
   final String title;
   final String info;
   final bool startInQrMode;
@@ -22,8 +22,9 @@ class UnifiedMfaDialog extends ConsumerStatefulWidget {
   final Future<bool> Function(String code) onValidate;
   final VoidCallback? onQrAuthorized;
   final bool showSwitchAccount;
+  final bool barrierDismissible;
 
-  const UnifiedMfaDialog({
+  const UnifiedMfaPage({
     super.key,
     required this.title,
     this.info = '',
@@ -35,6 +36,7 @@ class UnifiedMfaDialog extends ConsumerStatefulWidget {
     required this.onValidate,
     this.onQrAuthorized,
     this.showSwitchAccount = false,
+    this.barrierDismissible = false,
   });
 
   static Future<({bool authorized, bool trustDevice})> show(
@@ -52,26 +54,27 @@ class UnifiedMfaDialog extends ConsumerStatefulWidget {
   }) async {
     bool authorized = false;
 
-    await showDialog(
-      context: context,
-      barrierDismissible: barrierDismissible,
-      builder: (_) => UnifiedMfaDialog(
-        title: title,
-        info: info,
-        startInQrMode: startInQrMode,
-        showSwitchAccount: showSwitchAccount,
-        qrStatusStream: qrStatusStream,
-        onSwitchToQr: onSwitchToQr,
-        onSwitchToSms: onSwitchToSms,
-        onSendCode: onSendCode,
-        onValidate: (code) async {
-          final ok = await onValidate(code);
-          if (ok) authorized = true;
-          return ok;
-        },
-        onQrAuthorized: () {
-          authorized = true;
-        },
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => UnifiedMfaPage(
+          title: title,
+          info: info,
+          startInQrMode: startInQrMode,
+          showSwitchAccount: showSwitchAccount,
+          qrStatusStream: qrStatusStream,
+          barrierDismissible: barrierDismissible,
+          onSwitchToQr: onSwitchToQr,
+          onSwitchToSms: onSwitchToSms,
+          onSendCode: onSendCode,
+          onValidate: (code) async {
+            final ok = await onValidate(code);
+            if (ok) authorized = true;
+            return ok;
+          },
+          onQrAuthorized: () {
+            authorized = true;
+          },
+        ),
       ),
     );
 
@@ -82,10 +85,10 @@ class UnifiedMfaDialog extends ConsumerStatefulWidget {
   }
 
   @override
-  ConsumerState<UnifiedMfaDialog> createState() => _UnifiedMfaDialogState();
+  ConsumerState<UnifiedMfaPage> createState() => _UnifiedMfaPageState();
 }
 
-class _UnifiedMfaDialogState extends ConsumerState<UnifiedMfaDialog>
+class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
     with SingleTickerProviderStateMixin {
   bool _dismissed = false;
   StreamSubscription<dynamic>? _qrSub;
@@ -510,14 +513,6 @@ class _UnifiedMfaDialogState extends ConsumerState<UnifiedMfaDialog>
     ),
   ];
 
-  Widget _buildHint() {
-    if (!_qrMode && (_phoneHint ?? '').isEmpty) return const SizedBox.shrink();
-    return _buildHintBar(
-      icon: Icons.info_outline,
-      spans: _qrMode ? _qrHintSpans : _smsHintSpans,
-    );
-  }
-
   Widget _qrHintBar() =>
       _buildHintBar(icon: Icons.info_outline, spans: _qrHintSpans);
 
@@ -601,279 +596,269 @@ class _UnifiedMfaDialogState extends ConsumerState<UnifiedMfaDialog>
   Widget build(BuildContext context) {
     final viewModel = ref.read(qrLoginViewModelProvider.notifier);
 
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20),
-      child: IntrinsicWidth(
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOut,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(30),
-                blurRadius: 32,
-                offset: const Offset(0, 12),
-              ),
-              BoxShadow(
-                color: Colors.black.withAlpha(10),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(28, 10, 28, 10),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // header: mode buttons + title
-                Container(
-                  margin: const EdgeInsets.only(bottom: 20),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 16),
-                      Text(
-                        widget.title,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: JxufeTheme.textColor,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                      // if (widget.info.isNotEmpty) ...[
-                      //   const SizedBox(height: 6),
-                      //   Text(
-                      //     widget.info,
-                      //     style: const TextStyle(
-                      //       fontSize: 13,
-                      //       color: JxufeTheme.hintColor,
-                      //       height: 1.4,
-                      //     ),
-                      //     textAlign: TextAlign.center,
-                      //   ),
-                      // ],
-                    ],
-                  ),
-                ),
-
-                // body: shared header (account) + switchable inner container
-                Consumer(
-                  builder: (context, ref, child) {
-                    final state = ref.watch(qrLoginViewModelProvider);
-                    if (state.username.isNotEmpty) {
-                      return Column(
-                        mainAxisSize: MainAxisSize.min,
+    return Scaffold(
+      body: Stack(
+        children: [
+          Center(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOut,
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // header: mode buttons + title
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 20),
+                      child: Column(
                         children: [
-                          // 头像 —— IMS 个人信息页同款（用姓）
-                          CircleAvatar(
-                            radius: 28,
-                            backgroundColor: Theme.of(
-                              context,
-                            ).colorScheme.error,
-                            child: state.displayName.isNotEmpty
-                                ? Text(
-                                    state.displayName[0],
-                                    style: TextStyle(
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.w600,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onError,
-                                    ),
-                                  )
-                                : Icon(
-                                    Icons.person,
-                                    size: 26,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onError,
-                                  ),
-                          ),
-                          const SizedBox(height: 12),
-                          Container(
-                            margin: const EdgeInsets.only(bottom: 6),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                if (widget.showSwitchAccount)
-                                  const SizedBox(width: 36),
-
-                                Flexible(
-                                  child: Text.rich(
-                                    TextSpan(
-                                      text: state.username,
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: JxufeTheme.textColor,
-                                      ),
-                                    ),
-
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                if (widget.showSwitchAccount) ...[
-                                  const SizedBox(width: 4),
-                                  IconButton(
-                                    onPressed: () {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (_) => const AccountScreen(),
-                                        ),
-                                      );
-                                    },
-                                    icon: const Icon(Icons.logout, size: 18),
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(
-                                      minWidth: 32,
-                                      minHeight: 32,
-                                    ),
-                                    tooltip: '切换账户',
-                                  ),
-                                ],
-                              ],
+                          const SizedBox(height: 16),
+                          Text(
+                            widget.title,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: JxufeTheme.textColor,
+                              letterSpacing: -0.3,
                             ),
                           ),
+                        ],
+                      ),
+                    ),
 
-                          Center(
-                            child: GestureDetector(
-                              onTap: () {
-                                viewModel.setTrustDevice(!state.trustDevice);
-                              },
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                curve: Curves.easeOut,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: state.trustDevice
-                                      ? JxufeTheme.primaryColor
-                                      : JxufeTheme.inputBgColor,
-                                  borderRadius: BorderRadius.circular(22),
-                                  border: Border.all(
-                                    color: state.trustDevice
-                                        ? JxufeTheme.primaryColor
-                                        : JxufeTheme.borderColor,
-                                    width: 1,
-                                  ),
-                                ),
+                    // body: shared header (account) + switchable inner container
+                    Consumer(
+                      builder: (context, ref, child) {
+                        final state = ref.watch(qrLoginViewModelProvider);
+                        if (state.username.isNotEmpty) {
+                          return Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // 头像 —— IMS 个人信息页同款（用姓）
+                              CircleAvatar(
+                                radius: 28,
+                                backgroundColor: Theme.of(
+                                  context,
+                                ).colorScheme.error,
+                                child: state.displayName.isNotEmpty
+                                    ? Text(
+                                        state.displayName[0],
+                                        style: TextStyle(
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.w600,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onError,
+                                        ),
+                                      )
+                                    : Icon(
+                                        Icons.person,
+                                        size: 26,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onError,
+                                      ),
+                              ),
+                              const SizedBox(height: 12),
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 6),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
-                                    Icon(
-                                      state.trustDevice
-                                          ? Icons.check_circle
-                                          : Icons.circle_outlined,
-                                      size: 16,
-                                      color: state.trustDevice
-                                          ? Colors.white
-                                          : JxufeTheme.hintColor,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      '设为信任设备',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: state.trustDevice
-                                            ? Colors.white
-                                            : JxufeTheme.textColor,
-                                        fontWeight: state.trustDevice
-                                            ? FontWeight.w600
-                                            : FontWeight.normal,
+                                    if (widget.showSwitchAccount)
+                                      const SizedBox(width: 36),
+
+                                    Flexible(
+                                      child: Text.rich(
+                                        TextSpan(
+                                          text: state.username,
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                            color: JxufeTheme.textColor,
+                                          ),
+                                        ),
+
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
+                                    if (widget.showSwitchAccount) ...[
+                                      const SizedBox(width: 4),
+                                      IconButton(
+                                        onPressed: () {
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                                  const AccountScreen(),
+                                            ),
+                                          );
+                                        },
+                                        icon: const Icon(
+                                          Icons.logout,
+                                          size: 18,
+                                        ),
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(
+                                          minWidth: 32,
+                                          minHeight: 32,
+                                        ),
+                                        tooltip: '切换账户',
+                                      ),
+                                    ],
                                   ],
                                 ),
                               ),
-                            ),
+
+                              Center(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    viewModel.setTrustDevice(
+                                      !state.trustDevice,
+                                    );
+                                  },
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    curve: Curves.easeOut,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: state.trustDevice
+                                          ? JxufeTheme.primaryColor
+                                          : JxufeTheme.inputBgColor,
+                                      borderRadius: BorderRadius.circular(22),
+                                      border: Border.all(
+                                        color: state.trustDevice
+                                            ? JxufeTheme.primaryColor
+                                            : JxufeTheme.borderColor,
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          state.trustDevice
+                                              ? Icons.check_circle
+                                              : Icons.circle_outlined,
+                                          size: 16,
+                                          color: state.trustDevice
+                                              ? Colors.white
+                                              : JxufeTheme.hintColor,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          '设为信任设备',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: state.trustDevice
+                                                ? Colors.white
+                                                : JxufeTheme.textColor,
+                                            fontWeight: state.trustDevice
+                                                ? FontWeight.w600
+                                                : FontWeight.normal,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                            ],
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    ),
+
+                    // 共享的外层卡片容器
+                    // Action chip 在 AnimatedSwitcher 外，模式切换时左右滑动
+                    Container(
+                      width: 318,
+                      height: 375,
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: JxufeTheme.borderColor),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withAlpha(8),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildActionChip(),
+                          // 主体区
+                          CarouselSwitcher(
+                            totalItems: 2,
+                            controller: _bodyCtrl,
+                            isHorizontal: true,
+                            distanceScale: 0.15,
+                            itemBuilder: (_, i) =>
+                                i == 0 ? _buildQrBody() : _buildSmsBody(),
                           ),
                           const SizedBox(height: 12),
+                          // 提示条
+                          CarouselSwitcher(
+                            totalItems: 2,
+                            controller: _hintCtrl,
+                            distanceScale: 0.4,
+                            itemBuilder: (_, i) =>
+                                i == 0 ? _qrHintBar() : _smsHintBar(),
+                          ),
                         ],
-                      );
-                    }
-                    return const SizedBox.shrink();
-                  },
-                ),
-
-                // 共享的外层卡片容器
-                // Action chip 在 AnimatedSwitcher 外，模式切换时左右滑动
-                Container(
-                  width: 318,
-                  height: 375,
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: JxufeTheme.borderColor),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withAlpha(8),
-                        blurRadius: 16,
-                        offset: const Offset(0, 4),
                       ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildActionChip(),
-                      // 主体区
-                      CarouselSwitcher(
-                        totalItems: 2,
-                        controller: _bodyCtrl,
-                        isHorizontal: true,
-                        distanceScale: 0.15,
-                        itemBuilder: (_, i) =>
-                            i == 0 ? _buildQrBody() : _buildSmsBody(),
-                      ),
-                      const SizedBox(height: 12),
-                      // 提示条
-                      CarouselSwitcher(
-                        totalItems: 2,
-                        controller: _hintCtrl,
-                        distanceScale: 0.4,
-                        itemBuilder: (_, i) =>
-                            i == 0 ? _qrHintBar() : _smsHintBar(),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 12),
-
-                // 将顶部的模式按钮移动到卡片底部，便于先显示主要内容
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildModeButton(
-                      icon: Icons.qr_code_scanner_rounded,
-                      color: JxufeTheme.primaryColor,
-                      active: _qrMode,
-                      onTap: _qrMode ? null : _switchToQr,
                     ),
-                    const SizedBox(width: 14),
-                    _buildModeButton(
-                      icon: ExpandIcons.wecon,
-                      color: const Color(0xFF73A9EC),
-                      active: !_qrMode,
-                      onTap: !_qrMode ? null : _switchToSms,
+
+                    const SizedBox(height: 12),
+
+                    // 将顶部的模式按钮移动到卡片底部，便于先显示主要内容
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildModeButton(
+                          icon: Icons.qr_code_scanner_rounded,
+                          color: JxufeTheme.primaryColor,
+                          active: _qrMode,
+                          onTap: _qrMode ? null : _switchToQr,
+                        ),
+                        const SizedBox(width: 14),
+                        _buildModeButton(
+                          icon: ExpandIcons.wecon,
+                          color: const Color(0xFF73A9EC),
+                          active: !_qrMode,
+                          onTap: !_qrMode ? null : _switchToSms,
+                        ),
+                      ],
                     ),
+
+                    const SizedBox(height: 8),
                   ],
                 ),
-
-                const SizedBox(height: 8),
-              ],
+              ),
             ),
           ),
-        ),
+
+          if (widget.barrierDismissible)
+            Positioned(
+              top: 16,
+              right: 16,
+              child: IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+        ],
       ),
     );
   }
