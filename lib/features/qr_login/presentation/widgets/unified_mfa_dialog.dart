@@ -48,12 +48,13 @@ class UnifiedMfaDialog extends ConsumerStatefulWidget {
     required Future<String?> Function() onSwitchToSms,
     required Future<void> Function() onSendCode,
     required Future<bool> Function(String code) onValidate,
+    bool barrierDismissible = false,
   }) async {
     bool authorized = false;
 
     await showDialog(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: barrierDismissible,
       builder: (_) => UnifiedMfaDialog(
         title: title,
         info: info,

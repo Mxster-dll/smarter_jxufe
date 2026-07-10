@@ -159,6 +159,7 @@ class QrLoginViewModel extends _$QrLoginViewModel {
     bool startInQrMode = true,
     bool showSwitchAccount = true,
     String displayName = '',
+    bool barrierDismissible = false,
   }) async {
     // ── 先初始化扫码模式 ──
     state = state.copyWith(
@@ -183,6 +184,7 @@ class QrLoginViewModel extends _$QrLoginViewModel {
       info: '当前登录环境异常，需通过安全验证确认是本人操作',
       startInQrMode: startInQrMode,
       showSwitchAccount: showSwitchAccount,
+      barrierDismissible: barrierDismissible,
       qrStatusStream: _repository.statusStream,
       onSwitchToQr: () async {
         // 重新初始化扫码
