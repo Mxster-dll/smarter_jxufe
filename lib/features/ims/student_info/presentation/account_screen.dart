@@ -240,6 +240,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           mfaState.mfaState,
           startInQrMode: isDesktop,
           showSwitchAccount: false,
+          displayName: account.displayName,
           barrierDismissible: true,
         );
         // 用户取消 → 留在账户页（切换用户由对话框内部处理）
