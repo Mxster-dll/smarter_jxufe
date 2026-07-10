@@ -700,7 +700,9 @@ class _UnifiedMfaDialogState extends ConsumerState<UnifiedMfaDialog>
                               mainAxisAlignment: MainAxisAlignment.center,
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                const SizedBox(width: 36),
+                                if (widget.showSwitchAccount)
+                                  const SizedBox(width: 36),
+
                                 Flexible(
                                   child: Text.rich(
                                     TextSpan(
