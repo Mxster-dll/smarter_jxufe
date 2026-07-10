@@ -158,6 +158,7 @@ class QrLoginViewModel extends _$QrLoginViewModel {
     String mfaState, {
     bool startInQrMode = true,
     bool showSwitchAccount = true,
+    String displayName = '',
   }) async {
     // ── 先初始化扫码模式 ──
     state = state.copyWith(
@@ -165,6 +166,7 @@ class QrLoginViewModel extends _$QrLoginViewModel {
       title: '安全验证',
       info: '当前登录环境异常，需通过安全验证确认是本人操作',
       username: account,
+      displayName: displayName,
     );
 
     await _repository.startMfaVerification(account, password, mfaState);
@@ -181,7 +183,6 @@ class QrLoginViewModel extends _$QrLoginViewModel {
       info: '当前登录环境异常，需通过安全验证确认是本人操作',
       startInQrMode: startInQrMode,
       showSwitchAccount: showSwitchAccount,
-      getQrImage: () => _repository.qrCodeData?.img,
       qrStatusStream: _repository.statusStream,
       onSwitchToQr: () async {
         // 重新初始化扫码
@@ -230,6 +231,11 @@ class QrLoginViewModel extends _$QrLoginViewModel {
     _listenToRepository();
   }
 
+  /// Update trustDevice flag from UI
+  void setTrustDevice(bool v) {
+    state = state.copyWith(trustDevice: v);
+  }
+
   /// 刷新二维码
   Future<void> refresh() async {
     try {
@@ -242,14 +248,7 @@ class QrLoginViewModel extends _$QrLoginViewModel {
 
   /// 显示二维码对话框，返回 Future 在对话框关闭时完成
   Future<void> _showDialog(BuildContext context) {
-    return QrCodeDialog.show(
-      context,
-      title: state.title,
-      info: state.info,
-      onTrustChanged: (v) {
-        state = state.copyWith(trustDevice: v);
-      },
-    );
+    return QrCodeDialog.show(context, title: state.title, info: state.info);
   }
 
   /// 停止轮询

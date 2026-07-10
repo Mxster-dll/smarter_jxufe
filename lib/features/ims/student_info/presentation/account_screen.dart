@@ -198,6 +198,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           account.password,
           mfaState,
           startInQrMode: isDesktop,
+          displayName: account.displayName,
         );
         if (!result.authorized) throw Exception('用户取消 MFA 验证');
       };

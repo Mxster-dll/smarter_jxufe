@@ -11,6 +11,7 @@ class QrLoginState {
   final String info;
   final String hintText;
   final String username;
+  final String displayName;
   final bool trustDevice;
 
   const QrLoginState({
@@ -21,6 +22,7 @@ class QrLoginState {
     this.info = '',
     this.hintText = '',
     this.username = '',
+    this.displayName = '',
     this.trustDevice = false,
   });
 
@@ -32,6 +34,7 @@ class QrLoginState {
     String? info,
     String? hintText,
     String? username,
+    String? displayName,
     bool? trustDevice,
   }) {
     return QrLoginState(
@@ -42,6 +45,7 @@ class QrLoginState {
       info: info ?? this.info,
       hintText: hintText ?? this.hintText,
       username: username ?? this.username,
+      displayName: displayName ?? this.displayName,
       trustDevice: trustDevice ?? this.trustDevice,
     );
   }

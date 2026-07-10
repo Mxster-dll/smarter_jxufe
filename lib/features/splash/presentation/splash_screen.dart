@@ -65,6 +65,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           account.password,
           mfaState,
           startInQrMode: isDesktop,
+          displayName: account.displayName,
         );
         if (!result.authorized) throw Exception('用户取消 MFA 验证');
       };
@@ -108,6 +109,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           account.password,
           mfaState.mfaState,
           startInQrMode: isDesktop,
+          displayName: account.displayName,
         );
         // 用户取消 → 回退到账户管理页（此时尚无账户登录，无需清状态）
         if (!result.authorized) {
