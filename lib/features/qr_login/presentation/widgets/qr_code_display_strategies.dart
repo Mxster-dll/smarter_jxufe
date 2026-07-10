@@ -12,8 +12,16 @@ abstract interface class QrCodeDisplayStrategy {
 /// 加载中
 final class LoadingDisplayStrategy implements QrCodeDisplayStrategy {
   @override
-  Widget buildWidget(BuildContext context, QrLoginState state) =>
-      CircularProgressIndicator(color: JxufeTheme.primaryColor);
+  Widget buildWidget(BuildContext context, QrLoginState state) => Center(
+    child: SizedBox(
+      width: 32,
+      height: 32,
+      child: CircularProgressIndicator(
+        strokeWidth: 2.5,
+        color: JxufeTheme.primaryColor,
+      ),
+    ),
+  );
 }
 
 /// 待扫描
@@ -23,13 +31,17 @@ final class PendingDisplayStrategy implements QrCodeDisplayStrategy {
     final showHint = state.hintText.isNotEmpty;
 
     return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const SizedBox(width: 200, height: 200),
-        if (showHint) const SizedBox(height: 16),
         if (showHint)
           Text(
             state.hintText,
-            style: TextStyle(fontSize: 13, color: Theme.of(context).hintColor),
+            style: TextStyle(
+              fontSize: 13,
+              color: Theme.of(context).hintColor,
+              height: 1.4,
+            ),
+            textAlign: TextAlign.center,
           ),
       ],
     );
@@ -42,16 +54,36 @@ final class ScannedDisplayStrategy implements QrCodeDisplayStrategy {
   Widget buildWidget(BuildContext context, QrLoginState state) => Column(
     mainAxisAlignment: MainAxisAlignment.center,
     children: [
-      const Icon(Icons.check_circle, color: Colors.green, size: 64),
+      Container(
+        width: 64,
+        height: 64,
+        decoration: BoxDecoration(
+          color: Colors.green.withAlpha(20),
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(
+          Icons.check_circle_rounded,
+          color: Colors.green,
+          size: 40,
+        ),
+      ),
       const SizedBox(height: 16),
-      Text('已扫描', style: Theme.of(context).textTheme.headlineSmall),
-      const SizedBox(height: 8),
-      const Text('请在手机上确认登录', style: TextStyle(color: Colors.grey)),
-      if (state.verifyCode != null) const SizedBox(height: 8),
+      Text(
+        '已扫描',
+        style: Theme.of(
+          context,
+        ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+      ),
+      const SizedBox(height: 6),
+      const Text(
+        '请在手机上确认登录',
+        style: TextStyle(color: JxufeTheme.hintColor, fontSize: 13),
+      ),
+      if (state.verifyCode != null) const SizedBox(height: 6),
       if (state.verifyCode != null)
         Text(
           '确认码: ${state.verifyCode!}',
-          style: TextStyle(color: Colors.grey),
+          style: const TextStyle(color: JxufeTheme.hintColor, fontSize: 12),
         ),
     ],
   );
@@ -63,11 +95,24 @@ final class AuthorizedDisplayStrategy implements QrCodeDisplayStrategy {
   Widget buildWidget(BuildContext context, QrLoginState state) => Column(
     mainAxisAlignment: MainAxisAlignment.center,
     children: [
-      const Icon(Icons.done_all, color: Colors.blue, size: 64),
+      Container(
+        width: 64,
+        height: 64,
+        decoration: BoxDecoration(
+          color: Colors.blue.withAlpha(20),
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(Icons.done_all_rounded, color: Colors.blue, size: 36),
+      ),
       const SizedBox(height: 16),
-      Text('验证成功', style: Theme.of(context).textTheme.headlineSmall),
-      const SizedBox(height: 8),
-      Text('欢迎回来', style: TextStyle(color: Colors.grey.shade600)),
+      Text(
+        '验证成功',
+        style: Theme.of(
+          context,
+        ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+      ),
+      const SizedBox(height: 6),
+      Text('欢迎回来', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
     ],
   );
 }
@@ -78,11 +123,31 @@ final class CancelledDisplayStrategy implements QrCodeDisplayStrategy {
   Widget buildWidget(BuildContext context, QrLoginState state) => Column(
     mainAxisAlignment: MainAxisAlignment.center,
     children: [
-      const Icon(Icons.cancel, color: Colors.orange, size: 64),
+      Container(
+        width: 64,
+        height: 64,
+        decoration: BoxDecoration(
+          color: Colors.orange.withAlpha(20),
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(
+          Icons.cancel_outlined,
+          color: Colors.orange,
+          size: 40,
+        ),
+      ),
       const SizedBox(height: 16),
-      Text('已取消', style: Theme.of(context).textTheme.headlineSmall),
-      const SizedBox(height: 8),
-      const Text('请在手机上重新扫码', style: TextStyle(color: Colors.grey)),
+      Text(
+        '已取消',
+        style: Theme.of(
+          context,
+        ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+      ),
+      const SizedBox(height: 6),
+      const Text(
+        '请在手机上重新扫码',
+        style: TextStyle(color: JxufeTheme.hintColor, fontSize: 13),
+      ),
     ],
   );
 }
@@ -91,10 +156,28 @@ final class CancelledDisplayStrategy implements QrCodeDisplayStrategy {
 final class ExpiredDisplayStrategy implements QrCodeDisplayStrategy {
   @override
   Widget buildWidget(BuildContext context, QrLoginState state) => Column(
+    mainAxisAlignment: MainAxisAlignment.center,
     children: [
-      const Icon(Icons.refresh, color: JxufeTheme.secondaryColor, size: 64),
+      Container(
+        width: 64,
+        height: 64,
+        decoration: BoxDecoration(
+          color: JxufeTheme.secondaryColor.withAlpha(20),
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(
+          Icons.refresh_rounded,
+          color: JxufeTheme.secondaryColor,
+          size: 40,
+        ),
+      ),
       const SizedBox(height: 16),
-      Text('二维码已失效', style: Theme.of(context).textTheme.headlineSmall),
+      Text(
+        '二维码已失效',
+        style: Theme.of(
+          context,
+        ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+      ),
     ],
   );
 }
@@ -105,9 +188,26 @@ final class ErrorDisplayStrategy implements QrCodeDisplayStrategy {
   Widget buildWidget(BuildContext context, QrLoginState state) => Column(
     mainAxisAlignment: MainAxisAlignment.center,
     children: [
-      const Icon(Icons.error_outline, color: Colors.red, size: 64),
+      Container(
+        width: 64,
+        height: 64,
+        decoration: BoxDecoration(
+          color: Colors.red.withAlpha(20),
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(
+          Icons.error_outline_rounded,
+          color: Colors.red,
+          size: 40,
+        ),
+      ),
       const SizedBox(height: 16),
-      Text('二维码请求出错', style: Theme.of(context).textTheme.headlineSmall),
+      Text(
+        '二维码请求出错',
+        style: Theme.of(
+          context,
+        ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+      ),
     ],
   );
 }

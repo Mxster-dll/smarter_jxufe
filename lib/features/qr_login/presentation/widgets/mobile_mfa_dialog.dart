@@ -65,7 +65,6 @@ class MobileMfaDialog extends StatefulWidget {
 class _MobileMfaDialogState extends State<MobileMfaDialog> {
   bool _trustDevice = false;
   bool _sending = false;
-  bool _codeSent = false;
   bool _validating = false;
   int _countdown = 0;
   final _codeController = TextEditingController();
@@ -86,7 +85,6 @@ class _MobileMfaDialogState extends State<MobileMfaDialog> {
     try {
       await widget.onSendCode();
       setState(() {
-        _codeSent = true;
         _countdown = 60;
       });
       _startCountdown();
@@ -142,94 +140,203 @@ class _MobileMfaDialogState extends State<MobileMfaDialog> {
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 20),
       child: IntrinsicWidth(
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withAlpha(38),
-                blurRadius: 30,
-                offset: const Offset(0, 10),
+                color: Colors.black.withAlpha(30),
+                blurRadius: 32,
+                offset: const Offset(0, 12),
+              ),
+              BoxShadow(
+                color: Colors.black.withAlpha(10),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+            padding: const EdgeInsets.fromLTRB(28, 28, 28, 20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // 企业微信图标
+                // 图标 —— 企业微信品牌色圆形背景
                 Container(
-                  width: 40,
-                  height: 40,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF73A9EC),
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF73A9EC),
                     shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF73A9EC).withAlpha(50),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: const Icon(
                     ExpandIcons.wecon,
                     color: Colors.white,
-                    size: 24,
+                    size: 26,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
+                // 标题
                 Text(
                   widget.title,
                   style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: JxufeTheme.textColor,
+                    letterSpacing: -0.3,
                   ),
                 ),
                 if (widget.info.isNotEmpty) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Text(
                     widget.info,
-                    style: const TextStyle(fontSize: 13, color: Colors.grey),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: JxufeTheme.hintColor,
+                      height: 1.4,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                 ],
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
 
-                // 企业微信验证提示
-                const Text('使用企业微信验证', style: TextStyle(fontSize: 14)),
-                const SizedBox(height: 8),
-                const Text(
-                  '请在企业微信查看消息验证码',
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                // 提示：使用企业微信验证
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF73A9EC).withAlpha(15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        ExpandIcons.wecon,
+                        size: 18,
+                        color: Color(0xFF73A9EC),
+                      ),
+                      const SizedBox(width: 8),
+                      Text.rich(
+                        TextSpan(
+                          children: [
+                            const TextSpan(
+                              text: '使用 ',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: JxufeTheme.textColor,
+                              ),
+                            ),
+                            const TextSpan(
+                              text: '企业微信',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF73A9EC),
+                              ),
+                            ),
+                            const TextSpan(
+                              text: ' 查看验证码',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: JxufeTheme.textColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
 
                 // 验证码输入 + 发送按钮
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
                       child: TextField(
                         controller: _codeController,
                         keyboardType: TextInputType.number,
                         maxLength: 6,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          letterSpacing: 4,
+                          fontWeight: FontWeight.w500,
+                        ),
                         decoration: InputDecoration(
                           hintText: '请输入验证码',
                           counterText: '',
                           errorText: _errorText,
-                          border: const OutlineInputBorder(),
+                          errorMaxLines: 2,
+                          filled: true,
+                          fillColor: JxufeTheme.inputBgColor,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: JxufeTheme.borderColor,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF73A9EC),
+                              width: 1.5,
+                            ),
+                          ),
+                          errorBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Colors.red),
+                          ),
+                          focusedErrorBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: Colors.red,
+                              width: 1.5,
+                            ),
+                          ),
                           contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
+                            horizontal: 16,
+                            vertical: 14,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 10),
                     SizedBox(
-                      height: 42,
+                      height: 48,
                       child: ElevatedButton(
                         onPressed: (_sending || _countdown > 0)
                             ? null
                             : _sendCode,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: JxufeTheme.primaryColor,
+                          backgroundColor: const Color(0xFF73A9EC),
                           foregroundColor: Colors.white,
+                          disabledBackgroundColor: const Color(
+                            0xFF73A9EC,
+                          ).withAlpha(100),
+                          disabledForegroundColor: Colors.white70,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
                         ),
                         child: Text(
                           _sending
@@ -237,57 +344,99 @@ class _MobileMfaDialogState extends State<MobileMfaDialog> {
                               : _countdown > 0
                               ? '${_countdown}s'
                               : '发送验证码',
-                          style: const TextStyle(fontSize: 13),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
 
-                // 信任设备复选框
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: Checkbox(
-                        value: _trustDevice,
-                        activeColor: Theme.of(context).colorScheme.error,
-                        checkColor: Theme.of(context).colorScheme.onError,
-                        onChanged: (v) {
-                          setState(() => _trustDevice = v ?? false);
-                          widget.onTrustChanged?.call(_trustDevice);
-                        },
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                // 信任设备
+                Center(
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() => _trustDevice = !_trustDevice);
+                      widget.onTrustChanged?.call(_trustDevice);
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOut,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _trustDevice
+                            ? JxufeTheme.primaryColor
+                            : JxufeTheme.inputBgColor,
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(
+                          color: _trustDevice
+                              ? JxufeTheme.primaryColor
+                              : JxufeTheme.borderColor,
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _trustDevice
+                                ? Icons.check_circle
+                                : Icons.circle_outlined,
+                            size: 16,
+                            color: _trustDevice
+                                ? Colors.white
+                                : JxufeTheme.hintColor,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '设为信任设备',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: _trustDevice
+                                  ? Colors.white
+                                  : JxufeTheme.textColor,
+                              fontWeight: _trustDevice
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() => _trustDevice = !_trustDevice);
-                        widget.onTrustChanged?.call(_trustDevice);
-                      },
-                      child: const Text(
-                        '登录成功后，设为可信客户端',
-                        style: TextStyle(fontSize: 13),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
 
                 // 确定按钮
                 SizedBox(
                   width: double.infinity,
+                  height: 48,
                   child: ElevatedButton(
                     onPressed: _validating ? null : _validate,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: JxufeTheme.primaryColor,
                       foregroundColor: Colors.white,
+                      disabledBackgroundColor: JxufeTheme.primaryColor
+                          .withAlpha(150),
+                      disabledForegroundColor: Colors.white70,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
                     ),
-                    child: Text(_validating ? '验证中…' : '确定'),
+                    child: Text(
+                      _validating ? '验证中…' : '确定',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
               ],

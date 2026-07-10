@@ -1,26 +1,26 @@
 import 'dart:async';
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
-
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smarter_jxufe/design/JxufeTheme.dart';
+import 'package:smarter_jxufe/design/Icons.dart';
 import 'package:smarter_jxufe/features/qr_login/domain/entities/qr_code_status.dart';
+import 'package:smarter_jxufe/features/qr_login/presentation/qr_login_viewmodel.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/widgets/qr_code_card.dart';
+import 'package:smarter_jxufe/features/qr_login/presentation/widgets/verification_code_input.dart';
 import 'package:smarter_jxufe/features/ims/student_info/presentation/account_screen.dart';
+import 'package:smarter_jxufe/shared/widgets/slide_switcher.dart';
 
-/// 统一 MFA 对话框 — 支持扫码验证和短信验证码切换。
-class UnifiedMfaDialog extends StatefulWidget {
+/// 修复与整理后的统一 MFA 对话框
+class UnifiedMfaDialog extends ConsumerStatefulWidget {
   final String title;
   final String info;
   final bool startInQrMode;
-  final Uint8List? Function() getQrImage;
-  final Stream<QrCodeStatus> qrStatusStream;
+  final Stream<dynamic> qrStatusStream;
   final Future<void> Function() onSwitchToQr;
-  final Future<String> Function() onSwitchToSms;
+  final Future<String?> Function() onSwitchToSms;
   final Future<void> Function() onSendCode;
   final Future<bool> Function(String code) onValidate;
   final VoidCallback? onQrAuthorized;
-  final ValueChanged<bool>? onTrustChanged;
   final bool showSwitchAccount;
 
   const UnifiedMfaDialog({
@@ -28,15 +28,13 @@ class UnifiedMfaDialog extends StatefulWidget {
     required this.title,
     this.info = '',
     this.startInQrMode = true,
-    required this.getQrImage,
     required this.qrStatusStream,
     required this.onSwitchToQr,
     required this.onSwitchToSms,
     required this.onSendCode,
     required this.onValidate,
     this.onQrAuthorized,
-    this.onTrustChanged,
-    this.showSwitchAccount = true,
+    this.showSwitchAccount = false,
   });
 
   static Future<({bool authorized, bool trustDevice})> show(
@@ -44,88 +42,104 @@ class UnifiedMfaDialog extends StatefulWidget {
     String title = '',
     String info = '',
     bool startInQrMode = true,
-    required Uint8List? Function() getQrImage,
-    required Stream<QrCodeStatus> qrStatusStream,
+    bool showSwitchAccount = false,
+    required Stream<dynamic> qrStatusStream,
     required Future<void> Function() onSwitchToQr,
-    required Future<String> Function() onSwitchToSms,
+    required Future<String?> Function() onSwitchToSms,
     required Future<void> Function() onSendCode,
     required Future<bool> Function(String code) onValidate,
-    bool showSwitchAccount = true,
   }) async {
-    bool trustDevice = false;
     bool authorized = false;
 
-    try {
-      await showDialog(
-        context: context,
-        barrierColor: Colors.black.withAlpha(26),
-        barrierDismissible: true,
-        builder: (_) => UnifiedMfaDialog(
-          title: title,
-          info: info,
-          startInQrMode: startInQrMode,
-          showSwitchAccount: showSwitchAccount,
-          getQrImage: getQrImage,
-          qrStatusStream: qrStatusStream,
-          onSwitchToQr: onSwitchToQr,
-          onSwitchToSms: onSwitchToSms,
-          onSendCode: onSendCode,
-          onValidate: (code) async {
-            final ok = await onValidate(code);
-            if (ok) authorized = true;
-            return ok;
-          },
-          onQrAuthorized: () => authorized = true,
-          onTrustChanged: (v) => trustDevice = v,
-        ),
-      );
-    } catch (_) {
-      // 对话框内部异常（如在关闭过程中异步回调访问已销毁的 Widget）
-      // → 静默吞掉，返回未授权状态
-    }
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => UnifiedMfaDialog(
+        title: title,
+        info: info,
+        startInQrMode: startInQrMode,
+        showSwitchAccount: showSwitchAccount,
+        qrStatusStream: qrStatusStream,
+        onSwitchToQr: onSwitchToQr,
+        onSwitchToSms: onSwitchToSms,
+        onSendCode: onSendCode,
+        onValidate: (code) async {
+          final ok = await onValidate(code);
+          if (ok) authorized = true;
+          return ok;
+        },
+        onQrAuthorized: () {
+          authorized = true;
+        },
+      ),
+    );
+
+    final trustDevice = ProviderScope.containerOf(
+      context,
+    ).read(qrLoginViewModelProvider).trustDevice;
     return (authorized: authorized, trustDevice: trustDevice);
   }
 
   @override
-  State<UnifiedMfaDialog> createState() => _UnifiedMfaDialogState();
+  ConsumerState<UnifiedMfaDialog> createState() => _UnifiedMfaDialogState();
 }
 
-class _UnifiedMfaDialogState extends State<UnifiedMfaDialog> {
-  bool _qrMode = true;
-  bool _switching = false;
-  StreamSubscription<QrCodeStatus>? _qrSub;
+class _UnifiedMfaDialogState extends ConsumerState<UnifiedMfaDialog>
+    with SingleTickerProviderStateMixin {
   bool _dismissed = false;
-
-  bool _trustDevice = false;
+  StreamSubscription<dynamic>? _qrSub;
+  final _codeInputKey = GlobalKey<VerificationCodeInputState>();
+  String _smsCode = '';
   bool _sending = false;
-  bool _validating = false;
-  int _countdown = 0;
-  final _codeController = TextEditingController();
   String? _errorText;
-  String _phoneHint = '';
+  int _countdown = 0;
+  bool _qrMode = true;
+  String? _phoneHint;
+  bool _validating = false;
+  bool _loadingSms = false;
+  bool _transitioning = false;
+  bool _targetIsQr = true;
+
+  late final AnimationController _collapseCtrl;
+  late final Animation<double> _shrinkAnim;
 
   @override
   void initState() {
     super.initState();
     _qrMode = widget.startInQrMode;
-    _listenQrStatus();
+    _targetIsQr = _qrMode;
+    _collapseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+    );
+    _shrinkAnim = Tween<double>(
+      begin: 1.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(parent: _collapseCtrl, curve: Curves.easeInOut));
+    // 强制绑定到当前 tick，避免首帧闪动
+    _shrinkAnim.addListener(() {});
+    _collapseCtrl.addStatusListener(_onCollapseDone);
+    if (_qrMode) _listenQrStatus();
   }
 
   void _listenQrStatus() {
     _qrSub?.cancel();
     _qrSub = widget.qrStatusStream.listen(
-      (status) {
+      (event) {
         if (!mounted || _dismissed) return;
-        try {
-          if (status == QrCodeStatus.authorized) {
-            widget.onQrAuthorized?.call();
-            Future.delayed(const Duration(milliseconds: 500), () {
-              if (mounted && !_dismissed) Navigator.of(context).pop();
-            });
-          }
-        } catch (_) {}
+        if (event is QrCodeStatus && event == QrCodeStatus.authorized) {
+          widget.onQrAuthorized?.call();
+          // 短暂延迟让用户看到"验证成功"后再关闭
+          Future.delayed(const Duration(milliseconds: 600), () {
+            if (mounted && !_dismissed) {
+              Navigator.of(context).pop();
+            }
+          });
+        }
       },
-      onError: (_) {}, // 流错误静默处理
+      onError: (e) {
+        // ignore errors for now
+      },
     );
   }
 
@@ -133,27 +147,64 @@ class _UnifiedMfaDialogState extends State<UnifiedMfaDialog> {
   void dispose() {
     _dismissed = true;
     _qrSub?.cancel();
-    _codeController.dispose();
+    _collapseCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _switchMode() async {
+  bool _collapseRunning = false;
+
+  void _onCollapseDone(AnimationStatus status) async {
+    if (status != AnimationStatus.completed) return;
+    if (_collapseRunning) return;
+    _collapseRunning = true;
+    // 收缩完成 → 加载
+    await _executeModeSwitch();
+    // 展开
+    _collapseCtrl.reverse();
+    await _collapseCtrl.reverse().orCancel;
+    _collapseRunning = false;
+    if (mounted) setState(() => _transitioning = false);
+  }
+
+  Future<void> _executeModeSwitch() async {
     if (_dismissed) return;
-    setState(() => _switching = true);
+    setState(() => _loadingSms = true);
     try {
-      if (_qrMode) {
-        _phoneHint = await widget.onSwitchToSms();
-        if (_dismissed) return;
-        _qrMode = false;
-      } else {
+      if (_targetIsQr) {
         await widget.onSwitchToQr();
+      } else {
+        final hint = await widget.onSwitchToSms();
         if (_dismissed) return;
-        _qrMode = true;
-        _listenQrStatus();
+        _phoneHint = hint;
       }
+    } catch (e) {
+      if (mounted) setState(() => _errorText = e.toString());
     } finally {
-      if (mounted && !_dismissed) setState(() => _switching = false);
+      if (mounted && !_dismissed) {
+        setState(() => _loadingSms = false);
+      }
     }
+  }
+
+  Future<void> _switchToQr() async {
+    if (_dismissed || _transitioning || _collapseRunning) return;
+    _qrMode = true;
+    _targetIsQr = true; // 立即触发 AnimatedAlign 滑动
+    _listenQrStatus();
+    setState(() {
+      _transitioning = true;
+    });
+    _collapseCtrl.forward(); // 同时触发收缩
+  }
+
+  Future<void> _switchToSms() async {
+    if (_dismissed || _transitioning || _collapseRunning) return;
+    _qrMode = false;
+    _targetIsQr = false; // 立即触发 AnimatedAlign 滑动
+    setState(() {
+      _transitioning = true;
+    });
+    _collapseCtrl.forward(); // 同时触发收缩
   }
 
   Future<void> _sendCode() async {
@@ -168,7 +219,7 @@ class _UnifiedMfaDialogState extends State<UnifiedMfaDialog> {
     } catch (e) {
       setState(() => _errorText = e.toString());
     } finally {
-      setState(() => _sending = false);
+      if (mounted) setState(() => _sending = false);
     }
   }
 
@@ -185,7 +236,7 @@ class _UnifiedMfaDialogState extends State<UnifiedMfaDialog> {
   }
 
   Future<void> _validate() async {
-    final code = _codeController.text.trim();
+    final code = _smsCode;
     if (code.isEmpty) {
       setState(() => _errorText = '请输入验证码');
       return;
@@ -209,201 +260,590 @@ class _UnifiedMfaDialogState extends State<UnifiedMfaDialog> {
     }
   }
 
+  Widget _buildModeButton({
+    required IconData icon,
+    required Color color,
+    required bool active,
+    required VoidCallback? onTap,
+  }) {
+    final isHovering = ValueNotifier<bool>(false);
+    return MouseRegion(
+      onEnter: (_) => isHovering.value = true,
+      onExit: (_) => isHovering.value = false,
+      child: GestureDetector(
+        onTap: _transitioning ? null : onTap,
+        child: ValueListenableBuilder<bool>(
+          valueListenable: isHovering,
+          builder: (context, hovering, child) {
+            final showActive = active || hovering;
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOut,
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: showActive ? color : JxufeTheme.inputBgColor,
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(
+                  color: showActive ? color : JxufeTheme.borderColor,
+                  width: showActive ? 2 : 1,
+                ),
+                boxShadow: showActive
+                    ? [
+                        BoxShadow(
+                          color: color.withAlpha(60),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Icon(
+                icon,
+                color: showActive ? Colors.white : color,
+                size: 21,
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  /// 操作芯片 — AnimatedCrossFade 实现按钮左右换位动画，Row 自适应宽度
+  Widget _buildActionChip() {
+    final isQr = _qrMode;
+    final isQrTarget = _targetIsQr;
+    final label = isQr
+        ? '刷新二维码'
+        : _sending
+        ? '发送中…'
+        : _countdown > 0
+        ? '${_countdown}s 后重发'
+        : '发送验证码';
+    final isQrLoading =
+        isQr &&
+        ref.watch(qrLoginViewModelProvider).status == QrCodeStatus.loading;
+    final showLoading = isQrLoading || (!isQr && _loadingSms);
+    final enabled =
+        !_transitioning &&
+        !showLoading &&
+        (isQr || (!_sending && _countdown == 0));
+    final onTap = isQr
+        ? () => ref.read(qrLoginViewModelProvider.notifier).refresh()
+        : _sendCode;
+
+    final buttonWidget = SizedBox(
+      width: 24,
+      height: 24,
+      child: showLoading
+          ? const Center(
+              child: SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation(JxufeTheme.primaryColor),
+                ),
+              ),
+            )
+          : IconButton(
+              onPressed: enabled ? onTap : null,
+              padding: EdgeInsets.zero,
+              icon: Icon(
+                isQr ? Icons.refresh_rounded : Icons.send_rounded,
+                size: 16,
+              ),
+              style: IconButton.styleFrom(
+                backgroundColor: JxufeTheme.primaryColor,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: JxufeTheme.primaryColor.withAlpha(100),
+                disabledForegroundColor: Colors.white70,
+              ),
+            ),
+    );
+
+    final textWidget = Text(
+      label,
+      style: const TextStyle(fontSize: 13, color: JxufeTheme.textColor),
+    );
+
+    return AnimatedAlign(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      alignment: _targetIsQr ? Alignment.centerLeft : Alignment.centerRight,
+      child: AnimatedBuilder(
+        animation: _collapseCtrl,
+        builder: (context, child) {
+          final fadingText = ClipRect(
+            child: SizeTransition(
+              sizeFactor: _shrinkAnim,
+              axis: Axis.horizontal,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(width: 8),
+                  textWidget,
+                  const SizedBox(width: 8),
+                ],
+              ),
+            ),
+          );
+
+          return Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: JxufeTheme.inputBgColor,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: JxufeTheme.borderColor),
+            ),
+            child: AnimatedCrossFade(
+              duration: const Duration(milliseconds: 300),
+              crossFadeState: isQrTarget
+                  ? CrossFadeState.showFirst
+                  : CrossFadeState.showSecond,
+              firstChild: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [buttonWidget, fadingText],
+              ),
+              secondChild: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [fadingText, buttonWidget],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// 统一提示条：浅蓝背景 + 图标 + 富文本，固定宽度 300
+  Widget _buildHintBar({
+    required IconData icon,
+    required List<InlineSpan> spans,
+  }) {
+    return SizedBox(
+      width: 300,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF73A9EC).withAlpha(15),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 17, color: const Color(0xFF73A9EC)),
+            const SizedBox(width: 8),
+            Expanded(child: Text.rich(TextSpan(children: spans))),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── QR 模式 ──
+
+  Widget _buildQrBody() {
+    return const QrCodeCard(
+      showOuterDecoration: false,
+      showRefreshButton: false,
+      showHint: false,
+    );
+  }
+
+  List<InlineSpan> get _qrHintSpans => const [
+    TextSpan(
+      text: '使用 ',
+      style: TextStyle(fontSize: 13, color: JxufeTheme.textColor),
+    ),
+    TextSpan(
+      text: '微信',
+      style: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: Color(0xFF14c468),
+      ),
+    ),
+    TextSpan(
+      text: ' 或 ',
+      style: TextStyle(fontSize: 13, color: JxufeTheme.textColor),
+    ),
+    TextSpan(
+      text: '企业微信',
+      style: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: Color(0xFF73A9EC),
+      ),
+    ),
+    TextSpan(
+      text: ' 扫码完成验证',
+      style: TextStyle(fontSize: 13, color: JxufeTheme.textColor),
+    ),
+  ];
+
+  List<InlineSpan> get _smsHintSpans => const [
+    TextSpan(
+      text: '输入 ',
+      style: TextStyle(fontSize: 13, color: JxufeTheme.textColor),
+    ),
+    TextSpan(
+      text: '企业微信',
+      style: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: Color(0xFF73A9EC),
+      ),
+    ),
+    TextSpan(
+      text: ' 中收到的验证码完成验证',
+      style: TextStyle(fontSize: 13, color: JxufeTheme.textColor),
+    ),
+  ];
+
+  Widget _buildHint() {
+    if (!_qrMode && (_phoneHint ?? '').isEmpty) return const SizedBox.shrink();
+    return _buildHintBar(
+      icon: Icons.info_outline,
+      spans: _qrMode ? _qrHintSpans : _smsHintSpans,
+    );
+  }
+
+  // ── SMS 模式 ──
+
+  Widget _buildSmsBody() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const SizedBox(height: 48),
+        Text("请输入验证码", style: const TextStyle(fontSize: 24)),
+        const SizedBox(height: 28),
+        Center(
+          child: VerificationCodeInput(
+            key: _codeInputKey,
+            length: 4,
+            cellSize: 52,
+            gap: 12,
+            disabled: _validating,
+            onChanged: (v) => _smsCode = v,
+            onCompleted: (v) {
+              _smsCode = v;
+              _validate();
+            },
+          ),
+        ),
+        const SizedBox(height: 4),
+        SizedBox(
+          width: 208,
+          height: 20,
+          child: _errorText != null
+              ? Row(
+                  children: [
+                    const Icon(
+                      Icons.warning_amber,
+                      size: 14,
+                      color: Colors.red,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _errorText!,
+                      style: const TextStyle(color: Colors.red, fontSize: 13),
+                    ),
+                  ],
+                )
+              : const SizedBox.shrink(),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          // width: 208,
+          height: 48,
+          child: ElevatedButton(
+            onPressed: _validating ? null : _validate,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: JxufeTheme.primaryColor,
+              foregroundColor: Colors.white,
+              disabledBackgroundColor: JxufeTheme.primaryColor.withAlpha(150),
+              disabledForegroundColor: Colors.white70,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+            ),
+            child: Text(
+              _validating ? '验证中…' : '确 定',
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+        const SizedBox(height: 26),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final viewModel = ref.read(qrLoginViewModelProvider.notifier);
+
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 20),
       child: IntrinsicWidth(
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withAlpha(38),
-                blurRadius: 30,
-                offset: const Offset(0, 10),
+                color: Colors.black.withAlpha(30),
+                blurRadius: 32,
+                offset: const Offset(0, 12),
+              ),
+              BoxShadow(
+                color: Colors.black.withAlpha(10),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+            padding: const EdgeInsets.fromLTRB(28, 10, 28, 10),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // header: mode buttons + title
                 Container(
-                  margin: const EdgeInsets.only(bottom: 16),
+                  margin: const EdgeInsets.only(bottom: 20),
                   child: Column(
                     children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: JxufeTheme.primaryColor,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Icon(
-                          Icons.qr_code_scanner_rounded,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 16),
                       Text(
                         widget.title,
                         style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
                           color: JxufeTheme.textColor,
+                          letterSpacing: -0.3,
                         ),
                       ),
-                      if (widget.info.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          widget.info,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: JxufeTheme.hintColor,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
+                      // if (widget.info.isNotEmpty) ...[
+                      //   const SizedBox(height: 6),
+                      //   Text(
+                      //     widget.info,
+                      //     style: const TextStyle(
+                      //       fontSize: 13,
+                      //       color: JxufeTheme.hintColor,
+                      //       height: 1.4,
+                      //     ),
+                      //     textAlign: TextAlign.center,
+                      //   ),
+                      // ],
                     ],
                   ),
                 ),
 
-                if (_qrMode)
-                  const QrCodeCard()
-                else ...[
-                  if (_phoneHint.isNotEmpty) ...[
-                    const Text('使用企业微信验证', style: TextStyle(fontSize: 14)),
-                    const SizedBox(height: 4),
-                    const Text(
-                      '请在企业微信查看消息验证码',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _codeController,
-                          keyboardType: TextInputType.number,
-                          maxLength: 6,
-                          decoration: InputDecoration(
-                            hintText: '请输入验证码',
-                            counterText: '',
-                            errorText: _errorText,
-                            border: const OutlineInputBorder(),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 10,
+                // body: shared header (account) + switchable inner container
+                Consumer(
+                  builder: (context, ref, child) {
+                    final state = ref.watch(qrLoginViewModelProvider);
+                    if (state.username.isNotEmpty) {
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // 头像 —— IMS 个人信息页同款（用姓）
+                          CircleAvatar(
+                            radius: 28,
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.error,
+                            child: state.displayName.isNotEmpty
+                                ? Text(
+                                    state.displayName[0],
+                                    style: TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w600,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onError,
+                                    ),
+                                  )
+                                : Icon(
+                                    Icons.person,
+                                    size: 26,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onError,
+                                  ),
+                          ),
+                          const SizedBox(height: 12),
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 6),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                const SizedBox(width: 36),
+                                Flexible(
+                                  child: Text.rich(
+                                    TextSpan(
+                                      text: state.username,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: JxufeTheme.textColor,
+                                      ),
+                                    ),
+
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (widget.showSwitchAccount) ...[
+                                  const SizedBox(width: 4),
+                                  IconButton(
+                                    onPressed: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => const AccountScreen(),
+                                        ),
+                                      );
+                                    },
+                                    icon: const Icon(Icons.logout, size: 18),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(
+                                      minWidth: 32,
+                                      minHeight: 32,
+                                    ),
+                                    tooltip: '切换账户',
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      SizedBox(
-                        height: 42,
-                        child: ElevatedButton(
-                          onPressed: (_sending || _countdown > 0)
-                              ? null
-                              : _sendCode,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: JxufeTheme.primaryColor,
-                            foregroundColor: Colors.white,
+
+                          Center(
+                            child: GestureDetector(
+                              onTap: () {
+                                viewModel.setTrustDevice(!state.trustDevice);
+                              },
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                curve: Curves.easeOut,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: state.trustDevice
+                                      ? JxufeTheme.primaryColor
+                                      : JxufeTheme.inputBgColor,
+                                  borderRadius: BorderRadius.circular(22),
+                                  border: Border.all(
+                                    color: state.trustDevice
+                                        ? JxufeTheme.primaryColor
+                                        : JxufeTheme.borderColor,
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      state.trustDevice
+                                          ? Icons.check_circle
+                                          : Icons.circle_outlined,
+                                      size: 16,
+                                      color: state.trustDevice
+                                          ? Colors.white
+                                          : JxufeTheme.hintColor,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      '设为信任设备',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: state.trustDevice
+                                            ? Colors.white
+                                            : JxufeTheme.textColor,
+                                        fontWeight: state.trustDevice
+                                            ? FontWeight.w600
+                                            : FontWeight.normal,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                           ),
-                          child: Text(
-                            _sending
-                                ? '发送中…'
-                                : _countdown > 0
-                                ? '${_countdown}s'
-                                : '发送验证码',
-                            style: const TextStyle(fontSize: 13),
-                          ),
-                        ),
+                          const SizedBox(height: 12),
+                        ],
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
+
+                // 共享的外层卡片容器
+                // Action chip 在 AnimatedSwitcher 外，模式切换时左右滑动
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: JxufeTheme.borderColor),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withAlpha(8),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _validating ? null : _validate,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: JxufeTheme.primaryColor,
-                        foregroundColor: Colors.white,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildActionChip(),
+                      // 主体区：左右推入
+                      SlideSwitcher(
+                        index: _qrMode ? 0 : 1,
+                        isHorizontal: true,
+                        distanceScale: 0.15,
+                        child: _qrMode ? _buildQrBody() : _buildSmsBody(),
                       ),
-                      child: Text(_validating ? '验证中…' : '确定'),
-                    ),
+                      const SizedBox(height: 12),
+                      SlideSwitcher(
+                        index: _qrMode ? 0 : 1,
+                        distanceScale: 0.4,
+                        child: _buildHint(),
+                      ),
+                    ],
                   ),
-                ],
+                ),
 
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
+
+                // 将顶部的模式按钮移动到卡片底部，便于先显示主要内容
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: Checkbox(
-                        value: _trustDevice,
-                        activeColor: Theme.of(context).colorScheme.error,
-                        checkColor: Theme.of(context).colorScheme.onError,
-                        onChanged: (v) {
-                          setState(() => _trustDevice = v ?? false);
-                          widget.onTrustChanged?.call(_trustDevice);
-                        },
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
+                    _buildModeButton(
+                      icon: Icons.qr_code_scanner_rounded,
+                      color: JxufeTheme.primaryColor,
+                      active: _qrMode,
+                      onTap: _qrMode ? null : _switchToQr,
                     ),
-                    const SizedBox(width: 4),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() => _trustDevice = !_trustDevice);
-                        widget.onTrustChanged?.call(_trustDevice);
-                      },
-                      child: const Text(
-                        '设为信任设备',
-                        style: TextStyle(fontSize: 13),
-                      ),
+                    const SizedBox(width: 14),
+                    _buildModeButton(
+                      icon: ExpandIcons.wecon,
+                      color: const Color(0xFF73A9EC),
+                      active: !_qrMode,
+                      onTap: !_qrMode ? null : _switchToSms,
                     ),
                   ],
                 ),
+
                 const SizedBox(height: 8),
-                TextButton.icon(
-                  onPressed: _switching ? null : _switchMode,
-                  icon: Icon(
-                    _qrMode ? Icons.sms : Icons.qr_code_scanner,
-                    size: 18,
-                  ),
-                  label: Text(
-                    _switching
-                        ? '切换中…'
-                        : _qrMode
-                        ? '切换到短信验证'
-                        : '切换到扫码验证',
-                    style: const TextStyle(fontSize: 13),
-                  ),
-                ),
-                if (widget.showSwitchAccount) ...[
-                  const Divider(height: 24),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const AccountScreen(),
-                        ),
-                      );
-                    },
-                    child: const Text(
-                      '切换账户',
-                      style: TextStyle(fontSize: 13, color: Colors.grey),
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
