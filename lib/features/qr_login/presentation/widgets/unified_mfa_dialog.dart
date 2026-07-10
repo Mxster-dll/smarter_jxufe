@@ -803,6 +803,8 @@ class _UnifiedMfaDialogState extends ConsumerState<UnifiedMfaDialog>
                 // 共享的外层卡片容器
                 // Action chip 在 AnimatedSwitcher 外，模式切换时左右滑动
                 Container(
+                  width: 318,
+                  height: 375,
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: Colors.white,
