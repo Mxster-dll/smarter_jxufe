@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:smarter_jxufe/design/JxufeTheme.dart';
 
 import 'package:smarter_jxufe/features/auth/data/providers/account_repository_provider.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_provider.dart';
@@ -25,6 +26,9 @@ class AccountScreen extends ConsumerStatefulWidget {
 }
 
 class _AccountScreenState extends ConsumerState<AccountScreen> {
+  /// 当前正在登录的账户卡号，非空时对应按钮显示加载状态。
+  String? _loggingInCardNumber;
+
   @override
   void initState() {
     super.initState();
@@ -115,6 +119,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     Account account,
     bool isCurrent,
   ) {
+    final isLoading = _loggingInCardNumber == account.cardNumber;
     return Card(
       elevation: isCurrent ? 3 : 1,
       shape: RoundedRectangleBorder(
@@ -156,13 +161,39 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
               ),
             ),
             if (!isCurrent)
-              ElevatedButton(
-                onPressed: () => _switchAccount(context, ref, account),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.error,
-                  foregroundColor: Theme.of(context).colorScheme.onError,
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: isLoading ? 1 : 0),
+                duration: const Duration(milliseconds: 300),
+                builder: (context, t, child) {
+                  return ElevatedButton(
+                    onPressed: () => _switchAccount(context, ref, account),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color.lerp(
+                        Theme.of(context).colorScheme.error,
+                        JxufeTheme.primaryColor.withAlpha(160),
+                        t,
+                      ),
+                      foregroundColor: Theme.of(context).colorScheme.onError,
+                    ),
+                    child: child,
+                  );
+                },
+                child: SizedBox(
+                  width: 32,
+                  height: 18,
+                  child: Center(
+                    child: isLoading
+                        ? SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text('登录'),
+                  ),
                 ),
-                child: const Text('登录'),
               ),
           ],
         ),
@@ -175,6 +206,8 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     WidgetRef ref,
     Account account,
   ) async {
+    if (_loggingInCardNumber != null) return; // 已有账户在登录中
+    setState(() => _loggingInCardNumber = account.cardNumber);
     try {
       final authRepo = await ref.read(authRepositoryProvider.future);
       final accountRepo = await ref.read(accountRepositoryProvider.future);
@@ -298,6 +331,10 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       );
     } catch (e) {
       _showError(context, '切换失败: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _loggingInCardNumber = null);
+      }
     }
   }
 
@@ -319,11 +356,4 @@ final _accountsProvider = FutureProvider<List<Account>>((ref) async {
 final _currentAccountProvider = Provider<String?>((ref) {
   final cardNumber = ref.watch(currentAccountProvider);
   return cardNumber.isEmpty ? null : cardNumber;
-});
-
-/// 从本地缓存读取学生信息（不触发网络请求）。
-final _cachedStudentInfoProvider = FutureProvider<StudentInfo?>((ref) async {
-  final repo = await ref.watch(studentInfoRepositoryProvider.future);
-  final result = repo.getCachedStudentInfo();
-  return result.fold((failure) => null, (info) => info);
 });
