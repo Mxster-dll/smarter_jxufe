@@ -178,7 +178,7 @@ class QrLoginViewModel extends _$QrLoginViewModel {
     String? smsGid;
 
     // 显示统一对话框（对话框内部处理扫码状态监听和 auto-close）
-    final result = await UnifiedMfaDialog.show(
+    final result = await UnifiedMfaPage.show(
       context,
       title: '安全验证',
       info: '当前登录环境异常，需通过安全验证确认是本人操作',
