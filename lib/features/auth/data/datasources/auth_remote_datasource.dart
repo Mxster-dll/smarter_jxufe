@@ -308,6 +308,66 @@ class AuthRemoteDataSource {
     );
   }
 
+  /// 通过 TGC 跟随任一 CAS service 入口的重定向，返回最终回调地址。
+  ///
+  /// 适用于 SSP 等平台的 CAS 单点登录：连续跟随 ssl.jxufe.edu.cn 域内
+  /// 的 302 跳转，直到 Location 指向 CAS 域之外（即带 ticket 的目标平台
+  /// 回调地址）。若 TGC 已过期，CAS 会返回 200 登录页 HTML，抛
+  /// [TgcExpiredException]。
+  Future<String> getCasRedirectUrl(String tgc, String casLoginUrl) async {
+    String currentUrl = casLoginUrl;
+
+    for (int i = 0; i < 5; i++) {
+      final response = await _dio.get(
+        currentUrl,
+        options: Options(
+          headers: {
+            'Host': 'ssl.jxufe.edu.cn',
+            'Upgrade-Insecure-Requests': '1',
+            'Accept':
+                'text/html,application/xhtml+xml,application/xml;'
+                'q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,'
+                'application/signed-exchange;v=b3;q=0.7',
+            'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                ' (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36 Edg/150.0.0.0',
+            'Referer': 'http://ehall.jxufe.edu.cn/',
+            'Accept-Language': 'zh-CN,zh;q=0.9',
+            'Cookie': 'TGC=$tgc; ',
+          },
+          followRedirects: false,
+          // validateStatus 在 Dio 实例级别已设为 true，所有状态码都会返回
+        ),
+      );
+
+      // 302 → 追踪 Location；若已离开 CAS 域则返回该回调地址
+      final location = response.headers.value('location');
+      if (location != null) {
+        final resolved = _resolveUrl(currentUrl, location);
+        if (!resolved.contains('ssl.jxufe.edu.cn')) {
+          return resolved;
+        }
+        currentUrl = resolved;
+        continue;
+      }
+
+      // 无 Location + 200 + HTML 登录页 → TGC 已过期
+      final status = response.statusCode ?? 0;
+      if (status == 200) {
+        final body = response.data?.toString() ?? '';
+        final trimmed = body.trimLeft();
+        if (trimmed.startsWith('<!DOCTYPE html>') ||
+            trimmed.startsWith('<html')) {
+          throw TgcExpiredException(body);
+        }
+      }
+
+      throw Exception('CAS 重定向失败（status=$status）');
+    }
+
+    throw Exception('CAS 重定向次数过多，最后 URL: $currentUrl');
+  }
+
   // ---- 请求头构建 ----
 
   /// MFA detect 接口的 AJAX 请求头

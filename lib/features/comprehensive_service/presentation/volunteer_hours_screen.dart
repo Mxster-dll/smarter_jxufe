@@ -1,46 +1,8 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:smarter_jxufe/features/comprehensive_service/data/datasource/volunteer_hours_remote_datasource.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/volunteer_activity.dart';
-
-/// SSP Dio 提供者 —— 用于访问综合管理服务平台
-final sspDioProvider = Provider<Dio>((ref) {
-  return Dio(
-    BaseOptions(
-      baseUrl: 'http://ssp.jxufe.edu.cn',
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 30),
-      validateStatus: (status) => true,
-      followRedirects: false,
-      headers: {
-        'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36 Edg/150.0.0.0',
-        'Accept':
-            'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
-        'Referer': 'http://ssp.jxufe.edu.cn/admin/common/main.html',
-        'Cookie': 'JSESSIONID=CBAE06656EA1CDCDE1316DD950A83B7A',
-      },
-    ),
-  );
-});
-
-/// 志愿服务时长数据源提供者
-final volunteerHoursDataSourceProvider =
-    Provider<VolunteerHoursRemoteDataSource>((ref) {
-      final dio = ref.watch(sspDioProvider);
-      return VolunteerHoursRemoteDataSource(dio);
-    });
-
-/// 志愿服务活动列表状态提供者
-final volunteerActivitiesProvider = FutureProvider<List<VolunteerActivity>>((
-  ref,
-) async {
-  final dataSource = ref.watch(volunteerHoursDataSourceProvider);
-  return dataSource.fetchVolunteerActivities();
-});
+import 'package:smarter_jxufe/features/comprehensive_service/data/providers/volunteer_hours_providers.dart';
 
 class VolunteerHoursScreen extends ConsumerWidget {
   const VolunteerHoursScreen({super.key});
