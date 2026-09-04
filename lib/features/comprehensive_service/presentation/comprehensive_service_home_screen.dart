@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/features/comprehensive_service/presentation/second_class_credit_screen.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/volunteer_hours_screen.dart';
 import 'package:smarter_jxufe/features/platform/presentation/platform_selection_screen.dart';
 
@@ -62,6 +63,22 @@ class ComprehensiveServiceHomeScreen extends ConsumerWidget {
                     context,
                     MaterialPageRoute(
                       builder: (_) => const VolunteerHoursScreen(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+              _buildFunctionButton(
+                context,
+                icon: Icons.school_outlined,
+                label: '第二课堂学分',
+                subtitle: '成绩单与学分预警 · 毕业达标进度',
+                color: const Color(0xFF6A1B9A),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const SecondClassCreditScreen(),
                     ),
                   );
                 },
