@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:html/parser.dart' as html_parser;
 
+import 'package:smarter_jxufe/features/comprehensive_service/data/datasource/ssp_auth_remote_datasource.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/volunteer_activity.dart';
 
 class VolunteerHoursRemoteDataSource {
@@ -8,14 +9,55 @@ class VolunteerHoursRemoteDataSource {
 
   VolunteerHoursRemoteDataSource(this._dio);
 
-  Future<List<VolunteerActivity>> fetchVolunteerActivities() async {
-    final response = await _dio.get('/admin/tzz/StuVolWork/stu_list.html');
+  /// 获取志愿服务时长列表。
+  ///
+  /// [sessionId] 为当前账户在综合管理平台（SSP）的 JSESSIONID。
+  /// 会话失效时服务端会返回 302（跳转到登录页/authFailure）或
+  /// 200 登录页 HTML，此时抛 [SspSessionExpiredException]，
+  /// 由上层触发会话刷新后重试。
+  Future<List<VolunteerActivity>> fetchVolunteerActivities({
+    required String sessionId,
+  }) async {
+    final response = await _dio.get(
+      '/admin/tzz/StuVolWork/stu_list.html',
+      options: Options(
+        headers: {
+          'Cookie': 'JSESSIONID=$sessionId',
+          'Referer': 'http://ssp.jxufe.edu.cn/admin/common/main.html',
+        },
+        followRedirects: false,
+      ),
+    );
 
-    if (response.statusCode != 200) {
-      throw Exception('请求失败: ${response.statusCode}');
+    final status = response.statusCode ?? 0;
+
+    // 3xx（登录页/失效页重定向）→ 会话已过期
+    if (status >= 300 && status < 400) {
+      throw SspSessionExpiredException();
     }
 
-    return _parseHtml(response.data as String);
+    if (status != 200) {
+      throw Exception('请求失败: $status');
+    }
+
+    final body = response.data?.toString() ?? '';
+    if (_looksLikeLoginRedirect(body)) {
+      throw SspSessionExpiredException();
+    }
+
+    return _parseHtml(body);
+  }
+
+  /// 判断响应体是否为登录页/失效页（authFailure 或 SSO 登录入口）。
+  /// 仅当页面以 HTML 开头时才检测，避免误判业务数据。
+  bool _looksLikeLoginRedirect(String body) {
+    final trimmed = body.trimLeft();
+    if (!trimmed.startsWith('<!DOCTYPE html') && !trimmed.startsWith('<html')) {
+      return false;
+    }
+    return trimmed.contains('authFailure') ||
+        trimmed.contains('/sso/login') ||
+        RegExp(r'<title>\s*登录').hasMatch(trimmed);
   }
 
   List<VolunteerActivity> _parseHtml(String html) {
