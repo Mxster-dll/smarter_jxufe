@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/comprehensive_service_home_screen.dart';
+import 'package:smarter_jxufe/features/data_center/presentation/data_center_screen.dart';
 import 'package:smarter_jxufe/features/ims/splash/presentation/ims_splash_screen.dart';
 
 class PlatformSelectionScreen extends ConsumerWidget {
@@ -56,6 +57,20 @@ class PlatformSelectionScreen extends ConsumerWidget {
                     MaterialPageRoute(
                       builder: (_) => const ComprehensiveServiceHomeScreen(),
                     ),
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+              _buildPlatformButton(
+                context,
+                icon: Icons.insights,
+                label: '学生个人数据中心',
+                subtitle: '学业成绩 · 消费 · 图书 · 校园卡全景',
+                color: const Color(0xFFAD1457),
+                onTap: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => const DataCenterScreen()),
                   );
                 },
               ),
