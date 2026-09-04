@@ -5,3 +5,4 @@ const String imsAuthBoxName = 'imsAuth';
 const String authBoxName = 'auth';
 const String accountBoxName = 'account';
 const String sspAuthBoxName = 'sspAuth';
+const String dzjAuthBoxName = 'dzjAuth';
