@@ -308,4 +308,44 @@ class AuthRepository {
     final result = await getImsRedirectInfo();
     return result.fold((f) => Left(f), (info) => Right(info.$1));
   }
+
+  /// 获取指定平台（如 SSP 综合管理平台）的 CAS 会话回调地址。
+  ///
+  /// 若 TGC 已过期（CAS 返回 HTML 登录页而非 302 重定向），
+  /// 自动使用缓存的凭据重新执行统一登录后重试一次。
+  Future<Either<Failure, String>> getServiceRedirectUrl(
+    String casLoginUrl,
+  ) async {
+    try {
+      if (_tgc == null) {
+        return Left(UnknownFailure('尚未授权，无法获取平台会话'));
+      }
+      return Right(
+        await _remoteDataSource.getCasRedirectUrl(_tgc!, casLoginUrl),
+      );
+    } on TgcExpiredException {
+      // TGC 过期 → 尝试用缓存凭据重新登录
+      final reloginResult = await _relogin();
+      if (reloginResult.isLeft()) {
+        return Left(
+          reloginResult.fold((f) => f, (_) => UnknownFailure('重登失败')),
+        );
+      }
+      // 重登成功，用新 TGC 重试一次
+      try {
+        final url = await _remoteDataSource.getCasRedirectUrl(
+          _tgc!,
+          casLoginUrl,
+        );
+        return Right(url);
+      } on TgcExpiredException catch (e) {
+        return Left(UnknownFailure('统一登录已失效，请重新登录：$e'));
+      } catch (e) {
+        return Left(UnknownFailure('获取平台会话错误（重登后）：$e'));
+      }
+    } catch (e) {
+      if (e is TgcExpiredException) rethrow;
+      return Left(UnknownFailure('获取平台会话错误：$e'));
+    }
+  }
 }
