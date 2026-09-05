@@ -468,13 +468,15 @@ class SecondClassCreditScreen extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 12),
-            GridView.count(
-              crossAxisCount: 3,
+            GridView(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
-              childAspectRatio: 2.1,
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 130,
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+                childAspectRatio: 2.1,
+              ),
               children: report.platformCredits.entries.map((e) {
                 final nonZero = e.value > 0;
                 return Container(
@@ -485,7 +487,7 @@ class SecondClassCreditScreen extends ConsumerWidget {
                       color: nonZero ? Colors.teal[200]! : Colors.grey[200]!,
                     ),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -502,7 +504,7 @@ class SecondClassCreditScreen extends ConsumerWidget {
                       Text(
                         _fmt(e.value),
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 13,
                           fontWeight: FontWeight.bold,
                           color: nonZero ? Colors.teal[700] : Colors.grey[400],
                         ),
