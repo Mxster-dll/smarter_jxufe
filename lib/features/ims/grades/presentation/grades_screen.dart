@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/features/college/data/providers/college_repository_provider.dart';
 import 'package:smarter_jxufe/features/college/domain/college.dart';
+import 'package:smarter_jxufe/features/data_center/data/providers/data_center_providers.dart';
 import 'package:smarter_jxufe/features/ims/course/data/models/course_importance.dart';
 import 'package:smarter_jxufe/features/ims/curriculum/data/providers/curriculum_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/grades/data/providers/grades_repository_provider.dart';
@@ -205,6 +206,20 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     final importanceMap = importanceMapAsync.valueOrNull;
     final rankingAsync = ref.watch(weightedGradeRankingProvider(1));
 
+    // 排名比例的分母总人数：班级/专业取自个人数据中心（数据中心的
+    // 「校内关系」人数，随会话实时刷新）；数据中心不可用（未登录 /
+    // 会话失效 / 加载中）时回退到固定值。
+    final peerCounts =
+        ref.watch(dataCenterOverviewProvider).valueOrNull?.peerCounts ??
+        const <String, int>{};
+    int totalOf(String key, int fallback) =>
+        (peerCounts[key] ?? -1) > 0 ? peerCounts[key]! : fallback;
+    final classTotal = totalOf('class', 46);
+    final majorTotal = totalOf('major', 199);
+    // 年级：暂无动态数据源（个人数据中心同侪组件只内置同年级/班级/专业
+    // 等口径，且忽略自定义 SQL，无法提供「同学院同年级」人数），暂用固定值。
+    const gradeTotal = 7902;
+
     // 监听成绩变更（新增 / 撤回），通过 SnackBar 提示
     ref.listen(gradesProvider(state.params), (prev, next) {
       if (next is AsyncData) {
@@ -343,9 +358,27 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
           error: (_, _2) => const SizedBox.shrink(),
         ),
         rankingAsync.when(
-          data: (wg) => _buildRankingRow(context, wg),
-          loading: () => _buildRankingRow(context, null),
-          error: (e, _) => _buildRankingRow(context, null),
+          data: (wg) => _buildRankingRow(
+            context,
+            wg,
+            classTotal: classTotal,
+            majorTotal: majorTotal,
+            gradeTotal: gradeTotal,
+          ),
+          loading: () => _buildRankingRow(
+            context,
+            null,
+            classTotal: classTotal,
+            majorTotal: majorTotal,
+            gradeTotal: gradeTotal,
+          ),
+          error: (e, _) => _buildRankingRow(
+            context,
+            null,
+            classTotal: classTotal,
+            majorTotal: majorTotal,
+            gradeTotal: gradeTotal,
+          ),
         ),
         Flexible(
           fit: FlexFit.loose,
@@ -837,10 +870,13 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     );
   }
 
-  Widget _buildRankingRow(BuildContext context, WeightedGrade? wg) {
-    const classTotal = 46;
-    const majorTotal = 199;
-    const gradeTotal = 7902;
+  Widget _buildRankingRow(
+    BuildContext context,
+    WeightedGrade? wg, {
+    required int classTotal,
+    required int majorTotal,
+    required int gradeTotal,
+  }) {
     final isLoading = wg == null;
 
     final classRank = wg?.classRank ?? 0;
