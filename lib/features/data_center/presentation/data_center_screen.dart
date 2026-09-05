@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/features/data_center/data/models/data_center_models.dart';
 import 'package:smarter_jxufe/features/data_center/data/providers/data_center_providers.dart';
-import 'package:smarter_jxufe/features/platform/presentation/platform_selection_screen.dart';
 
 /// 学生个人数据中心（dzj.jxufe.edu.cn）原生聚合页。
 ///
@@ -21,14 +20,7 @@ class DataCenterScreen extends ConsumerWidget {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const PlatformSelectionScreen(),
-              ),
-            );
-          },
+          onPressed: () => Navigator.of(context).maybePop(),
         ),
         title: const Text('学生个人数据中心'),
         centerTitle: true,

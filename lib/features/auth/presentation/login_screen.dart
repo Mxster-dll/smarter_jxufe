@@ -5,7 +5,7 @@ import 'package:smarter_jxufe/design/JxufeTheme.dart';
 import 'package:smarter_jxufe/design/Icons.dart';
 import 'package:smarter_jxufe/features/auth/presentation/login_state.dart';
 import 'package:smarter_jxufe/features/auth/presentation/login_viewmodel.dart';
-import 'package:smarter_jxufe/features/ims/splash/presentation/ims_splash_screen.dart';
+import 'package:smarter_jxufe/features/home/presentation/home_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   final bool showBackButton;
@@ -34,7 +34,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (next.loginSuccess && !next.isLoading) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const ImsSplashScreen()),
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
       }
     });
