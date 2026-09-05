@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/features/comprehensive_service/presentation/jh_read_screen.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/second_class_credit_screen.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/volunteer_hours_screen.dart';
 import 'package:smarter_jxufe/features/platform/presentation/platform_selection_screen.dart';
@@ -80,6 +81,20 @@ class ComprehensiveServiceHomeScreen extends ConsumerWidget {
                     MaterialPageRoute(
                       builder: (_) => const SecondClassCreditScreen(),
                     ),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+              _buildFunctionButton(
+                context,
+                icon: Icons.auto_stories_outlined,
+                label: '蛟湖阅读',
+                subtitle: '蛟湖阅读考核记录 · 入馆学习与借阅达标',
+                color: const Color(0xFF1565C0),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const JhReadScreen()),
                   );
                 },
               ),
