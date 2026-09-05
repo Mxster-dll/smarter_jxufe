@@ -557,7 +557,9 @@ ORDER BY w.day_date''',
   });
 
   /// 同侪对比：同年级 / 同班级 / 同专业 / 同宿舍 / 同学院同生日人数
-  /// （组件 u:fcd2d17a9131，同一 componentId 用 index 区分维度）。
+  /// （组件 u:fcd2d17a9131，同一 componentId 用 index 区分维度。
+  /// 注意：该组件按 index 执行服务端内置 SQL，**忽略请求体内的 sql 字段**，
+  /// 故只能取内置 5 维，无法新增自定义口径，如「同学院同年级」）。
   ///
   /// 返回 [DzjPeerCounts]；任一维度失败则该维度为 -1（不展示）。
   Future<Map<String, int>?> fetchPeerCounts(DzjSession s) async {
@@ -617,6 +619,9 @@ where csrq=(select csrq from t_xssj_bzks
       }
       index++;
     }
+    // 全部维度均失败（会话失效等）→ 返回 null，视为整卡失败，
+    // 以便上层正确触发会话刷新（否则非 null 会破坏 allFailed 判定）。
+    if (result.values.every((v) => v == -1)) return null;
     return result;
   }
 
