@@ -8,7 +8,7 @@ import 'package:smarter_jxufe/features/auth/data/providers/account_repository_pr
 import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_provider.dart';
 import 'package:smarter_jxufe/features/auth/domain/entities/account.dart';
 import 'package:smarter_jxufe/features/auth/presentation/login_screen.dart';
-import 'package:smarter_jxufe/features/ims/splash/presentation/ims_splash_screen.dart';
+import 'package:smarter_jxufe/features/home/presentation/home_screen.dart';
 import 'package:smarter_jxufe/features/ims/student_info/data/providers/student_info_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/student_info/domain/student_info.dart';
 import 'package:smarter_jxufe/features/ims/auth/data/providers/ims_auth_repository_provider.dart';
@@ -320,10 +320,10 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           }
           // 刷新学生信息
           studentInfoRepo.getStudentInfo(forceRefresh: true).ignore();
-          // 跳转 IMS
+          // 跳转到主页宫格
           if (mounted) {
             Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (_) => const ImsSplashScreen()),
+              MaterialPageRoute(builder: (_) => const HomeScreen()),
               (_) => false,
             );
           }

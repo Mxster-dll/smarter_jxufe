@@ -37,18 +37,12 @@ class SmarterJxUFE extends StatelessWidget {
       navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       title: '智慧尼采',
-      theme:
-          ThemeData(
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color.fromARGB(255, 0, 140, 255),
-            ),
-          ).copyWith(
-            textTheme: ThemeData.light().textTheme.apply(
-              fontFamily: 'Cascadia Code',
-              fontFamilyFallback: const ['霞鹜文楷', '仓耳今楷01'],
-            ),
-          ),
-      home: SplashScreen(),
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF008CFF)),
+        fontFamily: 'Cascadia Code',
+        fontFamilyFallback: const ['霞鹜文楷', '仓耳今楷01'],
+      ),
+      home: const SplashScreen(),
     );
   }
 }

@@ -8,9 +8,9 @@ import 'package:smarter_jxufe/core/storage/hive_initializer.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/account_repository_provider.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_provider.dart';
 import 'package:smarter_jxufe/features/auth/presentation/login_screen.dart';
+import 'package:smarter_jxufe/features/home/presentation/home_screen.dart';
 import 'package:smarter_jxufe/features/ims/student_info/presentation/account_screen.dart';
 import 'package:smarter_jxufe/features/ims/student_info/data/providers/student_info_repository_provider.dart';
-import 'package:smarter_jxufe/features/platform/presentation/platform_selection_screen.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/qr_login_viewmodel.dart';
 import 'package:smarter_jxufe/core/navigation/navigator_key.dart';
 import 'package:smarter_jxufe/features/auth/data/mfa_relogin_service.dart';
@@ -150,7 +150,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         );
         if (mounted) {
           Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const PlatformSelectionScreen()),
+            MaterialPageRoute(builder: (_) => const HomeScreen()),
             (_) => false,
           );
         }
