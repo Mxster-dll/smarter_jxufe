@@ -8,9 +8,17 @@ import 'package:smarter_jxufe/features/comprehensive_service/presentation/jh_rea
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/second_class_credit_screen.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/volunteer_hours_screen.dart';
 import 'package:smarter_jxufe/features/data_center/presentation/data_center_screen.dart';
+import 'package:smarter_jxufe/features/electricity/presentation/electricity_screen.dart';
+import 'package:smarter_jxufe/features/home/presentation/dashboard_panel.dart';
 import 'package:smarter_jxufe/features/ims/menu/domain/ims_tab.dart';
 import 'package:smarter_jxufe/features/ims/splash/presentation/ims_splash_screen.dart';
 import 'package:smarter_jxufe/features/ims/student_info/presentation/account_screen.dart';
+import 'package:smarter_jxufe/features/materials/presentation/materials_screen.dart';
+import 'package:smarter_jxufe/features/net_fee/presentation/net_fee_screen.dart';
+import 'package:smarter_jxufe/features/rules/presentation/rules_home_screen.dart';
+import 'package:smarter_jxufe/features/school_calendar/presentation/school_calendar_screen.dart';
+import 'package:smarter_jxufe/features/tice/presentation/tice_screen.dart';
+import 'package:smarter_jxufe/features/zongce/presentation/zongce_screen.dart';
 
 /// 单页功能主页 —— 登录后的统一落地页。
 ///
@@ -31,34 +39,66 @@ class HomeScreen extends ConsumerWidget {
             _buildTopBar(context, ref, scheme, currentCard),
             const Divider(height: 1),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 48),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    const minCard = 208.0;
-                    const gap = 12.0;
-                    final cols =
-                        (constraints.maxWidth + gap) ~/ (minCard + gap);
-                    final width =
-                        (constraints.maxWidth - gap * (cols - 1)) / cols;
-                    return Wrap(
-                      spacing: gap,
-                      runSpacing: gap,
-                      children: [
-                        for (final item in _items(context))
-                          SizedBox(
-                            width: width,
-                            child: _buildFeatureCard(context, item),
-                          ),
-                      ],
-                    );
-                  },
-                ),
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 48),
+                children: [
+                  const DashboardPanel(),
+                  const SizedBox(height: 26),
+                  _buildSectionHeader(context, '全部服务'),
+                  const SizedBox(height: 14),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      const minCard = 208.0;
+                      const gap = 12.0;
+                      final cols =
+                          (constraints.maxWidth + gap) ~/ (minCard + gap);
+                      final width =
+                          (constraints.maxWidth - gap * (cols - 1)) / cols;
+                      return Wrap(
+                        spacing: gap,
+                        runSpacing: gap,
+                        children: [
+                          for (final item in _items(context))
+                            SizedBox(
+                              width: width,
+                              child: _buildFeatureCard(context, item),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+                ],
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSectionHeader(BuildContext context, String text) {
+    final scheme = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Container(
+          width: 3,
+          height: 13,
+          decoration: BoxDecoration(
+            color: scheme.primary,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 7),
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 13.5,
+            fontWeight: FontWeight.w600,
+            color: scheme.onSurface,
+            letterSpacing: 0.3,
+          ),
+        ),
+      ],
     );
   }
 
@@ -269,6 +309,48 @@ class HomeScreen extends ConsumerWidget {
         '学生个人数据中心',
         '学业成绩 · 消费 · 图书 · 校园卡全景',
         () => push(const DataCenterScreen()),
+      ),
+      _HomeItem(
+        Icons.electrical_services,
+        '宿舍电费',
+        '选择宿舍查询剩余电量 · 未绑定可一键绑定',
+        () => push(const ElectricityScreen()),
+      ),
+      _HomeItem(
+        Icons.wifi_outlined,
+        '网费',
+        '校园网余额 · 充值记录一览',
+        () => push(const NetFeeScreen()),
+      ),
+      _HomeItem(
+        Icons.workspace_premium_outlined,
+        '综合测评',
+        '证明材料自动测算 · 五育等次参考',
+        () => push(const ZongceScreen()),
+      ),
+      _HomeItem(
+        Icons.fitness_center,
+        '体测成绩',
+        '国家体质测试总分与分项 · 本人成绩查询',
+        () => push(const TiceScreen()),
+      ),
+      _HomeItem(
+        Icons.folder_outlined,
+        '材料库',
+        '证明文件归档 · 自动带入综测',
+        () => push(const MaterialsScreen()),
+      ),
+      _HomeItem(
+        Icons.calendar_month,
+        '校历',
+        '学期教学周历 · 开学与假期起止一览',
+        () => push(const SchoolCalendarScreen()),
+      ),
+      _HomeItem(
+        Icons.rule_folder_outlined,
+        '规章制度',
+        '校规校纪 · 学分学籍 · 竞赛目录 · 奖助办法',
+        () => push(const RulesHomeScreen()),
       ),
     ];
   }
