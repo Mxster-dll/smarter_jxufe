@@ -1,0 +1,839 @@
+{
+ "groups": [
+  "学科竞赛",
+  "教学培养",
+  "学籍成绩",
+  "升学推免",
+  "资助奖助",
+  "科研奖励",
+  "纪律处分",
+  "综合素质",
+  "学位授予",
+  "其他"
+ ],
+ "docs": [
+  {
+   "id": "r01",
+   "file": "r01.md",
+   "pdf": "r01.pdf",
+   "title": "关于印发《江西财经大学学科竞赛管理办法（2024年修订）》的通知",
+   "group": "学科竞赛",
+   "template": "regulation",
+   "year": "2024",
+   "wenhao": "江财字〔2024〕4号",
+   "date": "2024-01-20",
+   "kind": "notice"
+  },
+  {
+   "id": "r01a",
+   "file": "r01a.md",
+   "pdf": "r01.pdf",
+   "title": "学科竞赛管理办法（2024年修订）",
+   "group": "学科竞赛",
+   "template": "regulation",
+   "year": "2024",
+   "wenhao": "江财字〔2024〕4号",
+   "date": "2024-01-20",
+   "kind": "attachment",
+   "parent": "r01"
+  },
+  {
+   "id": "r02",
+   "file": "r02.md",
+   "pdf": "r02.pdf",
+   "title": "全日制本科生成绩管理办法（2017年修订通知）",
+   "group": "学籍成绩",
+   "template": "regulation",
+   "year": "",
+   "wenhao": "江财教务字〔2017〕8号"
+  },
+  {
+   "id": "r03",
+   "file": "r03.md",
+   "pdf": "r03.pdf",
+   "title": "关于印发《江西财经大学2024年普通本科专业人才培养方案修订原则性意见》的通知",
+   "group": "教学培养",
+   "template": "regulation",
+   "year": "2024",
+   "kind": "notice"
+  },
+  {
+   "id": "r03a",
+   "file": "r03a.md",
+   "pdf": "r03.pdf",
+   "title": "普通本科专业人才培养方案修订原则性意见（2024年）",
+   "group": "教学培养",
+   "template": "regulation",
+   "year": "2024",
+   "kind": "attachment",
+   "parent": "r03"
+  },
+  {
+   "id": "r04",
+   "file": "r04.md",
+   "pdf": "r04.pdf",
+   "title": "关于印发《江西财经大学全日制普通本科生转专业实施办法（试行）》的通知",
+   "group": "学籍成绩",
+   "template": "regulation",
+   "year": "",
+   "wenhao": "江财教务字〔2023〕3号",
+   "kind": "notice"
+  },
+  {
+   "id": "r04a",
+   "file": "r04a.md",
+   "pdf": "r04.pdf",
+   "title": "全日制普通本科生转专业实施办法（试行）",
+   "group": "学籍成绩",
+   "template": "regulation",
+   "year": "",
+   "wenhao": "江财教务字〔2023〕3号",
+   "kind": "attachment",
+   "parent": "r04"
+  },
+  {
+   "id": "r05",
+   "file": "r05.md",
+   "pdf": "r05.pdf",
+   "title": "关于印发《江西财经大学全日制本科生成绩管理办法（2025年修订）》的通知",
+   "group": "学籍成绩",
+   "template": "regulation",
+   "year": "2025",
+   "wenhao": "江财教务字〔2026〕4号",
+   "kind": "notice"
+  },
+  {
+   "id": "r05a",
+   "file": "r05a.md",
+   "pdf": "r05.pdf",
+   "title": "全日制本科生成绩管理办法（2025年修订）",
+   "group": "学籍成绩",
+   "template": "regulation",
+   "year": "2025",
+   "wenhao": "江财教务字〔2026〕4号",
+   "kind": "attachment",
+   "parent": "r05"
+  },
+  {
+   "id": "r06",
+   "file": "r06.md",
+   "pdf": "r06.pdf",
+   "title": "关于印发《江西财经大学学生违纪处分办法（2024年修订）》的通知",
+   "group": "纪律处分",
+   "template": "regulation",
+   "year": "2024",
+   "wenhao": "江财学工字〔2024〕24号",
+   "kind": "notice"
+  },
+  {
+   "id": "r06a",
+   "file": "r06a.md",
+   "pdf": "r06.pdf",
+   "title": "学生违纪处分办法（2024年修订）",
+   "group": "纪律处分",
+   "template": "regulation",
+   "year": "2024",
+   "wenhao": "江财学工字〔2024〕24号",
+   "kind": "attachment",
+   "parent": "r06"
+  },
+  {
+   "id": "r07",
+   "file": "r07.md",
+   "pdf": "r07.pdf",
+   "title": "关于印发《江西财经大学家庭经济困难学生发展型资助项目实施办法（试行）》的通知",
+   "group": "资助奖助",
+   "template": "regulation",
+   "year": "",
+   "wenhao": "江财学工字〔2023〕14号",
+   "kind": "notice"
+  },
+  {
+   "id": "r07a",
+   "file": "r07a.md",
+   "pdf": "r07.pdf",
+   "title": "家庭经济困难学生发展型资助项目实施办法（试行）",
+   "group": "资助奖助",
+   "template": "regulation",
+   "year": "",
+   "wenhao": "江财学工字〔2023〕14号",
+   "kind": "attachment",
+   "parent": "r07"
+  },
+  {
+   "id": "r08",
+   "file": "r08.md",
+   "pdf": "r08.pdf",
+   "title": "关于印发《江西财经大学推荐优秀应届本科毕业生免试攻读硕士研究生工作办法（2024年修订）》的通知",
+   "group": "升学推免",
+   "template": "regulation",
+   "year": "2024",
+   "wenhao": "江财研教字〔2024〕22号",
+   "kind": "notice"
+  },
+  {
+   "id": "r08a",
+   "file": "r08a.md",
+   "pdf": "r08.pdf",
+   "title": "推荐优秀应届本科毕业生免试攻读硕士研究生工作办法（2024年修订）",
+   "group": "升学推免",
+   "template": "regulation",
+   "year": "2024",
+   "wenhao": "江财研教字〔2024〕22号",
+   "kind": "attachment",
+   "parent": "r08"
+  },
+  {
+   "id": "r09",
+   "file": "r09.md",
+   "pdf": "r09.pdf",
+   "title": "关于印发《江西财经大学普通本科学生学分制管理实施办法（2021年修订）》的通知",
+   "group": "学籍成绩",
+   "template": "regulation",
+   "year": "2021",
+   "wenhao": "江财教务字〔2021〕13号",
+   "kind": "notice"
+  },
+  {
+   "id": "r09a",
+   "file": "r09a.md",
+   "pdf": "r09.pdf",
+   "title": "普通本科学生学分制管理实施办法（2021年修订）",
+   "group": "学籍成绩",
+   "template": "regulation",
+   "year": "2021",
+   "wenhao": "江财教务字〔2021〕13号",
+   "kind": "attachment",
+   "parent": "r09"
+  },
+  {
+   "id": "r10",
+   "file": "r10.md",
+   "pdf": "r10.pdf",
+   "title": "关于印发《江西财经大学普通本科学生学分制管理实施办法（2025年修订）》的通知",
+   "group": "学籍成绩",
+   "template": "regulation",
+   "year": "2025",
+   "wenhao": "江财教务字〔2026〕2号",
+   "date": "2026-01-04",
+   "kind": "notice"
+  },
+  {
+   "id": "r10a",
+   "file": "r10a.md",
+   "pdf": "r10.pdf",
+   "title": "普通本科学生学分制管理实施办法（2025年修订）",
+   "group": "学籍成绩",
+   "template": "regulation",
+   "year": "2025",
+   "wenhao": "江财教务字〔2026〕2号",
+   "date": "2026-01-04",
+   "kind": "attachment",
+   "parent": "r10"
+  },
+  {
+   "id": "r11",
+   "file": "r11.md",
+   "pdf": "r11.pdf",
+   "title": "关于印发《江西财经大学本科生“第二课堂成绩单”实施办法》的通知",
+   "group": "综合素质",
+   "template": "regulation",
+   "year": "",
+   "wenhao": "江财字〔2018〕72号",
+   "kind": "notice"
+  },
+  {
+   "id": "r11a",
+   "file": "r11a.md",
+   "pdf": "r11.pdf",
+   "title": "本科生“第二课堂成绩单”实施办法",
+   "group": "综合素质",
+   "template": "regulation",
+   "year": "",
+   "wenhao": "江财字〔2018〕72号",
+   "kind": "attachment",
+   "parent": "r11"
+  },
+  {
+   "id": "r12",
+   "file": "r12.md",
+   "pdf": "r12.pdf",
+   "title": "关于印发《江西财经大学本科生综合素质测评办法》的通知",
+   "group": "综合素质",
+   "template": "regulation",
+   "year": "",
+   "wenhao": "江财学工字〔2024〕27号",
+   "kind": "notice"
+  },
+  {
+   "id": "r12a",
+   "file": "r12a.md",
+   "pdf": "r12.pdf",
+   "title": "本科生综合素质测评办法",
+   "group": "综合素质",
+   "template": "regulation",
+   "year": "",
+   "wenhao": "江财学工字〔2024〕27号",
+   "kind": "attachment",
+   "parent": "r12"
+  },
+  {
+   "id": "r13",
+   "file": "r13.md",
+   "pdf": "r13.pdf",
+   "title": "关于印发《江西财经大学本科生荣誉体系及奖学金评定管理办法》的通知",
+   "group": "资助奖助",
+   "template": "regulation",
+   "year": "",
+   "wenhao": "江财字〔2021〕51号",
+   "kind": "notice"
+  },
+  {
+   "id": "r13a",
+   "file": "r13a.md",
+   "pdf": "r13.pdf",
+   "title": "本科生荣誉体系及奖学金评定管理办法",
+   "group": "资助奖助",
+   "template": "regulation",
+   "year": "",
+   "wenhao": "江财字〔2021〕51号",
+   "kind": "attachment",
+   "parent": "r13"
+  },
+  {
+   "id": "r14",
+   "file": "r14.md",
+   "pdf": "r14.pdf",
+   "title": "关于印发《江西财经大学本科生高质量学术科研成果奖励办法（2023年修订）》的通知",
+   "group": "科研奖励",
+   "template": "regulation",
+   "year": "2023",
+   "wenhao": "江财学工字〔2023〕8号",
+   "kind": "notice"
+  },
+  {
+   "id": "r14a",
+   "file": "r14a.md",
+   "pdf": "r14.pdf",
+   "title": "本科生高质量学术科研成果奖励办法（2023年修订）",
+   "group": "科研奖励",
+   "template": "regulation",
+   "year": "2023",
+   "wenhao": "江财学工字〔2023〕8号",
+   "kind": "attachment",
+   "parent": "r14"
+  },
+  {
+   "id": "r15",
+   "file": "r15.md",
+   "pdf": "r15.pdf",
+   "title": "关于印发《江西财经大学本科课程认定及学分转换管理办法（试行）》的通知",
+   "group": "学籍成绩",
+   "template": "regulation",
+   "year": "",
+   "kind": "notice"
+  },
+  {
+   "id": "r15a",
+   "file": "r15a.md",
+   "pdf": "r15.pdf",
+   "title": "本科课程认定及学分转换管理办法（试行）",
+   "group": "学籍成绩",
+   "template": "regulation",
+   "year": "",
+   "kind": "attachment",
+   "parent": "r15"
+  },
+  {
+   "id": "r16",
+   "file": "r16.md",
+   "pdf": "r16.pdf",
+   "title": "关于印发《江西财经大学研究生综合素质测评办法》的通知",
+   "group": "综合素质",
+   "template": "regulation",
+   "year": "",
+   "kind": "notice"
+  },
+  {
+   "id": "r16a",
+   "file": "r16a.md",
+   "pdf": "r16.pdf",
+   "title": "研究生综合素质测评办法",
+   "group": "综合素质",
+   "template": "regulation",
+   "year": "",
+   "kind": "attachment",
+   "parent": "r16"
+  },
+  {
+   "id": "r16b",
+   "file": "r16b.md",
+   "pdf": "r16.pdf",
+   "title": "研究生综合素质测评登记表",
+   "group": "综合素质",
+   "template": "regulation",
+   "year": "",
+   "kind": "attachment",
+   "parent": "r16"
+  },
+  {
+   "id": "r16c",
+   "file": "r16c.md",
+   "pdf": "r16.pdf",
+   "title": "研究生综合素质测评汇总表",
+   "group": "综合素质",
+   "template": "regulation",
+   "year": "",
+   "kind": "attachment",
+   "parent": "r16"
+  },
+  {
+   "id": "r17",
+   "file": "r17.md",
+   "pdf": "r17.pdf",
+   "title": "关于印发《江西财经大学科研成果等级认定办法》的通知",
+   "group": "科研奖励",
+   "template": "regulation",
+   "year": "",
+   "wenhao": "江财科研字〔2025〕11号",
+   "kind": "notice"
+  },
+  {
+   "id": "r17a",
+   "file": "r17a.md",
+   "pdf": "r17.pdf",
+   "title": "科研成果等级认定办法",
+   "group": "科研奖励",
+   "template": "regulation",
+   "year": "",
+   "wenhao": "江财科研字〔2025〕11号",
+   "kind": "attachment",
+   "parent": "r17"
+  },
+  {
+   "id": "r18",
+   "file": "r18.md",
+   "pdf": "r18.pdf",
+   "title": "关于印发《江西财经大学辅修专业（学位）教育管理办法（2020年修订）》的通知",
+   "group": "学籍成绩",
+   "template": "regulation",
+   "year": "2020",
+   "wenhao": "江财教务字〔2020〕14号",
+   "kind": "notice"
+  },
+  {
+   "id": "r18a",
+   "file": "r18a.md",
+   "pdf": "r18.pdf",
+   "title": "辅修专业（学位）教育管理办法（2020年修订）",
+   "group": "学籍成绩",
+   "template": "regulation",
+   "year": "2020",
+   "wenhao": "江财教务字〔2020〕14号",
+   "kind": "attachment",
+   "parent": "r18"
+  },
+  {
+   "id": "r19",
+   "file": "r19.md",
+   "pdf": "r19.pdf",
+   "title": "关于印发《江西财经大学全日制普通本科学生考试违纪处理规定（2024年修订）》的通知",
+   "group": "纪律处分",
+   "template": "regulation",
+   "year": "2024",
+   "wenhao": "江财教务字〔2024〕3号",
+   "kind": "notice"
+  },
+  {
+   "id": "r19a",
+   "file": "r19a.md",
+   "pdf": "r19.pdf",
+   "title": "全日制普通本科学生考试违纪处理规定（2024年修订）",
+   "group": "纪律处分",
+   "template": "regulation",
+   "year": "2024",
+   "wenhao": "江财教务字〔2024〕3号",
+   "kind": "attachment",
+   "parent": "r19"
+  },
+  {
+   "id": "r20",
+   "file": "r20.md",
+   "pdf": "r20.pdf",
+   "title": "学科竞赛目录（2024-2025学年）",
+   "group": "学科竞赛",
+   "template": "catalog",
+   "year": "2024"
+  },
+  {
+   "id": "r21",
+   "file": "r21.md",
+   "pdf": "r21.pdf",
+   "title": "学科竞赛目录（2025-2026年）",
+   "group": "学科竞赛",
+   "template": "catalog",
+   "year": "2025"
+  },
+  {
+   "id": "r22",
+   "file": "r22.md",
+   "pdf": "r22.pdf",
+   "title": "关于印发《江西财经大学全日制普通本科毕业生学士学位授予工作实施细则（修订）》的通知",
+   "group": "学位授予",
+   "template": "regulation",
+   "year": "",
+   "wenhao": "江财教务字〔2010〕6号",
+   "kind": "notice"
+  },
+  {
+   "id": "r22a",
+   "file": "r22a.md",
+   "pdf": "r22.pdf",
+   "title": "学士学位授予工作实施细则（修订）",
+   "group": "学位授予",
+   "template": "regulation",
+   "year": "",
+   "wenhao": "江财教务字〔2010〕6号",
+   "kind": "attachment",
+   "parent": "r22"
+  },
+  {
+   "id": "r23",
+   "file": "r23.md",
+   "pdf": "r23.pdf",
+   "title": "关于印发《江西财经大学全日制本科生成绩管理办法》的通知",
+   "group": "学籍成绩",
+   "template": "regulation",
+   "year": "",
+   "wenhao": "江财教务字〔2015〕11号",
+   "kind": "notice"
+  },
+  {
+   "id": "r23a",
+   "file": "r23a.md",
+   "pdf": "r23.pdf",
+   "title": "全日制本科生成绩管理办法",
+   "group": "学籍成绩",
+   "template": "regulation",
+   "year": "",
+   "wenhao": "江财教务字〔2015〕11号",
+   "kind": "attachment",
+   "parent": "r23"
+  }
+ ],
+ "families": [
+  {
+   "name": "学科竞赛管理办法",
+   "group": "学科竞赛",
+   "default": "r01a",
+   "members": [
+    {
+     "id": "r01a",
+     "label": "2024年修订"
+    },
+    {
+     "id": "r01",
+     "label": "印发通知"
+    }
+   ]
+  },
+  {
+   "name": "全日制本科生成绩管理办法",
+   "group": "学籍成绩",
+   "default": "r05a",
+   "members": [
+    {
+     "id": "r05a",
+     "label": "2025年修订"
+    },
+    {
+     "id": "r05",
+     "label": "印发通知"
+    },
+    {
+     "id": "r02",
+     "label": "2017年修订通知"
+    },
+    {
+     "id": "r23a",
+     "label": "2015年版"
+    },
+    {
+     "id": "r23",
+     "label": "2015年印发通知"
+    }
+   ]
+  },
+  {
+   "name": "普通本科专业人才培养方案修订原则性意见",
+   "group": "教学培养",
+   "default": "r03a",
+   "members": [
+    {
+     "id": "r03a",
+     "label": "2024年"
+    },
+    {
+     "id": "r03",
+     "label": "印发通知"
+    }
+   ]
+  },
+  {
+   "name": "全日制普通本科生转专业实施办法（试行）",
+   "group": "学籍成绩",
+   "default": "r04a",
+   "members": [
+    {
+     "id": "r04a",
+     "label": "正文（试行）"
+    },
+    {
+     "id": "r04",
+     "label": "印发通知"
+    }
+   ]
+  },
+  {
+   "name": "普通本科学生学分制管理实施办法",
+   "group": "学籍成绩",
+   "default": "r10a",
+   "members": [
+    {
+     "id": "r10a",
+     "label": "2025年修订"
+    },
+    {
+     "id": "r10",
+     "label": "印发通知"
+    },
+    {
+     "id": "r09a",
+     "label": "2021年修订"
+    },
+    {
+     "id": "r09",
+     "label": "2021年印发通知"
+    }
+   ]
+  },
+  {
+   "name": "学生违纪处分办法",
+   "group": "纪律处分",
+   "default": "r06a",
+   "members": [
+    {
+     "id": "r06a",
+     "label": "2024年修订"
+    },
+    {
+     "id": "r06",
+     "label": "印发通知"
+    }
+   ]
+  },
+  {
+   "name": "家庭经济困难学生发展型资助项目实施办法（试行）",
+   "group": "资助奖助",
+   "default": "r07a",
+   "members": [
+    {
+     "id": "r07a",
+     "label": "正文（试行）"
+    },
+    {
+     "id": "r07",
+     "label": "印发通知"
+    }
+   ]
+  },
+  {
+   "name": "推荐优秀应届本科毕业生免试攻读硕士研究生工作办法",
+   "group": "升学推免",
+   "default": "r08a",
+   "members": [
+    {
+     "id": "r08a",
+     "label": "2024年修订"
+    },
+    {
+     "id": "r08",
+     "label": "印发通知"
+    }
+   ]
+  },
+  {
+   "name": "本科生“第二课堂成绩单”实施办法",
+   "group": "综合素质",
+   "default": "r11a",
+   "members": [
+    {
+     "id": "r11a",
+     "label": "正文"
+    },
+    {
+     "id": "r11",
+     "label": "印发通知"
+    }
+   ]
+  },
+  {
+   "name": "本科生综合素质测评办法",
+   "group": "综合素质",
+   "default": "r12a",
+   "members": [
+    {
+     "id": "r12a",
+     "label": "正文"
+    },
+    {
+     "id": "r12",
+     "label": "印发通知"
+    }
+   ]
+  },
+  {
+   "name": "本科生荣誉体系及奖学金评定管理办法",
+   "group": "资助奖助",
+   "default": "r13a",
+   "members": [
+    {
+     "id": "r13a",
+     "label": "正文"
+    },
+    {
+     "id": "r13",
+     "label": "印发通知"
+    }
+   ]
+  },
+  {
+   "name": "本科生高质量学术科研成果奖励办法",
+   "group": "科研奖励",
+   "default": "r14a",
+   "members": [
+    {
+     "id": "r14a",
+     "label": "2023年修订"
+    },
+    {
+     "id": "r14",
+     "label": "印发通知"
+    }
+   ]
+  },
+  {
+   "name": "本科课程认定及学分转换管理办法（试行）",
+   "group": "学籍成绩",
+   "default": "r15a",
+   "members": [
+    {
+     "id": "r15a",
+     "label": "正文（试行）"
+    },
+    {
+     "id": "r15",
+     "label": "印发通知"
+    }
+   ]
+  },
+  {
+   "name": "研究生综合素质测评办法",
+   "group": "综合素质",
+   "default": "r16a",
+   "members": [
+    {
+     "id": "r16a",
+     "label": "正文"
+    },
+    {
+     "id": "r16b",
+     "label": "登记表"
+    },
+    {
+     "id": "r16c",
+     "label": "汇总表"
+    },
+    {
+     "id": "r16",
+     "label": "印发通知"
+    }
+   ]
+  },
+  {
+   "name": "科研成果等级认定办法",
+   "group": "科研奖励",
+   "default": "r17a",
+   "members": [
+    {
+     "id": "r17a",
+     "label": "正文"
+    },
+    {
+     "id": "r17",
+     "label": "印发通知"
+    }
+   ]
+  },
+  {
+   "name": "辅修专业（学位）教育管理办法",
+   "group": "学籍成绩",
+   "default": "r18a",
+   "members": [
+    {
+     "id": "r18a",
+     "label": "2020年修订"
+    },
+    {
+     "id": "r18",
+     "label": "印发通知"
+    }
+   ]
+  },
+  {
+   "name": "全日制普通本科学生考试违纪处理规定",
+   "group": "纪律处分",
+   "default": "r19a",
+   "members": [
+    {
+     "id": "r19a",
+     "label": "2024年修订"
+    },
+    {
+     "id": "r19",
+     "label": "印发通知"
+    }
+   ]
+  },
+  {
+   "name": "大学生学科竞赛目录",
+   "group": "学科竞赛",
+   "default": "r21",
+   "members": [
+    {
+     "id": "r21",
+     "label": "2025-2026年"
+    },
+    {
+     "id": "r20",
+     "label": "2024-2025学年"
+    }
+   ]
+  },
+  {
+   "name": "全日制普通本科毕业生学士学位授予工作实施细则",
+   "group": "学位授予",
+   "default": "r22a",
+   "members": [
+    {
+     "id": "r22a",
+     "label": "正文（修订）"
+    },
+    {
+     "id": "r22",
+     "label": "印发通知"
+    }
+   ]
+  }
+ ]
+}
