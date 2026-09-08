@@ -34,6 +34,18 @@ class DataCenterRepository {
     return retry.$1;
   }
 
+  /// 仅拉取指定账户的网费余额（轻量单卡查询，供仪表盘 / 网费页兜底）。
+  ///
+  /// 会话失效时刷新后重试一次；无数据显示 null（`fetchNetworkBalance`
+  /// 内部 _guard 失败返回 null，不抛）。
+  Future<double?> fetchNetworkBalanceOnly(String account) async {
+    final session = await _authRepository.getSession(account);
+    final first = await _remoteDataSource.fetchNetworkBalance(session);
+    if (first != null) return first;
+    final freshSession = await _authRepository.refreshSession(account);
+    return _remoteDataSource.fetchNetworkBalance(freshSession);
+  }
+
   /// 并行收集所有卡片；返回 (概览, 是否全部失败)。
   Future<(DataCenterOverview, bool)> _collect(DzjSession session) async {
     final api = _remoteDataSource;
