@@ -110,6 +110,8 @@ flutter:
     - assets/rules/meta/rules_catalog.json
     - assets/rules/text/
     - assets/rules/pdf/
+    - assets/images/campus_maps/
+    - assets/capture_certs/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
