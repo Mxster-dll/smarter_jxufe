@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:smarter_jxufe/design/JxufeTheme.dart';
@@ -38,6 +40,13 @@ class VerificationCodeInputState extends State<VerificationCodeInput>
   final Set<int> _selected = {};
   int _cursor = 0;
   final FocusNode _focus = FocusNode();
+  /// 移动端软键盘桥：桌面用 [Focus] + onKeyEvent 接物理键盘；
+  /// 手机没有硬件键盘，需真实 TextField 附着系统输入法，软键盘才会弹出。
+  bool get _useSystemKeyboard =>
+      defaultTargetPlatform == TargetPlatform.android ||
+      defaultTargetPlatform == TargetPlatform.iOS;
+  final TextEditingController _hiddenCtrl = TextEditingController();
+  final FocusNode _hiddenFocus = FocusNode();
   bool _ctrlDown = false;
   String _prev = '';
 
@@ -64,6 +73,8 @@ class VerificationCodeInputState extends State<VerificationCodeInput>
     _blinkCtrl.dispose();
     _focus.removeListener(_onFocusChange);
     _focus.dispose();
+    _hiddenCtrl.dispose();
+    _hiddenFocus.dispose();
     super.dispose();
   }
 
@@ -428,7 +439,12 @@ class VerificationCodeInputState extends State<VerificationCodeInput>
 
   void _onCellTapDown(int i) {
     if (widget.disabled) return;
-    _focus.requestFocus();
+    if (_useSystemKeyboard) {
+      // 移动端：把焦点给隐藏输入框，唤起系统软键盘。
+      _hiddenFocus.requestFocus();
+    } else {
+      _focus.requestFocus();
+    }
     if (_ctrlDown) {
       _toggle(i);
     } else if (_digits[i] != null) {
@@ -456,7 +472,7 @@ class VerificationCodeInputState extends State<VerificationCodeInput>
   @override
   Widget build(BuildContext context) {
     final showCursor =
-        _focus.hasFocus &&
+        (_focus.hasFocus || _hiddenFocus.hasFocus) &&
         !widget.disabled &&
         !widget.readOnly &&
         _selected.length == 1 &&
@@ -719,10 +735,54 @@ class VerificationCodeInputState extends State<VerificationCodeInput>
                     ),
                   ),
             ],
+            // 移动端软键盘桥（不可见 1×1 TextField，程序式聚焦即可唤起输入法）
+            if (_useSystemKeyboard) _buildHiddenInput(),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildHiddenInput() {
+    return Align(
+      alignment: Alignment.topLeft,
+      child: SizedBox(
+        width: 1,
+        height: 1,
+        child: Opacity(
+          opacity: 0,
+          child: TextField(
+            controller: _hiddenCtrl,
+            focusNode: _hiddenFocus,
+            keyboardType: TextInputType.number,
+            enableSuggestions: false,
+            autocorrect: false,
+            showCursor: false,
+            style: const TextStyle(fontSize: 1),
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: const InputDecoration(
+              isCollapsed: true,
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.zero,
+            ),
+            onChanged: _onHiddenChanged,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _onHiddenChanged(String value) {
+    if (widget.disabled || widget.readOnly) {
+      _hiddenCtrl.clear();
+      return;
+    }
+    final digits = value.replaceAll(RegExp(r'\D'), '');
+    // 清空输入框：每键独立一字符，支持连续输入重复数字；粘贴多字符则逐位填入。
+    _hiddenCtrl.clear();
+    for (var i = 0; i < digits.length; i++) {
+      _putDigit(digits[i]);
+    }
   }
 
   String get code => _digits.map((d) => d ?? '').join();

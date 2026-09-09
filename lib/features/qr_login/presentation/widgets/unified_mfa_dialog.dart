@@ -127,7 +127,20 @@ class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
     _collapseCtrl.addStatusListener(_onCollapseDone);
     _bodyCtrl = SlideCarouselController(totalItems: 2);
     _hintCtrl = SlideCarouselController(totalItems: 2);
-    if (_qrMode) _listenQrStatus();
+    if (_qrMode) {
+      _listenQrStatus();
+    } else {
+      // 起始即短信模式（移动端默认）：内容区/提示条直接定位到短信项，
+      // 否则底部 SMS 按钮高亮但主体仍显示二维码，状态与实际显示不符。
+      _bodyCtrl.jumpTo(1);
+      _hintCtrl.jumpTo(1);
+      // 短信会话（attest/gid）延迟到首帧后初始化（initState 中不可 await），
+      // 否则首次点「发送验证码」会因 attest 未就绪而报错。
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _dismissed || _transitioning) return;
+        _executeModeSwitch();
+      });
+    }
   }
 
   void _listenQrStatus() {
@@ -494,6 +507,9 @@ class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
     ),
   ];
 
+  Widget _qrHintBar() =>
+      _buildHintBar(icon: Icons.info_outline, spans: _qrHintSpans);
+
   List<InlineSpan> get _smsHintSpans => const [
     TextSpan(
       text: '输入 ',
@@ -512,9 +528,6 @@ class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
       style: TextStyle(fontSize: 13, color: JxufeTheme.textColor),
     ),
   ];
-
-  Widget _qrHintBar() =>
-      _buildHintBar(icon: Icons.info_outline, spans: _qrHintSpans);
 
   Widget _smsHintBar() {
     if ((_phoneHint ?? '').isEmpty) return const SizedBox.shrink();
