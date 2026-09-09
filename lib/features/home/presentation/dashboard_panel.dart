@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/core/network/dio_providers.dart';
+import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/providers/volunteer_hours_providers.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/volunteer_hours_screen.dart';
 import 'package:smarter_jxufe/features/electricity/data/models/electricity_models.dart';
@@ -194,6 +195,7 @@ class DashboardPanel extends ConsumerWidget {
                   width: width,
                   child: _MetricCard(
                     icon: Icons.electrical_services,
+                    color: FeaturePalette.electricity,
                     label: '电费余额',
                     onTap: () => _push(context, const ElectricityScreen()),
                     child: _valueArea<ElectricityBalance?>(
@@ -210,6 +212,7 @@ class DashboardPanel extends ConsumerWidget {
                   width: width,
                   child: _MetricCard(
                     icon: Icons.wifi_outlined,
+                    color: FeaturePalette.netFee,
                     label: '网费',
                     onTap: () => _push(context, const NetFeeScreen()),
                     child: _valueArea<NetFeeSummary>(
@@ -226,6 +229,7 @@ class DashboardPanel extends ConsumerWidget {
                   width: width,
                   child: _MetricCard(
                     icon: Icons.auto_graph_outlined,
+                    color: FeaturePalette.grade,
                     label: '课程加权',
                     onTap: () =>
                         _push(context, ImsSplashScreen(initialTab: ImsTab.grade)),
@@ -236,6 +240,7 @@ class DashboardPanel extends ConsumerWidget {
                   width: width,
                   child: _MetricCard(
                     icon: Icons.volunteer_activism,
+                    color: FeaturePalette.volunteer,
                     label: '志愿时长',
                     onTap: () =>
                         _push(context, const VolunteerHoursScreen()),
@@ -455,11 +460,11 @@ class DashboardPanel extends ConsumerWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: scheme.primary.withValues(alpha: 0.10),
+                      color: FeaturePalette.schedule.withValues(alpha: 0.10),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(Icons.today_outlined,
-                        size: 20, color: scheme.primary),
+                        size: 20, color: FeaturePalette.schedule),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -539,7 +544,7 @@ class DashboardPanel extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: scheme.primary.withValues(alpha: 0.10),
+                      color: FeaturePalette.schedule.withValues(alpha: 0.10),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
@@ -547,7 +552,7 @@ class DashboardPanel extends ConsumerWidget {
                       style: TextStyle(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w600,
-                        color: scheme.primary,
+                        color: FeaturePalette.schedule,
                       ),
                     ),
                   ),
@@ -582,15 +587,17 @@ class DashboardPanel extends ConsumerWidget {
   }
 }
 
-/// 指标卡：App 同源白卡，自定义内容区（[child]）。
+/// 指标卡：App 同源白卡，自定义内容区（[child]）。[color] 为功能点缀色。
 class _MetricCard extends StatelessWidget {
   final IconData icon;
+  final Color color;
   final String label;
   final VoidCallback? onTap;
   final Widget child;
 
   const _MetricCard({
     required this.icon,
+    required this.color,
     required this.label,
     this.onTap,
     required this.child,
@@ -608,7 +615,7 @@ class _MetricCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        hoverColor: scheme.primary.withValues(alpha: 0.04),
+        hoverColor: color.withValues(alpha: 0.04),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Column(
@@ -620,10 +627,10 @@ class _MetricCard extends StatelessWidget {
                     width: 34,
                     height: 34,
                     decoration: BoxDecoration(
-                      color: scheme.primary.withValues(alpha: 0.10),
+                      color: color.withValues(alpha: 0.10),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(icon, size: 18, color: scheme.primary),
+                    child: Icon(icon, size: 18, color: color),
                   ),
                   const SizedBox(width: 10),
                   Expanded(

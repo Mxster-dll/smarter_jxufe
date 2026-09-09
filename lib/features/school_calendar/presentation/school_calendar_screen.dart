@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/features/platform_guid/presentation/guid_guide_screen.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/school_calendar_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/wxcal_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/wxcal_repository.dart';
@@ -529,6 +530,21 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
                       .textTheme
                       .bodySmall
                       ?.copyWith(color: Colors.grey.shade600),
+                ),
+                const SizedBox(height: 2),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const GuidGuideScreen(),
+                        ),
+                      );
+                    },
+                    child: const Text('不知道 GUID？查看获取方法'),
+                  ),
                 ),
               ],
             ),
