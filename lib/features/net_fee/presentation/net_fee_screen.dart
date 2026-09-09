@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/features/net_fee/data/providers/net_fee_providers.dart';
 import 'package:smarter_jxufe/features/net_fee/domain/net_fee_models.dart';
+import 'package:smarter_jxufe/features/platform_guid/presentation/guid_guide_screen.dart';
 
 /// 网费：校园网余额 + 充值记录。
 ///
@@ -114,7 +115,7 @@ class _NetFeeScreenState extends ConsumerState<NetFeeScreen> {
         ),
         const Spacer(),
         TextButton.icon(
-          onPressed: () => _showGuidDialog(context),
+          onPressed: _showGuidDialog,
           style: TextButton.styleFrom(
             visualDensity: VisualDensity.compact,
             padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -356,7 +357,7 @@ class _NetFeeScreenState extends ConsumerState<NetFeeScreen> {
 
   // ---------- GUID 配置对话框 ----------
 
-  Future<void> _showGuidDialog(BuildContext context) async {
+  Future<void> _showGuidDialog() async {
     if (!mounted) return;
     final box = await ref.read(netFeePlatformBoxProvider.future);
     if (!mounted) return;
@@ -392,6 +393,21 @@ class _NetFeeScreenState extends ConsumerState<NetFeeScreen> {
                   hintText: '例如 00000000-0000-4000-8000-000000000000',
                   isDense: true,
                   border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop();
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const GuidGuideScreen(),
+                      ),
+                    );
+                  },
+                  child: const Text('不知道 GUID？查看获取方法'),
                 ),
               ),
             ],

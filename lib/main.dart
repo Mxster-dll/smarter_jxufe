@@ -38,7 +38,11 @@ class SmarterJxUFE extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: '智慧尼采',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF008CFF)),
+        // 直接 seed 会被 Material3 色调压缩成暗棕红 #904A46；
+        // 这里在派生色基础上固定 primary 为校徽红 #C3282E（与 JxufeTheme.primaryColor 一致）。
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFFC3282E),
+        ).copyWith(primary: const Color(0xFFC3282E)),
         fontFamily: 'Cascadia Code',
         fontFamilyFallback: const ['霞鹜文楷', '仓耳今楷01'],
       ),
