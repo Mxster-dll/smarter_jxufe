@@ -1,4 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:smarter_jxufe/design/feature_palette.dart';
+import 'package:smarter_jxufe/features/campus_address/data/my_campus_prefs.dart';
+import 'package:smarter_jxufe/features/campus_address/domain/my_campus.dart';
+import 'package:smarter_jxufe/features/campus_address/presentation/my_campus_widgets.dart';
 
 /// 校区地图条目：内置压缩版资源(官网四校区地图,生成脚本 tools/_campus_maps_build.py)。
 class CampusMapEntry {
@@ -23,48 +29,83 @@ const campusMapEntries = <CampusMapEntry>[
 
 /// 校区地图：展示官网四校区地图与交通示意图。
 /// 图片为官网静态资源,按需网络加载;点击缩略图进入全屏缩放查看。
-class CampusMapScreen extends StatelessWidget {
+///
+/// 「我的校区」（[myCampusStoreProvider]）一旦设置，该校区相关条目
+/// （北区 / 南区两条）置顶并带「我的校区」徽标；交通示意图等非校区条目
+/// 保持在原相对顺序，只是整体后移。
+class CampusMapScreen extends ConsumerWidget {
   const CampusMapScreen({super.key});
 
-  void _openViewer(BuildContext context, int index) {
+  /// [index] 与 [entries] 必须同源：置顶会改变显示顺序，若仍用
+  /// 顶层常量 [campusMapEntries] 的下标，全屏查看器会打开错图。
+  void _openViewer(
+    BuildContext context,
+    int index,
+    List<CampusMapEntry> entries,
+  ) {
     showDialog<void>(
       context: context,
       builder: (_) => Dialog.fullscreen(
         backgroundColor: Colors.black,
-        child: _MapViewer(
-          initialIndex: index,
-          entries: campusMapEntries,
-        ),
+        child: _MapViewer(initialIndex: index, entries: entries),
       ),
     );
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
+    final mine = ref.watch(myCampusStoreProvider).campus;
+    bool isMine(CampusMapEntry e) =>
+        mine != null && mine.matchesMapEntry(e.name);
+    final ordered = pinMineFirst(campusMapEntries, isMine);
+    final pinnedNames = [
+      for (final e in ordered)
+        if (isMine(e)) e.name,
+    ];
+
     return Scaffold(
       appBar: AppBar(title: const Text('校区地图'), centerTitle: true),
       body: ListView.separated(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
-        itemCount: campusMapEntries.length,
+        // 第 0 项是「我的校区」状态提示行，其后是地图卡片。
+        itemCount: ordered.length + 1,
         separatorBuilder: (_, _) => const SizedBox(height: 14),
         itemBuilder: (context, index) {
-          final e = campusMapEntries[index];
+          if (index == 0) {
+            return myCampusHint(context, mine: mine, pinnedNames: pinnedNames);
+          }
+          final entryIndex = index - 1;
+          final e = ordered[entryIndex];
+          final pinned = isMine(e);
           return Material(
             color: Theme.of(context).cardTheme.color,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
-              side: BorderSide(color: scheme.outline),
+              side: BorderSide(
+                color: pinned ? FeaturePalette.campus : scheme.outline,
+              ),
             ),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
-              onTap: () => _openViewer(context, index),
+              onTap: () => _openViewer(context, entryIndex, ordered),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   AspectRatio(
                     aspectRatio: 16 / 9,
-                    child: Image.asset(e.asset, fit: BoxFit.cover),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.asset(e.asset, fit: BoxFit.cover),
+                        if (pinned)
+                          Positioned(
+                            left: 10,
+                            top: 10,
+                            child: myCampusBadge(context, onImage: true),
+                          ),
+                      ],
+                    ),
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
