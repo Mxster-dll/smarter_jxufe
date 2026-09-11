@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/features/auth/data/account_avatar_controller.dart';
+import 'package:smarter_jxufe/features/auth/data/providers/account_avatar_provider.dart';
+import 'package:smarter_jxufe/features/auth/domain/account_avatar.dart';
 import 'package:smarter_jxufe/features/ims/student_info/data/providers/student_info_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/student_info/domain/student_info.dart';
 import 'package:smarter_jxufe/features/ims/student_info/presentation/account_screen.dart';
+import 'package:smarter_jxufe/shared/widgets/account_avatar.dart';
 
 /// 「我的」页面 —— 左右双列纵排，纯色标题背景。
 class StudentInfoScreen extends ConsumerWidget {
@@ -32,7 +36,7 @@ class StudentInfoScreen extends ConsumerWidget {
           ],
         ),
       ),
-      data: (info) => _buildContent(context, info),
+      data: (info) => _buildContent(context, ref, info),
     );
 
     if (showAppBar) {
@@ -44,7 +48,7 @@ class StudentInfoScreen extends ConsumerWidget {
     return body;
   }
 
-  Widget _buildContent(BuildContext context, StudentInfo i) {
+  Widget _buildContent(BuildContext context, WidgetRef ref, StudentInfo i) {
     const pad = 12.0;
     const colGap = 10.0;
 
@@ -145,7 +149,7 @@ class StudentInfoScreen extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(pad),
       children: [
-        _header(context, i),
+        _header(context, ref, i),
         const SizedBox(height: 16),
         LayoutBuilder(
           builder: (context, constraints) {
@@ -181,18 +185,15 @@ class StudentInfoScreen extends ConsumerWidget {
   }
 
   // ── 头部 ──
-  Widget _header(BuildContext context, StudentInfo i) => Column(
+  Widget _header(BuildContext context, WidgetRef ref, StudentInfo i) => Column(
     children: [
-      CircleAvatar(
+      // 头像：绑定当前账号的本地图片 → 姓名首字 → 通用图标（三级回退）。
+      // 点击打开「取图 / 移除」菜单；**不画相机角标**（用户 2026-09-11 裁定）。
+      AccountAvatar(
         radius: 40,
-        backgroundColor: Theme.of(context).colorScheme.error,
-        child: Text(
-          i.name.isNotEmpty ? i.name[0] : '?',
-          style: TextStyle(
-            fontSize: 36,
-            color: Theme.of(context).colorScheme.onError,
-          ),
-        ),
+        name: i.name,
+        tooltip: '更换头像',
+        onTap: () => _showAvatarSheet(context, ref),
       ),
       const SizedBox(height: 12),
       // 名字居中，退出图标紧贴右侧
@@ -230,6 +231,72 @@ class StudentInfoScreen extends ConsumerWidget {
       ),
     ],
   );
+
+  /// 头像操作面板：取图（相册 / 拍照）/ 移除。
+  ///
+  /// 图片**只存本机**并绑定到当前账号（`avatars/<卡号>.<ext>`），
+  /// 不联网、不随账户同步。「拍照」只在移动端出现 —— 桌面端 image_picker
+  /// 没有相机实现（见 `AccountAvatarController.isMobile`）。
+  Future<void> _showAvatarSheet(BuildContext context, WidgetRef ref) async {
+    final controller = ref.read(accountAvatarProvider);
+    final hasImage = controller.hasImage;
+    final isMobile = controller.isMobile;
+
+    final action = await showModalBottomSheet<_AvatarAction>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.image_outlined),
+              title: Text(isMobile ? '从相册选择' : '选择图片文件'),
+              subtitle: const Text('仅存本机并绑定当前账号'),
+              onTap: () => Navigator.pop(sheetContext, _AvatarAction.gallery),
+            ),
+            if (isMobile)
+              ListTile(
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: const Text('拍照'),
+                subtitle: const Text('调用相机拍一张作为头像'),
+                onTap: () => Navigator.pop(sheetContext, _AvatarAction.camera),
+              ),
+            if (hasImage)
+              ListTile(
+                leading: const Icon(Icons.delete_outline),
+                title: const Text('移除头像'),
+                subtitle: const Text('回到「姓名首字」默认头像'),
+                onTap: () => Navigator.pop(sheetContext, _AvatarAction.remove),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (action == null || !context.mounted) return;
+
+    final result = switch (action) {
+      _AvatarAction.gallery => await controller.pick(),
+      _AvatarAction.camera => await controller.pick(
+        source: AvatarSource.camera,
+      ),
+      _AvatarAction.remove => await controller.clear(),
+    };
+    if (!context.mounted) return;
+
+    String? message;
+    if (result == AvatarActionResult.updated) {
+      message = action == _AvatarAction.remove ? '头像已移除' : '头像已更新';
+    } else if (result == AvatarActionResult.permissionDenied) {
+      message = '没有相机权限：请在系统设置里允许本应用使用相机';
+    } else if (result == AvatarActionResult.failed) {
+      message = '头像操作失败，请重试';
+    }
+    if (message == null) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
 
   // ── 点居中行 ──
   Widget _dotRow(
@@ -422,3 +489,6 @@ final _studentInfoProvider = FutureProvider.autoDispose<StudentInfo>((
     (info) => info,
   );
 });
+
+/// 头像面板动作。
+enum _AvatarAction { gallery, camera, remove }

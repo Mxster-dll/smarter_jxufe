@@ -78,6 +78,9 @@ dependencies:
   uuid: ^4.5.2
   flutter_local_notifications: ^22.0.1
   file_picker: ^11.0.3
+  # 头像取图（相册 + 拍照）：file_picker 只能选已有文件、不能拍照，
+  # 故头像两个入口统一走 image_picker（材料库仍用 file_picker，见 AGENTS.md §11.3）。
+  image_picker: ^1.1.2
 dev_dependencies:
   freezed: ^2.5.2
   json_serializable: ^6.8.0
