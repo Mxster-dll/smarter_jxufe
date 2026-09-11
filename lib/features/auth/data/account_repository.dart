@@ -87,4 +87,17 @@ class AccountRepository {
       return Left(UnknownFailure('更新显示名称失败: $e'));
     }
   }
+
+  /// 更新账户的本地头像文件名（空串 = 移除头像）。
+  Future<Either<Failure, void>> updateAvatar(
+    String cardNumber,
+    String avatar,
+  ) async {
+    try {
+      await _localDataSource.updateAvatar(cardNumber, avatar);
+      return const Right(null);
+    } catch (e) {
+      return Left(UnknownFailure('更新头像失败: $e'));
+    }
+  }
 }

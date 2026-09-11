@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:dartz/dartz.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import 'package:smarter_jxufe/core/errors/failures.dart';
@@ -15,16 +16,33 @@ class AuthRepository {
   final AuthRemoteDataSource _remoteDataSource;
   final DeviceProfileRepository _deviceProfileRepo;
 
+  /// 本仓库代表的账号 —— **读盘作用域**。
+  ///
+  /// TGC / 缓存凭据按账号分键存放（`auth` box 的 `TGC|<账号>` 等），
+  /// 构造时只读 [account] 这一份，因此切换账号各拿各的磁盘状态
+  /// （「切回来不用重新登录」）。**写盘始终按入参账号**
+  /// （[login] / [cacheCredentials] 的第一个参数），所以「当前是 A、
+  /// 正在登录 B」的切号流程也不会写串。
+  final String account;
+
   String? _tgc;
 
   /// 缓存的登录凭据，用于 TGC 过期后自动重新登录。
   String? _cachedUsername;
   String? _cachedPassword;
 
+  /// 「信任此设备」记忆：与登录凭据一同持久化。
+  ///
+  /// 自动重登（后台静默刷新也会走这条路）没有用户在场，
+  /// 只能凭它决定是否继续携带 `trustAgent=true`。
+  bool _trustDevice = false;
+  String? _trustUsername;
+
   /// MFA 回调。当自动重登需要 MFA 验证时调用。
-  /// 参数为 mfaState，回调应处理 MFA 验证流程（如显示统一 MFA 对话框）。
+  /// 参数为 mfaState，回调应处理 MFA 验证流程（如显示统一 MFA 对话框）；
+  /// 返回值为用户是否勾选「信任此设备」。
   /// 回调成功返回后，自动继续登录流程；若抛出异常则视为 MFA 失败。
-  Future<void> Function(String mfaState)? onMfaRequired;
+  AuthMfaHandler? onMfaRequired;
 
   /// 防重入：重登正在进行中时，后续请求等待而非直接失败。
   Completer<Either<Failure, void>>? _reloginCompleter;
@@ -37,13 +55,16 @@ class AuthRepository {
     required AuthLocalDataSource localDataSource,
     required AuthRemoteDataSource remoteDataSource,
     required DeviceProfileRepository deviceProfileRepo,
+    this.account = '',
   }) : _localDataSource = localDataSource,
        _remoteDataSource = remoteDataSource,
        _deviceProfileRepo = deviceProfileRepo {
-    _tgc = _localDataSource.getTgc();
-    final (user, pass) = _localDataSource.getCachedCredentials();
+    _tgc = _localDataSource.getTgc(account);
+    final (user, pass) = _localDataSource.getCachedCredentials(account);
     _cachedUsername = user;
     _cachedPassword = pass;
+    _trustUsername = user;
+    _trustDevice = user != null && _localDataSource.isTrustDevice(user);
   }
 
   /// 缓存登录凭据，供后续 TGC 过期时自动重登使用。
@@ -54,6 +75,57 @@ class AuthRepository {
     _cachedUsername = username;
     _cachedPassword = password;
     _localDataSource.saveCachedCredentials(username, password);
+  }
+
+  /// 记录（或取消）「信任此设备」并持久化。
+  ///
+  /// CAS 以设备指纹 `fpVisitorId` 记忆可信设备，而信任只在登录表单
+  /// 携带 `trustAgent=true` 时才登记。自动重登没有用户在场，
+  /// 靠这份记忆才能持续把 `trustAgent=true` 送上去 → 长期免二次验证。
+  Future<void> rememberTrustDevice(String username, bool trusted) async {
+    debugPrint('[AuthRepo] rememberTrustDevice: $username → $trusted');
+    _trustUsername = username;
+    _trustDevice = trusted;
+    await _localDataSource.saveTrustDevice(username, trusted);
+  }
+
+  /// 指定账号是否已登记「信任此设备」。
+  bool isTrustDevice(String username) => _trustUsername == username
+      ? _trustDevice
+      : _localDataSource.isTrustDevice(username);
+
+  /// 内存里是否已有本账号的 TGC（不代表服务端仍认它）。
+  bool get hasTgc => _tgc != null;
+
+  /// 磁盘上的 TGC 在 CAS 侧是否仍然有效（**不触发自动重登**，一次请求）。
+  ///
+  /// 启动 / 切换账号的**免登录闸门**：为 true 说明这个账号仍是登录态，
+  /// 直接进入即可（免密码、免 MFA）；为 false 才回落完整登录流程。
+  ///
+  /// ⚠ 与 [getImsRedirectInfo] 的区别：后者在 TGC 过期时会**静默重登**
+  /// （需要时还会弹 MFA），拿它当闸门等于「每次启动都重登一遍」。
+  Future<bool> isTgcAlive() async {
+    final tgc = _tgc;
+    if (tgc == null) return false;
+    try {
+      final (url, _) = await _remoteDataSource.getRedirectImsUrl(tgc);
+      // ⚠️ 光「有 Location」不算数：CAS 在会话已失效时会把请求 302 打回
+      // `/cas/login?...`（带 service 参数），`getRedirectImsUrl` 对任何
+      // Location 都返回成功 → 会变成「假阳性 = 拿死票免登录」。
+      // 真正登录态的回跳地址是**服务端**的回调（带 ticket），不会指回登录页。
+      final path = Uri.tryParse(url)?.path ?? '';
+      if (path.contains('/cas/login')) {
+        debugPrint('[AuthRepo] isTgcAlive：CAS 打回登录页，判定为已失效');
+        return false;
+      }
+      return true;
+    } on TgcExpiredException {
+      return false;
+    } catch (e) {
+      // 网络异常等一律视为「不可用」→ 回落完整登录（失败有明确提示）。
+      debugPrint('[AuthRepo] isTgcAlive 探测失败：$e');
+      return false;
+    }
   }
 
   /// 预请求：获取 CAS 登录页面，提取 [execution] 和 [loginUrl]。
@@ -156,25 +228,28 @@ class AuthRepository {
           return Left(UnknownFailure('登录失败：未收到 Set-Cookie'));
         }
 
-        for (var cookie in cookies) {
-          final parts = cookie.split(';');
-          for (var part in parts) {
-            final trimmed = part.trim();
-            if (trimmed.startsWith('TGC=')) {
-              _tgc = trimmed.substring(4);
-              await _localDataSource.saveTgc(_tgc!);
-              return const Right(null);
-            }
-          }
+        if (!await _captureTgcFromCookies(response, username)) {
+          return Left(UnknownFailure('登录失败：Set-Cookie 中未找到 TGC'));
         }
-
-        return Left(UnknownFailure('登录失败：Set-Cookie 中未找到 TGC'));
+        // 用户本次勾选「信任此设备」→ 记住，供后续静默重登复用。
+        if (trustAgent == 'true') {
+          await rememberTrustDevice(username, true);
+        }
+        return const Right(null);
       }
 
       // 200 + 响应体包含 "登录成功" → MFA 验证后登录成功
       if (response.statusCode == 200) {
         final body = response.data?.toString() ?? '';
         if (body.contains('登录成功')) {
+          // ⚠️ 这条分支同样要认 Set-Cookie 里的 TGC：走 MFA 的登录不经过
+          // 302 分支，若这里不捕获，「统一登录按账号持久化」对 MFA 用户
+          // 就永远落不了盘（下次启动照样得重登）。有票就存，没有则不变。
+          await _captureTgcFromCookies(response, username);
+          // 用户本次勾选「信任此设备」→ 记住，供后续静默重登复用。
+          if (trustAgent == 'true') {
+            await rememberTrustDevice(username, true);
+          }
           return const Right(null);
         }
       }
@@ -184,6 +259,30 @@ class AuthRepository {
     } catch (e) {
       return Left(UnknownFailure('登录错误：$e'));
     }
+  }
+
+  /// 从 `Set-Cookie` 里提取 TGC 并**按 [username] 落盘**，返回是否拿到票。
+  ///
+  /// 两条登录成功分支（302 与 200+MFA）共用：少了它，走 MFA 的登录拿不到
+  /// 可持久化的 TGC，「按账号持久化 + 免登录闸门」对这类账号就是空的。
+  /// 写盘键用**入参账号**（不是本仓库绑定的账号），切号登录也不会写串。
+  Future<bool> _captureTgcFromCookies(
+    Response<dynamic> response,
+    String username,
+  ) async {
+    final cookies = response.headers['set-cookie'];
+    if (cookies == null || cookies.isEmpty) return false;
+    for (final cookie in cookies) {
+      for (final part in cookie.split(';')) {
+        final trimmed = part.trim();
+        if (trimmed.startsWith('TGC=')) {
+          _tgc = trimmed.substring(4);
+          await _localDataSource.saveTgc(username, _tgc!);
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   /// 获取 IMS 重定向 URL 及 [gid_]。
@@ -255,13 +354,17 @@ class AuthRepository {
       }
       final mfa = mfaResult.getOrElse(() => throw 'unreachable');
 
+      // 已登记「信任此设备」→ 继续携带 trustAgent，用户不在场也能免二次验证。
+      var trust = isTrustDevice(_cachedUsername!);
+
       // 如果重登需要 MFA，通过回调启动 MFA 对话框
       if (mfa.needMfa) {
-        debugPrint('[AuthRepo] _relogin 需要 MFA');
+        debugPrint('[AuthRepo] _relogin 需要 MFA（此前已信任=$trust）');
+        bool dialogTrust = false;
         if (onMfaRequired != null) {
           try {
-            await onMfaRequired!(mfa.mfaState);
-            debugPrint('[AuthRepo] MFA 完成');
+            dialogTrust = await onMfaRequired!(mfa.mfaState);
+            debugPrint('[AuthRepo] MFA 完成（勾选信任=$dialogTrust）');
           } catch (e) {
             debugPrint('[AuthRepo] MFA 取消/失败: $e');
             final r = Left<Failure, void>(UnknownFailure('MFA 验证失败或已取消: $e'));
@@ -270,12 +373,12 @@ class AuthRepository {
           }
         } else {
           try {
-            await mfaReloginService.execute(
+            dialogTrust = await mfaReloginService.execute(
               mfa.mfaState,
               _cachedUsername!,
               _cachedPassword!,
             );
-            debugPrint('[AuthRepo] MFA 完成（兜底）');
+            debugPrint('[AuthRepo] MFA 完成（兜底，勾选信任=$dialogTrust）');
           } catch (e) {
             debugPrint('[AuthRepo] MFA 取消/失败（兜底）: $e');
             final r = Left<Failure, void>(UnknownFailure('MFA 验证失败或已取消: $e'));
@@ -283,14 +386,20 @@ class AuthRepository {
             return r;
           }
         }
+        // 用户在对话框里勾选信任 → 记住，此后重登不再需要验证。
+        if (dialogTrust) {
+          trust = true;
+          await rememberTrustDevice(_cachedUsername!, true);
+        }
       }
 
       // 提交登录
-      debugPrint('[AuthRepo] _relogin 提交登录');
+      debugPrint('[AuthRepo] _relogin 提交登录 trust=$trust');
       final result = await login(
         _cachedUsername!,
         _cachedPassword!,
         mfa.mfaState,
+        trustAgent: trust ? 'true' : '',
       );
       debugPrint('[AuthRepo] _relogin 结果: ${result.isRight() ? "成功" : "失败"}');
       completer.complete(result);

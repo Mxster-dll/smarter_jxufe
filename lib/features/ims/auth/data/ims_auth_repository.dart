@@ -1,91 +1,45 @@
 import 'package:dartz/dartz.dart';
-import 'package:dio/dio.dart';
 
 import 'package:smarter_jxufe/core/errors/failures.dart';
-import 'package:smarter_jxufe/features/auth/data/auth_repository.dart';
-import 'package:smarter_jxufe/features/ims/auth/data/datasource/ims_auth_local_datasource.dart';
-import 'package:smarter_jxufe/features/ims/auth/data/datasource/ims_auth_remote_datasource.dart';
+import 'package:smarter_jxufe/features/ims/auth/data/ims_session.dart';
 
+/// IMS 会话的**门面**：真正的会话状态与换票逻辑全在全局唯一的 [ImsSession]
+/// 里（见 `ims_session.dart`），本类只做 `Either` 风格适配，供既有的
+/// 成绩 / 课表 / 学籍 / 培养方案 / 毕业学分 / 加权 等仓库调用。
+///
+/// 历史包袱说明：这里以前自己持有 Dio 与本地数据源，每个调用方各自
+/// 「取票 / 换票」，于是每次进入 IMS 功能都要重走一遍 CAS 换票。现在
+/// **只有 [ImsSession] 一个实例**，本类不再持有任何状态。
 class ImsAuthRepository {
-  final Dio _dio;
+  ImsAuthRepository(this._session);
 
-  final AuthRepository _authRepository;
-  final ImsAuthLocalDataSource _localDataSource;
-  final ImsAuthRemoteDataSource _remoteDataSource;
+  final ImsSession _session;
 
-  /// 从 CAS→IMS 重定向 URL 中提取的 gid_，提取失败则为 null。
-  String? _cachedGid;
-
-  ImsAuthRepository({
-    required Dio dio,
-    required AuthRepository authRepository,
-    required ImsAuthLocalDataSource localDataSource,
-    required ImsAuthRemoteDataSource remoteDataSource,
-  }) : _dio = dio,
-       _authRepository = authRepository,
-       _localDataSource = localDataSource,
-       _remoteDataSource = remoteDataSource;
-
-  /// 尝试从 CAS 重定向 URL 中提取并缓存 [gid_]。
-  Future<void> _tryCacheGid() async {
-    if (_cachedGid != null) return;
-    final result = await _authRepository.getImsRedirectInfo();
-    result.fold((_) => null, (info) => _cachedGid = info.$2);
-  }
-
-  /// 登录 IMS：使用已存储的 TGC 换取 JSESSIONID
-  Future<Either<Failure, void>> _activateJsessionId(String jsessionId) async {
-    final redirectUrlEither = await _authRepository.getImsRedirectUrl();
-    if (redirectUrlEither.isLeft()) {
-      return Left(
-        redirectUrlEither.swap().getOrElse(() => UnknownFailure("??")),
-      );
-    }
-    final redirectUrl = redirectUrlEither.getOrElse(() => '');
-
-    try {
-      await _dio.get(
-        redirectUrl,
-        options: Options(headers: {'Cookie': 'JSESSIONID=$jsessionId'}),
-      );
-
-      return const Right(unit);
-    } catch (e) {
-      return Left(NetworkFailure(e.toString()));
-    }
-  }
-
-  Future<String> refreshJsessionId() async {
-    await _tryCacheGid(); // 先尝试提取 gid_
-    final jsessionId = await _remoteDataSource.fetchJsessionId(gid: _cachedGid);
-    await _localDataSource.saveJsessionId(jsessionId);
-
-    final activateResult = await _activateJsessionId(jsessionId);
-    if (activateResult.isLeft()) {
-      throw Exception(
-        'JSESSIONID 激活失败: ${activateResult.swap().getOrElse(() => UnknownFailure("?"))}',
-      );
-    }
-    return jsessionId;
-  }
-
-  Future<void> logout() => _localDataSource.clearJsessionId();
-
+  /// 取可用会话：**本地有就直接返回、不发任何请求**；没有才换票。
+  ///
+  /// [forceRefresh] 为 true 时强制换票（成绩页发现「凭证已失效」后的重试用）。
   Future<Either<Failure, String?>> getJsessionId({
     bool forceRefresh = false,
   }) async {
     try {
-      final cacheJsessionId = _localDataSource.getJsessionId();
-
-      final needRefresh =
-          forceRefresh || cacheJsessionId == null; // 刷新判断逻辑要大改，要考虑是否失效
-      if (!needRefresh) return Right(cacheJsessionId);
-
-      final jsessionId = await refreshJsessionId();
-
-      return Right(jsessionId);
+      final id = forceRefresh
+          ? await _session.renew()
+          : await _session.ensureReady();
+      return Right(id);
     } catch (e) {
       return Left(UnknownFailure('失败: $e'));
     }
   }
+
+  /// 强制换票（无视本地会话），成功后落盘。
+  Future<String> refreshJsessionId() => _session.renew();
+
+  /// 退出登录：忘记**当前账号**的会话（内存 + 磁盘）。
+  ///
+  /// ⚠️ 切换账号不要调这里——切号只是会话实例重建，各账号的会话按账号
+  /// 分开存着，切回来还能直接复用。
+  Future<void> logout() => _session.forget();
+
+  /// 当前会话归属的账号。
+  String get account => _session.account;
 }

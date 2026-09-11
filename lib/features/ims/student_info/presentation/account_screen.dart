@@ -5,13 +5,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smarter_jxufe/design/JxufeTheme.dart';
 
 import 'package:smarter_jxufe/features/auth/data/providers/account_repository_provider.dart';
-import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_provider.dart';
+import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_for_account_provider.dart';
 import 'package:smarter_jxufe/features/auth/domain/entities/account.dart';
 import 'package:smarter_jxufe/features/auth/presentation/login_screen.dart';
 import 'package:smarter_jxufe/features/home/presentation/home_screen.dart';
 import 'package:smarter_jxufe/features/ims/student_info/data/providers/student_info_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/student_info/domain/student_info.dart';
-import 'package:smarter_jxufe/features/ims/auth/data/providers/ims_auth_repository_provider.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/qr_login_viewmodel.dart';
 import 'package:smarter_jxufe/core/network/dio_providers.dart';
 import 'package:smarter_jxufe/core/navigation/navigator_key.dart';
@@ -209,10 +208,9 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     if (_loggingInCardNumber != null) return; // 已有账户在登录中
     setState(() => _loggingInCardNumber = account.cardNumber);
     try {
-      final authRepo = await ref.read(authRepositoryProvider.future);
-      final accountRepo = await ref.read(accountRepositoryProvider.future);
-      final studentInfoRepo = await ref.read(
-        studentInfoRepositoryProvider.future,
+      // 取**该账号**的统一登录仓库（TGC / 凭据都按账号存放）
+      final authRepo = await ref.read(
+        authRepositoryForAccountProvider(account.cardNumber).future,
       );
       authRepo.cacheCredentials(account.cardNumber, account.password);
 
@@ -235,10 +233,21 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           barrierDismissible: true,
         );
         if (!result.authorized) throw Exception('用户取消 MFA 验证');
+        // 把「信任此设备」带回 AuthRepository → 自动重登时继续登记到 CAS。
+        return result.trustDevice;
       };
       authRepo.onMfaRequired = mfaHandler;
       mfaReloginService.setHandler(mfaHandler);
 
+      // 免登录：该账号磁盘上的 TGC 仍有效 → 直接切过去，不再重登
+      // （免密码、免 MFA）。这就是「切回来不用重新登录」。
+      if (await authRepo.isTgcAlive()) {
+        if (!mounted) return;
+        await _completeSwitch(context, ref, account);
+        return;
+      }
+
+      // TGC 已失效 → 走完整登录（必要时弹 MFA）。
       // 第〇步：预请求 CAS 登录页面
       final prepareResult = await authRepo.prepareLogin();
       if (prepareResult.isLeft()) {
@@ -279,6 +288,11 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
         // 用户取消 → 留在账户页（切换用户由对话框内部处理）
         if (!result.authorized) return;
         trustAgent = result.trustDevice ? 'true' : '';
+        // 记住用户本次选择（勾选=长信任；取消勾选=清掉旧信任）。
+        await authRepo.rememberTrustDevice(
+          account.cardNumber,
+          result.trustDevice,
+        );
       }
 
       // 第三步：登录
@@ -291,43 +305,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
 
       loginResult.fold(
         (failure) => _showError(context, '登录失败: ${failure.message}'),
-        (_) async {
-          // 更新当前账户 Provider（驱动 Dio 切换）
-          ref.read(currentAccountProvider.notifier).state = account.cardNumber;
-          // 清除旧 JSESSIONID 缓存
-          final imsAuthRepo = await ref.read(imsAuthRepositoryProvider.future);
-          await imsAuthRepo.logout();
-          // 清除旧学生信息缓存
-          await studentInfoRepo.clearCache();
-          // 刷新学生信息并更新账户显示名称
-          final infoResult = await studentInfoRepo.getStudentInfo(
-            forceRefresh: true,
-          );
-          infoResult.fold(
-            (_) => null,
-            (info) =>
-                accountRepo.updateDisplayName(account.cardNumber, info.name),
-          );
-          // 设为当前账户
-          final accountsResult = accountRepo.getAccounts();
-          final idx = accountsResult.fold(
-            (_) => -1,
-            (list) =>
-                list.indexWhere((a) => a.cardNumber == account.cardNumber),
-          );
-          if (idx >= 0) {
-            await accountRepo.setCurrentAccount(idx);
-          }
-          // 刷新学生信息
-          studentInfoRepo.getStudentInfo(forceRefresh: true).ignore();
-          // 跳转到主页宫格
-          if (mounted) {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (_) => const HomeScreen()),
-              (_) => false,
-            );
-          }
-        },
+        (_) => _completeSwitch(context, ref, account),
       );
     } catch (e) {
       _showError(context, '切换失败: $e');
@@ -335,6 +313,52 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       if (mounted) {
         setState(() => _loggingInCardNumber = null);
       }
+    }
+  }
+
+  /// 切换收尾：设为当前账号 → 刷新学籍与显示名 → 跳首页。
+  ///
+  /// 「TGC 免登录」与「完整登录」两条路径共用（差别只在前面怎么拿到会话）。
+  ///
+  /// 更新 `currentAccountProvider` → 全局 IMS 会话（`imsSessionProvider`）
+  /// **销毁重建**为新账号的会话，`currentImsDioProvider` 随之切换。
+  /// 这里**不再**调 `imsAuthRepo.logout()` / `studentInfoRepo.clearCache()`：
+  /// 会话与个人缓存（成绩/学籍/课表/调课）都已按账号隔离存放，清掉反而会
+  /// 把刚登录的新账号数据删了、也丢了切回来能直接复用的缓存。
+  Future<void> _completeSwitch(
+    BuildContext context,
+    WidgetRef ref,
+    Account account,
+  ) async {
+    ref.read(currentAccountProvider.notifier).state = account.cardNumber;
+
+    // ⚠️ 必须在设置账号**之后**重新取仓库：切号前拿到的实例绑的是旧账号的 box。
+    final freshStudentInfoRepo = await ref.read(
+      studentInfoRepositoryProvider.future,
+    );
+    final accountRepo = await ref.read(accountRepositoryProvider.future);
+    final infoResult = await freshStudentInfoRepo.getStudentInfo(
+      forceRefresh: true,
+    );
+    infoResult.fold(
+      (_) => null,
+      (info) => accountRepo.updateDisplayName(account.cardNumber, info.name),
+    );
+    // 设为当前账户（持久化：下次启动据此免登录进入）
+    final accountsResult = accountRepo.getAccounts();
+    final idx = accountsResult.fold(
+      (_) => -1,
+      (list) => list.indexWhere((a) => a.cardNumber == account.cardNumber),
+    );
+    if (idx >= 0) {
+      await accountRepo.setCurrentAccount(idx);
+    }
+    // 跳转到主页宫格
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        (_) => false,
+      );
     }
   }
 
