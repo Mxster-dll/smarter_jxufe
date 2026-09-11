@@ -1,0 +1,1458 @@
+<!doctype html>
+
+<html>
+
+<head>
+
+    <meta charset="utf-8">
+
+    <title>排行榜-个人中心-江西财经大学图书馆-入馆教育系统</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge，chrome=1">
+
+    <meta name="renderer" content="webkit">
+
+    <script src="/Scripts/jquery-1.10.2.min.js"></script>
+
+  
+
+    
+
+    <link href="/css/pc-style-personal_center" rel="stylesheet"/>
+
+
+
+
+
+    
+
+    <script src="/Scripts/plugins/layer/layer.js"></script>
+
+
+
+
+
+</head>
+
+
+
+
+
+<link href="/Areas/Web/pc/css/ssb/personal_center.css" rel="stylesheet" />
+
+<script>
+
+    $(function () {
+
+        var href = window.location.pathname;
+
+
+
+        if (href != '' && href != '#') {
+
+            $('#operatelist a').each(function () {
+
+                $(this).children('li').removeClass('content');
+
+                if (href == $(this).attr('href')) {
+
+                    $(this).children('li').addClass('content');
+
+                }
+
+            });
+
+        }
+
+    });
+
+</script>
+
+<!--侧边栏-->
+
+
+
+<div class="left_nav">
+
+    <div class="zhuangshiborder">
+
+        <a href="/Web/User" class="djdl">
+
+                <div class="zhuangshibg">
+
+                    <img class="touxiang " src="/upload/image/AF8315D35E84A93576A8F698508803A5.png">
+
+                </div>
+
+            <div class="wenzi">
+
+                <span title="返回首页">返回首页</span>
+
+            </div>
+
+        </a>
+
+    </div>
+
+
+
+    <ul class="operatelist" id="operatelist">
+
+        <a href="/Web/Center/Info">
+
+            <li title="个人资料">
+
+                个人资料
+
+            </li>
+
+        </a>
+
+        <a href="/Web/Center/MyGrades">
+
+            <li title="我的成绩">
+
+                我的成绩
+
+            </li>
+
+        </a>
+
+        <a href="/Web/Center/Top">
+
+            <li title="排行榜">
+
+                排行榜
+
+            </li>
+
+        </a>
+
+
+
+                                            </ul>
+
+</div>
+
+
+
+
+
+<!--排行榜-->
+
+<div class="back">
+
+    <a href="/Web/User">
+
+        <div class="inner-circle">
+
+            <span class="fhsy">返回<br>首页</span>
+
+        </div>
+
+    </a>
+
+</div>
+
+<div class="dqph">
+
+    <img style="width: 34px; height: 38px; margin-left: 40%;" src="/Areas/Web/pc/img/ssb/phb_icon1.png">
+
+    <span style="padding-top: 9px;margin-left: 15px;">我的当前排行</span>
+
+    <div class="clearfix"></div>
+
+</div>
+
+<div class="biaoge">
+
+    <table border="1" bordercolor="#9c7e59" cellspacing="0" style="width:100%; position:relative;">
+
+        <tr>
+
+            <th style="width:20%;">当前名次</th>
+
+            <th style="width:26%;">姓名</th>
+
+            <th style="width:20%;">分数</th>
+
+            <th style="width:20%;">闯关用时</th>
+
+        </tr>
+
+                <tr>
+
+                    <td class="mingci">19905</td>
+
+                    <td class="xing">某同学</td>
+
+                    <td class="jing">93.00 分</td>
+
+                    <td class="yong">8分59秒</td>
+
+                </tr>
+
+
+
+    </table>
+
+</div>
+
+
+
+<div class="dqph">
+
+    <img style="width:64px; height:43px;margin-left: 38%;" src="/Areas/Web/pc/img/ssb/phb_icon2.png">
+
+    <span style="padding-top: 9px;margin-left: 15px;">前100名排行</span>
+
+    <div class="clearfix"></div>
+
+</div>
+
+<div class="biaoge" style="height:49%; overflow:auto;">
+
+    <table border="1" bordercolor="#9c7e59" cellspacing="0" style="width:100%; position:relative;">
+
+        <tr>
+
+            <th style="width:20%;">名次</th>
+
+            <th style="width:26%;">姓名</th>
+
+            <th style="width:20%;">分数</th>
+
+            <th style="width:20%;">闯关用时</th>
+
+        </tr>
+
+                <tr>
+
+                    <td class="mingci" >1</td>
+
+                    <td class="xing" >郑宇聪</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分5秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >1</td>
+
+                    <td class="xing" >钟小露</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分5秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >1</td>
+
+                    <td class="xing" >鲍露露</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分5秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >26</td>
+
+                    <td class="xing" >黎颢</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分47秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >33</td>
+
+                    <td class="xing" >郭雨涵</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分56秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >40</td>
+
+                    <td class="xing" >宋伟杰</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分3秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >50</td>
+
+                    <td class="xing" >夏飏全</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分7秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >55</td>
+
+                    <td class="xing" >程进</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分10秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >65</td>
+
+                    <td class="xing" >叶京泽</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分13秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >71</td>
+
+                    <td class="xing" >刘浩</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分15秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >80</td>
+
+                    <td class="xing" >董晓洲</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分17秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >84</td>
+
+                    <td class="xing" >文晋</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分18秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >93</td>
+
+                    <td class="xing" >周湫镱</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分19秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >1</td>
+
+                    <td class="xing" >甘忠丞</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分5秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >1</td>
+
+                    <td class="xing" >赖世杰</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分5秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >1</td>
+
+                    <td class="xing" >邓子健</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分5秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >27</td>
+
+                    <td class="xing" >唐启轩</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分50秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >35</td>
+
+                    <td class="xing" >汪可</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分57秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >43</td>
+
+                    <td class="xing" >张晓智</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分4秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >51</td>
+
+                    <td class="xing" >曹鹏</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分8秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >55</td>
+
+                    <td class="xing" >邢福天</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分10秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >65</td>
+
+                    <td class="xing" >占锦宏</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分13秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >71</td>
+
+                    <td class="xing" >化晨曦</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分15秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >80</td>
+
+                    <td class="xing" >张宇璐</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分17秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >84</td>
+
+                    <td class="xing" >王湘圆</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分18秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >93</td>
+
+                    <td class="xing" >陈婧</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分19秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >1</td>
+
+                    <td class="xing" >王孝慈</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分5秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >1</td>
+
+                    <td class="xing" >陈小娟</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分5秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >1</td>
+
+                    <td class="xing" >李智</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分5秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >27</td>
+
+                    <td class="xing" >邹新华</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分50秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >36</td>
+
+                    <td class="xing" >叶宇鹏</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分0秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >43</td>
+
+                    <td class="xing" >朱同仁</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分4秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >51</td>
+
+                    <td class="xing" >罗绍诚</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分8秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >60</td>
+
+                    <td class="xing" >叶志文</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分11秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >68</td>
+
+                    <td class="xing" >刘露</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分14秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >71</td>
+
+                    <td class="xing" >占江祺</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分15秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >84</td>
+
+                    <td class="xing" >徐必成</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分18秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >84</td>
+
+                    <td class="xing" >舒诗琦</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分18秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >93</td>
+
+                    <td class="xing" >蔡一鸣</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分19秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >1</td>
+
+                    <td class="xing" >徐俊依</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分5秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >1</td>
+
+                    <td class="xing" >刘英杰</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分5秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >1</td>
+
+                    <td class="xing" >曹轩玮</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分5秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >27</td>
+
+                    <td class="xing" >诸葛振烨</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分50秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >36</td>
+
+                    <td class="xing" >吴应文</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分0秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >45</td>
+
+                    <td class="xing" >王砚楠</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分5秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >51</td>
+
+                    <td class="xing" >谭昕玥</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分8秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >61</td>
+
+                    <td class="xing" >辛嘉怡</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分12秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >68</td>
+
+                    <td class="xing" >邵岩</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分14秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >77</td>
+
+                    <td class="xing" >陈金文</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分16秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >84</td>
+
+                    <td class="xing" >虎于森</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分18秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >93</td>
+
+                    <td class="xing" >寿瑾茜</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分19秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >93</td>
+
+                    <td class="xing" >曹思玥</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分19秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >1</td>
+
+                    <td class="xing" >熊雨欣</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分5秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >1</td>
+
+                    <td class="xing" >杨文婕</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分5秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >1</td>
+
+                    <td class="xing" >彭能西</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分5秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >30</td>
+
+                    <td class="xing" >陈子锟</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分51秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >36</td>
+
+                    <td class="xing" >罗亦洁</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分0秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >45</td>
+
+                    <td class="xing" >孙卓奇</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分5秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >54</td>
+
+                    <td class="xing" >杨鹏哲</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分9秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >61</td>
+
+                    <td class="xing" >艾凯峰</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分12秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >68</td>
+
+                    <td class="xing" >彭宁</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分14秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >77</td>
+
+                    <td class="xing" >王立本</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分16秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >84</td>
+
+                    <td class="xing" >宋向阳</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分18秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >93</td>
+
+                    <td class="xing" >胡珂</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分19秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >1</td>
+
+                    <td class="xing" >刘心瑶</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分5秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >1</td>
+
+                    <td class="xing" >曹扬</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分5秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >23</td>
+
+                    <td class="xing" >胡元</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分25秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >31</td>
+
+                    <td class="xing" >熊坤</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分54秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >39</td>
+
+                    <td class="xing" >雷明驰</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分1秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >45</td>
+
+                    <td class="xing" >朱欣雨</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分5秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >55</td>
+
+                    <td class="xing" >徐俊超</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分10秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >61</td>
+
+                    <td class="xing" >刘飞龙</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分12秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >71</td>
+
+                    <td class="xing" >涂庆誉</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分15秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >77</td>
+
+                    <td class="xing" >刘思怡</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分16秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >84</td>
+
+                    <td class="xing" >伊丽姆努尔&#183;阿布都赛买提</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分18秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >93</td>
+
+                    <td class="xing" >郭传铮</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分19秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >1</td>
+
+                    <td class="xing" >刘思微</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分5秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >1</td>
+
+                    <td class="xing" >时博文</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分5秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >1</td>
+
+                    <td class="xing" >周学峰</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分5秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >25</td>
+
+                    <td class="xing" >夏清磊</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分42秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >33</td>
+
+                    <td class="xing" >张咏瑞</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分56秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >40</td>
+
+                    <td class="xing" >王欣宇</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分3秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >49</td>
+
+                    <td class="xing" >琚玉轩</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分6秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >55</td>
+
+                    <td class="xing" >陈明顿</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分10秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >65</td>
+
+                    <td class="xing" >吴宇豪</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分13秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >71</td>
+
+                    <td class="xing" >王骏豪</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分15秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >80</td>
+
+                    <td class="xing" >洪天羽</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分17秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >84</td>
+
+                    <td class="xing" >贾婧涵</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分18秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >93</td>
+
+                    <td class="xing" >阙羽浩</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分19秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >1</td>
+
+                    <td class="xing" >赵建明</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分5秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >1</td>
+
+                    <td class="xing" >李雨珊</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分5秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >24</td>
+
+                    <td class="xing" >万星明</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分35秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >32</td>
+
+                    <td class="xing" >苏泽旭</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >0分55秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >40</td>
+
+                    <td class="xing" >宗帼</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分3秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >45</td>
+
+                    <td class="xing" >虞康宁</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分5秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >55</td>
+
+                    <td class="xing" >胡竞豪</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分10秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >61</td>
+
+                    <td class="xing" >曾祎婕</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分12秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >71</td>
+
+                    <td class="xing" >张祖铭</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分15秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >80</td>
+
+                    <td class="xing" >肖启明</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分17秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >84</td>
+
+                    <td class="xing" >丁伟刚</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分18秒</td>
+
+                </tr>
+
+                <tr>
+
+                    <td class="mingci" >93</td>
+
+                    <td class="xing" >胡一凡</td>
+
+                    <td class="jing" >100.00 分</td>
+
+                    <td class="yong" >1分19秒</td>
+
+                </tr>
+
+
+
+    </table>
+
+</div>
+
+<div class="zhushi">注：排行是根据参加考试人数实时变化，并不代表最终排名，未通过考试将不显示在排行榜中。</div>
+
+
+
+
+
+</html>
+
+
+

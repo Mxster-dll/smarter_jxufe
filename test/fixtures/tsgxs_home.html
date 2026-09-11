@@ -1,0 +1,1056 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>登录-江西财经大学图书馆-入馆教育系统</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge，chrome=1">
+    <meta name="renderer" content="webkit">
+    <script src="/Scripts/jquery-1.10.2.min.js"></script>
+  
+    
+    <link href="/Areas/Web/pc/css/zsb/loading.css" rel="stylesheet" />
+    <link href="/Areas/Web/public/css/animate.css" rel="stylesheet" />
+    <link href="/Areas/Web/public/css/introjs.css" rel="stylesheet" />
+    <link href="/Areas/Web/public/css/gray.min.css" rel="stylesheet" />
+    <link href="/Areas/Web/public/css/iconfont.css" rel="stylesheet" />
+    <link href="/Areas/Web/pc/css/zsb/radio.css" rel="stylesheet" />
+    <link href="/Areas/Web/pc/css/ssb/dlk.css" rel="stylesheet" />
+
+
+    
+
+    <script src="/Areas/Web/public/js/jquery.gray.min.js"></script>
+    <script src="/Scripts/plugins/validate/jquery.validate.min.js"></script>
+    <script src="/Scripts/plugins/layer/layer.js"></script>
+    <script src="/Scripts/cookie.js"></script>
+    <script src="/Areas/Web/pc/js/ssb/dlk.js"></script>
+    <script>
+        var wait = 60;
+        var stutype = 0, uid = '';
+
+        function smsTime(o) {
+            if (wait == 0) {
+                o.removeAttribute("disabled");
+                o.innerHTML = "重新获取验证码";
+                wait = 60;
+            } else {
+                o.setAttribute("disabled", true);
+                o.innerHTML = wait + "s后再发送";
+                wait--;
+                setTimeout(function () {
+                    smsTime(o);
+                },
+                    1000);
+            }
+        }
+
+        function login(data) {
+            $.post('/Web/User/Login',
+                data,
+                function (res) {
+                    $('#btnLogin').removeClass('submitting');
+                    $('#btnLogin').html('登录').css('cursor', 'pointer').on('click', btnLogin);
+                    if (res.Success === 1 || res.Success === 2) {
+                        $('.login_kuang').hide();
+                        $('#themeBox').hide();
+                        $('.cover').hide();
+                        window.location.reload();
+
+                    } else if (res.Success === -2) {
+                        uid = res.Uid;
+                        if ($('#tid').length > 0) {
+                            theme({
+                                uid: res.Uid,
+                                tid: $('#tid').val()
+                            });
+                        } else {
+                            $('.login_kuang').hide();
+                            $('#themeBox').show();
+                        }
+                    } else if (res.Success === 3) {
+                        $('.login_kuang').hide();
+                        layer.confirm('系统已开启多次考试，是否需要重新考试？最终将以最高分作为标准。',
+                            {
+                                icon: 0,
+                                title: '提示',
+                                btn: ['是', '否'],
+                                cancel: function (index) {
+                                    layer.close(index);
+                                    $.post('/Web/User/RLogin', { uid: res.Uid }, function (res) {
+                                        window.location.reload();
+                                    });
+
+                                }
+                            },
+                            function (index) {
+                                layer.close(index);
+                                uid = res.Uid;
+                                if ($('#tid').length > 0) {
+                                    theme({
+                                        uid: res.Uid,
+                                        tid: $('#tid').val()
+                                    });
+                                } else {
+                                    $('.login_kuang').hide();
+                                    $('#themeBox').show();
+                                }
+                            }, function (index) {
+                                layer.close(index);
+                                $.post('/Web/User/RLogin', { uid: res.Uid }, function (res) {
+                                    window.location.reload();
+                                });
+                            }
+                        );
+                    } 
+                    else {
+                        $('#pVCode').val('');
+                        $('#vcodeimg').click();
+                        var msg = "服务器错误";
+                        if (res.Msg) {
+                            msg = res.Msg;
+                        }
+                        layer.msg(msg, function () { });
+                    }
+                });
+        }
+
+        function theme(data) {
+            $.post('/Web/User/SelectTheme',
+                data,
+                function (res) {
+                    $('#btnTheme').removeClass('submitting');
+                    $('#btnTheme').html('提交').css('cursor', 'pointer').off('click', btnTheme);
+                    if (res.Success === 1) {
+                        $('.login_kuang').hide();
+                        $('#themeBox').hide();
+                        $('.cover').hide();
+                        window.location.href = '/web/user/Index';
+
+                    } else {
+                        var msg = "服务器错误";
+                        if (res.Msg) {
+                            msg = res.Msg;
+                        }
+                        layer.msg(msg, function () { });
+                    }
+                });
+        }
+
+        function btnLogin() {
+            $('#login').validate({
+                onfocusout: false,
+                onkeyup: false,
+                rules: {
+                    userid: 'required',
+                    pwd: 'required'
+                },
+                messages: {
+                    userid: '账号不能为空',
+                    pwd: '密码不能为空'
+                },
+                errorPlacement: function (error, element) {
+                    layer.msg($(error).text(), function () { });
+                }
+            });
+            if ($('#login').valid()) {
+                if ($('input[name="stutype"]').length > 0) {
+                    //开启了研究生功能
+                    if (!$('input[name="stutype"]:checked').val()) {
+                        layer.msg("请选择学生类型", function () { });
+                        return;
+                    }
+                    stutype = $('input[name="stutype"]:checked').val();
+                }
+                var data = {
+                    userid: $('#userid').val(),
+                    pwd: $("#pwd").val(),
+                    vcode: $("#pVCode").val(),
+                    stutype: stutype
+                }
+                $('#btnLogin').addClass('submitting');
+                $('#btnLogin').html('登录中...').css('cursor', 'default').off('click');
+                login(data);
+            }
+        }
+
+        function btnTheme() {
+            if (!$("input[name='tid']:checked").val()) {
+                layer.msg("请选择版式", function () { });
+                return;
+            }
+
+            var data = {
+                uid: uid,
+                tid: $("input[name='tid']:checked").val()
+            }
+            $('#btnTheme').addClass('submitting');
+            $('#btnTheme').html('提交中...').css('cursor', 'default').off('click');
+            theme(data);
+        }
+        function showPwd() {
+            var eye = document.getElementById('eye');
+            var password = document.getElementById('pwd');
+            var span = document.getElementById('span');
+                if (password.type == "password") {
+                    password.type = "text";
+                    span.innerHTML = '&#xe68c';
+
+                } else {
+                    password.type = "password";
+                    span.innerHTML = '&#xe60c;';
+                }
+
+        }
+
+
+        $(function () {
+            window.onload = function () {
+                $('#loadingbg').hide();
+                if ($('#isOpenguide').length>0) {
+                    if ($('#jump').length > 0 && $('#isuser').length > 0) {
+                        $('#loadingbg').hide();
+                        var indexNewGuide = getCookie('index-new-guide');
+                        if (indexNewGuide == '' || indexNewGuide == '0') {
+                            introJs().setOptions({
+                                prevLabel: "上一步",
+                                nextLabel: "下一步",
+                                skipLabel: "跳过",
+                                doneLabel: "结束",
+                                keyboardNavigation: true,
+                                exitOnEsc: true
+                            }).oncomplete(function () {
+                                setCookie('index-new-guide', 1, 1);
+                            }).onexit(function () {
+                                setCookie('index-new-guide', 1, 1);
+                            }).start();
+                        }
+                    } else if ($('#nomal').length > 0) {
+                        $('#loadingbg').hide();
+                        var indexNewGuide = getCookie('index-new-guide');
+                        if (indexNewGuide == '' || indexNewGuide == '0') {
+                            introJs().setOptions({
+                                prevLabel: "上一步",
+                                nextLabel: "下一步",
+                                skipLabel: "跳过",
+                                doneLabel: "结束",
+                                keyboardNavigation: true,
+                                exitOnEsc: true
+                            }).oncomplete(function () {
+                                setCookie('index-new-guide', 1, 1);
+                            }).onexit(function () {
+                                setCookie('index-new-guide', 1, 1);
+                            }).start();
+                        }
+                    }
+                }
+                
+            }
+           
+            $('.noLogin').click(function (event) {
+                event.preventDefault();
+                $('#nologin').click();
+            });
+            $('.noPass').parent('a').click(function (event) {
+                event.preventDefault();
+                layer.msg("请按照顺序依次点击闯关", function () { });
+            });
+            //单选
+            $('.radio').click(function () {
+                $(this).find('input').prop('checked', true);
+            });
+            //版本弹框单选
+            $('.versionli').click(function () {
+                $(this).find('input').prop('checked', true);
+            });
+            //声音切换
+            $("#soundOn").click(function () {
+                //关
+                $(this).hide();
+                $("#soundOff").show();
+                setCookie('audio', 0, 10);
+                if (!$.support.leadingWhitespace) {
+                    var embed = document.getElementsByTagName("embed");
+                    if (embed != null && embed.length > 0) {
+                        embed[0].pause();
+                    }
+                } else {
+                    var audio = document.getElementsByTagName("audio");
+                    if (audio != null && audio.length > 0) {
+                        audio[0].pause();
+                    }
+                }
+            });
+            $("#soundOff").click(function () {
+                //开
+                $(this).hide();
+                $("#soundOn").show();
+                setCookie('audio', 1, 10);
+                var url = $('#audio').val();
+                if (url != null && url.length > 0) {
+                    if (!$.support.leadingWhitespace) {
+                        var embed = document.getElementsByTagName("embed");
+                        if (embed != null && embed.length > 0) {
+                            embed[0].autostart = "1";
+                        } else {
+                            var em = document.createElement("embed");
+                            em.autostart = "1";
+                            em.src = url;
+                            em.setAttribute("hidden", "true");
+                            em.setAttribute("loop", "true");
+                            document.body.appendChild(em);
+                        }
+                    } else {
+                        var audio = document.getElementsByTagName("audio");
+                        if (audio != null && audio.length > 0) {
+                            audio[0].play();
+                        } else {
+                            audio = document.createElement("audio");
+                            audio.src = url;
+                            audio.addEventListener('ended',
+                                function () {
+                                    setTimeout(function () {
+                                        audio.play();
+                                    },
+                                        500);
+                                },
+                                false);
+                            audio.play();
+                            var first = document.body.firstChild; //得到页面的第一个元素
+                            document.body.insertBefore(audio, first); //在得到的第一个元素之前插入
+                        }
+                    }
+                }
+            });
+            var audioOpen = getCookie('audio');
+            if (audioOpen == '' || audioOpen == '1') {
+                $("#soundOff").hide();
+                $("#soundOn").show();
+                var url = $('#audio').val();
+                if (url != null && url.length > 0) {
+                    if (!$.support.leadingWhitespace) {
+                        var em = document.createElement("embed");
+                        em.autostart = "1";
+                        em.src = url;
+                        em.setAttribute("hidden", "true");
+                        em.setAttribute("loop", "true");
+                        document.body.appendChild(em);
+                    } else {
+                        var audio = document.createElement("audio");
+                        audio.src = url;
+                        audio.addEventListener('ended',
+                            function () {
+                                setTimeout(function () {
+                                    audio.play();
+                                },
+                                    500);
+                            },
+                            false);
+                        audio.play();
+                        var first = document.body.firstChild; //得到页面的第一个元素
+                        document.body.insertBefore(audio, first); //在得到的第一个元素之前插入
+                    }
+                }
+            } else {
+                $("#soundOff").show();
+                $("#soundOn").hide();
+            }
+            //登录部分
+            $('#nologin').click(function (event) {
+                event.preventDefault();
+                if ($('#redirectUrl').val()) {
+                    window.location.href = $('#redirectUrl').val();
+                } else {
+                    $('.login_kuang').show();
+                    $('.cover').show();
+                }
+            });
+
+            $('#btnLogin').click(function () {
+                btnLogin();
+            });
+
+            $('#eye').click(function() {
+                showPwd();
+            });
+            //选择版本弹出框关闭
+            $('.xzbb-close').click(function () {
+                $('#themeBox').hide();
+                $('.login_kuang').show();
+            });
+            //登录框关闭
+            $('.login-close').click(function () {
+                $('.login_kuang').hide();
+                $('.cover').hide();
+            });
+
+            $('#btnTheme').click(function () {
+                btnTheme();
+            });
+            $('.login_kuang').keydown(function (event) {
+                if (event.keyCode == 13) {
+                    $('#btnLogin').click();
+                };
+            });
+            //忘记密码
+            $('#vcodeimg').click(function () {
+                $("#vcodeimg")[0].src = $("#vcodeimg")[0].src.split("?")[0] + "?t=" + parseFloat(new Date().getTime());
+            });
+            $('#getSmsCode').click(function () {
+                if (!$('#phone').val()) {
+                    layer.msg('手机号不能为空', function () { });
+                    return;
+                }
+                if (!$('#pVCodePwd').val()) {
+                    layer.msg('图片验证码不能为空', function () { });
+                    return;
+                }
+                if (!new RegExp("^[1][0-9]{10}$").test($('#phone').val())) {
+                    layer.msg('手机号格式不正确', function () { });
+                    return;
+                }
+                $.post('/Web/User/FindPassGetSms', {
+                    phone: $('#phone').val(),
+                    vcode: $("#pVCodePwd").val()
+                },
+                    function (res) {
+                        layer.closeAll('loading');
+                        if (res.Success == 1) {
+                            //进入下一步
+                            smsTime(document.getElementById('getSmsCode'));
+                        } else if (res.Success == -1) {
+                            layer.msg(res.Msg, function () { });
+                            $('#vcodeimg').click();
+                        } else {
+                            if (!res.Msg) {
+                                res.Msg = "服务器错误";
+                            }
+                            layer.msg(res.Msg, function () { });
+                        }
+                    });
+                
+
+            });
+            $('#btnPhone').click(function () {
+                if (!$('#phone').val()) {
+                    layer.msg('手机号不能为空', function () { });
+                    return;
+                }
+                if (!$('#pVCodePwd').val()) {
+                    layer.msg('图片验证码不能为空', function () { });
+                    return;
+                }
+                if (!$('#smsCode').val()) {
+                    layer.msg('短信验证码不能为空', function () { });
+                    return;
+                }
+                if (!new RegExp("^[1][0-9]{10}").test($('#phone').val())) {
+                    layer.msg('手机号格式不正确', function () { });
+                    return;
+                }
+                $.post('/Web/User/IsLegalPhone',
+                    {
+                        phone: $('#phone').val(),
+                        vcode: $("#pVCodePwd").val(),
+                        smscode: $("#smsCode").val()
+                    },
+                    function (res) {
+                        layer.closeAll('loading');
+                        if (res.Success == 1) {
+                            //进入下一步
+                            $(".pop_up6").hide();
+                            $(".pop_up7").show();
+                            $('.logincontent').addClass('hidden');
+                            $('.findpwd').addClass('hidden');
+                            $('.resetpwd').removeClass('hidden');
+                        } else if (res.Success == -1) {
+                            layer.msg(res.Msg, function () { });
+                            $('#vcodeimg').click();
+                        } else {
+                            if (!res.Msg) {
+                                res.Msg = "服务器错误";
+                            }
+                            layer.msg(res.Msg, function () { });
+                        }
+                    });
+            });
+            $('#btnResetPwd').click(function () {
+                if (!$('#newpwd').val()) {
+                    layer.msg('密码不能为空', function () { });
+                    return;
+                }
+                if (!$('#newpwd2').val()) {
+                    layer.msg('确认密码不能为空', function () { });
+                    return;
+                }
+                if ($('#newpwd').val() != $('#newpwd2').val()) {
+                    layer.msg('2次输入密码不一致', function () { });
+                    return;
+                }
+                $.post('/Web/User/ResetPwd',
+                    {
+                        newpwd: $('#newpwd').val(),
+                        newpwd2: $("#newpwd2").val()
+                    },
+                    function (res) {
+                        layer.closeAll('loading');
+                        if (res.Success == 1) {
+                            //进入下一步
+                            layer.msg(res.Msg);
+                            $(".pop_up7").hide();
+                            $(".hui").show();
+                            $(".pop_up2").show();
+                            $('.logincontent').removeClass('hidden');
+			    	        $('.findpwd').addClass('hidden');
+			    	        $('.resetpwd').addClass('hidden');
+                        } else {
+                            if (!res.Msg) {
+                                res.Msg = "服务器错误";
+                            }
+                            layer.msg(res.Msg, function () { });
+                        }
+                    });
+            });
+            $('#cancel').click(function () {
+                $('.logincontent').removeClass('hidden');
+                $('.findpwd').addClass('hidden');
+                $('.resetpwd').addClass('hidden');
+            });
+            $('#rcancel').click(function () {
+                $('.resetpwd').addClass('hidden');
+                $('.findpwd').removeClass('hidden');
+            });
+
+        });
+    </script>
+
+</head>
+
+
+
+    <body>
+
+
+        <input type="hidden" value="http://casapi.nczxst.com/Index/login?school=jxcjdx" id="redirectUrl" />
+        <div id="loadingbg">
+            <div class="loading">
+                <div class="spinner">
+                    <div class="spinner-container container1">
+                        <div class="circle1"></div>
+                        <div class="circle2"></div>
+                        <div class="circle3"></div>
+                        <div class="circle4"></div>
+                    </div>
+                    <div class="spinner-container container2">
+                        <div class="circle1"></div>
+                        <div class="circle2"></div>
+                        <div class="circle3"></div>
+                        <div class="circle4"></div>
+                    </div>
+                    <div class="spinner-container container3">
+                        <div class="circle1"></div>
+                        <div class="circle2"></div>
+                        <div class="circle3"></div>
+                        <div class="circle4"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+            <input type="hidden" id="nomal" value="1" />
+                    <input type="hidden" id="isuser" value="1" />
+                <input type="hidden" value="/upload/media/D453EC3B6E5F25EA2EE5E5868A44D595.mp3" id="audio" />
+        <input type="hidden" name="" id="tips" value="0" />
+        <link href="/Areas/Web/pc/css/zsb/login.css" rel="stylesheet"/>
+
+        <div class="cover" style="; position: fixed; top: 0px; bottom: 0px; left: 0px; right: 0px; opacity: 0.7; box-sizing: content-box; background-color: #000; z-index: 9;"></div>
+        <div class="login_kuang" >
+            <!--登录,找回密码框-->
+            <div class="loginbox" >
+                <!--登录内容-->
+                <div class="logincontent">
+                    <div class="login-title">
+                        闯关登录
+                    </div>
+
+                    <i class="iconfont login-close">&#xe7be;</i>
+
+                    <form method="post" id="login">
+                        <div class="userbox">
+                            <div class="icon">
+                                <span class="iconfont">&#xe604;</span>
+                            </div>
+                            <input class="usn" type="text" name="userid" id="userid" placeholder="请输入账号" />
+                        </div>
+                        <div class="pwdbox">
+                            <div class="icon">
+                                <span class="iconfont">&#xe644;</span>
+                            </div>
+                            <div class="eye" id="eye">
+                                <span class="iconfont pointer" id="span">&#xe60c;</span>
+
+                            </div>
+                            <input class="pwd" type="password" name="pwd" id="pwd" placeholder="请输入密码" />
+                        </div>
+                        <div class="yzmbox">
+                            <input type="text" name="pVCode" id="pVCode" placeholder="请输入验证码" />
+                            <img title="点击刷新" id="vcodeimg" src="/Web/User/ValidateCode" style="cursor: pointer;" />
+                        </div>
+
+                    </form>
+                        <a href="#">
+                            <div class="submit" id="btnLogin">
+                                登录
+                            </div>
+                        </a>
+                    <div class="oprate">
+                                            </div>
+                        <div class="registration_instructions">
+                            
+                        </div>
+
+                </div>
+                <!--找回密码内容-->
+            </div>
+        </div>
+
+
+<link href="/Areas/Web/pc/css/ssb/index.css" rel="stylesheet"/>
+<link href="/Areas/Web/pc/css/ssb/changeversion.css" rel="stylesheet"/>
+<script src="/Areas/Web/pc/js/zsb/changeversion.js"></script>
+            <!--侧边栏-->
+            <div class="left_nav">
+                <div class="zhuangshiborder">
+                        <div class="zhuangshibg">
+                            <a href="/Web/Center/Info" title="点击进入个人中心">
+                                <img class="touxiang" src="/upload/image/AF8315D35E84A93576A8F698508803A5.png" />
+                            </a>
+                            <div class="wenzi">
+                                点击进入个人中心
+                                <br />
+                                <a href='/Web/User/Logout' title="退出" style="font-size: 16px;">退出</a>
+                            </div>
+                        </div>
+                </div>
+                <ul class="operatelist">
+                    <a target="_blank" href="/Web/Common/Cheats">
+                        <li class=" " title="通关秘籍">
+                            通关秘籍
+                        </li>
+                    </a>
+                            <a href="/Web/Common/Problem" target="_blank">
+                                <li title="常见问题">
+                                    常见问题
+                                </li>
+                            </a>
+
+
+                </ul>
+                <div class="Sound">
+                    <a href="#">
+                        <img id="soundOn" src="/areas/web/pc/img/ssb/loud.png" />
+                        <img id="soundOff" src="/areas/web/pc/img/ssb/Turn down.png" />
+                    </a>
+                </div>
+            </div>
+            <!--选择板式弹框-->
+                <div class="alert-box position-center hidden" id="themeBox">
+                    <div class="innerdiv">
+                        <div class="alert-head">
+                           
+                        </div>
+                        <div class="alert-body">
+                            <div class="items">
+                                <ul>
+                                        <li class="versionli">
+                                            <img class="tkdjimg" src="/upload/image/B80797D0E659EAB2A89A40C3AFEA95F1.png" />
+                                            <div>书生版</div>
+                                            <a href="#"><input type="radio" checked name="tid" class="pointer" value="5d037bb3-12c5-4554-a3c2-d128766dd025" /></a>
+                                        </li>
+                                        <li class="versionli">
+                                            <img class="tkdjimg" src="/upload/image/8462DCC8B5874B6DCA7904E262AE6F6B.png" />
+                                            <div>战士版</div>
+                                            <a href="#"><input type="radio"  name="tid" class="pointer" value="e3e409c4-7b51-4a75-a58f-92201dd6e660" /></a>
+                                        </li>
+                                        <li class="versionli">
+                                            <img class="tkdjimg" src="/upload/image/434DD152C6DC153B6A9C9F89274B0AE2.png" />
+                                            <div>校园版</div>
+                                            <a href="#"><input type="radio"  name="tid" class="pointer" value="7d11523c-e79c-4b9f-b119-5b40a750b90d" /></a>
+                                        </li>
+                                </ul>
+                            </div>
+                            <div class="info">
+                                <b>选择一个角色参加知识闯关</b>
+                            </div>
+                            <a href="#">
+                                <div class="queding" id="btnTheme">
+                                    确定
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            <div class="content">
+                    <a href="/Web/Chapter/Index/7f6d456b-2372-4b80-8e5a-0f6bf8c979c4?tid=5d037bb3-12c5-4554-a3c2-d128766dd025"><img class="zj bggk grayscale " data-step="1" data-intro="请按照顺序依次点击学习 - 本馆概况" src="/upload/image/F7197E812CAC2F9699400A091F534E5D.png"></a>
+                                    <a href="/Web/Chapter/Index/c26f7e15-3fd6-4fcc-a2ee-2d72ec4dc725?tid=5d037bb3-12c5-4554-a3c2-d128766dd025"><img class="zj rgxz grayscale " data-step="2" data-intro="请按照顺序依次点击学习 - 入馆须知" src="/upload/image/F2CC8538A94A26D7ABEC03C77B5012E0.png"></a>
+                                    <a href="/Web/Chapter/Index/3d45bec2-f8b8-48a6-a168-868db11b43c0?tid=5d037bb3-12c5-4554-a3c2-d128766dd025"><img class="zj tsjh grayscale " data-step="3" data-intro="请按照顺序依次点击学习 - 图书借还" src="/upload/image/4249C43CBA8294B29EB317E892898BD1.png"></a>
+                                    <a href="/Web/Chapter/Index/a529aa60-4246-4a33-9879-04f5ec6951e2?tid=5d037bb3-12c5-4554-a3c2-d128766dd025"><img class="zj dzzy grayscale " data-step="4" data-intro="请按照顺序依次点击学习 - 电子资源" src="/upload/image/020A6CA54219C447CE7550A843696633.png"></a>
+                                    <a href="/Web/Chapter/Index/20105737-bde6-4e0a-8c2f-f4f07e0016e8?tid=5d037bb3-12c5-4554-a3c2-d128766dd025"><img class="zj dzfw grayscale " data-step="5" data-intro="请按照顺序依次点击学习 - 读者服务" src="/upload/image/B0120C9175065D2C68FE8FCBE3B12538.png"></a>
+                                    <img class="zj byzj" src="/areas/web/pc/img/ssb/btn0_6.png" />
+                    <img class="bxfg" src="/areas/web/pc/img/ssb/bxfg.gif" />
+
+            </div>
+        
+        <script src="/Areas/Web/public/js/intro.js"></script>
+
+        <script>
+            $(function () {
+                //阻止a标签跳转
+                $('#bg2 a').each(function (i, v) {
+                    var href = $(v).attr('href');
+                    $(v).attr('href', '#;' + href);
+                });
+                //鼠标hover效果
+                $('.content_item').hover(function () {
+                    $(this).addClass('animated pulse');
+                }, function () {
+                    $(this).removeClass('animated pulse');
+                });
+                //战士的动效
+                $('#roleman').hover(function () {
+                    $(this).removeClass('zoomOutUp zoomInDown').addClass('animated bounce');
+                }, function () {
+                    $(this).removeClass('animated bounce');
+                    });
+                if ($('input[name="flag"]').val()==0) {
+                    $('#roleman').css({
+                        'position': 'absolute',
+                        'top': '62%',
+                        'left': '13%',
+                        'width': '14%',
+                        'height': '14%'
+                    })
+                }
+                if ($('input[name="flag"]').val() == 1) {
+                    $('#roleman').css({
+                        'position': 'absolute',
+                        'top': '36%',
+                        'left': '23%',
+                        'width': '14%',
+                        'height': '14%'
+                    });
+                }
+                if ($('input[name="flag"]').val() == 2) {
+                    $('#roleman').css({
+                        'position': 'absolute',
+                        'top': '10%',
+                        'left': '26%',
+                        'width': '14%',
+                        'height': '14%'
+                    });
+                }
+                if ($('input[name="flag"]').val() == 3) {
+                    $('#roleman').css({
+                        'position': 'absolute',
+                        'top': '33%',
+                        'left': '55%',
+                        'width': '14%',
+                        'height': '14%'
+                    });
+                }
+                if ($('input[name="flag"]').val() == 4) {
+                    $('#roleman').css({
+                        'position': 'absolute',
+                        'top': '43%',
+                        'left': '86%',
+                        'width': '14%',
+                        'height': '14%'
+                    });
+                }
+                if ($('input[name="flag"]').val() == 5) {
+                    $('#roleman').css({
+                        'position': 'absolute',
+                        'top': '29%',
+                        'left': '79.5%',
+                        'width': '14%',
+                        'height': '14%'
+                    });
+                }
+                //登陆状态下小战士动画
+                if ($('#isuser').length > 0) {
+                    $('.bggk').click(function () {
+                       
+                        if ($(this).find('img').hasClass('noPass')) {
+                            return;
+                        }
+                        $('#roleman').removeClass('zoomInDown').addClass('animated zoomOutUp');
+                        setTimeout(function () {
+                            $('#roleman').css({
+                                'position': 'absolute',
+                                'top': '62%',
+                                'left': '13%',
+                                'width': '14%',
+                                'height': '14%'
+                            }).removeClass('zoomOutUp').addClass('zoomInDown');
+                            setTimeout(function () {
+                                var oldhref = $('.bggk').find('a').attr('href');
+                                if ($('input[name="flag"]').val() >= 0) {
+                                    location.href = oldhref.substring(2);
+                                }
+                            }, 1000);
+                        }, 1000);
+                    });
+                    $('.rgxz').click(function () {
+                        if ($(this).find('img').hasClass('noPass')) {
+                            return;
+                        }
+                        $('#roleman').removeClass('zoomInDown').addClass('animated zoomOutUp');
+                        setTimeout(function () {
+                            $('#roleman').css({
+                                'position': 'absolute',
+                                'top': '36%',
+                                'left': '23%',
+                                'width': '14%',
+                                'height': '14%'
+                            }).removeClass('zoomOutUp').addClass('zoomInDown');
+                            setTimeout(function () {
+                                var oldhref = $('.rgxz').find('a').attr('href');
+                                
+                                if ($('input[name="flag"]').val() >= 1) {
+                                   
+                                    location.href = oldhref.substring(2);
+                                }
+
+                            }, 1000);
+                        }, 1000);
+                    });
+                    $('.tsjh').click(function () {
+                        if ($(this).find('img').hasClass('noPass')) {
+                            return;
+                        }
+                        $('#roleman').removeClass('zoomInDown').addClass('animated zoomOutUp');
+                        setTimeout(function () {
+                            $('#roleman').css({
+                                'position': 'absolute',
+                                'top': '10%',
+                                'left': '26%',
+                                'width': '14%',
+                                'height': '14%'
+                            }).removeClass('zoomOutUp').addClass('zoomInDown');
+                            setTimeout(function () {
+                                var oldhref = $('.tsjh').find('a').attr('href');
+                               
+                                if ($('input[name="flag"]').val() >= 2) {
+                              
+                                    location.href = oldhref.substring(2);
+                                }
+
+                            }, 1000);
+                        }, 1000);
+                    });
+                    $('.szzy').click(function () {
+                        if ($(this).find('img').hasClass('noPass')) {
+                            return;
+                        }
+                        $('#roleman').removeClass('zoomInDown').addClass('animated zoomOutUp');
+                        setTimeout(function () {
+                            $('#roleman').css({
+                                'position': 'absolute',
+                                'top': '33%',
+                                'left': '55%',
+                                'width': '14%',
+                                'height': '14%'
+                            }).removeClass('zoomOutUp').addClass('zoomInDown');
+                            setTimeout(function () {
+                                var oldhref = $('.szzy').find('a').attr('href');
+                                
+                                if ($('input[name="flag"]').val() >= 3) {
+                                   
+                                    location.href = oldhref.substring(2);
+                                }
+
+                            }, 1000);
+                        }, 1000);
+                    });
+                    $('.dzfw').click(function () {
+                        if ($(this).find('img').hasClass('noPass')) {
+                            return;
+                        }
+                        $('#roleman').removeClass('zoomInDown').addClass('animated zoomOutUp');
+                        setTimeout(function () {
+                            $('#roleman').css({
+                                'position': 'absolute',
+                                'top': '43%',
+                                'left': '86%',
+                                'width': '14%',
+                                'height': '14%'
+                            }).removeClass('zoomOutUp').addClass('zoomInDown');
+                            setTimeout(function () {
+                                var oldhref = $('.dzfw').find('a').attr('href');
+                               
+                                if ($('input[name="flag"]').val() >= 4) {
+                                    
+                                    location.href = oldhref.substring(2);
+                                }
+
+                            }, 1000);
+                        }, 1000);
+                    });
+                    $('.zsmove').click(function () {
+                        if ($(this).find('img').hasClass('noPass')) {
+                            return;
+                        }
+                        $('#roleman').removeClass('zoomInDown').addClass('animated zoomOutUp');
+                        setTimeout(function () {
+                            $('#roleman').css({
+                                'position': 'absolute',
+                                'top': '26%',
+                                'left': '80.5%',
+                                'width': '14%',
+                                'height': '14%'
+                            }).removeClass('zoomOutUp').addClass('zoomInDown');
+                            setTimeout(function () {
+                                var oldhref = $('.zsmove').find('a').attr('href');
+                                
+                                if ($('input[name="flag"]').val() >= 5) {
+                                   
+                                    location.href = oldhref.substring(2);
+                                }
+
+                            }, 1000);
+                        }, 1000);
+                    });
+                } else {
+                    $('.bggk').click(function () {
+                        $('#roleman').removeClass('zoomInDown').addClass('animated zoomOutUp');
+                        setTimeout(function () {
+                            $('#roleman').css({
+                                'position': 'absolute',
+                                'top': '62%',
+                                'left': '13%',
+                                'width': '14%',
+                                'height': '14%'
+                            }).removeClass('zoomOutUp').addClass('zoomInDown');
+                            setTimeout(function () {
+                                var oldhref = $('.bggk').find('a').attr('href');
+
+                                    location.href = oldhref.substring(2);
+
+                            }, 1000);
+                        }, 1000);
+                    });
+                    $('.rgxz').click(function () {
+                        $('#roleman').removeClass('zoomInDown').addClass('animated zoomOutUp');
+                        setTimeout(function () {
+                            $('#roleman').css({
+                                'position': 'absolute',
+                                'top': '36%',
+                                'left': '23%',
+                                'width': '14%',
+                                'height': '14%'
+                            }).removeClass('zoomOutUp').addClass('zoomInDown');
+                            setTimeout(function () {
+                                var oldhref = $('.rgxz').find('a').attr('href');
+
+                                    location.href = oldhref.substring(2);
+                            }, 1000);
+                        }, 1000);
+                    });
+                    $('.tsjh').click(function () {
+                        $('#roleman').removeClass('zoomInDown').addClass('animated zoomOutUp');
+                        setTimeout(function () {
+                            $('#roleman').css({
+                                'position': 'absolute',
+                                'top': '10%',
+                                'left': '26%',
+                                'width': '14%',
+                                'height': '14%'
+                            }).removeClass('zoomOutUp').addClass('zoomInDown');
+                            setTimeout(function () {
+                                var oldhref = $('.tsjh').find('a').attr('href');
+
+                                    location.href = oldhref.substring(2);
+
+
+                            }, 1000);
+                        }, 1000);
+                    });
+                    $('.szzy').click(function () {
+                        $('#roleman').removeClass('zoomInDown').addClass('animated zoomOutUp');
+                        setTimeout(function () {
+                            $('#roleman').css({
+                                'position': 'absolute',
+                                'top': '33%',
+                                'left': '55%',
+                                'width': '14%',
+                                'height': '14%'
+                            }).removeClass('zoomOutUp').addClass('zoomInDown');
+                            setTimeout(function () {
+                                var oldhref = $('.szzy').find('a').attr('href');
+
+                                    location.href = oldhref.substring(2);
+
+
+                            }, 1000);
+                        }, 1000);
+                    });
+                    $('.dzfw').click(function () {
+                        $('#roleman').removeClass('zoomInDown').addClass('animated zoomOutUp');
+                        setTimeout(function () {
+                            $('#roleman').css({
+                                'position': 'absolute',
+                                'top': '43%',
+                                'left': '86%',
+                                'width': '14%',
+                                'height': '14%'
+                            }).removeClass('zoomOutUp').addClass('zoomInDown');
+                            setTimeout(function () {
+                                var oldhref = $('.dzfw').find('a').attr('href');
+                                    location.href = oldhref.substring(2);
+                                
+                            }, 1000);
+                        }, 1000);
+                    });
+                    $('.zsmove').click(function () {
+                        $('#roleman').removeClass('zoomInDown').addClass('animated zoomOutUp');
+                        setTimeout(function () {
+                            $('#roleman').css({
+                                'position': 'absolute',
+                                'top': '26%',
+                                'left': '80.5%',
+                                'width': '14%',
+                                'height': '14%'
+                            }).removeClass('zoomOutUp').addClass('zoomInDown');
+                            setTimeout(function () {
+                                var oldhref = $('.zsmove').find('a').attr('href');
+                                    location.href = oldhref.substring(2);
+
+
+                            }, 1000);
+                        }, 1000);
+                    });
+                }
+
+
+            });
+
+
+            if ($('#tips').val()==1) {
+                layer.confirm('检测到您还没有绑定手机号，请前往个人中心绑定手机号',
+                    {
+                        icon: 0,
+                        closeBtn: 0,
+                        shade: [0.3, '#000'],
+                        title: '提示',
+                        btn: ['前往个人中心'],
+                        yes: function() {
+                            window.location.href = '/Web/Center/EditPhone';
+                        }
+                    });
+            }
+
+        </script>
+    </body>
+
+
+</html>
+

@@ -1,0 +1,726 @@
+<!doctype html>
+
+<html>
+
+<head>
+
+    <meta charset="utf-8">
+
+    <title>图书馆概况-江西财经大学图书馆-入馆教育系统</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge，chrome=1">
+
+    <meta name="renderer" content="webkit">
+
+    <script src="/Scripts/jquery-1.10.2.min.js"></script>
+
+  
+
+    
+
+    <link href="/Areas/Web/pc/css/zsb/loading.css" rel="stylesheet" />
+
+    <link href="/Scripts/plugins/layui/css/layui.css" rel="stylesheet" />
+
+    <link href="/Scripts/plugins/viewerjs/viewer.min.css" rel="stylesheet" />
+
+    <link href="/Scripts/plugins/videojs/video-js.min.css" rel="stylesheet" />
+
+    <link href="/Scripts/plugins/videojs/video.skin.plugin.pc.min.css" rel="stylesheet" />
+
+    <style>
+
+        .lbt div span {
+
+            text-align: left;
+
+            padding-left: 12px;
+
+            opacity: 0.6;
+
+            filter: alpha(opacity=60);
+
+            width: 100%;
+
+            background-color: #000;
+
+            line-height: 34px;
+
+            position: absolute;
+
+            bottom: 0;
+
+            left: 0;
+
+            font-size: 16px;
+
+            color: #fff;
+
+        }
+
+
+
+        .tupian img, .m-left img {
+
+            width: 100%;
+
+            height: 100%;
+
+        }
+
+
+
+        .tupian img, .wenzi img, .m-left img, .m-right img, .m-content img {
+
+            max-width: 100%;
+
+            background: #FFF url(/imgs/loading.gif) no-repeat center center;
+
+            cursor: -moz-zoom-in;
+
+            cursor: -webkit-zoom-in;
+
+            cursor: zoom-in;
+
+        }
+
+
+
+        .neirong img {
+
+            display: initial;
+
+        }
+
+    </style>
+
+
+
+
+
+    
+
+    <script src="/Scripts/plugins/viewerjs/viewer.min.js"></script>
+
+    <script src="/Scripts/plugins/layui/layui.js"></script>
+
+    <script src="/Scripts/plugins/videojs/ie8/videojs-ie8.min.js"></script>
+
+    <script src="/Scripts/plugins/jquery-cookie/jquery.cookie-1.4.1.min.js"></script>
+
+    <script src="/Areas/Web/public/js/audio.js"></script>
+
+
+
+    <script>
+
+        var time;
+
+        var oldleft = $('.jsleft').find('a').attr('href');
+
+        var oldright = $('.jsright').find('a').attr('href');
+
+        var jumpnext = 1;
+
+        function smsTime(o) {
+
+            if (time > 0) {
+
+                var minute = Math.floor((time / 60) % 60);
+
+                var second = Math.floor(time % 60);
+
+                o.innerHTML = (minute < 10 ? "0" + minute : minute) + ":" + (second < 10 ? "0" + second : second);
+
+                time--;
+
+                jumpnext = 0;
+
+                $('.jsleft').find('a').attr('href', '#');
+
+                $('.jsright').find('a').attr('href', '#');
+
+                setTimeout(function () {
+
+                    smsTime(o);
+
+                },
+
+                    1000);
+
+
+
+            } else {
+
+                jumpnext = 1;
+
+                o.innerHTML = "00:00";
+
+                $('.jsleft').find('a').attr('href', oldleft);
+
+                $('.jsright').find('a').attr('href', oldright);
+
+
+
+            }
+
+        }
+
+        $(function () {
+
+            time = $('#djs').val();
+
+            if (time > 0 && $('#isuser').length > 0) {
+
+                smsTime(document.getElementById('daojishi'));
+
+            }
+
+            $('.back a').click(function (e) {
+
+                if (jumpnext == 0) {
+
+                    e.preventDefault();
+
+                    layui.use('layer',
+
+                        function () {
+
+                            var layer = layui.layer;
+
+                            layer.msg('请倒计时结束后再点击');
+
+
+
+                        });
+
+                }
+
+            });
+
+            //png图片 移除背景loading
+
+            $('.tupian img,.wenzi img,.m-left img,.m-right img,.m-content img').each(function () {
+
+                var img = new Image();
+
+                img.src = $(this).attr('src') || $(this).attr('lay-src');
+
+                if (img.complete) {
+
+                    $(this).css('background', 'none');
+
+                    return;
+
+                }
+
+                var that = $(this);
+
+                img.onload = function () {
+
+                    img.onload = null;
+
+                    $(that).css('background', 'none');
+
+                };
+
+
+
+            });
+
+            var audioinput = $('#audio');
+
+            var myaudio = document.getElementById('audid');
+
+            if ($('#video').length > 0) {
+
+                videojs('video',
+
+                    {
+
+                        autoplay: false
+
+                    }).ready(function () {
+
+                        this.hotkeys({
+
+                            volumeStep: 0.1,
+
+                            seekStep: 5,
+
+                            enableModifiersForNumbers: false
+
+                        });
+
+
+
+                    });
+
+                var player = videojs('video',
+
+                    {},
+
+                    function () {
+
+
+
+                    });
+
+                player.on('play',
+
+                    function () {
+
+                        if ($('#audid').length > 0) {
+
+
+
+                            myaudio.pause();
+
+                        }
+
+                    });
+
+                player.on('pause',
+
+                    function () {
+
+                        if ($('#audid').length > 0) {
+
+                            myaudio.play();
+
+                        }
+
+                    });
+
+                player.on('ended',
+
+                    function () {
+
+                        if ($('#audid').length > 0) {
+
+                            myaudio.play();
+
+                        }
+
+                    });
+
+            }
+
+            if ($('.tupian').length > 0) {
+
+                var viewerTupian = new Viewer($('.tupian')[0],
+
+                    {
+
+                        title: false,
+
+                        navbar: false
+
+                    });
+
+            }
+
+            if ($('.wenzi').length > 0) {
+
+                var viewerWenzi = new Viewer($('.wenzi')[0],
+
+                    {
+
+                        title: false,
+
+                        navbar: false
+
+                    });
+
+            }
+
+            if ($('.middle').length > 0) {
+
+                var viewermiddle = new Viewer($('.middle')[0],
+
+                    {
+
+                        title: false,
+
+                        navbar: false
+
+                    });
+
+            }
+
+            layui.use('carousel',
+
+                function () {
+
+                    var carousel = layui.carousel;
+
+                    carousel.render({
+
+                        elem: '#pggroup',
+
+                        width: '100%',
+
+                        height: '100%',
+
+                        interval: 5000,
+
+                        autoplay: true,
+
+                        arrow: 'hover'
+
+                    });
+
+                });
+
+            $('.last a').each(function (i, v) {
+
+                var href = $(v).attr('href');
+
+                $(v).attr('href', '#;' + href);
+
+            });
+
+            $('.first a').each(function (i, v) {
+
+                var href = $(v).attr('href');
+
+                $(v).attr('href', '#;' + href);
+
+            });
+
+
+
+
+
+            $('.last').click(function () {
+
+                if (jumpnext == 1) {
+
+                    layui.use('layer',
+
+                        function () {
+
+                            var layer = layui.layer;
+
+                            layer.msg('当前已经是最后一节,将跳转到当前章的第一节');
+
+
+
+                        });
+
+                    setTimeout(function () {
+
+                        var oldhref = $('.last').find('a').attr('href');
+
+                        location.href = oldhref.substring(2);
+
+
+
+                    },
+
+                        2000);
+
+                } else if (jumpnext == 0) {
+
+                    layui.use('layer',
+
+                        function () {
+
+                            var layer = layui.layer;
+
+                            layer.msg('请倒计时结束后再点击');
+
+
+
+                        });
+
+                }
+
+
+
+            });
+
+            $('.first').click(function () {
+
+                if (jumpnext == 1) {
+
+                    layui.use('layer',
+
+                        function () {
+
+                            var layer = layui.layer;
+
+                            layer.msg('当前已经是第一节,将跳转到当前章的最后一节');
+
+
+
+                        });
+
+                    setTimeout(function () {
+
+                        var oldhref = $('.first').find('a').attr('href');
+
+                        location.href = oldhref.substring(2);
+
+
+
+                    },
+
+                        2000);
+
+                } else if (jumpnext == 0) {
+
+                    layui.use('layer',
+
+                        function () {
+
+                            var layer = layui.layer;
+
+                            layer.msg('请倒计时结束后再点击');
+
+
+
+                        });
+
+                }
+
+
+
+            });
+
+
+
+            $('.jsleft').click(function () {
+
+                if (jumpnext == 0) {
+
+                    layui.use('layer',
+
+                        function () {
+
+                            var layer = layui.layer;
+
+                            layer.msg('请倒计时结束后再点击');
+
+
+
+                        });
+
+                }
+
+
+
+            });
+
+            $('.jsright').click(function () {
+
+                if (jumpnext == 0) {
+
+                    layui.use('layer',
+
+                        function () {
+
+                            var layer = layui.layer;
+
+                            layer.msg('请倒计时结束后再点击');
+
+
+
+                        });
+
+                }
+
+
+
+            });
+
+
+
+
+
+        });
+
+
+
+
+
+    </script>
+
+
+
+</head>
+
+
+
+
+
+        <input type="hidden" id="isuser" />
+
+
+
+<body>
+
+    <div id="loadingbg">
+
+        <div class="loading">
+
+            <div class="spinner">
+
+                <div class="spinner-container container1">
+
+                    <div class="circle1"></div>
+
+                    <div class="circle2"></div>
+
+                    <div class="circle3"></div>
+
+                    <div class="circle4"></div>
+
+                </div>
+
+                <div class="spinner-container container2">
+
+                    <div class="circle1"></div>
+
+                    <div class="circle2"></div>
+
+                    <div class="circle3"></div>
+
+                    <div class="circle4"></div>
+
+                </div>
+
+                <div class="spinner-container container3">
+
+                    <div class="circle1"></div>
+
+                    <div class="circle2"></div>
+
+                    <div class="circle3"></div>
+
+                    <div class="circle4"></div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <input type="hidden" id="djs" value="0" />
+
+    <input type="hidden" value="/upload/media/50AFE8D480975333BB00CB2B80E72B04.mp3" id="audio" />
+
+
+
+<link href="/Areas/Web/pc/css/ssb/all.css" rel="stylesheet"/>
+
+<link href="/Areas/Web/pc/css/ssb/nry1.css" rel="stylesheet"/>
+
+            <link href="/Areas/Web/public/css/iconfont.css" rel="stylesheet" />
+
+                <!--标题-->
+
+            <div class="biaoti_nry">
+
+                <img class="dl" src="/Areas/web/pc/img/ssb/denglong.png">
+
+                <span class="btwz">图书馆概况</span>
+
+                <div class="clearfix"></div>
+
+            </div>
+
+                <!--返回按钮-->
+
+            <div class="back">
+
+                <a href="/Web/Chapter/Index/7f6d456b-2372-4b80-8e5a-0f6bf8c979c4?tid=5d037bb3-12c5-4554-a3c2-d128766dd025#4ae143eb-b16c-4ad4-bba9-0d27973fe99b">
+
+                    <div class="inner-circle">
+
+                        <span class="iconfont">&#xe65f;</span>
+
+                    </div>
+
+                </a>
+
+            </div>
+
+            <div class="daojishi" id="daojishi"></div>
+
+            <div class="nry_nr1">
+
+                                    <div class="btn_left first"><a href="/Web/Chapter/Content/0cb66dd4-d966-4768-a027-3318fddc096b?tid=5d037bb3-12c5-4554-a3c2-d128766dd025"><img src="/Areas/web/pc/img/ssb/btn_left.png"></a></div>
+
+
+
+                    <div class="wenzi"><p><img lay-src="/upload/image/48C778A821F5819FA93B483377210BDA.jpg"></p></div>
+
+                    <script>
+
+                        layui.use('flow',
+
+                            function () {
+
+                                var flow = layui.flow;
+
+                                flow.lazyimg({
+
+                                    elem: '.wenzi img',
+
+                                    scrollElem: '.wenzi'
+
+                                });
+
+                            });
+
+                    </script>
+
+
+
+
+
+                <div class="btn_right jsright"><a href="/Web/Chapter/Content/9605f523-8b0e-416d-a084-6d3930a51468?tid=5d037bb3-12c5-4554-a3c2-d128766dd025"><img src="/Areas/web/pc/img/ssb/btn_right.png"></a></div>
+
+
+
+                <div class="clearfix"></div>
+
+            </div>
+
+
+
+
+
+    <script src="/Scripts/plugins/videojs/video.min.js"></script>
+
+    <script src="/Scripts/plugins/videojs/lang/zh-CN.js"></script>
+
+    <script src="/Scripts/plugins/videojs/videojs.hotkeys.min.js"></script>
+
+    <script src="/Areas/Web/pc/js/zsb/loading.js"></script>
+
+    <script type="text/javascript">
+
+        $(function () {
+
+            isload('js/intro.js');
+
+
+
+        })
+
+    </script>
+
+</body>
+
+
+
+</html>
+
+
+

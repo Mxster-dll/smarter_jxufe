@@ -1,0 +1,187 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>本馆概况-江西财经大学图书馆-入馆教育系统</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge，chrome=1">
+    <meta name="renderer" content="webkit">
+    <script src="/Scripts/jquery-1.10.2.min.js"></script>
+  
+    
+    <link href="/Areas/Web/pc/css/zsb/loading.css" rel="stylesheet" />
+    <link href="/Areas/Web/public/css/animate.css" rel="stylesheet" />
+    <link href="/Areas/Web/public/css/introjs.css" rel="stylesheet" />
+    <link href="/Areas/Web/public/css/gray.min.css" rel="stylesheet" />
+    <link href="/Areas/Web/public/css/iconfont.css" rel="stylesheet" />
+
+    
+    <script src="/Areas/Web/public/js/intro.js"></script>
+    <script src="/Areas/Web/public/js/jquery.gray.min.js"></script>
+    <script src="/Scripts/cookie.js"></script>
+    <script src="/Scripts/plugins/layer/layer.js"></script>
+    <script src="/Scripts/plugins/jquery-cookie/jquery.cookie-1.4.1.min.js"></script>
+    <script src="/Areas/Web/public/js/audio.js"></script>
+
+    <script>
+        $(function () {
+            $('#loadingbg').hide();
+            if ($('#isOpenguide').length > 0) {
+                var chapterNewGuide = getCookie('chapter-new-guide');
+                if (chapterNewGuide == '' || chapterNewGuide == '0') {
+                    introJs().setOptions({
+                        prevLabel: "上一步",
+                        nextLabel: "下一步",
+                        skipLabel: "跳过",
+                        doneLabel: "结束",
+                        keyboardNavigation: true,
+                        exitOnEsc: true
+                    }).oncomplete(function () {
+                        setCookie('chapter-new-guide', 1, 1);
+                    }).onexit(function () {
+                        setCookie('chapter-new-guide', 1, 1);
+                    }).start();
+                }
+            }
+
+        });
+        function exam(isVisitAll, nChapterId, examinations) {
+            if (isVisitAll == "false") {
+                layer.open({
+                    time: 2000,
+                    icon: 7,
+                    content: '同学，你还有线索没有发现^_^',
+                    anim: 6,
+                    title: false,
+                    btn: false,
+                    success: function (layero, index) {
+                        $('.cover').removeClass('hidden');
+                        //增加高亮样式及动画
+                        $('.chapter').each(function () {
+                            if (!$(this).hasClass('grayscale')) {
+                                $(this).addClass('highlight animated shake');
+                                if ($(this).parents('li').length > 0) {
+                                    $(this).parents('li').addClass('highlight animated shake');
+                                } else {
+                                    $(this).addClass('highlight animated shake');
+                                }
+
+                            }
+                        });
+
+                    }
+                });
+                return;
+            }
+            if (examinations == 1 || examinations == 4) {
+                if (isVisitAll == "true") {
+                    window.location.href = '/Web/Exam?cid=7f6d456b-2372-4b80-8e5a-0f6bf8c979c4';
+                }
+            } else if (examinations == 2) {
+                if (isVisitAll == "true") {
+                    var idArr = nChapterId.split(',');
+                    if (idArr[1]) {
+                        window.location.href = '/web/Chapter/Index?id=' + idArr[1] + "&tid=" + $('#themeId').val();
+                    } else {
+                        window.location.href = '/web/Exam/Index?cid=' + idArr[0];
+                    }
+                }
+            }
+        }
+    </script>
+
+</head>
+
+
+<body>
+    <div id="loadingbg">
+        <div class="loading">
+            <div class="spinner">
+                <div class="spinner-container container1">
+                    <div class="circle1"></div>
+                    <div class="circle2"></div>
+                    <div class="circle3"></div>
+                    <div class="circle4"></div>
+                </div>
+                <div class="spinner-container container2">
+                    <div class="circle1"></div>
+                    <div class="circle2"></div>
+                    <div class="circle3"></div>
+                    <div class="circle4"></div>
+                </div>
+                <div class="spinner-container container3">
+                    <div class="circle1"></div>
+                    <div class="circle2"></div>
+                    <div class="circle3"></div>
+                    <div class="circle4"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <input type="hidden" value="" id="audio" />
+        <input type="hidden" value="5d037bb3-12c5-4554-a3c2-d128766dd025" id="themeId" />
+<link href="/Areas/Web/pc/css/ssb/all.css" rel="stylesheet"/>
+                    <!--遮罩层-->
+            <div class="cover hidden"></div>
+                    <!--返回按钮-->
+            <div class="back">
+                <a href="/Web/User?tcode=ssb">
+                    <div class="inner-circle">
+                        <span class="iconfont">&#xe65f;</span>
+                    </div>
+                </a>
+            </div>
+<link href="/Areas/Web/pc/css/ssb/chapter1.css" rel="stylesheet"/>
+                        <!--标题-->
+                <div class="biaoti1">
+                    <img class="dl" src="/Areas/web/pc/img/ssb/denglong.png">
+                    <img class="bt" src="/upload/image/55DB63C401637A85B4B219F937506861.png">
+                    <div class="clearfix"></div>
+                </div>
+                        <a id="4ae143eb-b16c-4ad4-bba9-0d27973fe99b" href='/Web/Chapter/Content/4ae143eb-b16c-4ad4-bba9-0d27973fe99b?tid=5d037bb3-12c5-4554-a3c2-d128766dd025'>
+                            <img data-step="1" data-intro="请点击学习 - 图书馆概况 " class="chapter tsggk  grayscale" src="/upload/image/24D43FA0C618E44B782845C745B7F87A.png" />
+                        </a>
+                        <a id="9605f523-8b0e-416d-a084-6d3930a51468" href='/Web/Chapter/Content/9605f523-8b0e-416d-a084-6d3930a51468?tid=5d037bb3-12c5-4554-a3c2-d128766dd025'>
+                            <img data-step="2" data-intro="请点击学习 - 馆藏分布 " class="chapter gcfb  grayscale" src="/upload/image/1D817D559B912A5606F70BAE145B1E9D.png" />
+                        </a>
+                        <a id="04262bd6-3fa6-49dc-bc14-25ab93b0566e" href='/Web/Chapter/Content/04262bd6-3fa6-49dc-bc14-25ab93b0566e?tid=5d037bb3-12c5-4554-a3c2-d128766dd025'>
+                            <img data-step="3" data-intro="请点击学习 - 开放时间 " class="chapter kfsj  grayscale" src="/upload/image/34C3FBA8FAD8CA335ED1AC613B168BE1.png" />
+                        </a>
+                        <a id="0cb66dd4-d966-4768-a027-3318fddc096b" href='/Web/Chapter/Content/0cb66dd4-d966-4768-a027-3318fddc096b?tid=5d037bb3-12c5-4554-a3c2-d128766dd025'>
+                            <img data-step="4" data-intro="请点击学习 - 组织机构 " class="chapter zzjg  grayscale" src="/upload/image/DABF712ECB27822852B3913BF09DEB4C.png" />
+                        </a>
+                    <div class="btn_cg" onclick="exam('true','7f6d456b-2372-4b80-8e5a-0f6bf8c979c4,c26f7e15-3fd6-4fcc-a2ee-2d72ec4dc725',1)"><img src="/Areas/Web/pc/img/ssb/btn_cg.png"></div>
+
+
+    <script type="text/javascript">
+        $(function () {
+
+            //鼠标hover效果
+            $('.content_item').hover(function () {
+                $(this).addClass('animated pulse');
+            }, function () {
+                $(this).removeClass('animated pulse');
+            });
+            //鼠标hover效果
+            $('.item').hover(function () {
+                $(this).addClass('animated pulse');
+            }, function () {
+                $(this).removeClass('animated pulse');
+            });
+            $('.itemdiv').hover(function () {
+                $(this).addClass('animated pulse');
+            }, function () {
+                $(this).removeClass('animated pulse');
+            });
+            $('.leitai .itemSize').hover(function () {
+                $(this).addClass('animated pulse');
+            }, function () {
+                $(this).removeClass('animated pulse');
+            });
+
+        })
+    </script>
+</body>
+
+</html>
+
