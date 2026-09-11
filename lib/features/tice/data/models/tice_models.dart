@@ -77,9 +77,23 @@ class TiceStuInfo {
   });
 }
 
+/// 一次查询的结果类别。
+enum TiceResultKind {
+  /// 正常拿到成绩。
+  ok,
+
+  /// 服务端返回的是**提示文本**而非成绩 —— 例：非查询时段返回纯文本
+  /// 「允许学校学生成绩查询的时间为:9:00:00~21:00:00。」
+  /// [TiceResult.message] 即原文，界面直接照显（时段由服务端给出，**不硬编码**）。
+  notice,
+
+  /// 业务失败：这一学段确实没有成绩（如「该生成绩尚未上传(含免测)」）。
+  noRecord,
+}
+
 /// 一次查询的结果。ok=false 时 message 为原因（如「该生成绩尚未上传(含免测)」）。
 class TiceResult {
-  final bool ok;
+  final TiceResultKind kind;
   final String message;
   final TiceStuInfo? info;
 
@@ -87,11 +101,17 @@ class TiceResult {
   final List<TiceYearResult> years;
 
   const TiceResult({
-    required this.ok,
+    this.kind = TiceResultKind.ok,
     required this.message,
     this.info,
     this.years = const [],
   });
+
+  /// 是否拿到成绩（兼容既有调用：首页/综测取分只看这个）。
+  bool get ok => kind == TiceResultKind.ok;
+
+  /// 服务端给的是提示文本（时段限制等），而非「该学年无成绩」。
+  bool get isNotice => kind == TiceResultKind.notice;
 }
 
 /// 单分项等级 → 语义色。优秀绿 / 良好蓝 / 及格橙 / 不及格红。

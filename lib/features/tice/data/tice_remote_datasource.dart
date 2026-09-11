@@ -42,6 +42,8 @@ class TiceRemoteDataSource {
   ///
   /// 网络/解析错误抛 [TiceRequestException]（中文文案，供页面直接展示）；
   /// 接口业务失败（未上传/免测等）不抛异常，返回 [TiceResult.ok=false]。
+  /// 非查询时段服务端返回**纯文本提示**（如「允许学校学生成绩查询的时间为:
+  /// 9:00:00~21:00:00。」）→ 归为 [TiceResultKind.notice]，原文交给界面展示。
   Future<TiceResult> query(String stuNum, int year) async {
     final String text;
     try {
@@ -66,6 +68,14 @@ class TiceRemoteDataSource {
       throw TiceRequestException(_dioMessage(e));
     }
 
+    // 服务端在非查询时段直接吐一行纯文本（实测 2026-09：
+    // `允许学校学生成绩查询的时间为:9:00:00~21:00:00。`）→ 按「提示」原样透出，
+    // **不在 App 里写死时段**。
+    final notice = ticePlainNotice(text);
+    if (notice != null) {
+      return TiceResult(kind: TiceResultKind.notice, message: notice);
+    }
+
     final Object? decoded;
     try {
       decoded = jsonDecode(text);
@@ -79,7 +89,10 @@ class TiceRemoteDataSource {
 
     final message = (map['message'] as String?)?.trim() ?? '';
     if ('${map['result']}' != '1') {
-      return TiceResult(ok: false, message: message.isEmpty ? '查询失败' : message);
+      return TiceResult(
+        kind: TiceResultKind.noRecord,
+        message: message.isEmpty ? '查询失败' : message,
+      );
     }
 
     final data = map['data'];
@@ -132,7 +145,7 @@ class TiceRemoteDataSource {
     years.sort((a, b) => a.year.compareTo(b.year));
 
     return TiceResult(
-      ok: years.isNotEmpty,
+      kind: years.isNotEmpty ? TiceResultKind.ok : TiceResultKind.noRecord,
       message: years.isEmpty ? '无成绩记录' : message,
       info: info,
       years: years,
@@ -153,6 +166,19 @@ class TiceRemoteDataSource {
 
   static String _clip(String text) =>
       text.length > 200 ? '${text.substring(0, 200)}…' : text;
+}
+
+/// 响应体若是服务端的**纯文本提示**（查询时段限制、系统维护公告等），
+/// 返回其原文（去掉首尾空白）；否则返回 null。
+///
+/// 单独成函数便于单测（无需网络）。只判「形状」不判措辞与时段：
+/// 非空、短、不是 HTML/JSON —— 具体时间一律由服务端原文给出，
+/// 学校换时段或换措辞都不用改代码。
+String? ticePlainNotice(String body) {
+  final t = body.trim();
+  if (t.isEmpty || t.length > 300) return null;
+  if (t.startsWith('{') || t.startsWith('[') || t.contains('<')) return null;
+  return t;
 }
 
 /// 体测查询的网络/解析错误（文案可直接展示给用户）。
