@@ -64,6 +64,60 @@ class ScheduleEntry {
     this.remark,
   });
 
+  Map<String, dynamic> toJson() => {
+    'classCode': classCode,
+    'className': className,
+    'courseCode': courseCode,
+    'courseName': courseName,
+    'totalHours': totalHours,
+    'credits': credits,
+    'studyNature': studyNature,
+    'teacherCode': teacherCode,
+    'teacherName': teacherName,
+    'selectionStatus': selectionStatus,
+    'isCrossMajor': isCrossMajor,
+    'hasTextbook': hasTextbook,
+    'classTimes': classTimes.map((c) => c.toJson()).toList(),
+    'remark': remark,
+  };
+
+  /// 容错解析：课程名缺失或类型不符时返回 null（旧缓存不得导致崩溃）。
+  static ScheduleEntry? fromJson(Object? raw) {
+    if (raw is! Map) return null;
+    final courseName = raw['courseName'];
+    if (courseName is! String || courseName.isEmpty) return null;
+
+    final classTimes = <ClassTime>[];
+    final rawTimes = raw['classTimes'];
+    if (rawTimes is List) {
+      for (final item in rawTimes) {
+        final ct = ClassTime.fromJson(item);
+        if (ct != null) classTimes.add(ct);
+      }
+    }
+
+    String str(String key) => raw[key] is String ? raw[key] as String : '';
+    num numOf(String key) => raw[key] is num ? raw[key] as num : 0;
+    bool boolOf(String key) => raw[key] == true;
+
+    return ScheduleEntry(
+      classCode: str('classCode'),
+      className: str('className'),
+      courseCode: str('courseCode'),
+      courseName: courseName,
+      totalHours: numOf('totalHours').toInt(),
+      credits: numOf('credits').toDouble(),
+      studyNature: str('studyNature'),
+      teacherCode: str('teacherCode'),
+      teacherName: str('teacherName'),
+      selectionStatus: str('selectionStatus'),
+      isCrossMajor: boolOf('isCrossMajor'),
+      hasTextbook: boolOf('hasTextbook'),
+      classTimes: classTimes,
+      remark: raw['remark'] is String ? raw['remark'] as String : null,
+    );
+  }
+
   @override
   String toString() =>
       'ScheduleEntry($courseCode $courseName | ${classTimes.length} sessions)';
