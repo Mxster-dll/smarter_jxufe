@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/core/network/dio_providers.dart';
+import 'package:smarter_jxufe/features/campus_address/data/my_campus_prefs.dart';
+import 'package:smarter_jxufe/features/campus_address/domain/my_campus.dart';
 import 'package:smarter_jxufe/features/electricity/data/datasources/electricity_remote_datasource.dart';
 import 'package:smarter_jxufe/features/electricity/data/models/electricity_models.dart';
 import 'package:smarter_jxufe/features/electricity/data/providers/electricity_providers.dart';
@@ -300,6 +302,10 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
   // ---------- 手动更换流程 ----------
 
   /// 宿舍卡点击：进入更换（预载原宿舍校区楼栋，方便快速换房）。
+  ///
+  /// 预选优先级见 [resolveElectricityCampusId]：本会话已选 > 已绑定宿舍所在
+  /// 校区 > 「我的校区」兜底。设了「我的校区」后首次绑定无需再手动选校区，
+  /// 但仍可点别的校区胶囊手动更改。
   void _startPicking() {
     setState(() {
       _picking = true;
@@ -307,10 +313,14 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
       _error = null;
       _needBind = false;
     });
-    if (_campusId == null && _binding != null) {
-      _campusId = _binding!.campusId;
-      _loadBuildings(_binding!.campusId);
-    }
+    final next = resolveElectricityCampusId(
+      currentId: _campusId,
+      boundCampusId: _binding?.campusId,
+      mine: ref.read(myCampusStoreProvider).campus,
+    );
+    if (next == null || next == _campusId) return;
+    setState(() => _campusId = next);
+    _loadBuildings(next);
   }
 
   void _onCampusSelected(int campusId) {
