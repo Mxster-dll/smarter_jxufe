@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 文档说明：electricity 小组件 5×1 档（宽 × 高 = 5 × 1 格）。
+     minWidth/minHeight 用 cells*70-30 换算（兼容 API 31 以下的桌面），
+     targetCellWidth/targetCellHeight 供 API 31+ 精确定位。
+     initialLayout/previewLayout 指向 home_widget_metric_5x1。 -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/home_widget_electricity_5x1_desc"
+    android:initialLayout="@layout/home_widget_metric_5x1"
+    android:minHeight="40dp"
+    android:minWidth="320dp"
+    android:previewLayout="@layout/home_widget_metric_5x1"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellHeight="1"
+    android:targetCellWidth="5"
+    android:updatePeriodMillis="1800000"
+    android:widgetCategory="home_screen" />

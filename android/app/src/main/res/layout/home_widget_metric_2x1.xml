@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  2×1 单行档：一行的横向条（图标 / 标题 / 数值 / 单位）。
+  6 个 id 全部保留（渲染器按档位控制可见性）——单行档放不下第二行，
+  sub1/sub2 恒为 GONE，非 ok 态由渲染器把说明文案放进 value。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/home_widget_bg"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="10dp"
+    android:paddingEnd="10dp"
+    android:paddingTop="6dp"
+    android:paddingBottom="6dp">
+
+    <ImageView
+        android:id="@+id/widget_icon"
+        android:layout_width="14dp"
+        android:layout_height="14dp"
+        android:contentDescription="@null"
+        android:src="@drawable/home_widget_ic_electricity" />
+
+    <TextView
+        android:id="@+id/widget_label"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="5dp"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:text="@string/home_widget_electricity_short_label"
+        android:textColor="@color/home_widget_accent_electricity"
+        android:textSize="11sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/widget_value"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:includeFontPadding="false"
+        android:maxLines="1"
+        android:text="@string/home_widget_placeholder"
+        android:textColor="@color/home_widget_text_primary"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/widget_unit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="3dp"
+        android:text="@string/home_widget_placeholder"
+        android:textColor="@color/home_widget_text_secondary"
+        android:textSize="10sp" />
+
+    <TextView
+        android:id="@+id/widget_sub1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="6dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:text="@string/home_widget_placeholder"
+        android:textColor="@color/home_widget_text_secondary"
+        android:textSize="10sp"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/widget_sub2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="6dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:text="@string/home_widget_placeholder"
+        android:textColor="@color/home_widget_text_muted"
+        android:textSize="9sp"
+        android:visibility="gone" />
+</LinearLayout>

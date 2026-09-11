@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 桌面小组件配色（浅色模式）。
+     浅色值必须与 lib/design/feature_palette.dart 对齐（test/home_widget_snapshot_test.dart 有漂移守卫）；
+     深色值在同名文件 values-night/colors.xml 里给出，RemoteViews 由桌面宿主按系统 uiMode 自动取值。 -->
+<resources>
+    <!-- 卡片底色 -->
+    <color name="home_widget_bg">#FFFFFF</color>
+    <!-- 卡片描边 -->
+    <color name="home_widget_stroke">#E6E6E6</color>
+    <!-- 数值正文 -->
+    <color name="home_widget_text_primary">#212121</color>
+    <!-- 标签 / 副文本 -->
+    <color name="home_widget_text_secondary">#757575</color>
+    <!-- 更新时间等最弱文本 -->
+    <color name="home_widget_text_muted">#9E9E9E</color>
+    <!-- 电费点缀色（= FeaturePalette.electricity） -->
+    <color name="home_widget_accent_electricity">#F9A825</color>
+    <!-- 成绩点缀色（= FeaturePalette.grade） -->
+    <color name="home_widget_accent_grade">#2E7D32</color>
+    <!-- 数据一览点缀色（= FeaturePalette.dashboard） -->
+    <color name="home_widget_accent_dashboard">#C3282E</color>
+    <!-- 空态 / 失败态的置灰点缀色 -->
+    <color name="home_widget_accent_muted">#9E9E9E</color>
+</resources>
