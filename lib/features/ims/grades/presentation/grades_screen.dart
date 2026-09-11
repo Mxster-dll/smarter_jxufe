@@ -9,6 +9,7 @@ import 'package:smarter_jxufe/features/ims/curriculum/data/providers/curriculum_
 import 'package:smarter_jxufe/features/ims/grades/data/providers/grades_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/grades/data/providers/weighted_grade_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grade.dart';
+import 'package:smarter_jxufe/features/ims/grades/domain/grades_exclusions.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grades_query_params.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grades_result.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/time_limit.dart';
@@ -113,7 +114,8 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
   /// 首次进入时是否已触发自动后台刷新（检测与上次缓存的数据差异）。
   bool _initialAutoRefreshDone = false;
 
-  static const _excludedCourses = <String>{'军事训练', '创新创业实践活动', '毕业设计', '毕业论文'};
+  /// 统计中排除的课程（与分数估计模块共用同一份名单，见 grades_exclusions.dart）。
+  static const _excludedCourses = kExcludedGradeCourses;
 
   List<Grade> _sortGrades(List<Grade> grades, double avgScore) {
     if (_sortKey == null) return grades;
