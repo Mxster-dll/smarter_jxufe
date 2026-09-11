@@ -46,6 +46,18 @@ class DataCenterRepository {
     return _remoteDataSource.fetchNetworkBalance(freshSession);
   }
 
+  /// 仅拉取指定账户的图书借阅册数（轻量单卡查询，供蛟湖阅读学分进度取实际值）。
+  ///
+  /// 键为 `本周 / 本月 / 本年`。会话失效时刷新后重试一次；
+  /// 无数据显示 null（`fetchBorrowCounts` 内部 _guard 失败返回 null，不抛）。
+  Future<Map<String, int>?> fetchBorrowCountsOnly(String account) async {
+    final session = await _authRepository.getSession(account);
+    final first = await _remoteDataSource.fetchBorrowCounts(session);
+    if (first != null && first.isNotEmpty) return first;
+    final freshSession = await _authRepository.refreshSession(account);
+    return _remoteDataSource.fetchBorrowCounts(freshSession);
+  }
+
   /// 并行收集所有卡片；返回 (概览, 是否全部失败)。
   Future<(DataCenterOverview, bool)> _collect(DzjSession session) async {
     final api = _remoteDataSource;
