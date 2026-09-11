@@ -1,0 +1,228 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>图书借还-江西财经大学图书馆-入馆教育系统</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge，chrome=1">
+    <meta name="renderer" content="webkit">
+    <script src="/Scripts/jquery-1.10.2.min.js"></script>
+  
+    
+    <link href="/Areas/Web/pc/css/zsb/loading.css" rel="stylesheet" />
+    <link href="/Areas/Web/public/css/animate.css" rel="stylesheet" />
+    <link href="/Areas/Web/public/css/introjs.css" rel="stylesheet" />
+    <link href="/Areas/Web/public/css/gray.min.css" rel="stylesheet" />
+    <link href="/Areas/Web/public/css/iconfont.css" rel="stylesheet" />
+
+    
+    <script src="/Areas/Web/public/js/intro.js"></script>
+    <script src="/Areas/Web/public/js/jquery.gray.min.js"></script>
+    <script src="/Scripts/cookie.js"></script>
+    <script src="/Scripts/plugins/layer/layer.js"></script>
+    <script src="/Scripts/plugins/jquery-cookie/jquery.cookie-1.4.1.min.js"></script>
+    <script src="/Areas/Web/public/js/audio.js"></script>
+
+    <script>
+        $(function () {
+            $('#loadingbg').hide();
+            if ($('#isOpenguide').length > 0) {
+                var chapterNewGuide = getCookie('chapter-new-guide');
+                if (chapterNewGuide == '' || chapterNewGuide == '0') {
+                    introJs().setOptions({
+                        prevLabel: "上一步",
+                        nextLabel: "下一步",
+                        skipLabel: "跳过",
+                        doneLabel: "结束",
+                        keyboardNavigation: true,
+                        exitOnEsc: true
+                    }).oncomplete(function () {
+                        setCookie('chapter-new-guide', 1, 1);
+                    }).onexit(function () {
+                        setCookie('chapter-new-guide', 1, 1);
+                    }).start();
+                }
+            }
+
+        });
+        function exam(isVisitAll, nChapterId, examinations) {
+            if (isVisitAll == "false") {
+                layer.open({
+                    time: 2000,
+                    icon: 7,
+                    content: '同学，你还有线索没有发现^_^',
+                    anim: 6,
+                    title: false,
+                    btn: false,
+                    success: function (layero, index) {
+                        $('.cover').removeClass('hidden');
+                        //增加高亮样式及动画
+                        $('.chapter').each(function () {
+                            if (!$(this).hasClass('grayscale')) {
+                                $(this).addClass('highlight animated shake');
+                                if ($(this).parents('li').length > 0) {
+                                    $(this).parents('li').addClass('highlight animated shake');
+                                } else {
+                                    $(this).addClass('highlight animated shake');
+                                }
+
+                            }
+                        });
+
+                    }
+                });
+                return;
+            }
+            if (examinations == 1 || examinations == 4) {
+                if (isVisitAll == "true") {
+                    window.location.href = '/Web/Exam?cid=3d45bec2-f8b8-48a6-a168-868db11b43c0';
+                }
+            } else if (examinations == 2) {
+                if (isVisitAll == "true") {
+                    var idArr = nChapterId.split(',');
+                    if (idArr[1]) {
+                        window.location.href = '/web/Chapter/Index?id=' + idArr[1] + "&tid=" + $('#themeId').val();
+                    } else {
+                        window.location.href = '/web/Exam/Index?cid=' + idArr[0];
+                    }
+                }
+            }
+        }
+    </script>
+
+</head>
+
+
+<body>
+    <div id="loadingbg">
+        <div class="loading">
+            <div class="spinner">
+                <div class="spinner-container container1">
+                    <div class="circle1"></div>
+                    <div class="circle2"></div>
+                    <div class="circle3"></div>
+                    <div class="circle4"></div>
+                </div>
+                <div class="spinner-container container2">
+                    <div class="circle1"></div>
+                    <div class="circle2"></div>
+                    <div class="circle3"></div>
+                    <div class="circle4"></div>
+                </div>
+                <div class="spinner-container container3">
+                    <div class="circle1"></div>
+                    <div class="circle2"></div>
+                    <div class="circle3"></div>
+                    <div class="circle4"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <input type="hidden" value="" id="audio" />
+        <input type="hidden" value="5d037bb3-12c5-4554-a3c2-d128766dd025" id="themeId" />
+<link href="/Areas/Web/pc/css/ssb/all.css" rel="stylesheet"/>
+                    <!--遮罩层-->
+            <div class="cover hidden"></div>
+                    <!--返回按钮-->
+            <div class="back">
+                <a href="/Web/User?tcode=ssb">
+                    <div class="inner-circle">
+                        <span class="iconfont">&#xe65f;</span>
+                    </div>
+                </a>
+            </div>
+<link href="/Areas/Web/pc/css/ssb/chapter3.css" rel="stylesheet"/>
+                        <!--标题-->
+                <div class="biaoti3">
+                    <img class="dl" src="/Areas/web/pc/img/ssb/denglong.png">
+                    <img class="bt" src="/upload/image/D3C005DC62B4C2A403DFAB73D1A6DCC0.png">
+                    <div class="clearfix"></div>
+                </div>
+                <div style="position:absolute; width:30%; height:70%; right:14%; top:10%; overflow:auto;">
+                    <ul class="zjnr">
+                    <li>
+                        <a id="42efe8d6-3d97-480a-b243-35fe4b6f039a" href='/Web/Chapter/Content/42efe8d6-3d97-480a-b243-35fe4b6f039a?tid=5d037bb3-12c5-4554-a3c2-d128766dd025'>
+                            <img class="chapter grayscale " src="/upload/image/9B7E3B0FC1DAB8A61FF4437F46481648.png " />
+                        </a>
+                    </li>
+                    <li>
+                        <a id="c2e6f418-663f-442b-95c6-7896fe72e885" href='/Web/Chapter/Content/c2e6f418-663f-442b-95c6-7896fe72e885?tid=5d037bb3-12c5-4554-a3c2-d128766dd025'>
+                            <img class="chapter grayscale " src="/upload/image/40464C69F54A66105F4DD9FF9CB4DC21.png " />
+                        </a>
+                    </li>
+                    <li>
+                        <a id="82a8f1f1-41a1-4c67-bb18-97270d28f959" href='/Web/Chapter/Content/82a8f1f1-41a1-4c67-bb18-97270d28f959?tid=5d037bb3-12c5-4554-a3c2-d128766dd025'>
+                            <img class="chapter grayscale " src="/upload/image/CD431A97D5CB4229F01C4424EC5AAC13.png " />
+                        </a>
+                    </li>
+                    <li>
+                        <a id="0de85ab6-e0aa-4455-a413-5f10f3b2c34b" href='/Web/Chapter/Content/0de85ab6-e0aa-4455-a413-5f10f3b2c34b?tid=5d037bb3-12c5-4554-a3c2-d128766dd025'>
+                            <img class="chapter grayscale " src="/upload/image/C8176DDF5CBE03F87989E65D124AF6BD.png " />
+                        </a>
+                    </li>
+                    <li>
+                        <a id="59aa81e9-8b55-439a-ae9f-4b95bd3df8e8" href='/Web/Chapter/Content/59aa81e9-8b55-439a-ae9f-4b95bd3df8e8?tid=5d037bb3-12c5-4554-a3c2-d128766dd025'>
+                            <img class="chapter grayscale " src="/upload/image/A0478AAB380779DF78011FC95AFCDDF3.png " />
+                        </a>
+                    </li>
+                    <li>
+                        <a id="bfb466a3-00a3-4e21-8b20-e81e8198feec" href='/Web/Chapter/Content/bfb466a3-00a3-4e21-8b20-e81e8198feec?tid=5d037bb3-12c5-4554-a3c2-d128766dd025'>
+                            <img class="chapter grayscale " src="/upload/image/CDC82C5C014ABABF6DF3FF4E3BF2D314.png " />
+                        </a>
+                    </li>
+                    <li>
+                        <a id="f0bc71d6-9bbb-4a40-aad9-26c524d923c1" href='/Web/Chapter/Content/f0bc71d6-9bbb-4a40-aad9-26c524d923c1?tid=5d037bb3-12c5-4554-a3c2-d128766dd025'>
+                            <img class="chapter grayscale " src="/upload/image/3CC23C6DBC93485334C0B20ADCF3BF9B.png " />
+                        </a>
+                    </li>
+
+                    </ul>
+                </div>
+                        <!--小游戏图标-->
+                <div class="xyxtb">
+                                    <!--借书小游戏-->
+                            <a href="/Web/Game/JSGame">
+                                <img class="xyxt1" src="/areas/web/pc/img/ssb/xyx1.png" />
+                            </a>
+                                                        <!--索书号小游戏-->
+                            <a href="/Web/Game/SSHGame">
+                                <img class="xyxt2" src="/areas/web/pc/img/ssb/xyx2.png" />
+                            </a>
+
+
+                </div>
+                    <div class="btn_cg" onclick="exam('true','7f6d456b-2372-4b80-8e5a-0f6bf8c979c4,a529aa60-4246-4a33-9879-04f5ec6951e2',1)"><img src="/Areas/Web/pc/img/ssb/btn_cg.png"></div>
+
+
+    <script type="text/javascript">
+        $(function () {
+
+            //鼠标hover效果
+            $('.content_item').hover(function () {
+                $(this).addClass('animated pulse');
+            }, function () {
+                $(this).removeClass('animated pulse');
+            });
+            //鼠标hover效果
+            $('.item').hover(function () {
+                $(this).addClass('animated pulse');
+            }, function () {
+                $(this).removeClass('animated pulse');
+            });
+            $('.itemdiv').hover(function () {
+                $(this).addClass('animated pulse');
+            }, function () {
+                $(this).removeClass('animated pulse');
+            });
+            $('.leitai .itemSize').hover(function () {
+                $(this).addClass('animated pulse');
+            }, function () {
+                $(this).removeClass('animated pulse');
+            });
+
+        })
+    </script>
+</body>
+
+</html>
+

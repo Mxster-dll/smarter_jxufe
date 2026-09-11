@@ -1,0 +1,250 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>考试-江西财经大学图书馆-入馆教育系统</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge，chrome=1">
+    <meta name="renderer" content="webkit">
+    <script src="/Scripts/jquery-1.10.2.min.js"></script>
+  
+    
+    <style>
+        /*禁止复制，包括微信端，长按弹出的菜单也会被禁用*/
+        body {
+            -webkit-touch-callout: none;
+            /*系统默认菜单被禁用*/
+            -webkit-user-select: none;
+            /*webkit浏览器*/
+            -khtml-user-select: none;
+            /*早期浏览器*/
+            -moz-user-select: none;
+            /*火狐*/
+            -ms-user-select: none;
+            /*IE10*/
+            user-select: none;
+            -moz-user-select: -moz-none;
+            -moz-user-select: none;
+            -o-user-select: none;
+            -khtml-user-select: none;
+            -webkit-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        .ti p, .wt p, #tm p {
+            display: inline;
+        }
+    </style>
+
+    
+    <script src="/Scripts/plugins/layer/layer.js"></script>
+    <script src="/Scripts/plugins/art-template/template-web.js"></script>
+    <script src="/Scripts/plugins/jquery-cookie/jquery.cookie-1.4.1.min.js"></script>
+    <script src="/Areas/Web/public/js/audio.js"></script>
+
+    <script>
+
+        var timer = null;
+        //开始计时 函数
+        window.startTimer = function () {
+            var secondcount = 0;
+            timer = setInterval(function () {
+                secondcount += 1;
+                var minute = Math.floor((secondcount / 60) % 60);
+                var second = Math.floor(secondcount % 60);
+                $('#minute').text(minute < 10 ? "0" + minute : minute); //分钟
+                $('#second').text(second < 10 ? "0" + second : second); //秒
+            },
+                1000);
+        }
+
+        //停止计时 函数
+        window.stopTimer = function () {
+            clearInterval(timer);
+            timer = null;
+        }
+        //计时  开始
+        startTimer();
+        $(function () {
+            $('.djdiv  .box li').hover(function () {
+                $(this).addClass('animated pulse');
+            }, function () {
+                $(this).removeClass('animated pulse');
+            });
+        });
+    </script>
+
+</head>
+
+
+    <body>
+            <input type="hidden" value="f741c1aa-7c0f-45b1-80bc-2250bf2d3b04" id="examRecordDetailsId" />
+            <input type="hidden" value="7f6d456b-2372-4b80-8e5a-0f6bf8c979c4" id="zid" />
+            <input type="hidden" value="a4beb4bc-23db-436c-8321-34b5c1c486c2,9bbe6a81-df17-4548-8284-8d0c227fbe2b,0d9a7096-98bc-4c62-9a4a-ac018809dd84,c6deaa4c-435d-43cd-a0ef-f9966da6529d,2ca54da9-7f8f-4968-aed4-107c4d66329a" id="stIds" />
+            <input type="hidden" id="examinations" value="1 " />
+
+        <input type="hidden" value="" id="audio" />
+
+            <input type="hidden" value="5" id="eqLength" />
+<link href="/Areas/Web/pc/css/ssb/all.css" rel="stylesheet"/>
+<link href="/Areas/Web/pc/css/ssb/ksy.css" rel="stylesheet"/>
+                <script src="/Areas/Web/pc/js/ssb/jquery.stamper.js"></script>
+<script src="/Areas/Web/pc/js/ssb/exam.js"></script>
+                <!--等级模板-->
+                <script id="gr" type="text/html">
+                    <div class="text_ch">恭喜你，{{if NCid}} 本关胜利通过 {{else}}全部通关{{/if}}！</div>
+                    <div class="cgch" style="text-align: center;">
+                        <img src="{{gameRole.avatar0}}" />
+                    </div>
+                    <div class="chchch">{{gameRole.name}}</div>
+                    <div class="btn_xtc" style="text-align: center;margin-left: 0;">
+                        {{if PermissionRes}}
+                        <span style="line-height: 32px;color: red;font-size: 16px;">{{PermissionRes.Data.Msg}}</span>
+                        {{/if}}
+                        <div class="btn_xyg" style="margin: 0 auto;float: none;cursor: pointer;" id="btnNext">{{if NCid}} 下一关 {{else}}查看成绩{{/if}}</div>
+                        <div class="clearfix"></div>
+                    </div>
+                </script>
+                <!--选择道具模板-->
+                <!--选择道具模板-->
+                <script id="dj" type="text/html">
+                    {{each myPropsInfos}}
+                    <div class="djdjdj">
+                        <label>
+                            <img src="{{$value['path']}}">
+                            <div class="wzwzwz">{{$value['title']}}</div>
+                            <input name="djOptions" type="radio" value="{{$value['id']}}" />
+                        </label>
+                    </div>
+                    {{/each}}
+                </script>
+                <!--试题模板-->
+                <script id="shiti" type="text/html">
+                    <input type="hidden" id="txid" value="{{examQuestion.tid}}" />
+                    <input type="hidden" id="stid" value="{{examQuestion.id}}" />
+
+                    <!--多选题-->
+                    {{if examQuestion.tid.toUpperCase()=="9CEFF19F-54AC-48A8-A378-C8D81F3F52CE" }}
+                    <div class="ti"><span style="color:red;">多选题：</span><br /><br />{{#examQuestion.content}}</div>
+                    {{each examQuestionOptions}}
+                    <div class="xx">
+                        <label><input style="width: 16px; height: 16px;" name="options" type="checkbox" value="{{$value['id']}}" /><span class="code">{{$value['code']}}</span>：<span>{{$value['optioncontent']}}</span> </label>
+                    </div>
+                    {{/each}}
+                    <!--单选题-->
+                    {{else if examQuestion.tid.toUpperCase()=='883881FA-6BC4-48C8-B5A8-DD84255F411D'}}
+                    <div class="ti"><span style="color:red;">单选题：</span><br /><br />{{#examQuestion.content}}</div>
+                    {{each examQuestionOptions}}
+                    <div class="xx">
+                        <label><input style="width: 16px; height: 16px;" name="options" type="radio" value="{{$value['id']}}" /><span class="code">{{$value['code']}}</span>：<span>{{$value['optioncontent']}}</span> </label>
+                    </div>
+                    {{/each}}
+                    <!--判断题-->
+                    {{else if examQuestion.tid.toUpperCase()=='A5FFE86A-5F83-446E-B12E-73ADC1544E7C'}}
+                    <div class="ti"><span style="color:red;">判断题：</span><br /><br />{{#examQuestion.content}}</div>
+                    {{each examQuestionOptions}}
+                    <div class="xx">
+                        <label><input style="width: 16px; height: 16px;" name="options" type="radio" value="{{$value['id']}}" /><span class="code">{{$value['code']}}</span>：<span>{{$value['optioncontent']}}</span> </label>
+                    </div>
+                    {{/each}}
+                    <!--填空题-->
+                    {{else if examQuestion.tid.toUpperCase()=='C478855E-31EC-4E5B-9692-B9CFF77EDB8D'}}
+                    <div class="ti"><span style=    "color:red;">填空题：</span><br /><br />{{#examQuestion.content}}</div>
+                    <input type="text" id="tkInput" style="width:500px; height:48px; margin-top:20px;" />
+                    <!--抄写题-->
+                    {{else if examQuestion.tid.toUpperCase()=='F1D41F14-79FC-4BB0-A721-F7DA6E734A3D'}}
+                    <div class="ti"><span style="color:red;">抄写题：</span><br /><br />{{#examQuestion.content}}</div>
+                    <textarea id="cxTA" style="min-width:550px; min-height:120px; margin-top:10px;"></textarea>
+                    {{/if}}
+
+                </script>
+                <!--左边-->
+                <div class="left_part">
+                    <div class="top">
+                        <div class="jdt">
+                            <div class="progress">
+                                <div class="bar" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                        <div class="tx">
+                            <img src="/upload/image/D2CEDF1D6553A0241D5B42ADDFB3BDBD.png">
+                        </div>
+                        <div class="sfdj">
+                            <img src="/areas/web/pc/img/ssb/sfdj0.png">
+                        </div>
+                    </div>
+                    <div class="bottom">
+                        <div class="dj"></div>
+                        <ul class="djk" id="myDJ">
+                                <li id="2f93ae08-9851-446a-9ab6-ae4a8f1f81bb"><img src="/upload/image/65325FC3FA5AFCF8505C5E182ED339BC.png"></li>
+                        </ul>
+                    </div>
+                </div>
+                <!--点击查看提示弹出框-->
+                <div class="hui22"></div>
+                <div class="ckts_ts">
+                    <div class="cha1"><img src="/Areas/Web/pc/img/ssb/cha.png"></div>
+                    <div class="text_cktsnr" id="answertip"></div>
+                </div>
+                <!--右边-->
+                <div class="right_part">
+                    <div class="tm_nr" id="tmNr">
+                        <div style="color: #d26c00;letter-spacing: 2px;width: 100%;position: relative;top:3%; text-align:right; font-size:18px;" id="tmCount"></div>
+                        <div id="tm"></div>
+                        <div class="stamper">
+                            <div class="btn_tj" id="btnSubmit">提交</div>
+                            <div class="btn_qd" id="qd" style="display: none;">下一题</div>
+                            <div class="cg_cntg t1"></div>
+                            <div class="zqda" id="correctAns" style="display: none;"></div>
+                            <div class="jx" id="jx"></div>
+                        </div>
+                    </div>
+                        <!--查看提示按钮-->
+                        <div class="btn_ckts">
+                            <img src="/Areas/Web/pc/img/ssb/ckts_btn.png" class="ckts_xtb">
+                            <div class="ckts_wz">查看提示</div>
+                        </div>
+                    <div class="shijian" id="time">
+                        <span class="shijian1" id="minute">00</span>
+                        <span class="shijian2">:</span>
+                        <span class="shijian3" id="second">00</span>
+                    </div>
+                </div>
+        <div class="hui" id="hui" style="display: none;"></div>
+        <!--是否选择道具弹出框-->
+        <div class="xzjndj_bg1" style="display: none;" id="selectDJ">
+            <div class="text_xz">选择道具</div>
+            <div class="djxz" id="djUl">
+                
+
+                <div class="clearfix"></div>
+            </div>
+            <div style="font-size: 16px;color: red; text-align:center;">请选择一个道具，重新答题。</div>
+            <div class="btn_ann">
+                <div class="btn_qdsy" id="djSubmit">确定</div>
+                <div class="btn_bsy" id="djNo">不使用</div>
+                <div class="clearfix"></div>
+            </div>
+        </div>
+        <!--获得道具弹出框-->
+        <div class="jn_djtc" id="djAlert" style="display: none;">
+            <div class="hddj" id="djmc"></div>
+            <div id="djimg"></div>
+
+            <div class="btn_lq djtc_cha">领取</div>
+        </div>
+        <!--等级弹框-->
+        <div class="ch_bg" style="display: none;" id="gameRole">
+
+        </div>
+
+
+
+
+    </body>
+
+
+</html>
+

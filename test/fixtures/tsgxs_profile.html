@@ -1,0 +1,200 @@
+<!doctype html>
+
+<html>
+
+<head>
+
+    <meta charset="utf-8">
+
+    <title>个人资料-个人中心-江西财经大学图书馆-入馆教育系统</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge，chrome=1">
+
+    <meta name="renderer" content="webkit">
+
+    <script src="/Scripts/jquery-1.10.2.min.js"></script>
+
+  
+
+    
+
+    <link href="/css/pc-style-personal_center" rel="stylesheet"/>
+
+
+
+
+
+    
+
+
+
+
+
+</head>
+
+
+
+
+
+<link href="/Areas/Web/pc/css/ssb/personal_center.css" rel="stylesheet" />
+
+<script>
+
+    $(function () {
+
+        var href = window.location.pathname;
+
+
+
+        if (href != '' && href != '#') {
+
+            $('#operatelist a').each(function () {
+
+                $(this).children('li').removeClass('content');
+
+                if (href == $(this).attr('href')) {
+
+                    $(this).children('li').addClass('content');
+
+                }
+
+            });
+
+        }
+
+    });
+
+</script>
+
+<!--侧边栏-->
+
+
+
+<div class="left_nav">
+
+    <div class="zhuangshiborder">
+
+        <a href="/Web/User" class="djdl">
+
+                <div class="zhuangshibg">
+
+                    <img class="touxiang " src="/upload/image/AF8315D35E84A93576A8F698508803A5.png">
+
+                </div>
+
+            <div class="wenzi">
+
+                <span title="返回首页">返回首页</span>
+
+            </div>
+
+        </a>
+
+    </div>
+
+
+
+    <ul class="operatelist" id="operatelist">
+
+        <a href="/Web/Center/Info">
+
+            <li title="个人资料">
+
+                个人资料
+
+            </li>
+
+        </a>
+
+        <a href="/Web/Center/MyGrades">
+
+            <li title="我的成绩">
+
+                我的成绩
+
+            </li>
+
+        </a>
+
+        <a href="/Web/Center/Top">
+
+            <li title="排行榜">
+
+                排行榜
+
+            </li>
+
+        </a>
+
+
+
+                                            </ul>
+
+</div>
+
+
+
+
+
+
+
+<div class="back">
+
+    <a href="/Web/User">
+
+        <div class="inner-circle">
+
+            <span class="fhsy">返回<br>首页</span>
+
+        </div>
+
+    </a>
+
+</div>
+
+<div class="nr_grzl">
+
+    <h3>个人资料</h3>
+
+    <div class="grzl">
+
+        <div class="qbwz"><div class="left_wz"> 账号：</div><span> 2000000000</span></div>
+
+        <div class="qbwz"><div class="left_wz">姓名：</div><span> 某同学</span></div>
+
+                <div class="qbwz">
+
+                    <div class="left_wz">
+
+                        学院：
+
+                    </div>
+
+                    <span>计算机与人工智能学院（格里菲斯数智学院）、财经大数据教育部工程研究中心（培育）</span>
+
+                </div>
+
+
+
+
+
+
+
+
+
+
+
+    </div>
+
+
+
+</div>
+
+
+
+</html>
+
+
+
