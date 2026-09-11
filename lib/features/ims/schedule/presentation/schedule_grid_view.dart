@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
 
+import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/class_time.dart';
+import 'package:smarter_jxufe/features/ims/schedule/domain/reschedule.dart';
+import 'package:smarter_jxufe/features/ims/schedule/domain/reschedule_engine.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/schedule_entry.dart';
-
-/// 课表网格中某个格子（时段槽位）包含的数据
-class _SlotData {
-  final ScheduleEntry entry;
-  final ClassTime classTime;
-  const _SlotData(this.entry, this.classTime);
-}
+import 'package:smarter_jxufe/features/ims/schedule/presentation/reschedule_marks.dart';
 
 /// 7×12 课表网格组件
 ///
@@ -16,14 +13,38 @@ class _SlotData {
 /// - 12 行 = 第1节至第12节
 /// - 课程可纵向跨行（如3-5节跨3行）
 /// - 相同时段多门课（单双周冲突）垂直平分该格
+///
+/// [week] 为空时是**整学期模板**（把各周次叠加显示，保持历史行为），
+/// 非空时是**周视图**：按该教学周过滤课次，并完整应用调课/停课/补课。
 class ScheduleGridView extends StatelessWidget {
   final List<ScheduleEntry> entries;
+
+  /// 本学期调课记录。
+  final List<Reschedule> reschedules;
+
+  /// 展示的教学周；null = 整学期模板。
+  final int? week;
+
+  /// 该教学周的周一（用于表头显示日期）。
+  final DateTime? weekMonday;
+
+  /// 点某一节课（原课/调课/停课/补课格都可点）。
+  final ValueChanged<EffectiveClass>? onTapClass;
+
+  /// 点空白格子（用于「在这里补一节课」）：参数为星期几(1-7)与起始节次。
+  final void Function(DayOfWeek day, int period)? onTapEmptySlot;
+
   final VoidCallback? onToggle;
   final bool isHorizontal;
 
   const ScheduleGridView({
     super.key,
     required this.entries,
+    this.reschedules = const [],
+    this.week,
+    this.weekMonday,
+    this.onTapClass,
+    this.onTapEmptySlot,
     this.onToggle,
     this.isHorizontal = false,
   });
@@ -72,6 +93,10 @@ class ScheduleGridView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final grid = _buildGrid();
+    // 整学期视图不展开单次调课，改为在原课位上出角标
+    final onceMarks = week == null
+        ? onceMarksBySlot(reschedules)
+        : const <String, int>{};
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -93,7 +118,12 @@ class ScheduleGridView extends StatelessWidget {
                 _buildPeriodLabelColumn(),
                 ...List.generate(
                   7,
-                  (day) => _buildDayColumn(day, grid[day], colWidth: colWidth),
+                  (day) => _buildDayColumn(
+                    day,
+                    grid[day],
+                    colWidth: colWidth,
+                    onceMarks: onceMarks,
+                  ),
                 ),
               ],
             ),
@@ -184,8 +214,9 @@ class ScheduleGridView extends StatelessWidget {
 
   Widget _buildDayColumn(
     int day,
-    Map<int, List<_SlotData>> dayData, {
+    Map<int, List<EffectiveClass>> dayData, {
     required double colWidth,
+    required Map<String, int> onceMarks,
   }) {
     // 预计算每个节次是否被上方跨行课程占用
     final occupied = <int, bool>{};
@@ -201,7 +232,7 @@ class ScheduleGridView extends StatelessWidget {
       final slots = dayData[period];
       if (slots == null || slots.isEmpty) {
         widgets.add(
-          _buildEmptyCell(isBeforeNoon: period == 5, colWidth: colWidth),
+          _buildEmptyCell(day: day, period: period, colWidth: colWidth),
         );
         continue;
       }
@@ -221,14 +252,12 @@ class ScheduleGridView extends StatelessWidget {
           day: day,
           period: period,
           colWidth: colWidth,
+          onceMarks: onceMarks,
         ),
       );
     }
 
-    return SizedBox(
-      width: colWidth,
-      child: Column(children: widgets),
-    );
+    return SizedBox(width: colWidth, child: Column(children: widgets));
   }
 
   // ─── 表头 ─────────────────────────────────────────────────────
@@ -236,6 +265,8 @@ class ScheduleGridView extends StatelessWidget {
   Widget _buildDayHeader(int day, {required double colWidth}) {
     const names = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
     final isWeekend = day >= 5;
+    final date = weekMonday?.add(Duration(days: day));
+
     return Container(
       width: colWidth,
       height: _headerHeight,
@@ -246,13 +277,29 @@ class ScheduleGridView extends StatelessWidget {
           bottom: BorderSide(color: Colors.white24, width: _borderWidth),
         ),
       ),
-      child: Text(
-        names[day],
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 14,
-          fontWeight: FontWeight.bold,
-        ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            names[day],
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: date == null ? 14 : 13,
+              fontWeight: FontWeight.bold,
+              height: 1.1,
+            ),
+          ),
+          if (date != null)
+            Text(
+              '${date.month}/${date.day}',
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 9,
+                height: 1.2,
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -260,10 +307,12 @@ class ScheduleGridView extends StatelessWidget {
   // ─── 空节次格子 ───────────────────────────────────────────────
 
   Widget _buildEmptyCell({
-    required bool isBeforeNoon,
+    required int day,
+    required int period,
     required double colWidth,
   }) {
-    return Container(
+    final isBeforeNoon = period == 5;
+    final cell = Container(
       width: colWidth,
       height: _cellMinHeight,
       decoration: BoxDecoration(
@@ -274,26 +323,51 @@ class ScheduleGridView extends StatelessWidget {
         color: isBeforeNoon ? Colors.grey.shade50 : null,
       ),
     );
+    if (onTapEmptySlot == null) return cell;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => onTapEmptySlot!(DayOfWeek.values[day], period),
+      child: cell,
+    );
   }
 
   // ─── 课程格子 ─────────────────────────────────────────────────
 
   Widget _buildCourseCell({
-    required List<_SlotData> slots,
+    required List<EffectiveClass> slots,
     required int span,
     required int day,
     required int period,
     required double colWidth,
+    required Map<String, int> onceMarks,
   }) {
-    final entry = slots.first.entry;
-    final classTime = slots.first.classTime;
+    final first = slots.first;
+    final entry = first.entry;
+    final classTime = first.classTime;
+    final mark = first.mark;
 
-    // 根据课程代码确定颜色索引
+    // 颜色：调课后的课沿用课程自身颜色，便于认出是哪门课
     final colorIndex = entry.courseCode.hashCode.abs() % _coursePalette.length;
-    final bgColor = _coursePalette[colorIndex];
-    final textColor = _textPalette[colorIndex];
+    var bgColor = _coursePalette[colorIndex];
+    var textColor = _textPalette[colorIndex];
 
-    // 计算格子高度：跨 N 节
+    switch (mark) {
+      case EffectiveMark.movedAway:
+        bgColor = Colors.grey.shade50;
+        textColor = Colors.grey.shade600;
+      case EffectiveMark.cancelled:
+        bgColor = Colors.grey.shade100;
+        textColor = Colors.grey.shade600;
+      case EffectiveMark.extra:
+        if (first.reschedule?.courseCode.isEmpty ?? true) {
+          bgColor = const Color(0xFFE8F5E9);
+          textColor = FeaturePalette.makeUpClass;
+        }
+      case EffectiveMark.normal:
+      case EffectiveMark.moved:
+        break;
+    }
+
     final cellHeight = _cellMinHeight * span;
 
     // 单双周标签
@@ -301,12 +375,25 @@ class ScheduleGridView extends StatelessWidget {
         ? ' (${classTime.weekParity.displayName})'
         : '';
 
-    return Container(
+    // 角标：调 / 停 / 补；整学期视图下若无标记则用「单次调整」提示角标
+    final badge =
+        rescheduleBadge(mark) ??
+        rescheduleOnceBadge(
+          onceMarks[classSlotKey(entry.courseCode, classTime)] ?? 0,
+        );
+
+    final card = Container(
       width: colWidth,
       height: cellHeight,
       decoration: BoxDecoration(
         color: bgColor,
         border: Border(
+          top: mark == EffectiveMark.moved
+              ? const BorderSide(
+                  color: FeaturePalette.reschedule,
+                  width: 2,
+                )
+              : BorderSide.none,
           bottom: BorderSide(color: Colors.grey.shade300, width: _borderWidth),
           right: BorderSide(color: Colors.grey.shade300, width: _borderWidth),
         ),
@@ -316,58 +403,119 @@ class ScheduleGridView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // 课程名称
-          Text(
-            entry.courseName,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: textColor,
-              height: 1.2,
-            ),
-            maxLines: span > 1 ? 3 : 1,
-            overflow: TextOverflow.ellipsis,
+          // 课程名称 + 角标
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Flexible(
+                child: Text(
+                  entry.courseName,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                    height: 1.2,
+                    decoration: mark == EffectiveMark.cancelled ||
+                            mark == EffectiveMark.movedAway
+                        ? TextDecoration.lineThrough
+                        : null,
+                  ),
+                  maxLines: span > 1 ? 3 : 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (badge != null) ...[const SizedBox(width: 4), badge],
+            ],
           ),
           const SizedBox(height: 2),
-          // 教师（始终显示）
-          Text(
-            entry.teacherName,
-            style: TextStyle(fontSize: 10, color: textColor.withAlpha(190)),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          // 教室：节数多时分两行更清晰
-          if (span >= 2) ...[
-            const SizedBox(height: 2),
+
+          if (mark == EffectiveMark.movedAway) ...[
             Text(
-              classTime.classroom,
-              style: TextStyle(fontSize: 10, color: textColor.withAlpha(180)),
+              '已调至 ${rescheduleTargetShort(first.reschedule)}',
+              style: TextStyle(fontSize: 10, color: textColor, height: 1.25),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ] else if (mark == EffectiveMark.cancelled) ...[
+            Text(
+              '本次停课',
+              style: TextStyle(fontSize: 10, color: textColor, height: 1.25),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-          ] else
-            // span=1：教室和教师挤一行
+            if (span >= 2)
+              Text(
+                '${classTime.startWeek}-${classTime.endWeek}周$weekLabel',
+                style: TextStyle(fontSize: 9, color: textColor, height: 1.25),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+          ] else ...[
+            // 教师（始终显示）
             Text(
-              classTime.classroom,
-              style: TextStyle(fontSize: 9, color: textColor.withAlpha(150)),
+              first.teacherName,
+              style: TextStyle(
+                fontSize: 10,
+                color: textColor.withAlpha(190),
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-          // 周次信息（2节以上显示）
-          if (span >= 2)
-            Text(
-              '${classTime.startWeek}-${classTime.endWeek}周$weekLabel',
-              style: TextStyle(fontSize: 9, color: textColor.withAlpha(140)),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          // 如果同一格有多个 slot（单双周不同教室），分隔显示
+            // 教室：节数多时分两行更清晰
+            if (span >= 2) ...[
+              const SizedBox(height: 2),
+              Text(
+                classTime.classroom,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: textColor.withAlpha(180),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ] else
+              Text(
+                classTime.classroom,
+                style: TextStyle(
+                  fontSize: 9,
+                  color: textColor.withAlpha(150),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            // 周次 / 调课来源（单节格子放不下第 4 行，只在跨节格子里显示）
+            if (mark == EffectiveMark.moved && span >= 2)
+              Text(
+                '调自 ${rescheduleOriginShort(first.reschedule)}',
+                style: TextStyle(
+                  fontSize: 9,
+                  color: FeaturePalette.reschedule,
+                  height: 1.25,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              )
+            else if (span >= 2)
+              Text(
+                '${classTime.startWeek}-${classTime.endWeek}周$weekLabel',
+                style: TextStyle(fontSize: 9, color: textColor.withAlpha(140)),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+          ],
+
+          // 同一格有多个 slot（单双周不同教室）时分隔显示
           if (slots.length > 1) ...[
             const Divider(height: 4, thickness: 0.5),
             for (final s in slots.skip(1))
               Text(
-                '${s.classTime.weekParity.displayName}: ${s.classTime.classroom}',
-                style: TextStyle(fontSize: 9, color: textColor.withAlpha(160)),
+                s.mark == EffectiveMark.normal
+                    ? '${s.classTime.weekParity.displayName}: ${s.classTime.classroom}'
+                    : '${s.mark.name}: ${s.classTime.classroom}',
+                style: TextStyle(
+                  fontSize: 9,
+                  color: textColor.withAlpha(160),
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -375,25 +523,36 @@ class ScheduleGridView extends StatelessWidget {
         ],
       ),
     );
+
+    if (onTapClass == null) return card;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => onTapClass!(first),
+      child: card,
+    );
   }
 
   // ─── 数据预处理 ───────────────────────────────────────────────
 
   /// 构建 7 天 × 12 节次的网格
   ///
-  /// 返回 `List<Map<int, List<_SlotData>>>`，索引为 day(0-6)，
-  /// Map 的 key 为起始节次(1-12)，value 为该节次开始的课程列表
-  List<Map<int, List<_SlotData>>> _buildGrid() {
-    final grid = List.generate(7, (_) => <int, List<_SlotData>>{});
+  /// 返回 `List<Map<int, List<EffectiveClass>>>`，索引为 day(0-6)，
+  /// Map 的 key 为起始节次(1-12)，value 为该节次开始的课节列表。
+  List<Map<int, List<EffectiveClass>>> _buildGrid() {
+    final grid = List.generate(7, (_) => <int, List<EffectiveClass>>{});
 
-    for (final entry in entries) {
-      for (final ct in entry.classTimes) {
-        final day = ct.dayOfWeek.dayIndex - 1; // 0-based
-        final period = ct.startPeriod;
+    final classes = effectiveClasses(
+      entries: entries,
+      reschedules: reschedules,
+      week: week,
+    );
 
-        grid[day].putIfAbsent(period, () => []);
-        grid[day][period]!.add(_SlotData(entry, ct));
-      }
+    for (final c in classes) {
+      final day = c.dayIndex - 1; // 0-based
+      final period = c.startPeriod;
+
+      grid[day].putIfAbsent(period, () => []);
+      grid[day][period]!.add(c);
     }
 
     return grid;

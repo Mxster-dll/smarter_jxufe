@@ -58,4 +58,22 @@ class WindowsNotificationService extends NotificationService {
       );
     } catch (_) {}
   }
+
+  /// Windows 通知不支持常驻/进度/计时器，实况窗在桌面端为**空操作**。
+  ///
+  /// 桌面端仅用于开发期验证界面与状态机（`flutter run -d windows`），
+  /// 实况窗的真实形态需在 Android 设备上验证。
+  @override
+  void showLiveClass({
+    required String title,
+    required String body,
+    required DateTime countdownTo,
+    int elapsedMinutes = 0,
+    int totalMinutes = 0,
+  }) {
+    debugPrint('🪟 Windows 不支持实况窗（$title · $body）');
+  }
+
+  @override
+  void cancelLiveClass() {}
 }
