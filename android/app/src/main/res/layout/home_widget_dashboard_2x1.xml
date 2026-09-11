@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  仪表盘（数据一览）2×1：2 列 × 1 行 = 2 格，
+  展示首页「数据一览」的 2 项（电费 / 网费 / 加权 / 志愿 / 今日课程）。
+  格子 id 约定 dash_cell<i> / dash_cell<i>_label / dash_cell<i>_value（i 从 1 起，左上到右下），
+  行容器 dash_row1 / dash_row2，页脚 dash_footer，整卡空态 dash_message —— 渲染器按 id 取值。
+  颜色全部走 @color 资源，深色模式由 values-night 接管。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/home_widget_bg"
+    android:orientation="vertical"
+    android:padding="10dp">
+
+    <LinearLayout
+        android:id="@+id/dash_row1"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal">        <LinearLayout
+            android:id="@+id/dash_cell1"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+            <TextView
+                android:id="@+id/dash_cell1_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="@string/home_widget_placeholder"
+                android:textColor="@color/home_widget_text_secondary"
+                android:textSize="10sp" />
+
+            <TextView
+                android:id="@+id/dash_cell1_value"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="3dp"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="@string/home_widget_placeholder"
+                android:textColor="@color/home_widget_text_primary"
+                android:textSize="13.0sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/dash_cell2"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+        <TextView
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
+            android:background="@color/home_widget_stroke" />
+
+            <TextView
+                android:id="@+id/dash_cell2_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="@string/home_widget_placeholder"
+                android:textColor="@color/home_widget_text_secondary"
+                android:textSize="10sp" />
+
+            <TextView
+                android:id="@+id/dash_cell2_value"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="3dp"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="@string/home_widget_placeholder"
+                android:textColor="@color/home_widget_text_primary"
+                android:textSize="13.0sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/dash_message"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:text="@string/home_widget_placeholder"
+        android:textColor="@color/home_widget_text_secondary"
+        android:textSize="12sp"
+        android:visibility="gone" />
+</LinearLayout>

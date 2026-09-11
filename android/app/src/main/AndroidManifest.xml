@@ -1,6 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <!-- 小组件周期刷新任务需要「重启后自动恢复」（JobInfo.setPersisted） -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <application
         android:label="smarter_jxufe"
         android:name="${applicationName}"
@@ -28,6 +30,282 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- 桌面小组件：数据一览 / 电费余额 / 课程加权，各 8 档尺寸
+             （2×1 / 3×1 / 4×1 / 5×1 / 2×2 / 3×2 / 4×2 / 5×2）＝ 24 个独立 receiver。
+             每档一个独立 receiver —— 桌面（尤其华为/HarmonyOS）不保证支持缩放，
+             拆成多档时用户在添加面板里能直接选到想要的尺寸。
+             exported=false：APPWIDGET_UPDATE 由系统（system uid）显式下发，
+             非导出接收器同样能收到，避免第三方应用伪造刷新广播。 -->
+        <receiver
+            android:name=".widget.ElectricityWidget2x1"
+            android:exported="false"
+            android:label="@string/home_widget_electricity_2x1_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/home_widget_electricity_2x1_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.ElectricityWidget3x1"
+            android:exported="false"
+            android:label="@string/home_widget_electricity_3x1_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/home_widget_electricity_3x1_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.ElectricityWidget4x1"
+            android:exported="false"
+            android:label="@string/home_widget_electricity_4x1_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/home_widget_electricity_4x1_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.ElectricityWidget5x1"
+            android:exported="false"
+            android:label="@string/home_widget_electricity_5x1_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/home_widget_electricity_5x1_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.ElectricityWidget2x2"
+            android:exported="false"
+            android:label="@string/home_widget_electricity_2x2_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/home_widget_electricity_2x2_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.ElectricityWidget3x2"
+            android:exported="false"
+            android:label="@string/home_widget_electricity_3x2_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/home_widget_electricity_3x2_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.ElectricityWidget4x2"
+            android:exported="false"
+            android:label="@string/home_widget_electricity_4x2_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/home_widget_electricity_4x2_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.ElectricityWidget5x2"
+            android:exported="false"
+            android:label="@string/home_widget_electricity_5x2_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/home_widget_electricity_5x2_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.GradeWidget2x1"
+            android:exported="false"
+            android:label="@string/home_widget_grade_2x1_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/home_widget_grade_2x1_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.GradeWidget3x1"
+            android:exported="false"
+            android:label="@string/home_widget_grade_3x1_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/home_widget_grade_3x1_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.GradeWidget4x1"
+            android:exported="false"
+            android:label="@string/home_widget_grade_4x1_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/home_widget_grade_4x1_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.GradeWidget5x1"
+            android:exported="false"
+            android:label="@string/home_widget_grade_5x1_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/home_widget_grade_5x1_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.GradeWidget2x2"
+            android:exported="false"
+            android:label="@string/home_widget_grade_2x2_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/home_widget_grade_2x2_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.GradeWidget3x2"
+            android:exported="false"
+            android:label="@string/home_widget_grade_3x2_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/home_widget_grade_3x2_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.GradeWidget4x2"
+            android:exported="false"
+            android:label="@string/home_widget_grade_4x2_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/home_widget_grade_4x2_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.GradeWidget5x2"
+            android:exported="false"
+            android:label="@string/home_widget_grade_5x2_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/home_widget_grade_5x2_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.DashboardWidget2x1"
+            android:exported="false"
+            android:label="@string/home_widget_dashboard_2x1_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/home_widget_dashboard_2x1_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.DashboardWidget3x1"
+            android:exported="false"
+            android:label="@string/home_widget_dashboard_3x1_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/home_widget_dashboard_3x1_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.DashboardWidget4x1"
+            android:exported="false"
+            android:label="@string/home_widget_dashboard_4x1_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/home_widget_dashboard_4x1_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.DashboardWidget5x1"
+            android:exported="false"
+            android:label="@string/home_widget_dashboard_5x1_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/home_widget_dashboard_5x1_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.DashboardWidget2x2"
+            android:exported="false"
+            android:label="@string/home_widget_dashboard_2x2_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/home_widget_dashboard_2x2_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.DashboardWidget3x2"
+            android:exported="false"
+            android:label="@string/home_widget_dashboard_3x2_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/home_widget_dashboard_3x2_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.DashboardWidget4x2"
+            android:exported="false"
+            android:label="@string/home_widget_dashboard_4x2_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/home_widget_dashboard_4x2_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.DashboardWidget5x2"
+            android:exported="false"
+            android:label="@string/home_widget_dashboard_5x2_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/home_widget_dashboard_5x2_info" />
+        </receiver>
+        <!-- 小组件后台刷新：headless FlutterEngine 执行 Dart 入口并更新数据。
+             BIND_JOB_SERVICE 权限是 JobService 的强制要求。 -->
+        <service
+            android:name=".widget.WidgetRefreshJobService"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
