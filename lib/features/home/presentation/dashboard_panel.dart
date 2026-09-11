@@ -10,6 +10,7 @@ import 'package:smarter_jxufe/features/comprehensive_service/presentation/volunt
 import 'package:smarter_jxufe/features/electricity/data/models/electricity_models.dart';
 import 'package:smarter_jxufe/features/electricity/data/providers/electricity_providers.dart';
 import 'package:smarter_jxufe/features/electricity/presentation/electricity_screen.dart';
+import 'package:smarter_jxufe/features/home_widget/data/home_widget_sync.dart';
 import 'package:smarter_jxufe/features/ims/grades/data/providers/weighted_grade_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/weighted_grade.dart';
 import 'package:smarter_jxufe/features/ims/menu/domain/ims_tab.dart';
@@ -18,6 +19,8 @@ import 'package:smarter_jxufe/features/ims/splash/presentation/ims_splash_screen
 import 'package:smarter_jxufe/features/net_fee/data/providers/net_fee_providers.dart';
 import 'package:smarter_jxufe/features/net_fee/domain/net_fee_models.dart';
 import 'package:smarter_jxufe/features/net_fee/presentation/net_fee_screen.dart';
+import 'package:smarter_jxufe/features/school_calendar/data/providers/wxcal_providers.dart';
+import 'package:smarter_jxufe/features/school_calendar/domain/school_term.dart';
 
 /// 今日课程条目（从课表按「今天」过滤后抽出）。
 class TodayCourse {
@@ -36,13 +39,6 @@ class TodayCourse {
   });
 
   String get periodLabel => '$startPeriod-$endPeriod节';
-}
-
-/// 当前学年学期（用于课表检索）：9 月 ~ 次年 2 月 = 上半学年（semester 0），
-/// 3 ~ 8 月 = 下半学年（semester 1），学年起始年随日期回推。
-(int year, String semester) currentTermOf(DateTime now) {
-  if (now.month >= 3 && now.month <= 8) return (now.year - 1, '1');
-  return (now.year, '0');
 }
 
 String todayLabel(DateTime now) {
@@ -88,11 +84,15 @@ final dashboardTodayCoursesProvider = FutureProvider<List<TodayCourse>>(
     final account = ref.watch(currentAccountProvider);
     if (account.isEmpty) return const [];
     final now = DateTime.now();
-    final (year, semester) = currentTermOf(now);
+    // 当前学期口径 = 课表页同一函数（校历区间优先，假期取下一学期）。
+    final term = currentSchoolTerm(
+      now,
+      terms: ref.watch(offlineSemesterTermsProvider),
+    );
     final repository = await ref.watch(scheduleRepositoryProvider.future);
     final entries = await repository.getSchedule(
-      year: '$year',
-      semester: semester,
+      year: '${term.xn}',
+      semester: '${term.xq}',
       studentId: account,
     );
     final weekday = now.weekday; // 1=周一 … 7=周日
@@ -128,12 +128,16 @@ class DashboardPanel extends ConsumerWidget {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
   }
 
-  void _refresh(WidgetRef ref) {
+  Future<void> _refresh(WidgetRef ref) async {
     ref.invalidate(dashboardElectricityProvider);
     ref.invalidate(dashboardVolunteerHoursProvider);
     ref.invalidate(weightedGradeRankingProvider(1));
     ref.invalidate(dashboardTodayCoursesProvider);
     ref.invalidate(netFeeSummaryProvider);
+    // 顺手同步桌面小组件：用户点「刷新」时，桌面上的数字也应跟着更新。
+    final widgetSync = ref.read(homeWidgetSyncProvider);
+    await widgetSync.pushAuthSnapshot();
+    await widgetSync.syncAll(force: true);
   }
 
   @override

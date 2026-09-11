@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/features/school_calendar/data/providers/school_calendar_providers.dart';
+import 'package:smarter_jxufe/features/school_calendar/data/providers/wxcal_providers.dart';
 import 'package:smarter_jxufe/features/tice/data/models/tice_models.dart';
 import 'package:smarter_jxufe/features/tice/data/providers/tice_providers.dart';
 import 'package:smarter_jxufe/features/tice/data/tice_remote_datasource.dart';
@@ -19,8 +21,12 @@ class TiceScreen extends ConsumerStatefulWidget {
 }
 
 class _TiceScreenState extends ConsumerState<TiceScreen> {
-  /// 查询年度（窗口日期取该年 11-01），默认去年（当季秋季体测通常次年才出）。
-  late int _year = DateTime.now().year - 1;
+  /// 查询学年（**学年起始年**；请求窗口日期取该学年 `11-01`）。
+  ///
+  /// 默认 = 当前学年（校历区间优先，见 `currentSchoolTerm`），与课表 / 校历
+  /// 同一口径；早先写死「今年 − 1」，新学年一开学（9 月）默认就落到上一学年，
+  /// 与页面上的「$y 学年」标签语义不符。
+  late int _year;
 
   /// 入学年份（体测查询下界）；解析出前为 null（回退固定近 5 年窗口）。
   int? _enrollYear;
@@ -35,23 +41,31 @@ class _TiceScreenState extends ConsumerState<TiceScreen> {
   TiceRemoteDataSource get _dataSource =>
       ref.read(ticeRemoteDataSourceProvider);
 
+  /// 当前学年起始年（校历区间优先：假期取下一学年）。
+  int get _currentXn => currentSchoolTerm(
+    DateTime.now(),
+    terms: ref.read(offlineSemesterTermsProvider),
+  ).xn;
+
   @override
   void initState() {
     super.initState();
+    _year = _currentXn;
     _load();
     _resolveEnrollYear();
   }
 
-  /// 解析入学年份：成功后年度条按「入学年…今年」渲染；
+  /// 解析入学年份：成功后年度条按「入学年…当前学年」渲染；
   /// 若默认学年早于入学年（如刚入学新生），校正默认学年并重查。
   Future<void> _resolveEnrollYear() async {
     final enrollYear = await resolveTiceEnrollYear(ref);
     if (!mounted) return;
-    final now = DateTime.now().year;
-    final inRange = enrollYear == null || (enrollYear <= now && _year >= enrollYear);
+    final maxYear = _currentXn;
+    final inRange =
+        enrollYear == null || (enrollYear <= maxYear && _year >= enrollYear);
     setState(() => _enrollYear = enrollYear);
     if (enrollYear == null) return;
-    if (!inRange && _year < enrollYear && enrollYear <= now) {
+    if (!inRange && _year < enrollYear && enrollYear <= maxYear) {
       _year = enrollYear;
       await _load();
     }
@@ -118,13 +132,16 @@ class _TiceScreenState extends ConsumerState<TiceScreen> {
     );
   }
 
-  /// 测试年度切换条（入学年份…今年；入学年未知时回退近 5 年窗口）。
+  /// 测试学年切换条（入学年份…当前学年；入学年未知时回退近 5 年窗口）。
+  ///
+  /// 上界取**当前学年**而非自然年：1~8 月的自然年已进入下一日历年，
+  /// 但学年尚未结束（如 2027-01 仍属 2026 学年），给 2027 学年会是空选项。
   Widget _buildYearBar() {
     final scheme = Theme.of(context).colorScheme;
-    final now = DateTime.now();
+    final maxYear = _currentXn;
     final enroll = _enrollYear;
-    final first = (enroll != null && enroll <= now.year) ? enroll : now.year - 4;
-    final years = [for (var y = first; y <= now.year; y++) y];
+    final first = (enroll != null && enroll <= maxYear) ? enroll : maxYear - 4;
+    final years = [for (var y = first; y <= maxYear; y++) y];
     return Container(
       color: Theme.of(context).cardTheme.color,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -190,6 +207,20 @@ class _TiceScreenState extends ConsumerState<TiceScreen> {
       );
     }
     if (!result.ok) {
+      if (result.isNotice) {
+        // 服务端提示原文照显（实测非查询时段返回「允许学校学生成绩查询的时间为:
+        // 9:00:00~21:00:00。」）—— 时段由服务端给，App 不硬编码。
+        return _buildStatus(
+          icon: Icons.schedule_outlined,
+          title: '暂时无法查询',
+          message: result.message,
+          action: FilledButton.icon(
+            onPressed: _load,
+            icon: const Icon(Icons.refresh),
+            label: const Text('重试'),
+          ),
+        );
+      }
       return _buildStatus(
         icon: Icons.event_busy_outlined,
         title: '暂无该学年成绩',

@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/features/platform_guid/presentation/guid_guide_screen.dart';
+import 'package:smarter_jxufe/features/school_calendar/data/providers/calendar_prefs_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/school_calendar_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/wxcal_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/wxcal_repository.dart';
+import 'package:smarter_jxufe/features/school_calendar/domain/calendar_day_mark.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/school_calendar.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/wxcal_semester.dart';
+import 'package:smarter_jxufe/features/school_calendar/presentation/calendar_day_sheet.dart';
+import 'package:smarter_jxufe/features/settings/presentation/settings_screen.dart';
 
 /// 校历页：按「学年 × 学段」展示教务公开校历。
 ///
@@ -27,7 +31,10 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
   @override
   void initState() {
     super.initState();
-    final term = currentSchoolTerm(DateTime.now());
+    final term = currentSchoolTerm(
+      DateTime.now(),
+      terms: ref.read(offlineSemesterTermsProvider),
+    );
     _xn = term.xn;
     _xq = term.xq;
   }
@@ -40,9 +47,24 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
     // 小程序源学期安排（实时优先 / 内置兜底）。
     final wxArrangements = ref.watch(wxArrangementsProvider);
     final guid = ref.watch(wxGuidProvider).valueOrNull;
+    // 「假/班」角标：显示偏好 + 由官方安排构建的判定索引。
+    final prefs = ref.watch(calendarPrefsStoreProvider).prefs;
+    final markIndex = ref.watch(calendarMarkIndexProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('校历')),
+      appBar: AppBar(
+        title: const Text('校历'),
+        actions: [
+          // 显示偏好统一收拢在全局设置页「校历」节（约定：不再做 feature-local 设置弹层）。
+          IconButton(
+            tooltip: '设置',
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const SettingsScreen())),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           _buildTermSwitcher(context),
@@ -55,15 +77,15 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
                 await ref.read(wxArrangementsProvider.future);
               },
               child: calendarAsync.when(
-                loading: () => const Center(
-                  child: CircularProgressIndicator(),
-                ),
+                loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, _) => _buildError(context, error),
                 data: (calendar) => _buildCalendar(
                   context,
                   calendar,
                   wxArrangements,
                   guid,
+                  markIndex,
+                  prefs.badgeStyle,
                 ),
               ),
             ),
@@ -119,8 +141,7 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
                   selectedColor: scheme.primary.withValues(alpha: 0.10),
                   labelStyle: TextStyle(
                     color: _xq == xq ? scheme.primary : null,
-                    fontWeight:
-                        _xq == xq ? FontWeight.w600 : FontWeight.w400,
+                    fontWeight: _xq == xq ? FontWeight.w600 : FontWeight.w400,
                   ),
                   side: BorderSide(
                     color: _xq == xq
@@ -183,6 +204,8 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
     SchoolCalendar calendar,
     AsyncValue<List<WxSemesterArrangement>> wxArrangements,
     String? guid,
+    CalendarMarkIndex markIndex,
+    CalendarBadgeStyle badgeStyle,
   ) {
     final now = DateTime.now();
     return ListView(
@@ -194,12 +217,65 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
         _buildOfficialCard(context, wxArrangements, guid),
         const SizedBox(height: 10),
         for (final month in calendar.months) ...[
-          _MonthCard(month: month, now: now),
+          _MonthCard(
+            month: month,
+            now: now,
+            marks: markIndex,
+            style: badgeStyle,
+            onTapDay: (mark) => showCalendarDaySheet(
+              context,
+              mark: mark,
+              termTitle: calendar.title,
+            ),
+          ),
           const SizedBox(height: 10),
         ],
-        if (calendar.notes.isNotEmpty)
-          _buildNotesCard(context, calendar.notes),
+        if (calendar.notes.isNotEmpty) _buildNotesCard(context, calendar.notes),
+        if (badgeStyle != CalendarBadgeStyle.cornerTag)
+          const SizedBox(height: 4),
+        _buildBadgeLegend(context),
       ],
+    );
+  }
+
+  /// 角标图例（假 / 班 / 其它事件）。
+  Widget _buildBadgeLegend(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    Widget item(CalendarMarkKind kind, String badge, String text) => Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
+          decoration: BoxDecoration(
+            color: calendarMarkColor(kind).withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            badge,
+            style: TextStyle(
+              fontSize: 9,
+              height: 1.05,
+              fontWeight: FontWeight.w600,
+              color: calendarMarkColor(kind),
+            ),
+          ),
+        ),
+        const SizedBox(width: 5),
+        Text(text, style: textTheme.bodySmall?.copyWith(fontSize: 11.5)),
+      ],
+    );
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Wrap(
+        spacing: 14,
+        runSpacing: 6,
+        children: [
+          item(CalendarMarkKind.holiday, '假', '官方放假'),
+          item(CalendarMarkKind.makeup, '班', '补课 / 调休'),
+          item(CalendarMarkKind.event, '运', '其它官方事件'),
+        ],
+      ),
     );
   }
 
@@ -232,16 +308,13 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
           padding: const EdgeInsets.symmetric(vertical: 5),
           child: Row(
             children: [
-              Icon(Icons.event_outlined,
-                  size: 18, color: scheme.primary),
+              Icon(Icons.event_outlined, size: 18, color: scheme.primary),
               const SizedBox(width: 8),
               SizedBox(
                 width: 92,
                 child: Text(
                   row.label,
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: Colors.black54,
-                  ),
+                  style: textTheme.bodyMedium?.copyWith(color: Colors.black54),
                 ),
               ),
               Text(
@@ -312,13 +385,17 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
                   borderRadius: BorderRadius.circular(6),
                   onTap: () => _showSourceDialog(context, guid),
                   child: Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 4,
+                    ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          live ? Icons.cloud_done_outlined : Icons.archive_outlined,
+                          live
+                              ? Icons.cloud_done_outlined
+                              : Icons.archive_outlined,
                           size: 15,
                           color: scheme.primary.withValues(alpha: 0.8),
                         ),
@@ -373,19 +450,11 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
           ),
         ),
       ],
-      error: (e, _) => [
-        Text('学期安排加载失败：$e', style: textTheme.bodySmall),
-      ],
+      error: (e, _) => [Text('学期安排加载失败：$e', style: textTheme.bodySmall)],
       data: (all) {
-        final arrangement = WxcalRepository.findByTerm(
-          all,
-          xn: _xn,
-          xq: _xq,
-        );
+        final arrangement = WxcalRepository.findByTerm(all, xn: _xn, xq: _xq);
         if (arrangement == null) {
-          final note = _xq == 2
-              ? '暑期段小程序校历无对应数据'
-              : '所选学段暂无官方安排数据';
+          final note = _xq == 2 ? '暑期段小程序校历无对应数据' : '所选学段暂无官方安排数据';
           return [
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 6),
@@ -407,9 +476,7 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
           case WxArrangementStyle.table:
             final events = [...arrangement.events]
               ..sort((a, b) => a.from.compareTo(b.from));
-            return [
-              for (final e in events) _buildEventRow(context, e),
-            ];
+            return [for (final e in events) _buildEventRow(context, e)];
         }
       },
     );
@@ -458,7 +525,10 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
   }
 
   void _showParagraphDialog(
-      BuildContext context, WxSemesterArrangement a, String para) {
+    BuildContext context,
+    WxSemesterArrangement a,
+    String para,
+  ) {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -471,10 +541,7 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
           child: SingleChildScrollView(
             child: Text(
               para,
-              style: Theme.of(ctx)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(height: 1.7),
+              style: Theme.of(ctx).textTheme.bodySmall?.copyWith(height: 1.7),
             ),
           ),
         ),
@@ -508,10 +575,10 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
                   '该校历接口需平台用户标识（GUID，仅微信授权可得），'
                   '因此未配置时使用内置快照；填入你自己的 GUID 后每次打开'
                   '自动实时拉取最新学期，无需等待快照更新。',
-                  style: Theme.of(ctx)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(height: 1.6, color: Colors.black87),
+                  style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                    height: 1.6,
+                    color: Colors.black87,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -526,10 +593,9 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
                 const SizedBox(height: 6),
                 Text(
                   '留空并保存 = 回到内置快照。GUID 等同账号标识，请勿泄露。',
-                  style: Theme.of(ctx)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: Colors.grey.shade600),
+                  style: Theme.of(
+                    ctx,
+                  ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
                 ),
                 const SizedBox(height: 2),
                 Align(
@@ -558,8 +624,7 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
           FilledButton(
             onPressed: () async {
               final value = controller.text.trim();
-              final box = await ref
-                  .read(wxPlatformBoxProvider.future);
+              final box = await ref.read(wxPlatformBoxProvider.future);
               if (value.isEmpty) {
                 await box.delete('guid');
               } else {
@@ -581,10 +646,9 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
-      ..showSnackBar(SnackBar(
-        content: Text(message),
-        duration: const Duration(seconds: 2),
-      ));
+      ..showSnackBar(
+        SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
+      );
   }
 
   /// 单条官方安排行：icon + 日期区间 + 说明（+ 分节类别徽标）。
@@ -638,7 +702,9 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
                     alignment: Alignment.centerLeft,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 5, vertical: 0.5),
+                        horizontal: 5,
+                        vertical: 0.5,
+                      ),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(4),
                         border: Border.all(
@@ -725,7 +791,25 @@ class _MonthCard extends StatelessWidget {
   final CalendarMonth month;
   final DateTime now;
 
-  const _MonthCard({required this.month, required this.now});
+  /// 「假/班」判定索引（由官方安排构建，缺失时仍可做校历兜底）。
+  final CalendarMarkIndex marks;
+
+  /// 角标风格（用户设置在「显示设置」里切换）。
+  final CalendarBadgeStyle style;
+
+  /// 点某一天 → 弹当日安排详情。
+  final void Function(CalendarDayMark mark) onTapDay;
+
+  const _MonthCard({
+    required this.month,
+    required this.now,
+    required this.marks,
+    required this.style,
+    required this.onTapDay,
+  });
+
+  /// 日期行高：角标排在数字下方时需要更高（今天圆 22 + 角标）。
+  double get _rowHeight => style.isTall ? 40 : 32;
 
   @override
   Widget build(BuildContext context) {
@@ -741,6 +825,7 @@ class _MonthCard extends StatelessWidget {
           // 周几表头（周次列占位）。
           _buildRow(
             leading: const SizedBox(width: 38),
+            height: 32,
             cells: List.generate(
               7,
               (i) => _dayCell(
@@ -762,6 +847,7 @@ class _MonthCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final weekNo = row.weekNo?.trim() ?? '';
     return _buildRow(
+      height: _rowHeight,
       leading: Container(
         width: 38,
         alignment: Alignment.center,
@@ -783,24 +869,25 @@ class _MonthCard extends StatelessWidget {
                 ),
               ),
       ),
-      cells: List.generate(
-        7,
-        (i) {
-          final day = i < row.days.length ? row.days[i] : null;
-          final isToday = day != null &&
-              isCurrentMonth &&
-              day == now.day &&
-              month.year == now.year &&
-              month.month == now.month;
-          return _dayCell(
-            context,
-            text: day == null ? '' : '$day',
-            isToday: isToday,
-            isWeekend: i >= 5,
-            bold: day != null && i < 5,
-          );
-        },
-      ),
+      cells: List.generate(7, (i) {
+        final day = i < row.days.length ? row.days[i] : null;
+        if (day == null) return _dayCell(context, text: '');
+        final date = DateTime(month.year, month.month, day);
+        final mark = marks.markOf(date, calendarKind: row.kindAt(i));
+        final isToday =
+            isCurrentMonth &&
+            day == now.day &&
+            month.year == now.year &&
+            month.month == now.month;
+        return _dayCell(
+          context,
+          text: '$day',
+          isToday: isToday,
+          isWeekend: i >= 5,
+          bold: i < 5,
+          mark: mark,
+        );
+      }),
     );
   }
 
@@ -811,25 +898,28 @@ class _MonthCard extends StatelessWidget {
   Widget _buildRow({
     required Widget leading,
     required List<Widget> cells,
+    required double height,
   }) {
     return SizedBox(
-      height: 32,
+      height: height,
       child: Row(
         children: [
           leading,
           for (final cell in cells)
             Expanded(
-              child: SizedBox(
-                height: 32,
-                child: Center(child: cell),
-              ),
+              child: SizedBox(height: height, child: cell),
             ),
         ],
       ),
     );
   }
 
-  /// 单格内容（表头/日期数字/今天高亮）。
+  /// 单格内容（表头/日期数字/今天高亮/「假·班」角标）。
+  ///
+  /// 角标风格：
+  /// - [CalendarBadgeStyle.underNumber] 数字下方小字；
+  /// - [CalendarBadgeStyle.cornerTag] 右上角迷你胶囊（行高不变）；
+  /// - [CalendarBadgeStyle.filledCell] 整格淡色底 + 数字下方小字。
   Widget _dayCell(
     BuildContext context, {
     required String text,
@@ -837,34 +927,83 @@ class _MonthCard extends StatelessWidget {
     bool isWeekend = false,
     bool isToday = false,
     bool bold = false,
+    CalendarDayMark? mark,
   }) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     if (isHeader) {
-      return Text(
-        text,
-        style: textTheme.bodySmall?.copyWith(
-          color: isWeekend ? Colors.grey.shade400 : Colors.grey.shade600,
-          fontWeight: FontWeight.w600,
+      return Center(
+        child: Text(
+          text,
+          style: textTheme.bodySmall?.copyWith(
+            color: isWeekend ? Colors.grey.shade400 : Colors.grey.shade600,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       );
     }
     if (text.isEmpty) return const SizedBox.shrink();
+
     final color = isWeekend ? Colors.grey.shade400 : Colors.black87;
     final dayStyle = textTheme.bodySmall?.copyWith(
       color: isToday ? Colors.white : color,
       fontWeight: bold || isToday ? FontWeight.w600 : FontWeight.w400,
     );
-    if (isToday) {
-      return Container(
-        width: 22,
-        height: 22,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(color: scheme.primary, shape: BoxShape.circle),
-        child: Text(text, style: dayStyle),
+    final number = isToday
+        ? Container(
+            width: style.isTall ? 21 : 22,
+            height: style.isTall ? 21 : 22,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: scheme.primary,
+              shape: BoxShape.circle,
+            ),
+            child: Text(text, style: dayStyle),
+          )
+        : Text(text, style: dayStyle);
+
+    final hasMark = mark != null && mark.hasBadge;
+    final badge = hasMark ? calendarBadge(mark, style) : null;
+
+    Widget content;
+    if (!hasMark) {
+      content = Center(child: number);
+    } else if (style == CalendarBadgeStyle.cornerTag) {
+      content = Stack(
+        fit: StackFit.expand,
+        children: [
+          Center(child: number),
+          Positioned(top: 0, right: 2, child: badge!),
+        ],
+      );
+    } else {
+      content = Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [number, const SizedBox(height: 1), badge!],
+        ),
       );
     }
-    return Text(text, style: dayStyle);
+
+    // 整格淡色底：假期淡红、补课淡绿、其它淡蓝灰。
+    final fill = (style == CalendarBadgeStyle.filledCell && hasMark)
+        ? calendarMarkColor(mark.kind).withValues(alpha: 0.09)
+        : null;
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: mark == null ? null : () => onTapDay(mark),
+      child: Container(
+        margin: EdgeInsets.symmetric(horizontal: fill == null ? 0 : 1.5),
+        decoration: fill == null
+            ? null
+            : BoxDecoration(
+                color: fill,
+                borderRadius: BorderRadius.circular(9),
+              ),
+        child: content,
+      ),
+    );
   }
 }
 

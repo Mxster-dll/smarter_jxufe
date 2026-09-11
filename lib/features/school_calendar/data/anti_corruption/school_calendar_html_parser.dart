@@ -92,14 +92,21 @@ class SchoolCalendarHtmlParser {
       final weekNo = weekNoRaw.isEmpty ? null : weekNoRaw;
 
       final days = <int?>[];
+      final kinds = <CalendarDayKind?>[];
       for (var c = 1; c < cells.length && c <= 7; c++) {
         days.add(int.tryParse(_text(cells[c]).trim()));
+        kinds.add(_kindOf(cells[c]));
       }
       while (days.length < 7) {
         days.add(null);
+        kinds.add(null);
       }
 
-      final row = CalendarWeekRow(weekNo: weekNo, days: days.take(7).toList());
+      final row = CalendarWeekRow(
+        weekNo: weekNo,
+        days: days.take(7).toList(),
+        kinds: kinds.take(7).toList(),
+      );
       if (!row.isEmpty) weekRows.add(row);
     }
 
@@ -139,5 +146,16 @@ class SchoolCalendarHtmlParser {
   String _text(Element? element) {
     if (element == null) return '';
     return element.text.trim();
+  }
+
+  /// 取日期格内 `<span class='workday|nonday'>` 的教务标注。
+  ///
+  /// 类名未知或无 span 时返回 null（老学期页面可能不带该标注）。
+  CalendarDayKind? _kindOf(Element cell) {
+    final cls =
+        cell.querySelector('span')?.attributes['class']?.toLowerCase() ?? '';
+    if (cls.contains('nonday')) return CalendarDayKind.nonday;
+    if (cls.contains('workday')) return CalendarDayKind.workday;
+    return null;
   }
 }

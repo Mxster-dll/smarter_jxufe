@@ -10,9 +10,14 @@ import 'package:smarter_jxufe/features/school_calendar/data/datasources/school_c
 import 'package:smarter_jxufe/features/school_calendar/data/school_calendar_repository.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/school_calendar.dart';
 
+// 「当下学期」判定已提取为纯域函数（校历区间优先 + 月份兜底），见
+// domain/school_term.dart。这里 re-export 以保持既有 import 路径可用。
+export 'package:smarter_jxufe/features/school_calendar/domain/school_term.dart';
+
 /// 教务系统公开页专用 Dio（免登录，不挂 IMS 认证拦截器）。
 ///
-/// 响应为 GBK 编码的 HTML，这里与 [imsDioProvider] 一样按
+/// 响应为 GBK 编码的 HTML，这里与 IMS 会话用的 Dio
+/// （`core/network/ims_dio.dart` 的 `createImsDio`）一样按
 /// Content-Type 字符集自动解码为 String。
 final schoolCalendarDioProvider = Provider<Dio>((ref) {
   final deviceProfileRepo = ref.watch(deviceProfileRepositoryProvider);
@@ -71,15 +76,3 @@ final schoolCalendarProvider =
     return repo.fetchCalendar(xn: term.xn, xq: term.xq);
   },
 );
-
-/// 由当前日期推「此刻正在进行的学段」：与课表学期口径一致。
-///
-/// 3~8 月 → (上年, 第二学期 xq=1)；其余月份 → (当年, 第一学期 xq=0)。
-/// （第二阶段/暑期校历不默认展示，用户可手动切到 xq=2。）
-({int xn, int xq}) currentSchoolTerm(DateTime now) {
-  final m = now.month;
-  if (m >= 3 && m <= 8) {
-    return (xn: now.year - 1, xq: 1);
-  }
-  return (xn: now.year, xq: 0);
-}

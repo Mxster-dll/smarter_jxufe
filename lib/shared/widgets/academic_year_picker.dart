@@ -38,6 +38,8 @@ class _AcademicYearPickerState extends State<AcademicYearPicker> {
   bool _hovered = false;
   bool _dragging = false;
   bool _mouseLeft = false;
+  /// 补间代次：拖动开始或发起新补间时自增，使在途的旧补间自动作废。
+  int _animToken = 0;
 
   bool get _expanded => _hovered || _dragging;
 
@@ -45,6 +47,24 @@ class _AcademicYearPickerState extends State<AcademicYearPicker> {
   void initState() {
     super.initState();
     _selected = widget.initialYear.clamp(widget.startYear, widget.endYear);
+    _offset = _offsetOf(_selected);
+  }
+
+  @override
+  void didUpdateWidget(covariant AcademicYearPicker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final rangeChanged =
+        widget.startYear != oldWidget.startYear ||
+        widget.endYear != oldWidget.endYear;
+    final yearChanged = widget.initialYear != oldWidget.initialYear;
+    if (!rangeChanged && !yearChanged) return;
+    // 父级的学期是异步定下的（学籍 / 校历加载完成后才纠正），
+    // 只读 initState 会让 picker 一直停在旧的默认学年 → 这里同步纠正。
+    _animToken++; // 作废在途补间，避免它把 _offset 拉回旧年份
+    _selected = (yearChanged ? widget.initialYear : _selected).clamp(
+      widget.startYear,
+      widget.endYear,
+    );
     _offset = _offsetOf(_selected);
   }
 
@@ -77,10 +97,11 @@ class _AcademicYearPickerState extends State<AcademicYearPicker> {
     const steps = 10;
     final start = _offset;
     final delta = target - start;
+    final token = ++_animToken;
     int tick = 0;
     Future.doWhile(() async {
       await Future.delayed(d ~/ steps);
-      if (!mounted) return false;
+      if (!mounted || token != _animToken) return false;
       tick++;
       setState(() => _offset = start + delta * (tick / steps));
       return tick < steps;
@@ -109,38 +130,40 @@ class _AcademicYearPickerState extends State<AcademicYearPicker> {
               }
             }
           : null,
+      // 拖拽回调不受 _expanded 门控：触摸端没有 MouseRegion 的 hover，
+      // 若门控在 _hovered 上，横向拖拽识别器压根不会注册 → 移动端划不动。
+      // 手指按下横划先触发 dragStart，_dragging 置位后 _expanded 自然为 true
+      // （静止无 hover 时 _expanded 仍为 false，收起态外观不变）。
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,
-        onHorizontalDragStart: _expanded
-            ? (d) {
-                _dragStartX = d.localPosition.dx;
-                _dragStartOffset = _offset;
-                _dragging = true;
+        onHorizontalDragStart: (d) {
+          _animToken++; // 取消上一次 snap 补间，避免与本次拖动争抢 _offset
+          _dragStartX = d.localPosition.dx;
+          _dragStartOffset = _offset;
+          _dragging = true;
+        },
+        onHorizontalDragUpdate: (d) {
+          setState(() {
+            _offset = _dragStartOffset - (d.localPosition.dx - _dragStartX);
+            _updateSelected();
+          });
+        },
+        onHorizontalDragEnd: (_) {
+          _dragging = false;
+          _snap();
+          if (_mouseLeft) {
+            Future.delayed(const Duration(milliseconds: 500), () {
+              if (mounted && _mouseLeft && !_dragging) {
+                setState(() => _hovered = false);
+                widget.onHoverChanged?.call(false);
               }
-            : null,
-        onHorizontalDragUpdate: _expanded
-            ? (d) {
-                setState(() {
-                  _offset =
-                      _dragStartOffset - (d.localPosition.dx - _dragStartX);
-                  _updateSelected();
-                });
-              }
-            : null,
-        onHorizontalDragEnd: _expanded
-            ? (_) {
-                _dragging = false;
-                _snap();
-                if (_mouseLeft) {
-                  Future.delayed(const Duration(milliseconds: 500), () {
-                    if (mounted && _mouseLeft && !_dragging) {
-                      setState(() => _hovered = false);
-                      widget.onHoverChanged?.call(false);
-                    }
-                  });
-                }
-              }
-            : null,
+            });
+          }
+        },
+        onHorizontalDragCancel: () {
+          _dragging = false;
+          _animateTo(_offsetOf(_selected));
+        },
         child: SizedBox(
           width: _highlightW + 4,
           height: 44,

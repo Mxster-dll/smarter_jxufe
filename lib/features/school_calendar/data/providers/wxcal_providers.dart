@@ -21,6 +21,15 @@ final wxGuidProvider = FutureProvider<String?>((ref) async {
   return box.get('guid');
 });
 
+/// 内置离线学期快照（同步可得，无需 GUID）。
+///
+/// 「当下学期」判定（[currentSchoolTerm]）与教学周推算（[resolveTeachingWeek]）
+/// 都要按**日期区间**定位学期，故需要一个同步数据源 —— 实时校历是异步的，
+/// 首帧拿不到。快照覆盖 2017 秋 ~ 2026 秋，见 wxcal_offline_data.dart。
+final offlineSemesterTermsProvider = Provider<List<WxSemesterArrangement>>(
+  (ref) => wxcalOfflineToDomain(),
+);
+
 /// 小程序校历专用 Dio（base wxcourse.jxufe.cn + 小程序来源头）。
 final wxcalDioProvider = Provider<Dio>((ref) {
   final deviceProfileRepo = ref.watch(deviceProfileRepositoryProvider);
