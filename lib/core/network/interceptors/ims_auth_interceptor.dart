@@ -1,24 +1,20 @@
 import 'package:dio/dio.dart';
 
-/// IMS 教务系统 Dio 拦截器 —— 自动检测"凭证失效"并刷新 JSESSIONID 重试。
+/// IMS 教务系统 Dio 拦截器 —— 自动检测「凭证失效」并刷新 JSESSIONID 重试。
 ///
-/// 用法：
-/// 1. 创建拦截器实例并添加到 IMS Dio
-/// 2. 在 [ImsAuthRepository] 初始化后调用 [setRefreshCallback] 注入刷新函数
-/// 3. 后续所有 IMS 请求若响应体包含"凭证失效"，拦截器会自动刷新重试一次
+/// 与 [Dio] **一一对应**：拦截器由 `createImsDio` 随 Dio 一起创建，并把
+/// 刷新回调绑定到持有该 Dio 的会话（`ImsSession.renew`）。历史上这里是全局
+/// 单例 + `setDio`，多账户并存时会互相覆盖，已废止。
 class ImsAuthInterceptor extends Interceptor {
-  /// 用于刷新 JSESSIONID 的回调，由外部注入。
+  /// 发起请求的 Dio 实例，用于重试时保留原始配置（GBK 解码器等）。
+  final Dio _dio;
+
+  ImsAuthInterceptor({required Dio dio}) : _dio = dio;
+
+  /// 用于刷新 JSESSIONID 的回调，由会话注入。
   Future<String> Function()? _refreshCallback;
 
-  /// 发起请求的 Dio 实例，用于重试时保留原始配置（GBK 解码器等）。
-  Dio _dio = Dio();
-
-  /// 更新重试用的 Dio 实例（当账户切换需重建 Dio 时调用）。
-  void setDio(Dio dio) {
-    _dio = dio;
-  }
-
-  /// 注入刷新回调。应在 [ImsAuthRepository] 初始化完成后立即调用。
+  /// 注入刷新回调（`ImsSession.renew`）。
   void setRefreshCallback(Future<String> Function() callback) {
     _refreshCallback = callback;
   }
@@ -56,11 +52,11 @@ class ImsAuthInterceptor extends Interceptor {
     }
 
     try {
-      // 刷新 JSESSIONID
+      // 刷新 JSESSIONID（同一会话并发失效时由 ImsSession 内部去重）
       final newJsessionId = await _refreshCallback!();
 
       // 更新 Cookie 头中的 JSESSIONID
-      final headers = <String, dynamic>{...?response.requestOptions.headers};
+      final headers = <String, dynamic>{...response.requestOptions.headers};
       final oldCookie = (headers['Cookie'] ?? '').toString();
       final newCookie = _replaceJsessionId(oldCookie, newJsessionId);
       headers['Cookie'] = newCookie;
@@ -73,7 +69,6 @@ class ImsAuthInterceptor extends Interceptor {
       );
 
       // 使用同一个 Dio 实例发起重试（保留 GBK 解码器等原始配置）。
-      // _ims_retry_count=999 保证重试响应不会再进入 _handleRetry。
       final retryResponse = await _dio.fetch(newOptions);
       handler.resolve(retryResponse);
     } on DioException {

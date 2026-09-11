@@ -8,13 +8,26 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import 'package:smarter_jxufe/core/network/current_account_provider.dart';
+import 'package:smarter_jxufe/core/storage/account_scoped_box.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/providers/volunteer_hours_providers.dart';
 import 'package:smarter_jxufe/features/ims/grades/data/providers/weighted_grade_repository_provider.dart';
 import 'package:smarter_jxufe/features/zongce/data/zc_store.dart';
 import 'package:smarter_jxufe/features/zongce/domain/zc_models.dart';
 
+/// 综测本地 box 的**基础**名（实际 box 按账号隔离）。
+const zcBoxName = 'zongce';
+
+/// 综测本地 box（**按账号隔离**：本人录的材料与认定结果不该跨账号串）。
+///
+/// 见 `core/storage/account_scoped_box.dart`：box 名 = `zongce_<账号>`，
+/// 账号未确定时用 `zongce__none`；旧的全局 box 被第一个打开的账号迁移认领一次。
+///
+/// 注：材料附件目录（`zc_files`）仍全校共用——它只存图片等附件，文件名唯一，
+/// 且列表只从**本账号的 box** 读，因此不会互相看见；反之若按账号分目录，
+/// 存量附件会立刻变孤儿。
 final zcBoxProvider = FutureProvider<Box<String>>(
-  (ref) => Hive.openBox<String>('zongce'),
+  (ref) => openAccountScopedBox(zcBoxName, ref.watch(currentAccountProvider)),
 );
 
 final zcStoreProvider = FutureProvider<ZcStore>((ref) async {

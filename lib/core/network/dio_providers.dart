@@ -1,63 +1,33 @@
-import 'dart:convert';
-import 'dart:io' show HttpClient;
 import 'package:dio/dio.dart';
-import 'package:dio/io.dart';
-import 'package:fast_gbk/fast_gbk.dart';
 import 'package:riverpod/riverpod.dart';
 
+import 'package:smarter_jxufe/core/network/current_account_provider.dart';
 import 'package:smarter_jxufe/core/network/device_profile_repository_provider.dart';
-import 'package:smarter_jxufe/core/network/interceptors/ims_auth_interceptor.dart';
+import 'package:smarter_jxufe/features/ims/auth/data/providers/ims_session_provider.dart';
 
-/// 当前登录账户卡号，切换账户时更新此值。
-final currentAccountProvider = StateProvider<String>((ref) => '');
+/// 当前登录账户卡号（学号）。
+///
+/// 定义已迁至 `current_account_provider.dart`（打断与 `imsSessionProvider`
+/// 的循环依赖），此处**转出**，既有 `import 'dio_providers.dart'` 的调用方
+/// 无需改动。
+export 'package:smarter_jxufe/core/network/current_account_provider.dart';
 
-/// 全局 IMS 认证拦截器实例（所有账户共用同一个拦截器，
-/// 因为 JSESSIONID 刷新逻辑不区分账户）。
-final _imsAuthInterceptor = ImsAuthInterceptor();
+/// 当前 IMS Dio = **全局唯一会话**持有的那一个。
+///
+/// 所有教务数据源（成绩 / 课表 / 学籍 / 培养方案 / 毕业学分 / 加权 / 调课）
+/// 都从这里取 Dio，因此：
+/// - 会话（含 JSESSIONID、失效自动换票的重试拦截器）全 App 只有一份；
+/// - 切换账号时 `imsSessionProvider` 随 `currentAccountProvider` 重建，
+///   本 provider 随之换到新实例（旧实例 `release`）。
+///
+/// 会话实现与口径见 `lib/features/ims/auth/data/ims_session.dart`。
+final currentImsDioProvider = Provider<Dio>(
+  (ref) => ref.watch(imsSessionProvider).dio,
+);
 
-/// 注入 JSESSIONID 刷新回调。
-/// 应在 [ImsAuthRepository] 初始化完成后调用。
-void setJsessionIdRefreshCallback(Future<String> Function() callback) {
-  _imsAuthInterceptor.setRefreshCallback(callback);
-}
-
-/// 按账户卡号分例的 IMS Dio。
-final imsDioProvider = Provider.family<Dio, String>((ref, account) {
-  final deviceProfileRepo = ref.watch(deviceProfileRepositoryProvider);
-  final dio = Dio(
-    BaseOptions(
-      baseUrl: 'https://jwxt.jxufe.edu.cn',
-      followRedirects: false,
-      validateStatus: (status) => true,
-      headers: {
-        'User-Agent': deviceProfileRepo.userAgent,
-        'Accept':
-            'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-        'Accept-Language': 'zh-CN,zh;q=0.9',
-        'sec-ch-ua':
-            '"Not:A-Brand";v="99", "Microsoft Edge";v="145", "Chromium";v="145"',
-        'sec-ch-ua-mobile': '?0',
-        'sec-ch-ua-platform': '"Windows"',
-        'Referer': 'http://ehall.jxufe.edu.cn/',
-      },
-      responseDecoder: (bytes, options, response) {
-        final contentType = response.headers['Content-Type']?.first;
-        final charset = _extractCharset(contentType);
-        return switch (charset) {
-          'gbk' || 'gb2312' => gbk.decode(bytes),
-          _ => utf8.decode(bytes),
-        };
-      },
-    ),
-  );
-  // 添加凭证失效自动重试拦截器，并绑定当前 Dio 实例用于重试
-  dio.interceptors.add(_imsAuthInterceptor);
-  _imsAuthInterceptor.setDio(dio);
-  // _applyFiddlerProxy(dio); // [DEBUG] 抓包用，发布前取消注释
-  return dio;
-});
-
-/// 按账户卡号分例的 Login Dio。
+/// 按账户卡号分例的 Login（CAS 统一登录）Dio。
+///
+/// CAS 侧无可复用的会话状态，仅承载登录流程，因此仍按账号分例即可。
 final loginDioProvider = Provider.family<Dio, String>((ref, account) {
   final deviceProfileRepo = ref.watch(deviceProfileRepositoryProvider);
   final dio = Dio(
@@ -70,14 +40,8 @@ final loginDioProvider = Provider.family<Dio, String>((ref, account) {
       headers: {'User-Agent': deviceProfileRepo.userAgent},
     ),
   );
-  // _applyFiddlerProxy(dio); // [DEBUG] 抓包用，发布前取消注释
+  // applyFiddlerProxy(dio); // [DEBUG] 抓包用，发布前取消注释
   return dio;
-});
-
-/// 当前账户的 IMS Dio，由 [currentAccountProvider] 驱动。
-final currentImsDioProvider = Provider<Dio>((ref) {
-  final account = ref.watch(currentAccountProvider);
-  return ref.watch(imsDioProvider(account));
 });
 
 /// 当前账户的 Login Dio，由 [currentAccountProvider] 驱动。
@@ -85,25 +49,3 @@ final currentLoginDioProvider = Provider<Dio>((ref) {
   final account = ref.watch(currentAccountProvider);
   return ref.watch(loginDioProvider(account));
 });
-
-String _extractCharset(String? contentType) {
-  if (contentType == null) return '';
-  final match = RegExp(
-    r'charset=([^;]+)',
-  ).firstMatch(contentType.toLowerCase());
-  return match?.group(1)?.trim() ?? '';
-}
-
-/// [DEBUG] 将所有 Dio 请求代理到 Fiddler（127.0.0.1:8888），
-/// 用于抓包调试。发布前删除此函数及其调用。
-void _applyFiddlerProxy(Dio dio) {
-  final adapter = dio.httpClientAdapter;
-  if (adapter is IOHttpClientAdapter) {
-    adapter.createHttpClient = () {
-      final client = HttpClient();
-      client.findProxy = (uri) => 'PROXY 127.0.0.1:8888';
-      client.badCertificateCallback = (_, __, ___) => true;
-      return client;
-    };
-  }
-}

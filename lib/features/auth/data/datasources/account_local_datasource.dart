@@ -26,6 +26,8 @@ class AccountLocalDataSource {
             cardNumber: e['cardNumber'] as String,
             password: e['password'] as String,
             displayName: e['displayName'] as String? ?? '',
+            // 旧数据没有 avatar 字段 → 空串 = 未设置头像（界面回退首字）
+            avatar: e['avatar'] as String? ?? '',
           ),
         )
         .toList();
@@ -89,22 +91,28 @@ class AccountLocalDataSource {
             'cardNumber': a.cardNumber,
             'password': a.password,
             'displayName': a.displayName,
+            'avatar': a.avatar,
           },
         )
         .toList();
     await _box.put(_keyAccounts, json.encode(data));
   }
 
-  /// 更新指定账户的显示名称。
+  /// 更新指定账户的显示名称（其余字段原样保留，别把头像冲掉）。
   Future<void> updateDisplayName(String cardNumber, String displayName) async {
     final accounts = getAccounts();
     final idx = accounts.indexWhere((a) => a.cardNumber == cardNumber);
     if (idx == -1) return;
-    accounts[idx] = Account(
-      cardNumber: accounts[idx].cardNumber,
-      password: accounts[idx].password,
-      displayName: displayName,
-    );
+    accounts[idx] = accounts[idx].copyWith(displayName: displayName);
+    await _saveList(accounts);
+  }
+
+  /// 更新指定账户的头像文件名（空串 = 移除头像）。
+  Future<void> updateAvatar(String cardNumber, String avatar) async {
+    final accounts = getAccounts();
+    final idx = accounts.indexWhere((a) => a.cardNumber == cardNumber);
+    if (idx == -1) return;
+    accounts[idx] = accounts[idx].copyWith(avatar: avatar);
     await _saveList(accounts);
   }
 

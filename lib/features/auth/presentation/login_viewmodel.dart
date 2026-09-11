@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:smarter_jxufe/core/errors/failures.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/account_repository_provider.dart';
-import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_provider.dart';
+import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_for_account_provider.dart';
 import 'package:smarter_jxufe/features/auth/domain/entities/account.dart';
 import 'package:smarter_jxufe/features/ims/student_info/data/providers/student_info_repository_provider.dart';
 import 'package:smarter_jxufe/core/network/dio_providers.dart';
@@ -57,7 +57,11 @@ class LoginViewModel extends _$LoginViewModel {
     state = state.copyWith(isLoading: true, errorMessage: null);
 
     try {
-      final authRepo = await ref.read(authRepositoryProvider.future);
+      // 取**正在登录的这个账号**的仓库：TGC / 凭据按账号落盘，
+      // 且登录成功后 authRepositoryProvider 取到的就是同一个实例。
+      final authRepo = await ref.read(
+        authRepositoryForAccountProvider(account).future,
+      );
       authRepo.cacheCredentials(account, password);
 
       // 注入 MFA 回调，供后续自动重登时使用。
@@ -77,6 +81,8 @@ class LoginViewModel extends _$LoginViewModel {
           startInQrMode: isDesktop,
         );
         if (!result.authorized) throw Exception('用户取消 MFA 验证');
+        // 把「信任此设备」带回 AuthRepository → 自动重登时继续登记到 CAS。
+        return result.trustDevice;
       };
       mfaReloginService.setHandler((mfaState) async {
         final ctx = navigatorKey.currentContext;
@@ -91,6 +97,7 @@ class LoginViewModel extends _$LoginViewModel {
         if (!result.authorized) {
           throw Exception('用户取消 MFA 验证');
         }
+        return result.trustDevice;
       });
 
       // 第〇步：获取 CAS 登录页面，提取 execution 和 loginUrl
@@ -136,6 +143,8 @@ class LoginViewModel extends _$LoginViewModel {
         // 用户取消 → 不做任何事，等用户再次点击登录（切换用户由对话框内部处理）
         if (!result.authorized) return;
         trustAgent = result.trustDevice ? 'true' : '';
+        // 记住用户本次选择（勾选=长信任；取消勾选=清掉旧信任）。
+        await authRepo.rememberTrustDevice(account, result.trustDevice);
       }
 
       // 第三步：提交登录
