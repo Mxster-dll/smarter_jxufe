@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:smarter_jxufe/core/network/dio_providers.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
-import 'package:smarter_jxufe/features/auth/data/providers/account_repository_provider.dart';
-import 'package:smarter_jxufe/features/auth/domain/entities/account.dart';
 import 'package:smarter_jxufe/features/campus_address/presentation/campus_address_screen.dart';
 import 'package:smarter_jxufe/features/campus_address/presentation/campus_map_screen.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/jh_read_screen.dart';
@@ -13,17 +10,21 @@ import 'package:smarter_jxufe/features/comprehensive_service/presentation/volunt
 import 'package:smarter_jxufe/features/data_center/presentation/data_center_screen.dart';
 import 'package:smarter_jxufe/features/electricity/presentation/electricity_screen.dart';
 import 'package:smarter_jxufe/features/home/presentation/dashboard_panel.dart';
+import 'package:smarter_jxufe/features/home_widget/presentation/home_widget_sync_scope.dart';
 import 'package:smarter_jxufe/features/ims/menu/domain/ims_tab.dart';
+import 'package:smarter_jxufe/features/ims/schedule/presentation/live_class_screen.dart';
 import 'package:smarter_jxufe/features/ims/splash/presentation/ims_splash_screen.dart';
-import 'package:smarter_jxufe/features/ims/student_info/presentation/account_screen.dart';
+import 'package:smarter_jxufe/features/ims/student_info/presentation/student_info_screen.dart';
 import 'package:smarter_jxufe/features/leave/presentation/leave_screen.dart';
 import 'package:smarter_jxufe/features/materials/presentation/materials_screen.dart';
 import 'package:smarter_jxufe/features/net_fee/presentation/net_fee_screen.dart';
-import 'package:smarter_jxufe/features/platform_guid/presentation/guid_guide_screen.dart';
 import 'package:smarter_jxufe/features/rules/presentation/rules_home_screen.dart';
 import 'package:smarter_jxufe/features/school_calendar/presentation/school_calendar_screen.dart';
+import 'package:smarter_jxufe/features/score_estimate/presentation/score_estimate_screen.dart';
+import 'package:smarter_jxufe/features/settings/presentation/settings_screen.dart';
 import 'package:smarter_jxufe/features/tice/presentation/tice_screen.dart';
 import 'package:smarter_jxufe/features/zongce/presentation/zongce_screen.dart';
+import 'package:smarter_jxufe/shared/widgets/account_avatar.dart';
 
 /// 单页功能主页 —— 登录后的统一落地页。
 ///
@@ -34,20 +35,20 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
-    final currentCard = ref.watch(currentAccountProvider);
 
     return Scaffold(
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildTopBar(context, ref, scheme, currentCard),
+            _buildTopBar(context, scheme),
             const Divider(height: 1),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(24, 20, 24, 48),
                 children: [
-                  const DashboardPanel(),
+                  // 桌面小组件同步触发点（首帧推送 + 回前台重推 + 冷启动路由）
+                  const HomeWidgetSyncScope(child: DashboardPanel()),
                   const SizedBox(height: 26),
                   _buildSectionHeader(context, '全部服务'),
                   const SizedBox(height: 14),
@@ -64,15 +65,14 @@ class HomeScreen extends ConsumerWidget {
                       double width = 0;
                       if (isCompact) {
                         const tileExtent = 108.0;
-                        cols = ((constraints.maxWidth + gap) /
-                                (tileExtent + gap))
-                            .ceil();
+                        cols =
+                            ((constraints.maxWidth + gap) / (tileExtent + gap))
+                                .ceil();
                         if (cols < 2) cols = 2;
                         width =
                             (constraints.maxWidth - gap * (cols - 1)) / cols;
                       } else {
-                        cols =
-                            (constraints.maxWidth + gap) ~/ (minCard + gap);
+                        cols = (constraints.maxWidth + gap) ~/ (minCard + gap);
                         if (cols < 1) cols = 1;
                         if (cols > 6) cols = 6;
                         width =
@@ -131,18 +131,15 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  // ---------- 顶部：品牌 + 当前账号 + 切号入口 ----------
-  Widget _buildTopBar(
-    BuildContext context,
-    WidgetRef ref,
-    ColorScheme scheme,
-    String currentCard,
-  ) {
-    final displayFuture = ref.watch(currentAccountNameProvider);
-
+  // ---------- 顶部：品牌 + 设置 + 头像（点头像进「我的」） ----------
+  //
+  // 顶栏不再显示账号名/卡号，也不再有「切换账号」按钮：
+  // 姓名与卡号在「我的」页里看，账号管理（添加/切换/删除账户）走
+  // 「我的」页右上角的退出图标 → AccountScreen。
+  Widget _buildTopBar(BuildContext context, ColorScheme scheme) {
     return Container(
       color: Theme.of(context).cardTheme.color,
-      padding: const EdgeInsets.fromLTRB(24, 12, 16, 12),
+      padding: const EdgeInsets.fromLTRB(24, 10, 12, 10),
       child: Row(
         children: [
           Container(
@@ -163,50 +160,34 @@ class HomeScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  '智慧尼采',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-                displayFuture.when(
-                  data: (name) => Text(
-                    name?.isNotEmpty == true ? name! : currentCard,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  loading: () => Text(
-                    currentCard,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                  error: (_, _) => Text(
-                    currentCard,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          const Text(
+            '智慧尼采',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),
-          TextButton.icon(
+          const Spacer(),
+          // 全局设置入口（紧凑排布，避免窄屏顶栏溢出）。
+          IconButton(
+            tooltip: '设置',
+            icon: const Icon(Icons.settings_outlined, size: 20),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+            visualDensity: VisualDensity.compact,
             onPressed: () {
               Navigator.of(
                 context,
-              ).push(MaterialPageRoute(builder: (_) => const AccountScreen()));
+              ).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
             },
-            icon: const Icon(Icons.switch_account, size: 18),
-            label: const Text('切换账号'),
+          ),
+          const SizedBox(width: 4),
+          // 个人入口：本地头像（未设置则姓名首字，再退通用图标）。
+          AccountAvatar(
+            radius: 18,
+            tooltip: '我的',
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const StudentInfoScreen()),
+              );
+            },
           ),
         ],
       ),
@@ -359,12 +340,7 @@ class HomeScreen extends ConsumerWidget {
         ImsTab.graduationRequirements.subtitle,
         () => push(imsTab(ImsTab.graduationRequirements)),
       ),
-      _HomeItem(
-        ImsTab.studentInfo.icon,
-        ImsTab.studentInfo.title,
-        ImsTab.studentInfo.subtitle,
-        () => push(imsTab(ImsTab.studentInfo)),
-      ),
+      // 「我的」不在宫格里（用户 2026-09-11 裁定）——入口 = 顶栏右上角头像。
       _HomeItem(
         Icons.place_outlined,
         '学校地址',
@@ -392,7 +368,7 @@ class HomeScreen extends ConsumerWidget {
       _HomeItem(
         Icons.auto_stories_outlined,
         '蛟湖阅读',
-        '蛟湖阅读考核记录 · 入馆学习与借阅达标',
+        '阅读学分四部分进度 · 入馆教育与借阅达标',
         () => push(const JhReadScreen()),
       ),
       _HomeItem(
@@ -420,16 +396,16 @@ class HomeScreen extends ConsumerWidget {
         () => push(const LeaveScreen()),
       ),
       _HomeItem(
-        Icons.vpn_key_outlined,
-        '获取平台标识',
-        '微信平台 GUID · 配置网费请假校历实时源',
-        () => push(const GuidGuideScreen()),
-      ),
-      _HomeItem(
         Icons.workspace_premium_outlined,
         '综合测评',
         '证明材料自动测算 · 五育等次参考',
         () => push(const ZongceScreen()),
+      ),
+      _HomeItem(
+        Icons.calculate_outlined,
+        '分数估计',
+        '平时分项计数 · 期末反推 · 达线预警',
+        () => push(const ScoreEstimateScreen()),
       ),
       _HomeItem(
         Icons.fitness_center,
@@ -455,6 +431,12 @@ class HomeScreen extends ConsumerWidget {
         '校规校纪 · 学分学籍 · 竞赛目录 · 奖助办法',
         () => push(const RulesHomeScreen()),
       ),
+      _HomeItem(
+        Icons.podcasts_outlined,
+        '上课实况窗',
+        '上课中与下一节课 · 通知栏常驻倒计时',
+        () => push(const LiveClassScreen()),
+      ),
     ];
   }
 }
@@ -465,40 +447,33 @@ const _tileColors = <Color>[
   FeaturePalette.schedule,
   FeaturePalette.grade,
   FeaturePalette.graduation,
-  FeaturePalette.studentInfo,
+  // 索引 4 原为 FeaturePalette.studentInfo（「我的」磁贴已删）——与 `_items` 严格按索引对齐，
+  // 增删条目必须同步增删本列表（AGENTS.md §3）。
   FeaturePalette.campus,
   FeaturePalette.campusMap,
   FeaturePalette.volunteer,
   FeaturePalette.secondClass,
   FeaturePalette.jhRead,
+  // 索引 9 原为 FeaturePalette.libraryEdu（「新生入馆教育」磁贴已并入「蛟湖阅读」页，
+  // 用户 2026-09-11 裁定）——与 `_items` 严格按索引对齐，增删条目必须同步本列表。
   FeaturePalette.dataCenter,
   FeaturePalette.electricity,
   FeaturePalette.netFee,
   FeaturePalette.leave,
-  FeaturePalette.guidGuide,
+  // 索引 14 原为 FeaturePalette.guidGuide（「获取平台标识」磁贴已迁到设置页，2026-09-11）。
   FeaturePalette.zongce,
+  FeaturePalette.scoreEstimate,
   FeaturePalette.tice,
   FeaturePalette.materials,
   FeaturePalette.calendar,
   FeaturePalette.rules,
+  FeaturePalette.liveClass,
 ];
 
 // ---------- 当前账号显示名 ----------
-final currentAccountNameProvider = FutureProvider<String?>((ref) async {
-  final accountRepo = await ref.watch(accountRepositoryProvider.future);
-  final accounts = accountRepo.getAccounts().fold(
-    (_) => <Account>[],
-    (list) => list,
-  );
-  final current = ref.watch(currentAccountProvider);
-  if (current.isEmpty) return null;
-  for (final a in accounts) {
-    if (a.cardNumber == current && a.displayName.isNotEmpty) {
-      return a.displayName;
-    }
-  }
-  return null;
-});
+// 已迁到 `lib/features/auth/data/providers/account_display_name_provider.dart`
+// （`currentAccountNameProvider`）——共享头像组件也要用它，放在页面文件里会
+// 逼着共享件反向 import 首页。
 
 class _HomeItem {
   final IconData icon;

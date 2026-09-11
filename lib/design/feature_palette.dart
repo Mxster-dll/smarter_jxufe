@@ -37,8 +37,14 @@ class FeaturePalette {
   /// 蛟湖阅读。
   static const jhRead = Color(0xFF6D4C41);
 
+  /// 新生入馆教育。
+  static const libraryEdu = Color(0xFF00B8D4);
+
   /// 学生个人数据中心。
   static const dataCenter = Color(0xFFD81B60);
+
+  /// 数据一览 / 仪表盘小组件（App 主红，取「总览」语义）。
+  static const dashboard = Color(0xFFC3282E);
 
   /// 宿舍电费。
   static const electricity = Color(0xFFF9A825);
@@ -48,6 +54,9 @@ class FeaturePalette {
 
   /// 综合测评（贴近主红，突出核心功能）。
   static const zongce = Color(0xFFC62828);
+
+  /// 分数估计（靛蓝，取「测算」语义）。
+  static const scoreEstimate = Color(0xFF536DFE);
 
   /// 体测成绩。
   static const tice = Color(0xFF558B2F);
@@ -66,4 +75,25 @@ class FeaturePalette {
 
   /// 平台标识（GUID）获取向导。
   static const guidGuide = Color(0xFF455A64);
+
+  /// 上课实况窗（青蓝，取「实时」语义，与课表的靛蓝区分）。
+  static const liveClass = Color(0xFF00ACC1);
+
+  /// 调课（砖橙，取「临时变更」语义，与志愿服务的亮橙区分）。
+  static const reschedule = Color(0xFFD84315);
+
+  /// 补课（深绿，取「额外补上」语义）。
+  static const makeUpClass = Color(0xFF2E7D32);
+
+  /// 停课（灰，取「取消/失效」语义）。
+  static const classCancelled = Color(0xFF9E9E9E);
+
+  /// 校历角标「假」（放假，红系）。
+  static const calendarHoliday = Color(0xFFC3282E);
+
+  /// 校历角标「班」（补课 / 调休上班，复用补课深绿）。
+  static const calendarMakeup = makeUpClass;
+
+  /// 校历角标「其它事件」（运/考/军/到/教，蓝灰）。
+  static const calendarEvent = Color(0xFF546E7A);
 }
