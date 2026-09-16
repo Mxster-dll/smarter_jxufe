@@ -1,16 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/features/leave/data/providers/leave_providers.dart';
 import 'package:smarter_jxufe/features/leave/domain/leave_models.dart';
 
 /// 请假单详情（只读）：基本信息 + 审批时间线。
 class LeaveDetailScreen extends ConsumerWidget {
-  const LeaveDetailScreen({
-    super.key,
-    required this.instanceId,
-    this.title,
-  });
+  const LeaveDetailScreen({super.key, required this.instanceId, this.title});
 
   /// 流程实例 id（getApplicationForLeaveInfo 参数）。
   final String instanceId;
@@ -116,10 +113,11 @@ class LeaveDetailScreen extends ConsumerWidget {
                     color: scheme.primary.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child:
-                      Icon(Icons.event_available_outlined,
-                          size: 22,
-                          color: scheme.primary),
+                  child: Icon(
+                    Icons.event_available_outlined,
+                    size: 22,
+                    color: scheme.primary,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -154,32 +152,56 @@ class LeaveDetailScreen extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
             child: Column(
               children: [
-                _kvRow(scheme, Icons.calendar_month_outlined, '请假时间',
-                    _dateRange(info)),
+                _kvRow(
+                  scheme,
+                  Icons.calendar_month_outlined,
+                  '请假时间',
+                  _dateRange(info),
+                ),
                 if (info.leaveNanchang.isNotEmpty)
-                  _kvRow(scheme, Icons.location_on_outlined, '是否离昌',
-                      info.leaveNanchang),
+                  _kvRow(
+                    scheme,
+                    Icons.location_on_outlined,
+                    '是否离昌',
+                    info.leaveNanchang,
+                  ),
                 if (info.classHours.isNotEmpty)
-                  _kvRow(scheme, Icons.schedule_outlined, '课假节次',
-                      '第 ${info.classHours} 节'),
-                _kvRow(scheme, Icons.house_outlined, '宿舍',
-                    info.buildingDormitory.isEmpty
-                        ? '—'
-                        : info.buildingDormitory),
-                _kvRow(scheme, Icons.badge_outlined, '申请人',
-                    '${info.appliedByName}（${info.appliedByUsername}）'),
+                  _kvRow(
+                    scheme,
+                    Icons.schedule_outlined,
+                    '课假节次',
+                    '第 ${info.classHours} 节',
+                  ),
+                _kvRow(
+                  scheme,
+                  Icons.house_outlined,
+                  '宿舍',
+                  info.buildingDormitory.isEmpty ? '—' : info.buildingDormitory,
+                ),
+                _kvRow(
+                  scheme,
+                  Icons.badge_outlined,
+                  '申请人',
+                  '${info.appliedByName}（${info.appliedByUsername}）',
+                ),
                 if (info.className.isNotEmpty)
-                  _kvRow(scheme, Icons.school_outlined, '班级',
-                      info.className),
+                  _kvRow(scheme, Icons.school_outlined, '班级', info.className),
                 if (info.deptName.isNotEmpty)
-                  _kvRow(scheme, Icons.account_balance_outlined, '学院',
-                      info.deptName),
+                  _kvRow(
+                    scheme,
+                    Icons.account_balance_outlined,
+                    '学院',
+                    info.deptName,
+                  ),
                 if (info.myPhone.isNotEmpty)
-                  _kvRow(scheme, Icons.phone_outlined, '本人电话',
-                      info.myPhone),
+                  _kvRow(scheme, Icons.phone_outlined, '本人电话', info.myPhone),
                 if (info.parentPhone.isNotEmpty)
-                  _kvRow(scheme, Icons.contacts_outlined, '家长电话',
-                      info.parentPhone),
+                  _kvRow(
+                    scheme,
+                    Icons.contacts_outlined,
+                    '家长电话',
+                    info.parentPhone,
+                  ),
               ],
             ),
           ),
@@ -219,12 +241,7 @@ class LeaveDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _kvRow(
-    ColorScheme scheme,
-    IconData icon,
-    String label,
-    String value,
-  ) {
+  Widget _kvRow(ColorScheme scheme, IconData icon, String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -239,10 +256,7 @@ class LeaveDetailScreen extends ConsumerWidget {
             width: 76,
             child: Text(
               label,
-              style: TextStyle(
-                fontSize: 12.5,
-                color: scheme.onSurfaceVariant,
-              ),
+              style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
             ),
           ),
           Expanded(
@@ -270,8 +284,13 @@ class LeaveDetailScreen extends ConsumerWidget {
         child: Column(
           children: [
             for (var i = 0; i < approvals.length; i++) ...[
-              _buildApprovalRow(context, scheme, approvals[i], i,
-                  isLast: i == approvals.length - 1),
+              _buildApprovalRow(
+                context,
+                scheme,
+                approvals[i],
+                i,
+                isLast: i == approvals.length - 1,
+              ),
             ],
           ],
         ),
@@ -302,14 +321,10 @@ class LeaveDetailScreen extends ConsumerWidget {
                   height: 12,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: isDone
-                        ? scheme.primary
-                        : scheme.outlineVariant,
+                    color: isDone ? scheme.primary : scheme.outlineVariant,
                   ),
                   child: isDone
-                      ? Icon(Icons.check,
-                          size: 8,
-                          color: scheme.onPrimary)
+                      ? Icon(Icons.check, size: 8, color: scheme.onPrimary)
                       : null,
                 ),
                 if (!isLast)
@@ -333,7 +348,9 @@ class LeaveDetailScreen extends ConsumerWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          step.actName.isEmpty ? step.sequenceName : step.actName,
+                          step.actName.isEmpty
+                              ? step.sequenceName
+                              : step.actName,
                           style: const TextStyle(
                             fontSize: 13.5,
                             fontWeight: FontWeight.w600,
@@ -428,13 +445,9 @@ class LeaveDetailScreen extends ConsumerWidget {
   }
 
   Widget _whiteCard(BuildContext context, {required Widget child}) {
-    final scheme = Theme.of(context).colorScheme;
     return Material(
       color: Theme.of(context).cardTheme.color,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-        side: BorderSide(color: scheme.outlineVariant),
-      ),
+      shape: appCardShape(context),
       clipBehavior: Clip.antiAlias,
       child: child,
     );

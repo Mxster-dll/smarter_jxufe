@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/features/net_fee/data/providers/net_fee_providers.dart';
 import 'package:smarter_jxufe/features/net_fee/domain/net_fee_models.dart';
 import 'package:smarter_jxufe/features/platform_guid/presentation/guid_guide_screen.dart';
@@ -137,106 +138,115 @@ class _NetFeeScreenState extends ConsumerState<NetFeeScreen> {
     ColorScheme scheme,
     NetFeeSummary summary,
   ) {
-    return _whiteCard(context, child: Padding(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: scheme.primary.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(Icons.wifi_outlined,
-                    size: 22, color: scheme.primary),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '账户余额',
-                      style: TextStyle(
-                        fontSize: 13.5,
-                        letterSpacing: 1.2,
-                        fontWeight: FontWeight.w500,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      summary.source == NetFeeSource.wxLive
-                          ? '实时校园网计费源'
-                          : summary.source == NetFeeSource.portal
-                              ? '门户概览口径（非实时）'
-                              : '',
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        color: scheme.onSurfaceVariant.withValues(alpha: 0.8),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          if (summary.balance == null)
-            Text(
-              '暂无可用余额数据',
-              style: TextStyle(fontSize: 15, color: scheme.onSurfaceVariant),
-            )
-          else
+    return _whiteCard(
+      context,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
               children: [
-                Text(
-                  fmtYuan(summary.balance!),
-                  key: const Key('netfee_balance'),
-                  style: TextStyle(
-                    fontSize: 46,
-                    fontWeight: FontWeight.w700,
-                    height: 1.0,
-                    color: scheme.primary,
-                    fontFeatures: const [FontFeature.tabularFigures()],
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: scheme.primary.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(10),
                   ),
+                  child: Icon(
+                    Icons.wifi_outlined,
+                    size: 22,
+                    color: scheme.primary,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '账户余额',
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          letterSpacing: 1.2,
+                          fontWeight: FontWeight.w500,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        summary.source == NetFeeSource.wxLive
+                            ? '实时校园网计费源'
+                            : summary.source == NetFeeSource.portal
+                            ? '门户概览口径（非实时）'
+                            : '',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: scheme.onSurfaceVariant.withValues(alpha: 0.8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            if (summary.balance == null)
+              Text(
+                '暂无可用余额数据',
+                style: TextStyle(fontSize: 15, color: scheme.onSurfaceVariant),
+              )
+            else
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
+                    fmtYuan(summary.balance!),
+                    key: const Key('netfee_balance'),
+                    style: TextStyle(
+                      fontSize: 46,
+                      fontWeight: FontWeight.w700,
+                      height: 1.0,
+                      color: scheme.primary,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '元',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            const SizedBox(height: 14),
+            Divider(height: 1, color: scheme.outlineVariant),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(
+                  Icons.badge_outlined,
+                  size: 15,
+                  color: scheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  '元',
+                  '账号 ${summary.username ?? ''}',
                   style: TextStyle(
-                    fontSize: 15,
+                    fontSize: 12.5,
                     color: scheme.onSurfaceVariant,
                   ),
                 ),
               ],
             ),
-          const SizedBox(height: 14),
-          Divider(height: 1, color: scheme.outlineVariant),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Icon(Icons.badge_outlined,
-                  size: 15, color: scheme.onSurfaceVariant),
-              const SizedBox(width: 6),
-              Text(
-                '账号 ${summary.username ?? ''}',
-                style: TextStyle(
-                  fontSize: 12.5,
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
-    ));
+    );
   }
 
   // ---------- 未配置 GUID 提示 ----------
@@ -306,8 +316,11 @@ class _NetFeeScreenState extends ConsumerState<NetFeeScreen> {
               color: scheme.primary.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(Icons.add_card_outlined,
-                size: 18, color: scheme.primary),
+            child: Icon(
+              Icons.add_card_outlined,
+              size: 18,
+              color: scheme.primary,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -345,7 +358,9 @@ class _NetFeeScreenState extends ConsumerState<NetFeeScreen> {
   }
 
   String _recordTitle(NetFeeRecord record) {
-    final type = record.feeType.isNotEmpty ? record.feeType : record.businessType;
+    final type = record.feeType.isNotEmpty
+        ? record.feeType
+        : record.businessType;
     if (type.contains('储值') || type.contains('充值')) return '网费充值';
     return type.isEmpty ? '网费记录' : type;
   }
@@ -426,8 +441,9 @@ class _NetFeeScreenState extends ConsumerState<NetFeeScreen> {
             child: const Text('取消'),
           ),
           FilledButton(
-            onPressed: () => Navigator.of(dialogContext)
-                .pop(_GuidActionSave(controller.text.trim())),
+            onPressed: () => Navigator.of(
+              dialogContext,
+            ).pop(_GuidActionSave(controller.text.trim())),
             child: const Text('保存'),
           ),
         ],
@@ -453,8 +469,8 @@ class _NetFeeScreenState extends ConsumerState<NetFeeScreen> {
             action is _GuidActionClear
                 ? '已清除平台标识，将使用门户概览源'
                 : action is _GuidActionSave && action.guid.isNotEmpty
-                    ? '已保存平台标识，正在刷新实时数据'
-                    : '已清除平台标识',
+                ? '已保存平台标识，正在刷新实时数据'
+                : '已清除平台标识',
           ),
           duration: const Duration(seconds: 2),
         ),
@@ -499,8 +515,8 @@ class _NetFeeScreenState extends ConsumerState<NetFeeScreen> {
     return Material(
       color: color ?? Theme.of(context).cardTheme.color,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: scheme.outlineVariant),
+        borderRadius: BorderRadius.circular(kAppCardRadius),
+        side: appCardBorderSide(scheme),
       ),
       clipBehavior: Clip.antiAlias,
       child: child,
@@ -529,7 +545,11 @@ class _NetFeeScreenState extends ConsumerState<NetFeeScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: light ? scheme.onSurfaceVariant : scheme.error),
+          Icon(
+            icon,
+            size: 18,
+            color: light ? scheme.onSurfaceVariant : scheme.error,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/features/leave/data/providers/leave_providers.dart';
 import 'package:smarter_jxufe/features/leave/domain/leave_models.dart';
 import 'package:smarter_jxufe/features/leave/presentation/leave_detail_screen.dart';
@@ -94,14 +95,14 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen> {
 
   // ---------- 顶部：来源 + 配置入口 ----------
 
-  Widget _buildSourceRow(BuildContext context, ColorScheme scheme, String? guid) {
+  Widget _buildSourceRow(
+    BuildContext context,
+    ColorScheme scheme,
+    String? guid,
+  ) {
     return Row(
       children: [
-        Icon(
-          Icons.cloud_done_outlined,
-          size: 16,
-          color: scheme.primary,
-        ),
+        Icon(Icons.cloud_done_outlined, size: 16, color: scheme.primary),
         const SizedBox(width: 6),
         Text(
           '当前数据源：智慧江财请假流程',
@@ -168,8 +169,11 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen> {
       padding: const EdgeInsets.symmetric(vertical: 48),
       child: Column(
         children: [
-          Icon(Icons.assignment_outlined,
-              size: 44, color: scheme.outlineVariant),
+          Icon(
+            Icons.assignment_outlined,
+            size: 44,
+            color: scheme.outlineVariant,
+          ),
           const SizedBox(height: 12),
           Text(
             '暂无请假记录',
@@ -189,10 +193,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen> {
   ) {
     return Material(
       color: Theme.of(context).cardTheme.color,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-        side: BorderSide(color: scheme.outlineVariant),
-      ),
+      shape: appCardShape(context),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () {
@@ -306,7 +307,11 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen> {
       ),
       child: Text(
         label,
-        style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: fg),
+        style: TextStyle(
+          fontSize: 10.5,
+          fontWeight: FontWeight.w600,
+          color: fg,
+        ),
       ),
     );
   }
@@ -336,7 +341,8 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen> {
 
     final action = await showDialog<_GuidAction>(
       context: context,
-      builder: (dialogContext) => AlertDialog(        title: const Text('实时数据源配置'),
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('实时数据源配置'),
         content: SizedBox(
           width: 400,
           child: Column(
@@ -394,8 +400,9 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen> {
             child: const Text('取消'),
           ),
           FilledButton(
-            onPressed: () => Navigator.of(dialogContext)
-                .pop(_GuidActionSave(controller.text.trim())),
+            onPressed: () => Navigator.of(
+              dialogContext,
+            ).pop(_GuidActionSave(controller.text.trim())),
             child: const Text('保存'),
           ),
         ],
@@ -421,8 +428,8 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen> {
             action is _GuidActionClear
                 ? '已清除平台标识'
                 : action is _GuidActionSave && action.guid.isNotEmpty
-                    ? '已保存平台标识，正在刷新请假记录'
-                    : '已清除平台标识',
+                ? '已保存平台标识，正在刷新请假记录'
+                : '已清除平台标识',
           ),
           duration: const Duration(seconds: 2),
         ),
@@ -480,8 +487,11 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon,
-              size: 18, color: light ? scheme.onSurfaceVariant : scheme.error),
+          Icon(
+            icon,
+            size: 18,
+            color: light ? scheme.onSurfaceVariant : scheme.error,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(

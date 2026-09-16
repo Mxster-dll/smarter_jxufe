@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/comprehensive_service_home_screen.dart';
 import 'package:smarter_jxufe/features/data_center/presentation/data_center_screen.dart';
 import 'package:smarter_jxufe/features/ims/splash/presentation/ims_splash_screen.dart';
@@ -93,11 +94,10 @@ class PlatformSelectionScreen extends ConsumerWidget {
       width: 280,
       height: 100,
       child: Card(
-        elevation: 6,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: appCardShape(context),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(kAppCardRadius),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Row(

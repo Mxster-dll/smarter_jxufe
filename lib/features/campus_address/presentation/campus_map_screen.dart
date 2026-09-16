@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/features/campus_address/data/my_campus_prefs.dart';
 import 'package:smarter_jxufe/features/campus_address/domain/my_campus.dart';
@@ -80,12 +81,11 @@ class CampusMapScreen extends ConsumerWidget {
           final pinned = isMine(e);
           return Material(
             color: Theme.of(context).cardTheme.color,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-              side: BorderSide(
-                color: pinned ? FeaturePalette.campus : scheme.outline,
-              ),
-            ),
+            shape: pinned
+                ? appCardShape(
+                    context,
+                  ).copyWith(side: BorderSide(color: FeaturePalette.cardAccent))
+                : appCardShape(context),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
               onTap: () => _openViewer(context, entryIndex, ordered),
@@ -111,8 +111,11 @@ class CampusMapScreen extends ConsumerWidget {
                     padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
                     child: Row(
                       children: [
-                        Icon(Icons.zoom_in,
-                            size: 16, color: scheme.onSurfaceVariant),
+                        Icon(
+                          Icons.zoom_in,
+                          size: 16,
+                          color: scheme.onSurfaceVariant,
+                        ),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
@@ -155,8 +158,9 @@ class _MapViewer extends StatefulWidget {
 }
 
 class _MapViewerState extends State<_MapViewer> {
-  late final PageController _controller =
-      PageController(initialPage: widget.initialIndex);
+  late final PageController _controller = PageController(
+    initialPage: widget.initialIndex,
+  );
   late int _current = widget.initialIndex;
 
   @override
@@ -178,9 +182,7 @@ class _MapViewerState extends State<_MapViewer> {
               final e = widget.entries[index];
               return InteractiveViewer(
                 maxScale: 6,
-                child: Center(
-                  child: Image.asset(e.asset, fit: BoxFit.contain),
-                ),
+                child: Center(child: Image.asset(e.asset, fit: BoxFit.contain)),
               );
             },
           ),
