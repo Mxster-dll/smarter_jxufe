@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/jh_read_screen.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/second_class_credit_screen.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/volunteer_hours_screen.dart';
@@ -117,11 +118,10 @@ class ComprehensiveServiceHomeScreen extends ConsumerWidget {
       width: 280,
       height: 90,
       child: Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: appCardShape(context),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(kAppCardRadius),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(

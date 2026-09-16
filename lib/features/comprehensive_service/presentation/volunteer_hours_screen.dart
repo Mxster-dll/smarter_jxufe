@@ -1,18 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/core/network/dio_providers.dart';
+import 'package:smarter_jxufe/core/platform/file_share.dart';
+import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/volunteer_activity.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/providers/volunteer_hours_providers.dart';
 
-class VolunteerHoursScreen extends ConsumerWidget {
+class VolunteerHoursScreen extends ConsumerStatefulWidget {
   const VolunteerHoursScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<VolunteerHoursScreen> createState() =>
+      _VolunteerHoursScreenState();
+}
+
+class _VolunteerHoursScreenState extends ConsumerState<VolunteerHoursScreen> {
+  /// 正在下载/分享「时长认定登记表」，期间禁用按钮并显示进度。
+  bool _exporting = false;
+
+  @override
+  Widget build(BuildContext context) {
     final activitiesAsync = ref.watch(volunteerActivitiesProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('学生活动时长统计'), centerTitle: true),
+      appBar: AppBar(
+        title: const Text('学生活动时长统计'),
+        centerTitle: true,
+        actions: [_buildExportAction()],
+      ),
       body: activitiesAsync.when(
         loading: () => const Center(
           child: Column(
@@ -59,6 +75,101 @@ class VolunteerHoursScreen extends ConsumerWidget {
     );
   }
 
+  /// AppBar 上的导出入口：下载中显示进度圈，其余时候是分享图标。
+  Widget _buildExportAction() {
+    if (_exporting) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 18),
+        child: Center(
+          child: SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2.4),
+          ),
+        ),
+      );
+    }
+    return IconButton(
+      tooltip: '导出时长认定登记表',
+      icon: const Icon(Icons.ios_share),
+      onPressed: _exportRecognitionForm,
+    );
+  }
+
+  /// 下载学校平台的「志愿服务时长认定登记表」（Word 原件）并调起系统分享。
+  ///
+  /// 口径：**原样搬运学校下发的文件**，App 不改写内容；
+  /// Android 交给系统分享面板（微信 / QQ / 邮件），桌面端回退为写入下载目录。
+  Future<void> _exportRecognitionForm() async {
+    if (_exporting) return;
+
+    final account = ref.read(currentAccountProvider);
+    if (account.isEmpty) {
+      debugPrint('[volunteer_export] 未登录，跳过导出');
+      _snack('请先登录后再导出志愿时长证明');
+      return;
+    }
+
+    final loaded = ref.read(volunteerActivitiesProvider).valueOrNull;
+    if (loaded != null && loaded.isEmpty) {
+      debugPrint('[volunteer_export] 记录为空，跳过导出');
+      _snack('暂无可导出的志愿时长记录');
+      return;
+    }
+
+    setState(() => _exporting = true);
+    try {
+      final repository = await ref.read(
+        volunteerHoursRepositoryProvider.future,
+      );
+      final file = await repository.exportRecognitionForm(account);
+      debugPrint(
+        '[volunteer_export] 已下载 ${file.fileName}（${file.sizeInBytes} 字节）',
+      );
+      final result = await FileShare.shareBytes(
+        bytes: file.bytes,
+        fileName: file.fileName,
+        mimeType: file.mimeType,
+        subject: file.fileName,
+        text: '江西财经大学青年志愿者志愿服务时长认定登记表',
+      );
+      debugPrint('[volunteer_export] 分享/保存结果: $result');
+      if (!mounted) return;
+
+      if (result.shared) {
+        _snack('已调起系统分享，选择微信 / QQ 等应用发送即可');
+      } else if (result.savedPath != null) {
+        final path = result.savedPath!;
+        _snack(
+          '已导出到 $path',
+          action: SnackBarAction(
+            label: '打开',
+            onPressed: () => FileShare.openFile(path),
+          ),
+        );
+      } else {
+        _snack('导出失败：${result.error ?? '未知错误'}');
+      }
+    } catch (error) {
+      debugPrint('[volunteer_export] 导出失败: $error');
+      if (mounted) _snack('导出失败：$error');
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
+  void _snack(String message, {SnackBarAction? action}) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(message),
+        action: action,
+        duration: const Duration(seconds: 5),
+      ),
+    );
+  }
+
   Widget _buildActivityList(
     BuildContext context,
     List<VolunteerActivity> activities,
@@ -73,7 +184,7 @@ class VolunteerHoursScreen extends ConsumerWidget {
         // 进度条
         _buildProgressBar(context, totalHours),
         const SizedBox(height: 8),
-        // 记录数
+        // 记录数 + 导出入口（导出的是学校平台那份 Word 原件）
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: Row(
@@ -81,6 +192,15 @@ class VolunteerHoursScreen extends ConsumerWidget {
               Text(
                 '共 ${activities.length} 条记录',
                 style: TextStyle(color: Colors.grey[600], fontSize: 13),
+              ),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: _exporting ? null : _exportRecognitionForm,
+                icon: const Icon(Icons.ios_share, size: 18),
+                label: const Text('导出证明'),
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                ),
               ),
             ],
           ),
@@ -317,8 +437,7 @@ class VolunteerHoursScreen extends ConsumerWidget {
 
   Widget _buildActivityCard(BuildContext context, VolunteerActivity activity) {
     return Card(
-      elevation: 1.5,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      shape: appCardShape(context),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
         child: Column(

@@ -3,7 +3,11 @@
 /// 用户 2026-09-11 的三次裁定：
 /// - 每个部分**只留一张进度卡**（经典阅读 / 普通阅读 / 入馆教育 / 信息素养），
 ///   入馆教育那张点进去 = 原「新生入馆教育」页（由页面注入
-///   [ReadCreditProgressSection.onOpenLibraryEdu]）；其余三部分进平台明细表；
+///   [ReadCreditProgressSection.onOpenLibraryEdu]）；**经典阅读那张点进去 =
+///   畅想之星页**（[ReadCreditProgressSection.onOpenClassic]，用户 2026-09-15
+///   裁定：「取消畅想之星的独立入口…删除目前点击蛟湖阅读-经典阅读的界面，而是
+///   把点击后跳转的页面改成畅想之星」——原学分平台明细页不再从蛟湖阅读进入，
+///   其数据源保留并归并到畅想之星页内）；其余两部分进平台明细表；
 /// - 服务端数据一定晚于实际数据 → **一条进度条上叠两档**：灰色 = 实际数据，
 ///   红色 = 服务端数据，红条覆盖在灰条上（红条短于灰条 = 服务端还没追上实际进度）；
 /// - 蛟湖阅读页要有**总成绩卡**：四段圆环（哪部分完成就亮起那一段）+ 是否获得学分的胶囊。
@@ -22,10 +26,19 @@ import 'package:smarter_jxufe/features/read_credit/presentation/widgets/read_cre
 
 /// 四部分进度区（总成绩卡 + 每部分一张进度卡）。
 class ReadCreditProgressSection extends ConsumerWidget {
-  const ReadCreditProgressSection({super.key, this.onOpenLibraryEdu});
+  const ReadCreditProgressSection({
+    super.key,
+    this.onOpenLibraryEdu,
+    this.onOpenClassic,
+  });
 
   /// 「入馆教育」卡的点击目标（页面注入，避免本 feature 依赖入馆教育页）。
   final VoidCallback? onOpenLibraryEdu;
+
+  /// 「经典阅读」卡的点击目标（页面注入：畅想之星页）。
+  ///
+  /// 为 null 时回退到学分平台明细页（保底，正常路径由蛟湖阅读页注入）。
+  final VoidCallback? onOpenClassic;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -63,6 +76,10 @@ class ReadCreditProgressSection extends ConsumerWidget {
   VoidCallback? _tapFor(BuildContext context, ReadCreditPartProgress part) {
     if (part.kind == ReadCreditKind.libraryEdu) {
       return onOpenLibraryEdu;
+    }
+    // 经典阅读 → 畅想之星页（该页内已含学分平台侧明细，用户 2026-09-15 裁定）。
+    if (part.kind == ReadCreditKind.classic && onOpenClassic != null) {
+      return onOpenClassic;
     }
     if (!part.kind.hasDetail) return null;
     return () => Navigator.of(context).push(

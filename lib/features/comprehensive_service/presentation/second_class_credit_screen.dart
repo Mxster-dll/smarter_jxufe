@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/second_class_credit.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/providers/second_class_credit_providers.dart';
 
@@ -83,8 +84,7 @@ class SecondClassCreditScreen extends ConsumerWidget {
   ) {
     final s = report.student;
     return Card(
-      elevation: 1.5,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: appCardShape(context),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
@@ -139,8 +139,7 @@ class SecondClassCreditScreen extends ConsumerWidget {
   ) {
     final report = overview.report;
     return Card(
-      elevation: 1.5,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: appCardShape(context),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
         child: Row(
@@ -215,8 +214,7 @@ class SecondClassCreditScreen extends ConsumerWidget {
       1.0,
     );
     return Card(
-      elevation: 1.5,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: appCardShape(context),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -317,8 +315,7 @@ class SecondClassCreditScreen extends ConsumerWidget {
 
   Widget _buildBoardCard(BuildContext context, SecondClassOverview overview) {
     return Card(
-      elevation: 1.5,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: appCardShape(context),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -446,8 +443,7 @@ class SecondClassCreditScreen extends ConsumerWidget {
   ) {
     if (report.platformCredits.isEmpty) return const SizedBox.shrink();
     return Card(
-      elevation: 1.5,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: appCardShape(context),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -528,8 +524,7 @@ class SecondClassCreditScreen extends ConsumerWidget {
   ) {
     if (report.records.isEmpty) return const SizedBox.shrink();
     return Card(
-      elevation: 1.5,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: appCardShape(context),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

@@ -5,6 +5,7 @@
 ///
 /// 两档口径：
 /// - **实际（App 侧能实时拿到的口径）**：入馆教育 = App 里五章闯关的实时状态；
+///   经典阅读 = **畅想之星平台自身的个人计数**（`lib/features/cxstar/`，App 内实时）；
 ///   普通阅读的纸质借阅 = 学生个人数据中心的借阅册数；其余部分平台没有实时接口，
 ///   用**平台明细表的实时统计**（明细是随学随更新的，只有汇总页停在 5 月 / 11 月）。
 /// - **平台（远端）**：学分查询页的达标状态与计数摘要（`电子阅读[2]` 之类），
@@ -14,6 +15,11 @@
 library;
 
 import 'read_credit_models.dart';
+
+/// 畅想之星平台侧的个人阅读计数（实际口径的实时自有源）。
+///
+/// [books] = 阅读本数（`readCount`），[minutes] = 累计阅读时长（分钟）。
+typedef ReadCreditCxstarProgress = ({int books, int minutes});
 
 /// 经典阅读要求：10 册 + 总时长 ≥ 20 小时（平台首页原文）。
 const int kReadCreditClassicBooks = 10;
@@ -189,14 +195,16 @@ typedef ReadCreditEduProgress = ({int passed, int total});
 /// - [details] 已取到的明细表（缺项即视为「未取到」，对应进度条不给实际值）。
 /// - [libraryEdu] 入馆教育五章闯关实时进度（App 侧）；null = 会话不可用。
 /// - [borrowCounts] 学生个人数据中心的借阅册数（键 `本周/本月/本年`）。
+/// - [cxstar] 畅想之星平台个人阅读计数（经典阅读的实际口径）；null = 未取到。
 ReadCreditProgressBundle buildReadCreditProgress({
   required ReadCreditScore? score,
   Map<ReadCreditKind, ReadCreditDetail> details = const {},
   ReadCreditEduProgress? libraryEdu,
   Map<String, int> borrowCounts = const {},
+  ReadCreditCxstarProgress? cxstar,
 }) {
   final parts = <ReadCreditPartProgress>[
-    _classicPart(score, details[ReadCreditKind.classic]),
+    _classicPart(score, details[ReadCreditKind.classic], cxstar),
     _ordinaryPart(score, details[ReadCreditKind.ordinary], borrowCounts),
     _libraryEduPart(score, details[ReadCreditKind.libraryEdu], libraryEdu),
     _infoLiteracyPart(score, details[ReadCreditKind.infoLiteracy]),
@@ -260,15 +268,41 @@ int? _countOf(ReadCreditItem? item, String keyword) {
   return null;
 }
 
-/// 第一部分 · 经典阅读（10 册 + 20 小时，平台的计数摘要为空 → 只有状态可比）。
+/// 第一部分 · 经典阅读（10 册 + 20 小时）。
+///
+/// 实际口径**优先取畅想之星平台自身的个人计数**（App 内实时，且就是这份数据
+/// 被学校用来认定经典阅读）；拿不到个人会话时回退学分平台的名著明细实时统计。
+/// 平台（远端）口径 = 学分平台名著明细表（汇总页只在 5 月 / 11 月更新）。
 ReadCreditPartProgress _classicPart(
   ReadCreditScore? score,
   ReadCreditDetail? detail,
+  ReadCreditCxstarProgress? cxstar,
 ) {
   final item = score?.itemOf(ReadCreditKind.classic);
-  final available = detail != null;
-  final books = _rowCount(detail).toDouble();
-  final hours = _sumSeconds(detail) / 3600;
+  final detailBooks = _rowCount(detail).toDouble();
+  final detailHours = _sumSeconds(detail) / 3600;
+  final cxBooks = cxstar?.books ?? 0;
+  final cxMinutes = cxstar?.minutes ?? 0;
+  final hasCxstar = cxBooks > 0 || cxMinutes > 0;
+  final books = hasCxstar ? cxBooks.toDouble() : detailBooks;
+  final hours = hasCxstar ? cxMinutes / 60 : detailHours;
+  final hasActual = hasCxstar || detail != null;
+  // 明细只在畅想之星提供「实际」那一档时才作为「服务端」那一条；否则两档同源，
+  // 会出现两条数值完全相同的进度条（旧行为 = 明细即实际，服务端不提供计数）。
+  final remoteBooks = (hasCxstar && detail != null) ? detailBooks : null;
+  final remoteHours = (hasCxstar && detail != null) ? detailHours : null;
+  final lines = <String>[
+    if (hasCxstar)
+      '畅想之星平台（个人）：已读 $cxBooks 册 · 累计 '
+          '${readCreditNum(cxMinutes / 60)} 小时',
+    if (detail != null)
+      '学分平台明细：${readCreditNum(detailBooks)} 册 · '
+          '${readCreditNum(detailHours)} 小时',
+    if (!hasActual) '暂未取到实时计数',
+  ];
+  final actualNote = hasCxstar
+      ? '畅想之星平台个人计数（App 内实时）'
+      : (detail == null ? '暂未取到' : '学分平台明细实时统计');
   return ReadCreditPartProgress(
     kind: ReadCreditKind.classic,
     requirementText: '经典电子阅读 10 册 + 阅读总时长 ≥ 20 小时',
@@ -276,24 +310,31 @@ ReadCreditPartProgress _classicPart(
       ReadCreditProgressBar(
         label: '已读册数',
         actual: books,
+        remote: remoteBooks,
         target: kReadCreditClassicBooks.toDouble(),
         unit: '册',
-        actualNote: available ? '平台明细实时统计' : '明细未取到',
+        actualNote: actualNote,
+        remoteNote: remoteBooks == null ? null : '学分平台明细',
       ),
       ReadCreditProgressBar(
         label: '阅读总时长',
         actual: hours,
+        remote: remoteHours,
         target: kReadCreditClassicHours,
         unit: '小时',
-        actualNote: available ? '平台明细实时统计' : '明细未取到',
+        actualNote: actualNote,
+        remoteNote: remoteHours == null ? null : '学分平台明细',
       ),
     ],
-    actualMet: available
+    actualMet: hasActual
         ? (books >= kReadCreditClassicBooks && hours >= kReadCreditClassicHours)
         : null,
     remoteMet: item?.passed,
     remoteStatusText: _remoteStatus(item),
-    actualSourceNote: '实际值 = 名著明细表实时统计（平台汇总不提供计数）',
+    lines: lines,
+    actualSourceNote: hasCxstar
+        ? '实际值 = 畅想之星平台个人计数（App 内实时获取）'
+        : '实际值 = 名著明细表实时统计（平台汇总不提供计数）',
   );
 }
 
@@ -398,7 +439,7 @@ ReadCreditPartProgress _libraryEduPart(
     lines: lines,
     actualSourceNote: total > 0
         ? '实际值 = App 内五章闯关的实时结果（无需等平台汇总）'
-        : '入馆教育会话不可用，暂无法读到实际进度',
+        : '入馆教育实时进度暂不可用（会话或网络问题），未按未通过计',
   );
 }
 
