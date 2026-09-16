@@ -7,6 +7,7 @@ import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
 import android.os.Bundle
 import android.util.Log
+import com.example.smarter_jxufe.share.FileShareBridge
 import com.example.smarter_jxufe.widget.HomeWidgetBridge
 import com.example.smarter_jxufe.widget.HomeWidgetStore
 import com.example.smarter_jxufe.widget.WidgetRefreshScheduler
@@ -16,6 +17,7 @@ import io.flutter.embedding.engine.FlutterEngine
 class MainActivity : FlutterActivity() {
 
     private var widgetBridge: HomeWidgetBridge? = null
+    private var fileShareBridge: FileShareBridge? = null
     private var unlockReceiver: BroadcastReceiver? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -57,6 +59,8 @@ class MainActivity : FlutterActivity() {
     override fun onDestroy() {
         unlockReceiver?.let { runCatching { unregisterReceiver(it) } }
         unlockReceiver = null
+        fileShareBridge?.dispose()
+        fileShareBridge = null
         super.onDestroy()
     }
 
@@ -64,6 +68,8 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         // 桌面小组件数据桥（自研，零第三方依赖）
         widgetBridge = HomeWidgetBridge(this, flutterEngine.dartExecutor.binaryMessenger)
+        // 「导出文件 + 调起系统分享」桥（自研，零第三方依赖）
+        fileShareBridge = FileShareBridge(this, flutterEngine.dartExecutor.binaryMessenger)
         handleWidgetIntent(intent)
     }
 

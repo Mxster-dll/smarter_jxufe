@@ -4,7 +4,7 @@
     <!-- 小组件周期刷新任务需要「重启后自动恢复」（JobInfo.setPersisted） -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <application
-        android:label="smarter_jxufe"
+        android:label="智慧er江财"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">
@@ -30,6 +30,35 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- 定时通知（截止提醒）：flutter_local_notifications 自 v16 起插件清单只声明
+             POST_NOTIFICATIONS / VIBRATE，投递定时通知的 receiver 必须由 App 自己声明，
+             否则排期到点**静默不触发**；Boot 版负责重启后重新排期（权限见文件顶部
+             RECEIVE_BOOT_COMPLETED）。 -->
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+            </intent-filter>
+        </receiver>
+        <!-- 「导出文件 + 调起系统分享」：自研 FileShareBridge 把文件写到
+             cacheDir/shared/ 后用 FileProvider 暴露为 content:// 交给 ACTION_SEND。
+             exported=false + grantUriPermissions=true：仅本应用可发起，接收方按次授权。 -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
         <!-- 桌面小组件：数据一览 / 电费余额 / 课程加权，各 8 档尺寸
              （2×1 / 3×1 / 4×1 / 5×1 / 2×2 / 3×2 / 4×2 / 5×2）＝ 24 个独立 receiver。
              每档一个独立 receiver —— 桌面（尤其华为/HarmonyOS）不保证支持缩放，
