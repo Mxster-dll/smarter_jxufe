@@ -1,0 +1,442 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+	<head>
+		<title></title>
+		<meta http-equiv="Content-Language" content="zh-cn" />
+		<meta http-equiv="Content-Type" content="text/html; charset=GBK" />
+		<link rel="stylesheet" href="../css/Print.css" type="text/css" />
+		<style type='text/css'>
+            
+
+			.tr{height:auto;}
+			.td{border:solid 1px black;padding:2px;margin:0px;vertical-align: top; line-height:16px;}
+			/**
+			.div1{width:100%;height:25mm;background-color:white;border:solie 1px black;margin:0px;padding:0px;font-size:12px;}
+			.div2{width:47mm;height:100%;background-color:white;margin:0px;padding:0px;text-align:center;}
+			*/
+			
+			.table{width:270mm;height:auto;border-collapse: collapse; border:solid 1px black;background-color:white;}
+			.td0{border:solid 1px black;padding:2px;height:14mm;font-size:14px;text-align: center;background-color: white;}
+			.td1{border:solid 1px black;padding:2px;width:9mm;height:auto;font-size:14px;text-align: center;background-color: white;}
+			.div1{width:100%;height:100%;background-color:white;margin:0px;padding:0px;font-size:12px;}
+			.div2{width:100%;height:100%;background-color:white;margin:0px;padding:0px;text-align:center;}
+			
+		</style>
+		<script type="text/JavaScript">
+			var	flag;
+			var _config_ = {
+				pageSize : "A4",
+				orientation : "L",
+				top : 0,
+				bottom :10,
+				left : 5,
+				right : 5,
+				sfxsym:"xsym"
+			};
+			function labClick(obj){
+                
+				obj_id = obj.id;
+                var tblack=document.getElementById(obj_id).style.backgroundColor;
+				var objs = document.getElementsByTagName("div");
+				for(i=0;i<objs.length;i++){
+				    if(i!=obj_id){
+                        objs[i].style.backgroundColor="white";
+                        objs[i].style.color="black";
+					}
+				}
+				if(tblack=="black"){
+                    document.getElementById(obj_id).style.backgroundColor="white";
+                    document.getElementById(obj_id).style.color="black";
+				}else{
+                    document.getElementById(obj_id).style.backgroundColor="black";
+                    document.getElementById(obj_id).style.color="white";
+				}
+              
+			}
+			function isXSYM(bl){
+				flag=true;
+			}
+		</script>
+		 
+		 <script type="text/javascript" src="js/pagenation.js"></script>
+		 
+	</head>
+	<body style="font-size:12px;font-family: 宋体;">
+
+       
+		<div pagetitle="pagetitle" id="div_title" style="width:270mm;height:65px;text-align:left;">
+			<table style="width:100%;border:0;" align="center">
+				<tbody>
+					<tr>
+						<td style="width:20%;border:0;">
+							<div style="height:5px;width:100%;"></div>
+						</td>
+						<td style="width:60%;border:0;">
+							<div style="height:5px;width:100%;"></div>
+						</td>
+						<td style="width:20%;border:0;">
+							<div style="height:5px;width:100%;"></div>
+						</td>
+					</tr>
+
+						
+					<tr><td style="width:80%;border:0;" colspan="2">
+							
+							<font style="font-size:20px;font-weight:bold;">江西财经大学2026-2027学年第一学期课程课表&ensp;</font>
+						</td>
+						<td style="width:20%;border:0;text-align: right;">
+							<div style="height:24px;font-size:16px;font-weight: bold;" kind="sysdate">
+							
+								2026-09-14 12:16
+							
+							</div>
+						</td>
+					</tr>
+					<tr>
+						<td style="height:18px;border:0;" colspan="3">
+							<hr style="height:2px;width:100%;color: black;background-color:black;"/>
+						</td>
+					</tr>
+					<tr>
+						<td style="height:18px;border:0;" colspan="3">
+							<hr style="height:1px;width:100%;color: black;background-color:black;position:relative;top:-14px;"/>
+						</td>
+					</tr>
+						
+				</tbody>
+			</table>
+			
+		</div>
+		
+		
+
+		<div group="group"  style="width:270mm;text-align:left;font-size:12px;font-weight:bold;">
+			<div style="float:left;width:35%;font-size:14px;font-weight:bold;">承担单位：工商管理学院</div>
+			<div style="float:left;width:50%;font-size:14px;font-weight:bold;">课程：[0004504882]管理学基础</div>
+			<div style="float:left;width:14%;font-size:14px;font-weight:bold;">总学时：20</div>
+		</div>
+		
+		
+		<!-- 报表区 -->
+		<table class='table' id='mytable0' name='mytable0' style="width:270mm; ">
+			<thead>
+				<tr>
+					<td style='width:18mm;padding:0px;' colspan='2'></td>
+
+					
+					<td class='td0' style="width:40mm;height:20px;">
+						星期一
+					</td>
+					
+					<td class='td0' style="width:40mm;height:20px;">
+						星期二
+					</td>
+					
+					<td class='td0' style="width:40mm;height:20px;">
+						星期三
+					</td>
+					
+					<td class='td0' style="width:40mm;height:20px;">
+						星期四
+					</td>
+					
+					<td class='td0' style="width:40mm;height:20px;">
+						星期五
+					</td>
+					
+					<td class='td0' style="width:24mm;height:20px;">
+						星期六
+					</td>
+					
+					<td class='td0' style="width:24mm;height:20px;">
+						星期日
+					</td>
+					
+				</tr></thead>
+				<tbody block="block">
+				
+				<tr>
+					<td class='td1' rowspan='2' valign='middle' >
+						<b>上<br>午</b>
+					</td>
+					<td class='td1' style="font-size: 10px">
+						<b>1-2节</b>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='011'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='021'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='031'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;overflow:hidden;height:auto!important;min-height: 18mm;height:18mm;" title="余焕新&ensp;[2-11]周&ensp;1-2节&ensp;预科261&ensp;麦一教1508&ensp;麦庐园校区&#13;">
+						<div class='div1'  onclick='labClick(this)' id='041'>
+							余焕新&ensp;[2-11]周&ensp;1-2节&ensp;预科261&ensp;麦一教1508&ensp;麦庐园校区&ensp;<br>
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='051'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='061'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='071'>
+							
+						</div>
+					</td>
+					
+				</tr>
+				
+				<tr>
+					<td class='td1' style="font-size: 10px">
+						<b>3-5节</b>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='012'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='022'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='032'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='042'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='052'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='062'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='072'>
+							
+						</div>
+					</td>
+					
+				</tr>
+			
+		</tbody>
+			
+		<tbody block="block">
+				
+				<tr>
+					<td class='td1' rowspan='2' valign='middle' >
+						<b>下<br>午</b>
+					</td>
+					<td class='td1' style="font-size: 10px">
+						<b>6-7节</b>
+					</td>
+					
+					<td class='td' style="width:40mm;overflow:hidden;height:auto!important;min-height: 18mm;height:18mm;" title="刘克春&ensp;[2-11]周&ensp;6-7节&ensp;产品设计241&ensp;麦二教2405&ensp;麦庐园校区&#13;">
+						<div class='div1'  onclick='labClick(this)' id='013'>
+							刘克春&ensp;[2-11]周&ensp;6-7节&ensp;产品设计241&ensp;麦二教2405&ensp;麦庐园校区&ensp;<br>
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='023'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='033'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='043'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='053'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='063'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='073'>
+							
+						</div>
+					</td>
+					
+				</tr>
+				
+				<tr>
+					<td class='td1' style="font-size: 10px">
+						<b>8-9节</b>
+					</td>
+					
+					<td class='td' style="width:40mm;overflow:hidden;height:auto!important;min-height: 18mm;height:18mm;" title="刘克春&ensp;[2-11]周&ensp;8-9节&ensp;产品设计242&ensp;麦二教2405&ensp;麦庐园校区&#13;">
+						<div class='div1'  onclick='labClick(this)' id='014'>
+							刘克春&ensp;[2-11]周&ensp;8-9节&ensp;产品设计242&ensp;麦二教2405&ensp;麦庐园校区&ensp;<br>
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='024'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='034'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='044'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='054'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='064'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='074'>
+							
+						</div>
+					</td>
+					
+				</tr>
+			
+		</tbody>
+				
+		<tbody block="block">
+				
+				<tr>
+					<td class='td1' rowspan='1' valign='middle' >
+						<b>晚<br>上</b>
+					</td>
+					<td class='td1' style="font-size: 10px">
+						<b>10-12节</b>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='015'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='025'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='035'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='045'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='055'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='065'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='075'>
+							
+						</div>
+					</td>
+					
+				</tr>
+				
+			</tbody>
+		</table>
+
+	</body>
+<script type="text/javascript">
+	parent.document.getElementById("divTip").innerHTML="";
+</script>
+</html>
