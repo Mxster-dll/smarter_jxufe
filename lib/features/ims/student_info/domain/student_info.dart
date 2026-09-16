@@ -23,9 +23,22 @@ class StudentInfo {
   final String examineeFeature; // 考生特征 <kstz>
 
   // ── 学籍标识 ──
+  //
+  // ⚠ 三个 id 的**真实用途**（2026-09-15 二次核实，前一次的结论是错的，别再照抄）：
+  // - [userId] `<yhxh>` = `2000000000`：**用户号 / 统一身份认证号**（= CAS 登录名、App 账号
+  //   `cardNumber`）。教务「入学以来正选结果」页顶部印的「学号：2000000000」是它的展示口径，
+  //   **不代表教务请求该传它**。
+  // - [serialNo] `<xh>` = `201600035929`：**教务请求里的 `xh` 一律用它**。依据（都是教务
+  //   自己的产物）：① 课表页 `/student/xkjg.wdkb.jsp` 的隐藏框是**服务端渲染**的
+  //   `<input type="hidden" id="xh" name="xh" value="201600035929"/>`；② 选课页的 `xh`
+  //   由 `getWsxkTimeRange.action` 响应的 `xh` 字段填充（实测同为 `201600035929`），
+  //   选课结果页 `wsxk.zxjg.jsp` 里服务端渲染的也是它；③ **选课写操作会校验**：
+  //   传 `<yhxh>` 提交会被拒 —— 「当前选课操作的用户不是选课学生本人！」
+  //   （2026-09-15 用户亲历；只读端点如课表/预检/确认页对 `xh` 完全不敏感，所以只有提交会暴露）。
+  // - [studentId] `<bz>` = `0000000`：体测平台 `stuNum` 用它。
   final String userId; // 用户号（统一身份认证号）<yhxh>
-  final String studentId; // 学号 <bz>
-  final String serialNo; // 序号 <xh>
+  final String studentId; // 学号（体测 stuNum）<bz>
+  final String serialNo; // 序号 <xh> —— 教务请求里的 `xh` 就是它
   final String enrollNo; // 入学号 <rxh>
 
   // ── 入学培养 ──

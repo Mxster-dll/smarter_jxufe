@@ -103,8 +103,8 @@ class StudentInfoScreen extends ConsumerWidget {
     final rightCards = <Widget>[
       _card(context, '学籍标识', [
         _r(context, '用户号', i.userId),
-        _r(context, '学号', i.studentId),
         _r(context, '序号', i.serialNo),
+        _r(context, '学号', i.studentId),
         _r(context, '入学号', i.enrollNo),
       ]),
       _card(context, '学院专业', [
