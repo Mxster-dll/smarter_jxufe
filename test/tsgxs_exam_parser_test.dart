@@ -30,7 +30,8 @@ void main() {
   });
 
   test('已通过页:识别通过状态并给出下一章', () {
-    const html = '<html><body><div>您已通过本章节考试,请点击进入下一章节</div>'
+    const html =
+        '<html><body><div>您已通过本章节考试,请点击进入下一章节</div>'
         '<a href="/Web/Chapter/Index/11111111-2222-3333-4444-555555555555">下一章</a>'
         '</body></html>';
     final page = parseTsgxsExamPage(html);
@@ -43,7 +44,8 @@ void main() {
 
   test('题干页:题型判别与选项映射', () {
     final json =
-        jsonDecode(_fixture('tsgxs_exam_question.json')) as Map<String, dynamic>;
+        jsonDecode(_fixture('tsgxs_exam_question.json'))
+            as Map<String, dynamic>;
     final q = parseTsgxsQuestion(json);
 
     expect(q.id, 'a4beb4bc-23db-436c-8321-34b5c1c486c2');
@@ -60,7 +62,8 @@ void main() {
 
   test('评分响应:错误 + 正确答案 + 可用道具', () {
     final json =
-        jsonDecode(_fixture('tsgxs_exam_question.json')) as Map<String, dynamic>;
+        jsonDecode(_fixture('tsgxs_exam_question.json'))
+            as Map<String, dynamic>;
     final q = parseTsgxsQuestion(json);
     final res = parseTsgxsAnswerResult({
       'Success': 1,
@@ -72,7 +75,7 @@ void main() {
         'answeranalysis': '自习室开放时间 7:00—23:00。',
       },
       'myPropsInfos': [
-        {'id': '22222222-2222-4222-8222-222222222222', 'title': '时光倒流'}
+        {'id': '22222222-2222-4222-8222-222222222222', 'title': '时光倒流'},
       ],
     });
 
@@ -117,7 +120,7 @@ void main() {
       'NCid': '44444444-4444-4444-8444-444444444444',
       'Examinations': 1,
       'PropsInfos': [
-        {'id': '55555555-5555-4555-8555-555555555555', 'title': '知识护盾'}
+        {'id': '55555555-5555-4555-8555-555555555555', 'title': '知识护盾'},
       ],
     });
     expect(ok.passed, isTrue);
@@ -138,14 +141,22 @@ void main() {
   });
 
   test('题型判别:四种选择题型与文本题、未知题型', () {
-    expect(TsgxsQuestionKind.fromId('883881fa-6bc4-48c8-b5a8-dd84255f411d'),
-        TsgxsQuestionKind.single);
-    expect(TsgxsQuestionKind.fromId('9CEFF19F-54AC-48A8-A378-C8D81F3F52CE'),
-        TsgxsQuestionKind.multi);
-    expect(TsgxsQuestionKind.fromId('A5FFE86A-5F83-446E-B12E-73ADC1544E7C'),
-        TsgxsQuestionKind.judge);
-    expect(TsgxsQuestionKind.fromId('C478855E-31EC-4E5B-9692-B9CFF77EDB8D'),
-        TsgxsQuestionKind.fill);
+    expect(
+      TsgxsQuestionKind.fromId('883881fa-6bc4-48c8-b5a8-dd84255f411d'),
+      TsgxsQuestionKind.single,
+    );
+    expect(
+      TsgxsQuestionKind.fromId('9CEFF19F-54AC-48A8-A378-C8D81F3F52CE'),
+      TsgxsQuestionKind.multi,
+    );
+    expect(
+      TsgxsQuestionKind.fromId('A5FFE86A-5F83-446E-B12E-73ADC1544E7C'),
+      TsgxsQuestionKind.judge,
+    );
+    expect(
+      TsgxsQuestionKind.fromId('C478855E-31EC-4E5B-9692-B9CFF77EDB8D'),
+      TsgxsQuestionKind.fill,
+    );
     expect(TsgxsQuestionKind.fill.isText, isTrue);
     expect(TsgxsQuestionKind.copy.isText, isTrue);
     expect(TsgxsQuestionKind.multi.isText, isFalse);
@@ -155,7 +166,8 @@ void main() {
 
   test('隐藏字段解析:模板占位不覆盖真实值、坏值不误判为 GUID', () {
     final fields = tsgxsHiddenFields(
-        '<input value="v1" id="a" /><input value="v2" id="a" />');
+      '<input value="v1" id="a" /><input value="v2" id="a" />',
+    );
     expect(fields['a'], 'v1');
 
     expect(isGuid('f741c1aa-7c0f-45b1-80bc-2250bf2d3b04'), isTrue);
@@ -189,14 +201,12 @@ void main() {
     // 已登录(实测主账号缓存形态)。
     expect(
       TsgxsAuthRemoteDataSource.hasUid(
-          'ASP.NET_SessionId=abc123; from=0; uid=c6c878af-0000-4000-8000-000000000000'),
+        'ASP.NET_SessionId=abc123; from=0; uid=c6c878af-0000-4000-8000-000000000000',
+      ),
       isTrue,
     );
     // uid 在首位同样成立。
-    expect(
-      TsgxsAuthRemoteDataSource.hasUid('uid=x; from=0'),
-      isTrue,
-    );
+    expect(TsgxsAuthRemoteDataSource.hasUid('uid=x; from=0'), isTrue);
     // 匿名态:只有预热产物(实测未通关账号的坏缓存)→ 必须判失效。
     expect(
       TsgxsAuthRemoteDataSource.hasUid('ASP.NET_SessionId=bye456; from=0'),
@@ -207,14 +217,21 @@ void main() {
 
   test('首次登录:从 success=-2 跳转地址取待激活 uid', () {
     expect(
-      parseTsgxsPendingUid('http://tsgxs.jxufe.cn/Web/User?success=-2&uid='
-          'c6c878af-1111-4111-8111-111111111111'),
+      parseTsgxsPendingUid(
+        'http://tsgxs.jxufe.cn/Web/User?success=-2&uid='
+        'c6c878af-1111-4111-8111-111111111111',
+      ),
       'c6c878af-1111-4111-8111-111111111111',
     );
     // 无 uid / 模板占位 → null(不能把 {{uid}} 当成登录态)。
     expect(
-        parseTsgxsPendingUid('http://tsgxs.jxufe.cn/Web/User?success=-2'), isNull);
-    expect(parseTsgxsPendingUid('http://x/Web/User?uid=%7B%7Buid%7D%7D'), isNull);
+      parseTsgxsPendingUid('http://tsgxs.jxufe.cn/Web/User?success=-2'),
+      isNull,
+    );
+    expect(
+      parseTsgxsPendingUid('http://x/Web/User?uid=%7B%7Buid%7D%7D'),
+      isNull,
+    );
   });
 
   test('登录页皮肤解析:取被勾选的 radio(书生版)而非页面里其它 tid', () {
@@ -224,9 +241,27 @@ void main() {
     // 只有裸 tid= 链接时回退取第一个。
     expect(
       parseTsgxsThemeId(
-          '<a href="/Web/Chapter/Index/x?tid=e3e409c4-7b51-4a75-a58f-92201dd6e660">'),
+        '<a href="/Web/Chapter/Index/x?tid=e3e409c4-7b51-4a75-a58f-92201dd6e660">',
+      ),
       'e3e409c4-7b51-4a75-a58f-92201dd6e660',
     );
     expect(parseTsgxsThemeId('<html></html>'), isNull);
+  });
+
+  test('3xx 语义:跳成绩页/抽奖页 = 本章已通过(最后一章),跳 401 页 = 尚未开放', () {
+    // 实测:已通关账号第 5 章 /Web/Exam?cid= 恒 302 → /Web/Center/MyGrades;
+    // 前 4 章是 200「已通过本章节考试」;未开放则是 302 → /html/401.html。
+    expect(tsgxsRedirectIsChapterPassed('/Web/Center/MyGrades'), isTrue);
+    expect(
+      tsgxsRedirectIsChapterPassed('http://tsgxs.jxufe.cn/Web/Center/MyGrades'),
+      isTrue,
+    );
+    expect(tsgxsRedirectIsChapterPassed('/web/center/mygrades'), isTrue);
+    expect(tsgxsRedirectIsChapterPassed('/Web/Center/Lottery'), isTrue);
+    expect(tsgxsRedirectIsChapterPassed('/html/401.html'), isFalse);
+    expect(tsgxsRedirectIsChapterPassed('/html/404.html'), isFalse);
+    expect(tsgxsRedirectIsChapterPassed('/web/user/logout'), isFalse);
+    expect(tsgxsRedirectIsChapterPassed('/'), isFalse);
+    expect(tsgxsRedirectIsChapterPassed(''), isFalse);
   });
 }

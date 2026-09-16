@@ -60,6 +60,22 @@ class TsgxsExamStatus {
   });
 }
 
+/// 服务端以「跳转成绩页」表达**本章已通过**(仅最后一章)。
+///
+/// 实测 2026-09-15:已通关账号前 4 章 `/Web/Exam?cid=` 是 200 +
+/// 「已通过本章节考试」,**第 5 章(最后一章)是 `302 →
+/// /Web/Center/MyGrades`**(没有「下一章」可去,平台直接送成绩页);
+/// 而「答题尚未开放」是 `302 → /html/401.html`(见
+/// [TsgxsAccessDeniedException])。语义相反,不能当会话失效 —— 否则
+/// 最后一章会永远算未通过(入馆教育进度卡恒显示 4/5 未完成)。
+class TsgxsChapterPassedException implements Exception {
+  final String message;
+  const TsgxsChapterPassedException(this.message);
+
+  @override
+  String toString() => message;
+}
+
 /// 入馆教育(tsgxs.jxufe.cn)业务数据源:全部页面服务端渲染,取回 HTML 后解析。
 class TsgxsApiRemoteDataSource {
   final Dio _dio;
@@ -144,6 +160,10 @@ class TsgxsApiRemoteDataSource {
       return const TsgxsAccessDeniedException(
         '服务端返回 404:内容不存在(章节可能已调整,请返回首页刷新)',
       );
+    }
+    // 跳成绩页 / 抽奖页 = 本章已通过(仅最后一章),不是会话问题。
+    if (tsgxsRedirectIsChapterPassed(location)) {
+      return const TsgxsChapterPassedException('本章已通过:平台直接跳转成绩页(最后一章没有下一章可去)');
     }
     return TsgxsSessionExpiredException(_expiredMessage(status, resp));
   }
@@ -330,6 +350,12 @@ class TsgxsApiRemoteDataSource {
         state: TsgxsExamState.blocked,
         message: '答题尚未开放:需先学完本章全部线索(上一章未通过也会锁定本章)',
       );
+    } on TsgxsChapterPassedException {
+      // 最后一章:平台以跳成绩页代替「已通过本章节考试」页。
+      return const TsgxsExamStatus(
+        state: TsgxsExamState.passed,
+        message: '已通过本章节考试(平台跳转成绩页)',
+      );
     }
     if (html.contains('已通过本章节考试')) {
       final next = RegExp(
@@ -369,6 +395,9 @@ class TsgxsApiRemoteDataSource {
       );
     } on TsgxsAccessDeniedException {
       return const TsgxsExamPage(message: '答题尚未开放:需先学完本章全部线索(上一章未通过也会锁定本章)');
+    } on TsgxsChapterPassedException {
+      // 最后一章已通过 → 平台跳成绩页(没有「下一章」链接可给)。
+      return const TsgxsExamPage(passed: true, message: '已通过本章节考试');
     }
     return parseTsgxsExamPage(html);
   }
