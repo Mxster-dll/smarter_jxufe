@@ -1,0 +1,1095 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+	<head>
+		<title></title>
+		<meta http-equiv="Content-Language" content="zh-cn" />
+		<meta http-equiv="Content-Type" content="text/html; charset=GBK" />
+		<link rel="stylesheet" href="../css/Print.css" type="text/css" />
+		<style type='text/css'>
+            
+
+			.tr{height:auto;}
+			.td{border:solid 1px black;padding:2px;margin:0px;vertical-align: top; line-height:16px;}
+			/**
+			.div1{width:100%;height:25mm;background-color:white;border:solie 1px black;margin:0px;padding:0px;font-size:12px;}
+			.div2{width:47mm;height:100%;background-color:white;margin:0px;padding:0px;text-align:center;}
+			*/
+			
+			.table{width:270mm;height:auto;border-collapse: collapse; border:solid 1px black;background-color:white;}
+			.td0{border:solid 1px black;padding:2px;height:14mm;font-size:14px;text-align: center;background-color: white;}
+			.td1{border:solid 1px black;padding:2px;width:9mm;height:auto;font-size:14px;text-align: center;background-color: white;}
+			.div1{width:100%;height:100%;background-color:white;margin:0px;padding:0px;font-size:12px;}
+			.div2{width:100%;height:100%;background-color:white;margin:0px;padding:0px;text-align:center;}
+			
+		</style>
+		<script type="text/JavaScript">
+			var	flag;
+			var _config_ = {
+				pageSize : "A4",
+				orientation : "L",
+				top : 0,
+				bottom :10,
+				left : 5,
+				right : 5,
+				sfxsym:"xsym"
+			};
+			function labClick(obj){
+                
+				obj_id = obj.id;
+                var tblack=document.getElementById(obj_id).style.backgroundColor;
+				var objs = document.getElementsByTagName("div");
+				for(i=0;i<objs.length;i++){
+				    if(i!=obj_id){
+                        objs[i].style.backgroundColor="white";
+                        objs[i].style.color="black";
+					}
+				}
+				if(tblack=="black"){
+                    document.getElementById(obj_id).style.backgroundColor="white";
+                    document.getElementById(obj_id).style.color="black";
+				}else{
+                    document.getElementById(obj_id).style.backgroundColor="black";
+                    document.getElementById(obj_id).style.color="white";
+				}
+              
+			}
+			function isXSYM(bl){
+				flag=true;
+			}
+		</script>
+		 
+		 <script type="text/javascript" src="js/pagenation.js"></script>
+		 
+	</head>
+	<body style="font-size:12px;font-family: 宋体;">
+
+       
+		<div pagetitle="pagetitle" id="div_title" style="width:270mm;height:65px;text-align:left;">
+			<table style="width:100%;border:0;" align="center">
+				<tbody>
+					<tr>
+						<td style="width:20%;border:0;">
+							<div style="height:5px;width:100%;"></div>
+						</td>
+						<td style="width:60%;border:0;">
+							<div style="height:5px;width:100%;"></div>
+						</td>
+						<td style="width:20%;border:0;">
+							<div style="height:5px;width:100%;"></div>
+						</td>
+					</tr>
+
+						
+					<tr><td style="width:80%;border:0;" colspan="2">
+							
+							<font style="font-size:20px;font-weight:bold;">江西财经大学2026-2027学年第一学期教室课表&ensp;</font>
+						</td>
+						<td style="width:20%;border:0;text-align: right;">
+							<div style="height:24px;font-size:16px;font-weight: bold;" kind="sysdate">
+							
+								2026-09-14 12:14
+							
+							</div>
+						</td>
+					</tr>
+					<tr>
+						<td style="height:18px;border:0;" colspan="3">
+							<hr style="height:2px;width:100%;color: black;background-color:black;"/>
+						</td>
+					</tr>
+					<tr>
+						<td style="height:18px;border:0;" colspan="3">
+							<hr style="height:1px;width:100%;color: black;background-color:black;position:relative;top:-14px;"/>
+						</td>
+					</tr>
+						
+				</tbody>
+			</table>
+			
+		</div>
+		
+		
+
+		<div group="group"  style="width:270mm;text-align:left;font-size:12px;font-weight:bold;">
+			<div style="float:left;width:20%;font-size:14px;font-weight:bold;">校区：蛟桥园校区</div>
+			<div style="float:left;width:25%;font-size:14px;font-weight:bold;text-align: center;">楼房：博雅艺术中心</div>
+			<div style="float:left;width:25%;font-size:14px;font-weight:bold;text-align: center;">教室类型：设计室</div>
+			<div style="float:left;width:30%;font-size:14px;font-weight:bold;text-align: right;">
+				教室：博雅艺术中心B01(30)
+				
+
+			</div>
+		</div>
+		
+		
+		<!-- 报表区 -->
+		<table class='table' id='mytable0' name='mytable0' style="width:270mm; ">
+			<thead>
+				<tr>
+					<td style='width:18mm;padding:0px;' colspan='2'></td>
+
+					
+					<td class='td0' style="width:40mm;height:20px;">
+						星期一
+					</td>
+					
+					<td class='td0' style="width:40mm;height:20px;">
+						星期二
+					</td>
+					
+					<td class='td0' style="width:40mm;height:20px;">
+						星期三
+					</td>
+					
+					<td class='td0' style="width:40mm;height:20px;">
+						星期四
+					</td>
+					
+					<td class='td0' style="width:40mm;height:20px;">
+						星期五
+					</td>
+					
+					<td class='td0' style="width:24mm;height:20px;">
+						星期六
+					</td>
+					
+					<td class='td0' style="width:24mm;height:20px;">
+						星期日
+					</td>
+					
+				</tr></thead>
+				<tbody block="block">
+				
+				<tr>
+					<td class='td1' rowspan='2' valign='middle' >
+						<b>上<br>午</b>
+					</td>
+					<td class='td1' style="font-size: 10px">
+						<b>1-2节</b>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='011'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='021'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='031'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='041'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;overflow:hidden;height:auto!important;min-height: 18mm;height:18mm;" title="刺绣入门&ensp;1&ensp;慕星&ensp;[2-9]周&ensp;1-2节&#13;">
+						<div class='div1'  onclick='labClick(this)' id='051'>
+							刺绣入门&ensp;1&ensp;慕星&ensp;[2-9]周&ensp;1-2节&ensp;<br>
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='061'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='071'>
+							
+						</div>
+					</td>
+					
+				</tr>
+				
+				<tr>
+					<td class='td1' style="font-size: 10px">
+						<b>3-5节</b>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='012'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='022'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='032'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='042'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;overflow:hidden;height:auto!important;min-height: 18mm;height:18mm;" title="刺绣入门&ensp;1&ensp;慕星&ensp;[2-9]周&ensp;3-4节&#13;">
+						<div class='div1'  onclick='labClick(this)' id='052'>
+							刺绣入门&ensp;1&ensp;慕星&ensp;[2-9]周&ensp;3-4节&ensp;<br>
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='062'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='072'>
+							
+						</div>
+					</td>
+					
+				</tr>
+			
+		</tbody>
+			
+		<tbody block="block">
+				
+				<tr>
+					<td class='td1' rowspan='2' valign='middle' >
+						<b>下<br>午</b>
+					</td>
+					<td class='td1' style="font-size: 10px">
+						<b>6-7节</b>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='013'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='023'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='033'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='043'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='053'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='063'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='073'>
+							
+						</div>
+					</td>
+					
+				</tr>
+				
+				<tr>
+					<td class='td1' style="font-size: 10px">
+						<b>8-9节</b>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='014'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='024'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='034'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='044'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='054'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='064'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='074'>
+							
+						</div>
+					</td>
+					
+				</tr>
+			
+		</tbody>
+				
+		<tbody block="block">
+				
+				<tr>
+					<td class='td1' rowspan='1' valign='middle' >
+						<b>晚<br>上</b>
+					</td>
+					<td class='td1' style="font-size: 10px">
+						<b>10-12节</b>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='015'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='025'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='035'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='045'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='055'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='065'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='075'>
+							
+						</div>
+					</td>
+					
+				</tr>
+				
+			</tbody>
+		</table>
+
+<div style="page-break-after: always;"><br></div>
+
+
+		<div group="group"  page="page"  style="width:270mm;text-align:left;font-size:12px;font-weight:bold;">
+			<div style="float:left;width:20%;font-size:14px;font-weight:bold;">校区：蛟桥园校区</div>
+			<div style="float:left;width:25%;font-size:14px;font-weight:bold;text-align: center;">楼房：计算机实践教学中心（北区）</div>
+			<div style="float:left;width:25%;font-size:14px;font-weight:bold;text-align: center;">教室类型：公共实验室</div>
+			<div style="float:left;width:30%;font-size:14px;font-weight:bold;text-align: right;">
+				教室：蛟北区G301(69)
+				
+
+			</div>
+		</div>
+		
+		
+		<!-- 报表区 -->
+		<table class='table' id='mytable1' name='mytable1' style="width:270mm; ">
+			<thead>
+				<tr>
+					<td style='width:18mm;padding:0px;' colspan='2'></td>
+
+					
+					<td class='td0' style="width:40mm;height:20px;">
+						星期一
+					</td>
+					
+					<td class='td0' style="width:40mm;height:20px;">
+						星期二
+					</td>
+					
+					<td class='td0' style="width:40mm;height:20px;">
+						星期三
+					</td>
+					
+					<td class='td0' style="width:40mm;height:20px;">
+						星期四
+					</td>
+					
+					<td class='td0' style="width:40mm;height:20px;">
+						星期五
+					</td>
+					
+					<td class='td0' style="width:24mm;height:20px;">
+						星期六
+					</td>
+					
+					<td class='td0' style="width:24mm;height:20px;">
+						星期日
+					</td>
+					
+				</tr></thead>
+				<tbody block="block">
+				
+				<tr>
+					<td class='td1' rowspan='2' valign='middle' >
+						<b>上<br>午</b>
+					</td>
+					<td class='td1' style="font-size: 10px">
+						<b>1-2节</b>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='111'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='121'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;overflow:hidden;height:auto!important;min-height: 18mm;height:18mm;" title="机器学习金融应用&ensp;2&ensp;廖汗成&ensp;[2-17]周&ensp;1-2节&#13;">
+						<div class='div1'  onclick='labClick(this)' id='131'>
+							机器学习金融应用&ensp;2&ensp;廖汗成&ensp;[2-17]周&ensp;1-2节&ensp;<br>
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;overflow:hidden;height:auto!important;min-height: 18mm;height:18mm;" title="创业模拟与实践&ensp;2&ensp;吴志斌&ensp;[2-9]周&ensp;2-5节&#13;">
+						<div class='div1'  onclick='labClick(this)' id='141'>
+							创业模拟与实践&ensp;2&ensp;吴志斌&ensp;[2-9]周&ensp;2-5节&ensp;<br>
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='151'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='161'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='171'>
+							
+						</div>
+					</td>
+					
+				</tr>
+				
+				<tr>
+					<td class='td1' style="font-size: 10px">
+						<b>3-5节</b>
+					</td>
+					
+					<td class='td' style="width:40mm;overflow:hidden;height:auto!important;min-height: 18mm;height:18mm;" title="Python语言与数据分析&ensp;3&ensp;肖沁&ensp;[2-17]周&ensp;3-5节&ensp;主干+&#13;">
+						<div class='div1'  onclick='labClick(this)' id='112'>
+							Python语言与数据分析&ensp;3&ensp;肖沁&ensp;[2-17]周&ensp;3-5节&ensp;主干+&ensp;<br>
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;overflow:hidden;height:auto!important;min-height: 18mm;height:18mm;" title="纳税检查实务&ensp;3&ensp;张双龙&ensp;[12-15]周&ensp;3-5节&ensp;辅修+&#13;">
+						<div class='div1'  onclick='labClick(this)' id='122'>
+							纳税检查实务&ensp;3&ensp;张双龙&ensp;[12-15]周&ensp;3-5节&ensp;辅修+&ensp;<br>
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;overflow:hidden;height:auto!important;min-height: 18mm;height:18mm;" title="大数据财务分析与公司估值&ensp;3&ensp;陈松&ensp;[2-17]周&ensp;3-5节&#13;">
+						<div class='div1'  onclick='labClick(this)' id='132'>
+							大数据财务分析与公司估值&ensp;3&ensp;陈松&ensp;[2-17]周&ensp;3-5节&ensp;<br>
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;overflow:hidden;height:auto!important;min-height: 18mm;height:18mm;" title="创业模拟与实践&ensp;2&ensp;吴志斌&ensp;[2-9]周&ensp;2-5节&#13;">
+						<div class='div1'  onclick='labClick(this)' id='142'>
+							创业模拟与实践&ensp;2&ensp;吴志斌&ensp;[2-9]周&ensp;2-5节&ensp;<br>
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='152'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='162'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='172'>
+							
+						</div>
+					</td>
+					
+				</tr>
+			
+		</tbody>
+			
+		<tbody block="block">
+				
+				<tr>
+					<td class='td1' rowspan='2' valign='middle' >
+						<b>下<br>午</b>
+					</td>
+					<td class='td1' style="font-size: 10px">
+						<b>6-7节</b>
+					</td>
+					
+					<td class='td' style="width:40mm;overflow:hidden;height:auto!important;min-height: 18mm;height:18mm;" title="数据处理技术基础&ensp;2&ensp;刘爱红&ensp;[2-17]周&ensp;双周&ensp;6-7节&ensp;主干+&#13;">
+						<div class='div1'  onclick='labClick(this)' id='113'>
+							数据处理技术基础&ensp;2&ensp;刘爱红&ensp;[2-17]周&ensp;双周&ensp;6-7节&ensp;主干+&ensp;<br>
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;overflow:hidden;height:auto!important;min-height: 18mm;height:18mm;" title="纳税检查实务&ensp;3&ensp;张双龙&ensp;[12-15]周&ensp;6-8节&ensp;辅修+&#13;">
+						<div class='div1'  onclick='labClick(this)' id='123'>
+							纳税检查实务&ensp;3&ensp;张双龙&ensp;[12-15]周&ensp;6-8节&ensp;辅修+&ensp;<br>
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='133'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;overflow:hidden;height:auto!important;min-height: 18mm;height:18mm;" title="程序设计基础&ensp;4&ensp;万常选&ensp;[4-14]周&ensp;6-7节&#13;">
+						<div class='div1'  onclick='labClick(this)' id='143'>
+							程序设计基础&ensp;4&ensp;万常选&ensp;[4-14]周&ensp;6-7节&ensp;<br>
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='153'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='163'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='173'>
+							
+						</div>
+					</td>
+					
+				</tr>
+				
+				<tr>
+					<td class='td1' style="font-size: 10px">
+						<b>8-9节</b>
+					</td>
+					
+					<td class='td' style="width:40mm;overflow:hidden;height:auto!important;min-height: 18mm;height:18mm;" title="数据处理技术基础&ensp;2&ensp;刘爱红&ensp;[2-17]周&ensp;双周&ensp;8-9节&ensp;主干+&#13;">
+						<div class='div1'  onclick='labClick(this)' id='114'>
+							数据处理技术基础&ensp;2&ensp;刘爱红&ensp;[2-17]周&ensp;双周&ensp;8-9节&ensp;主干+&ensp;<br>
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='124'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='134'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='144'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='154'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='164'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='174'>
+							
+						</div>
+					</td>
+					
+				</tr>
+			
+		</tbody>
+				
+		<tbody block="block">
+				
+				<tr>
+					<td class='td1' rowspan='1' valign='middle' >
+						<b>晚<br>上</b>
+					</td>
+					<td class='td1' style="font-size: 10px">
+						<b>10-12节</b>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='115'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='125'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='135'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='145'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='155'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='165'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='175'>
+							
+						</div>
+					</td>
+					
+				</tr>
+				
+			</tbody>
+		</table>
+
+<div style="page-break-after: always;"><br></div>
+
+
+		<div group="group"  page="page"  style="width:270mm;text-align:left;font-size:12px;font-weight:bold;">
+			<div style="float:left;width:20%;font-size:14px;font-weight:bold;">校区：蛟桥园校区</div>
+			<div style="float:left;width:25%;font-size:14px;font-weight:bold;text-align: center;">楼房：计算机实践教学中心（北区）</div>
+			<div style="float:left;width:25%;font-size:14px;font-weight:bold;text-align: center;">教室类型：公共实验室</div>
+			<div style="float:left;width:30%;font-size:14px;font-weight:bold;text-align: right;">
+				教室：蛟北区G302(63)
+				
+
+			</div>
+		</div>
+		
+		
+		<!-- 报表区 -->
+		<table class='table' id='mytable2' name='mytable2' style="width:270mm; ">
+			<thead>
+				<tr>
+					<td style='width:18mm;padding:0px;' colspan='2'></td>
+
+					
+					<td class='td0' style="width:40mm;height:20px;">
+						星期一
+					</td>
+					
+					<td class='td0' style="width:40mm;height:20px;">
+						星期二
+					</td>
+					
+					<td class='td0' style="width:40mm;height:20px;">
+						星期三
+					</td>
+					
+					<td class='td0' style="width:40mm;height:20px;">
+						星期四
+					</td>
+					
+					<td class='td0' style="width:40mm;height:20px;">
+						星期五
+					</td>
+					
+					<td class='td0' style="width:24mm;height:20px;">
+						星期六
+					</td>
+					
+					<td class='td0' style="width:24mm;height:20px;">
+						星期日
+					</td>
+					
+				</tr></thead>
+				<tbody block="block">
+				
+				<tr>
+					<td class='td1' rowspan='2' valign='middle' >
+						<b>上<br>午</b>
+					</td>
+					<td class='td1' style="font-size: 10px">
+						<b>1-2节</b>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='211'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='221'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;overflow:hidden;height:auto!important;min-height: 18mm;height:18mm;" title="财经大数据分析（英）&ensp;4&ensp;廖述梅&ensp;[2-17]周&ensp;1-2节&#13;">
+						<div class='div1'  onclick='labClick(this)' id='231'>
+							财经大数据分析（英）&ensp;4&ensp;廖述梅&ensp;[2-17]周&ensp;1-2节&ensp;<br>
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;overflow:hidden;height:auto!important;min-height: 18mm;height:18mm;" title="EXCEL与投资学&ensp;2&ensp;钟小林&ensp;[2-17]周&ensp;1-2节&#13;">
+						<div class='div1'  onclick='labClick(this)' id='241'>
+							EXCEL与投资学&ensp;2&ensp;钟小林&ensp;[2-17]周&ensp;1-2节&ensp;<br>
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='251'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='261'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='271'>
+							
+						</div>
+					</td>
+					
+				</tr>
+				
+				<tr>
+					<td class='td1' style="font-size: 10px">
+						<b>3-5节</b>
+					</td>
+					
+					<td class='td' style="width:40mm;overflow:hidden;height:auto!important;min-height: 18mm;height:18mm;" title="Excel高级数据处理与分析&ensp;3&ensp;丁菊玲&ensp;[2-17]周&ensp;3-5节&ensp;主干+&#13;">
+						<div class='div1'  onclick='labClick(this)' id='212'>
+							Excel高级数据处理与分析&ensp;3&ensp;丁菊玲&ensp;[2-17]周&ensp;3-5节&ensp;主干+&ensp;<br>
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;overflow:hidden;height:auto!important;min-height: 18mm;height:18mm;" title="Excel高级数据处理与分析&ensp;3&ensp;郭勇2&ensp;[2-17]周&ensp;3-5节&ensp;主干+&#13;">
+						<div class='div1'  onclick='labClick(this)' id='222'>
+							Excel高级数据处理与分析&ensp;3&ensp;郭勇2&ensp;[2-17]周&ensp;3-5节&ensp;主干+&ensp;<br>
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;overflow:hidden;height:auto!important;min-height: 18mm;height:18mm;" title="数据库应用开发（英）&ensp;4&ensp;熊云波&ensp;[2-17]周&ensp;3-4节&#13;">
+						<div class='div1'  onclick='labClick(this)' id='232'>
+							数据库应用开发（英）&ensp;4&ensp;熊云波&ensp;[2-17]周&ensp;3-4节&ensp;<br>
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;overflow:hidden;height:auto!important;min-height: 18mm;height:18mm;" title="期货与期权实务&ensp;2&ensp;钟小林&ensp;[2-17]周&ensp;3-4节&#13;">
+						<div class='div1'  onclick='labClick(this)' id='242'>
+							期货与期权实务&ensp;2&ensp;钟小林&ensp;[2-17]周&ensp;3-4节&ensp;<br>
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='252'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='262'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='272'>
+							
+						</div>
+					</td>
+					
+				</tr>
+			
+		</tbody>
+			
+		<tbody block="block">
+				
+				<tr>
+					<td class='td1' rowspan='2' valign='middle' >
+						<b>下<br>午</b>
+					</td>
+					<td class='td1' style="font-size: 10px">
+						<b>6-7节</b>
+					</td>
+					
+					<td class='td' style="width:40mm;overflow:hidden;height:auto!important;min-height: 18mm;height:18mm;" title="Excel高级数据处理与分析&ensp;3&ensp;丁菊玲&ensp;[2-17]周&ensp;6-8节&ensp;主干+&#13;">
+						<div class='div1'  onclick='labClick(this)' id='213'>
+							Excel高级数据处理与分析&ensp;3&ensp;丁菊玲&ensp;[2-17]周&ensp;6-8节&ensp;主干+&ensp;<br>
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;overflow:hidden;height:auto!important;min-height: 18mm;height:18mm;" title="Excel高级数据处理与分析&ensp;3&ensp;郭勇2&ensp;[2-17]周&ensp;6-8节&ensp;主干+&#13;">
+						<div class='div1'  onclick='labClick(this)' id='223'>
+							Excel高级数据处理与分析&ensp;3&ensp;郭勇2&ensp;[2-17]周&ensp;6-8节&ensp;主干+&ensp;<br>
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='233'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;overflow:hidden;height:auto!important;min-height: 18mm;height:18mm;" title="大数据管理技术（英）&ensp;4&ensp;黄玉坤&ensp;[2-17]周&ensp;6-7节&#13;">
+						<div class='div1'  onclick='labClick(this)' id='243'>
+							大数据管理技术（英）&ensp;4&ensp;黄玉坤&ensp;[2-17]周&ensp;6-7节&ensp;<br>
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;overflow:hidden;height:auto!important;min-height: 18mm;height:18mm;" title="金融人工智能&ensp;3&ensp;王海英&ensp;[2-17]周&ensp;6-8节&ensp;辅修+主干+&#13;">
+						<div class='div1'  onclick='labClick(this)' id='253'>
+							金融人工智能&ensp;3&ensp;王海英&ensp;[2-17]周&ensp;6-8节&ensp;辅修+主干+&ensp;<br>
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='263'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='273'>
+							
+						</div>
+					</td>
+					
+				</tr>
+				
+				<tr>
+					<td class='td1' style="font-size: 10px">
+						<b>8-9节</b>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='214'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='224'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='234'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;overflow:hidden;height:auto!important;min-height: 18mm;height:18mm;" title="ERP财务业务一体化实验&ensp;2&ensp;龚玉芬&ensp;[2-17]周&ensp;8-9节&#13;">
+						<div class='div1'  onclick='labClick(this)' id='244'>
+							ERP财务业务一体化实验&ensp;2&ensp;龚玉芬&ensp;[2-17]周&ensp;8-9节&ensp;<br>
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='254'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='264'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='274'>
+							
+						</div>
+					</td>
+					
+				</tr>
+			
+		</tbody>
+				
+		<tbody block="block">
+				
+				<tr>
+					<td class='td1' rowspan='1' valign='middle' >
+						<b>晚<br>上</b>
+					</td>
+					<td class='td1' style="font-size: 10px">
+						<b>10-12节</b>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='215'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='225'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;overflow:hidden;height:auto!important;min-height: 18mm;height:18mm;" title="机器学习金融应用&ensp;2&ensp;廖汗成&ensp;[2-17]周&ensp;10-11节&#13;">
+						<div class='div1'  onclick='labClick(this)' id='235'>
+							机器学习金融应用&ensp;2&ensp;廖汗成&ensp;[2-17]周&ensp;10-11节&ensp;<br>
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='245'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:40mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='255'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='265'>
+							
+						</div>
+					</td>
+					
+					<td class='td' style="width:24mm;height:18mm;" title="">
+						<div class='div1'  onclick='labClick(this)' id='275'>
+							
+						</div>
+					</td>
+					
+				</tr>
+				
+			</tbody>
+		</table>
+
+<div style="page-break-after: always;"><br></div>
+
+
+		<div group="group"  page="page"  style="width:270mm;text-align:left;font-size:12px;font-weight:bold;">
+			<div style="float:left;width:20%;font-size:14px;font-weight:bold;">校区：蛟桥园校区</div>
+			<div style="float:left;width:25%;font-size:14px;font-weight:bold;text-align: center;">楼房：计算机实践教学中心（北区）</div>
+			<div style="float:left;width:25%;font-size:14px;font-weight:bold;text-align: center;">教室类型：公共实验室</div>
+			<div style="float:left;width:30%;font-size:14px;font-weight:bold;text-align: right;">
+				教室：蛟北区G303(63)
+				
+
+			</div>
+		</div>
+		
+		
+		<!-- 报表区 -->
+		<table class='table' </html>
