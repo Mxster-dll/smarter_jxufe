@@ -1,0 +1,218 @@
+
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>数据列表</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=GBK">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,Chrome=1" />
+	<meta http-equiv="X-UA-Compatible" content="IE=9" />	
+	<meta name="renderer" content="webkit">  
+	<meta http-equiv="pragma" content="no-cache"/>
+	<meta http-equiv="cache-control" content="no-cache"/>
+	<meta http-equiv="expires" content="0"/>	
+	<link rel="stylesheet" type="text/css" media="screen" href="../custom/bootstrap/css/bootstrap.min.css">
+	<!--[if lte IE 6]> 
+		<link rel="stylesheet" type="text/css" media="screen" href="../custom/bootstrap/v2/css/bootstrap-responsive.min.css">
+		<link rel="stylesheet" type="text/css" media="screen" href="../custom/bootstrap/v2/css/bootstrap-ie6.min.css"> 
+		<link rel="stylesheet" type="text/css" media="screen" href="../custom/bootstrap/v2/css/ie.css"> 
+	<![endif]-->
+	<link rel="stylesheet" type="text/css" media="screen" href="../custom/bootstrap/css/gray_common.css">
+	<style>
+		td a:hover{
+			cursor:pointer;
+			text-decoration:underline;
+		}
+		@-ms-viewport { width: device-width; }
+		@-webkit-viewport { width: device-width; }
+		@-moz-viewport { width: device-width; }
+		@-ms-viewport { width: device-width; }
+		@-o-viewport { width: device-width; }
+		@viewport { width: device-width; }
+		select{height:20px;min-height: 20px;padding:1px;}
+		select option{height:30px; min-height:30px;}
+		#floatBox {
+			position: fixed;
+			display: none;
+			padding: 4px 10px;
+			background: white;
+			border: 1px solid #999;
+			font-size: 14px;
+			z-index: 9999999 !important;
+			font-weight: bold;
+
+			max-width: 300px;
+			white-space: normal; /* 允许自动换行 */
+			word-wrap: break-word; /* 长单词/长文本强制换行 */
+
+			/* 红色删除线样式 */
+			text-decoration: line-through;
+			text-decoration-color: rgba(255, 59, 48, 0.6);  /* 透明看不见 */
+			text-decoration-thickness: 2px;     /* 极细，不挡字 */
+		}
+	</style>
+    <script type="text/javascript">
+	  var _stylePathPrefix = "gray";
+	  var isVersion20 = true;
+    </script>
+    <script type="text/javascript" src="../custom/js/jquery.js"></script>
+        <script type="text/javascript" src="./js/ind_DataTable.js?t=39880178936269789746160"></script>
+    <script type="text/javascript" src="../custom/js/stopExecutionOnTimeout.js"></script>
+	  
+	  <script type="text/javascript" src="../custom/js/jquery.tablesorter.min.js"></script>
+	  
+
+	
+  </head>
+ 
+  
+  <body leftmargin="0" topmargin="0">
+	<div class="table_outer">
+	  	
+	  		<div class='datalist' style='OVERFLOW: auto; height:100%;width:100%;'><table style='width:100%;' id='keywords'  class='table table-striped table-bordered table-hover'><thead><tr class='H' style='POSITION: relative'><td width='20%' id='head_kc' >课程</td><td width='5%' id='head_xf' >学分</td><td width='5%' id='head_zxs' >总学时</td><td width='10%' id='head_lb' >课程类别</td><td width='8%' id='head_kcsx' >课程属性</td><td width='8%' id='head_skbh' >上课班号</td><td width='10%' id='head_skbjmc' >上课班级名称</td><td width='8%' id='head_xkfs' >选课方式</td><td width='10%' id='head_rkjs' >任课教师</td><td style='display:none;' id='head_xk_points' >投入选课币</td><td style='display:none;' id='head_is_buy_book' >购买教材</td><td style='display:none;' id='head_is_cx' >重修</td><td width='6%' id='head_xk_status' >选课状态</td><td width='10%' id='head_operation' >操作</td><td style='display:none;' id='head_kcdm' > </td><td style='display:none;' id='head_kclb1' > </td><td style='display:none;' id='head_kclb2' > </td><td style='display:none;' id='head_khfs' > </td><td style='display:none;' id='head_kclb3' > </td><td style='display:none;' id='head_is_yxtj' > </td><td style='display:none;' id='head_skbzdm' >上课班组代码</td><td style='display:none;' id='head_skbjdm' >上课班级代码</td></tr></thead><tbody id="sdTable_tbody" ><tr class='O'  id='tr0'  onclick='sglSelectedTr(this)'  ><td id='tr0_kc' name='kc'  align='left' ><a href='javascript:void(0)' onclick='parent.showCourseInfo("000160")'>[1004001943]会计学</a></td><td id='tr0_xf' name='xf'  align='right' >3.0</td><td id='tr0_zxs' name='zxs'  align='right' >48</td><td id='tr0_lb' name='lb'  align='left' ></td><td id='tr0_kcsx' name='kcsx'  align='left' ><font title='理论课'>理论课</font></td><td id='tr0_skbh' name='skbh'  align='center' ></td><td id='tr0_skbjmc' name='skbjmc'  align='left' ></td><td id='tr0_xkfs' name='xkfs'  align='center' ></td><td id='tr0_rkjs' name='rkjs'  align='left' ></td><td id='tr0_xk_points' name='xk_points'  style='display:none;' ></td><td id='tr0_is_buy_book' name='is_buy_book'  style='display:none;' ></td><td id='tr0_is_cx' name='is_cx'  style='display:none;' ></td><td id='tr0_xk_status' name='xk_status'  align='center' ></td><td id='tr0_operation' name='operation'  align='center' ><a href='javascript:void(0)' isview='0' onclick='parent.viewResume(this)'>选择</a></td><td id='tr0_kcdm' name='kcdm'  style='display:none;' >000160</td><td id='tr0_kclb1' name='kclb1'  style='display:none;' >04</td><td id='tr0_kclb2' name='kclb2'  style='display:none;' >2302</td><td id='tr0_khfs' name='khfs'  style='display:none;' >02</td><td id='tr0_kclb3' name='kclb3'  style='display:none;' >07</td><td id='tr0_is_yxtj' name='is_yxtj'  style='display:none;' ></td><td id='tr0_skbzdm' name='skbzdm'  style='display:none;' ></td><td id='tr0_skbjdm' name='skbjdm'  style='display:none;' ></td></tr><tr class='E'  id='tr1'  onclick='sglSelectedTr(this)'  ><td id='tr1_kc' name='kc'  align='left' ><a href='javascript:void(0)' onclick='parent.showCourseInfo("000591")'>[1004201913]金融学</a></td><td id='tr1_xf' name='xf'  align='right' >3.0</td><td id='tr1_zxs' name='zxs'  align='right' >48</td><td id='tr1_lb' name='lb'  align='left' ></td><td id='tr1_kcsx' name='kcsx'  align='left' ><font title='理论课'>理论课</font></td><td id='tr1_skbh' name='skbh'  align='center' ></td><td id='tr1_skbjmc' name='skbjmc'  align='left' ></td><td id='tr1_xkfs' name='xkfs'  align='center' ></td><td id='tr1_rkjs' name='rkjs'  align='left' ></td><td id='tr1_xk_points' name='xk_points'  style='display:none;' ></td><td id='tr1_is_buy_book' name='is_buy_book'  style='display:none;' ></td><td id='tr1_is_cx' name='is_cx'  style='display:none;' ></td><td id='tr1_xk_status' name='xk_status'  align='center' ></td><td id='tr1_operation' name='operation'  align='center' ><a href='javascript:void(0)' isview='0' onclick='parent.viewResume(this)'>选择</a></td><td id='tr1_kcdm' name='kcdm'  style='display:none;' >000591</td><td id='tr1_kclb1' name='kclb1'  style='display:none;' >04</td><td id='tr1_kclb2' name='kclb2'  style='display:none;' >2302</td><td id='tr1_khfs' name='khfs'  style='display:none;' >02</td><td id='tr1_kclb3' name='kclb3'  style='display:none;' >07</td><td id='tr1_is_yxtj' name='is_yxtj'  style='display:none;' ></td><td id='tr1_skbzdm' name='skbzdm'  style='display:none;' ></td><td id='tr1_skbjdm' name='skbjdm'  style='display:none;' ></td></tr><tr class='O'  id='tr2'  onclick='sglSelectedTr(this)'  ><td id='tr2_kc' name='kc'  align='left' ><a href='javascript:void(0)' onclick='parent.showCourseInfo("001282")'>[1004501303]管理学原理</a></td><td id='tr2_xf' name='xf'  align='right' >3.0</td><td id='tr2_zxs' name='zxs'  align='right' >48</td><td id='tr2_lb' name='lb'  align='left' ></td><td id='tr2_kcsx' name='kcsx'  align='left' ><font title='理论课'>理论课</font></td><td id='tr2_skbh' name='skbh'  align='center' ></td><td id='tr2_skbjmc' name='skbjmc'  align='left' ></td><td id='tr2_xkfs' name='xkfs'  align='center' ></td><td id='tr2_rkjs' name='rkjs'  align='left' ></td><td id='tr2_xk_points' name='xk_points'  style='display:none;' ></td><td id='tr2_is_buy_book' name='is_buy_book'  style='display:none;' ></td><td id='tr2_is_cx' name='is_cx'  style='display:none;' ></td><td id='tr2_xk_status' name='xk_status'  align='center' ></td><td id='tr2_operation' name='operation'  align='center' ><a href='javascript:void(0)' isview='0' onclick='parent.viewResume(this)'>选择</a></td><td id='tr2_kcdm' name='kcdm'  style='display:none;' >001282</td><td id='tr2_kclb1' name='kclb1'  style='display:none;' >04</td><td id='tr2_kclb2' name='kclb2'  style='display:none;' >2302</td><td id='tr2_khfs' name='khfs'  style='display:none;' >02</td><td id='tr2_kclb3' name='kclb3'  style='display:none;' >07</td><td id='tr2_is_yxtj' name='is_yxtj'  style='display:none;' ></td><td id='tr2_skbzdm' name='skbzdm'  style='display:none;' ></td><td id='tr2_skbjdm' name='skbjdm'  style='display:none;' ></td></tr><tr class='E'  id='tr3'  onclick='sglSelectedTr(this)'  ><td id='tr3_kc' name='kc'  align='left' ><a href='javascript:void(0)' onclick='parent.showCourseInfo("1004606732")'>[1004606732]英语视听说</a></td><td id='tr3_xf' name='xf'  align='right' >2.0</td><td id='tr3_zxs' name='zxs'  align='right' >32</td><td id='tr3_lb' name='lb'  align='left' ></td><td id='tr3_kcsx' name='kcsx'  align='left' ><font title='理论课'>理论课</font></td><td id='tr3_skbh' name='skbh'  align='center' ></td><td id='tr3_skbjmc' name='skbjmc'  align='left' ></td><td id='tr3_xkfs' name='xkfs'  align='center' ></td><td id='tr3_rkjs' name='rkjs'  align='left' ></td><td id='tr3_xk_points' name='xk_points'  style='display:none;' ></td><td id='tr3_is_buy_book' name='is_buy_book'  style='display:none;' ></td><td id='tr3_is_cx' name='is_cx'  style='display:none;' ></td><td id='tr3_xk_status' name='xk_status'  align='center' ></td><td id='tr3_operation' name='operation'  align='center' ><a href='javascript:void(0)' isview='0' onclick='parent.viewResume(this)'>选择</a></td><td id='tr3_kcdm' name='kcdm'  style='display:none;' >1004606732</td><td id='tr3_kclb1' name='kclb1'  style='display:none;' >01</td><td id='tr3_kclb2' name='kclb2'  style='display:none;' >2104</td><td id='tr3_khfs' name='khfs'  style='display:none;' >02</td><td id='tr3_kclb3' name='kclb3'  style='display:none;' >07</td><td id='tr3_is_yxtj' name='is_yxtj'  style='display:none;' ></td><td id='tr3_skbzdm' name='skbzdm'  style='display:none;' ></td><td id='tr3_skbjdm' name='skbjdm'  style='display:none;' ></td></tr><tr class='O'  id='tr4'  onclick='sglSelectedTr(this)'  ><td id='tr4_kc' name='kc'  align='left' ><a href='javascript:void(0)' onclick='parent.showCourseInfo("002211")'>[1004703634]线性代数(工)</a></td><td id='tr4_xf' name='xf'  align='right' >4.0</td><td id='tr4_zxs' name='zxs'  align='right' >64</td><td id='tr4_lb' name='lb'  align='left' ></td><td id='tr4_kcsx' name='kcsx'  align='left' ><font title='理论课'>理论课</font></td><td id='tr4_skbh' name='skbh'  align='center' ></td><td id='tr4_skbjmc' name='skbjmc'  align='left' ></td><td id='tr4_xkfs' name='xkfs'  align='center' ></td><td id='tr4_rkjs' name='rkjs'  align='left' ></td><td id='tr4_xk_points' name='xk_points'  style='display:none;' ></td><td id='tr4_is_buy_book' name='is_buy_book'  style='display:none;' ></td><td id='tr4_is_cx' name='is_cx'  style='display:none;' ></td><td id='tr4_xk_status' name='xk_status'  align='center' ></td><td id='tr4_operation' name='operation'  align='center' ><a href='javascript:void(0)' isview='0' onclick='parent.viewResume(this)'>选择</a></td><td id='tr4_kcdm' name='kcdm'  style='display:none;' >002211</td><td id='tr4_kclb1' name='kclb1'  style='display:none;' >01</td><td id='tr4_kclb2' name='kclb2'  style='display:none;' >2102</td><td id='tr4_khfs' name='khfs'  style='display:none;' >01</td><td id='tr4_kclb3' name='kclb3'  style='display:none;' >07</td><td id='tr4_is_yxtj' name='is_yxtj'  style='display:none;' ></td><td id='tr4_skbzdm' name='skbzdm'  style='display:none;' ></td><td id='tr4_skbjdm' name='skbjdm'  style='display:none;' ></td></tr><tr class='E'  id='tr5'  onclick='sglSelectedTr(this)'  ><td id='tr5_kc' name='kc'  align='left' ><a href='javascript:void(0)' onclick='parent.showCourseInfo("003400")'>[1005000661]体育3</a></td><td id='tr5_xf' name='xf'  align='right' >1.0</td><td id='tr5_zxs' name='zxs'  align='right' >32</td><td id='tr5_lb' name='lb'  align='left' ></td><td id='tr5_kcsx' name='kcsx'  align='left' ><font title='理论课/体育课'>理论课/体育课</font></td><td id='tr5_skbh' name='skbh'  align='center' ></td><td id='tr5_skbjmc' name='skbjmc'  align='left' ></td><td id='tr5_xkfs' name='xkfs'  align='center' ></td><td id='tr5_rkjs' name='rkjs'  align='left' ></td><td id='tr5_xk_points' name='xk_points'  style='display:none;' ></td><td id='tr5_is_buy_book' name='is_buy_book'  style='display:none;' ></td><td id='tr5_is_cx' name='is_cx'  style='display:none;' ></td><td id='tr5_xk_status' name='xk_status'  align='center' ></td><td id='tr5_operation' name='operation'  align='center' ><a href='javascript:void(0)' isview='0' onclick='parent.viewResume(this)'>选择</a></td><td id='tr5_kcdm' name='kcdm'  style='display:none;' >003400</td><td id='tr5_kclb1' name='kclb1'  style='display:none;' >01</td><td id='tr5_kclb2' name='kclb2'  style='display:none;' >2105</td><td id='tr5_khfs' name='khfs'  style='display:none;' >02</td><td id='tr5_kclb3' name='kclb3'  style='display:none;' >07</td><td id='tr5_is_yxtj' name='is_yxtj'  style='display:none;' ></td><td id='tr5_skbzdm' name='skbzdm'  style='display:none;' ></td><td id='tr5_skbjdm' name='skbjdm'  style='display:none;' ></td></tr><tr class='O'  id='tr6'  onclick='sglSelectedTr(this)'  ><td id='tr6_kc' name='kc'  align='left' ><a href='javascript:void(0)' onclick='parent.showCourseInfo("2020774")'>[1012100360]形势与政策III</a></td><td id='tr6_xf' name='xf'  align='right' >0.5</td><td id='tr6_zxs' name='zxs'  align='right' >8</td><td id='tr6_lb' name='lb'  align='left' ></td><td id='tr6_kcsx' name='kcsx'  align='left' ><font title='理论课'>理论课</font></td><td id='tr6_skbh' name='skbh'  align='center' ></td><td id='tr6_skbjmc' name='skbjmc'  align='left' ></td><td id='tr6_xkfs' name='xkfs'  align='center' ></td><td id='tr6_rkjs' name='rkjs'  align='left' ></td><td id='tr6_xk_points' name='xk_points'  style='display:none;' ></td><td id='tr6_is_buy_book' name='is_buy_book'  style='display:none;' ></td><td id='tr6_is_cx' name='is_cx'  style='display:none;' ></td><td id='tr6_xk_status' name='xk_status'  align='center' ></td><td id='tr6_operation' name='operation'  align='center' ><a href='javascript:void(0)' isview='0' onclick='parent.viewResume(this)'>选择</a></td><td id='tr6_kcdm' name='kcdm'  style='display:none;' >2020774</td><td id='tr6_kclb1' name='kclb1'  style='display:none;' >01</td><td id='tr6_kclb2' name='kclb2'  style='display:none;' >2101</td><td id='tr6_khfs' name='khfs'  style='display:none;' >02</td><td id='tr6_kclb3' name='kclb3'  style='display:none;' >07</td><td id='tr6_is_yxtj' name='is_yxtj'  style='display:none;' ></td><td id='tr6_skbzdm' name='skbzdm'  style='display:none;' ></td><td id='tr6_skbjdm' name='skbjdm'  style='display:none;' ></td></tr><tr class='E'  id='tr7'  onclick='sglSelectedTr(this)'  ><td id='tr7_kc' name='kc'  align='left' ><a href='javascript:void(0)' onclick='parent.showCourseInfo("1213501533")'>[1012100533]马克思主义基本原理</a></td><td id='tr7_xf' name='xf'  align='right' >3.0</td><td id='tr7_zxs' name='zxs'  align='right' >48</td><td id='tr7_lb' name='lb'  align='left' ></td><td id='tr7_kcsx' name='kcsx'  align='left' ><font title='理论课'>理论课</font></td><td id='tr7_skbh' name='skbh'  align='center' ></td><td id='tr7_skbjmc' name='skbjmc'  align='left' ></td><td id='tr7_xkfs' name='xkfs'  align='center' ></td><td id='tr7_rkjs' name='rkjs'  align='left' ></td><td id='tr7_xk_points' name='xk_points'  style='display:none;' ></td><td id='tr7_is_buy_book' name='is_buy_book'  style='display:none;' ></td><td id='tr7_is_cx' name='is_cx'  style='display:none;' ></td><td id='tr7_xk_status' name='xk_status'  align='center' ></td><td id='tr7_operation' name='operation'  align='center' ><a href='javascript:void(0)' isview='0' onclick='parent.viewResume(this)'>选择</a></td><td id='tr7_kcdm' name='kcdm'  style='display:none;' >1213501533</td><td id='tr7_kclb1' name='kclb1'  style='display:none;' >01</td><td id='tr7_kclb2' name='kclb2'  style='display:none;' >2101</td><td id='tr7_khfs' name='khfs'  style='display:none;' >01</td><td id='tr7_kclb3' name='kclb3'  style='display:none;' >07</td><td id='tr7_is_yxtj' name='is_yxtj'  style='display:none;' ></td><td id='tr7_skbzdm' name='skbzdm'  style='display:none;' ></td><td id='tr7_skbjdm' name='skbjdm'  style='display:none;' ></td></tr><tr class='O'  id='tr8'  onclick='sglSelectedTr(this)'  ><td id='tr8_kc' name='kc'  align='left' ><a href='javascript:void(0)' onclick='parent.showCourseInfo("1014300174")'>[1014300174]计算机网络</a></td><td id='tr8_xf' name='xf'  align='right' >4.0</td><td id='tr8_zxs' name='zxs'  align='right' >64</td><td id='tr8_lb' name='lb'  align='left' ></td><td id='tr8_kcsx' name='kcsx'  align='left' ><font title='理论课'>理论课</font></td><td id='tr8_skbh' name='skbh'  align='center' ></td><td id='tr8_skbjmc' name='skbjmc'  align='left' ></td><td id='tr8_xkfs' name='xkfs'  align='center' ></td><td id='tr8_rkjs' name='rkjs'  align='left' ></td><td id='tr8_xk_points' name='xk_points'  style='display:none;' ></td><td id='tr8_is_buy_book' name='is_buy_book'  style='display:none;' ></td><td id='tr8_is_cx' name='is_cx'  style='display:none;' ></td><td id='tr8_xk_status' name='xk_status'  align='center' ></td><td id='tr8_operation' name='operation'  align='center' ><a href='javascript:void(0)' isview='0' onclick='parent.viewResume(this)'>选择</a></td><td id='tr8_kcdm' name='kcdm'  style='display:none;' >1014300174</td><td id='tr8_kclb1' name='kclb1'  style='display:none;' >01</td><td id='tr8_kclb2' name='kclb2'  style='display:none;' >2303</td><td id='tr8_khfs' name='khfs'  style='display:none;' >01</td><td id='tr8_kclb3' name='kclb3'  style='display:none;' >07</td><td id='tr8_is_yxtj' name='is_yxtj'  style='display:none;' ></td><td id='tr8_skbzdm' name='skbzdm'  style='display:none;' ></td><td id='tr8_skbjdm' name='skbjdm'  style='display:none;' ></td></tr><tr class='E'  id='tr9'  onclick='sglSelectedTr(this)'  ><td id='tr9_kc' name='kc'  align='left' ><a href='javascript:void(0)' onclick='parent.showCourseInfo("1014300184")'>[1014300184]计算机组成原理</a></td><td id='tr9_xf' name='xf'  align='right' >4.0</td><td id='tr9_zxs' name='zxs'  align='right' >64</td><td id='tr9_lb' name='lb'  align='left' ></td><td id='tr9_kcsx' name='kcsx'  align='left' ><font title='理论课'>理论课</font></td><td id='tr9_skbh' name='skbh'  align='center' ></td><td id='tr9_skbjmc' name='skbjmc'  align='left' ></td><td id='tr9_xkfs' name='xkfs'  align='center' ></td><td id='tr9_rkjs' name='rkjs'  align='left' ></td><td id='tr9_xk_points' name='xk_points'  style='display:none;' ></td><td id='tr9_is_buy_book' name='is_buy_book'  style='display:none;' ></td><td id='tr9_is_cx' name='is_cx'  style='display:none;' ></td><td id='tr9_xk_status' name='xk_status'  align='center' ></td><td id='tr9_operation' name='operation'  align='center' ><a href='javascript:void(0)' isview='0' onclick='parent.viewResume(this)'>选择</a></td><td id='tr9_kcdm' name='kcdm'  style='display:none;' >1014300184</td><td id='tr9_kclb1' name='kclb1'  style='display:none;' >01</td><td id='tr9_kclb2' name='kclb2'  style='display:none;' >2301</td><td id='tr9_khfs' name='khfs'  style='display:none;' >01</td><td id='tr9_kclb3' name='kclb3'  style='display:none;' >07</td><td id='tr9_is_yxtj' name='is_yxtj'  style='display:none;' ></td><td id='tr9_skbzdm' name='skbzdm'  style='display:none;' ></td><td id='tr9_skbjdm' name='skbjdm'  style='display:none;' ></td></tr><tr class='O'  id='tr10'  onclick='sglSelectedTr(this)'  ><td id='tr10_kc' name='kc'  align='left' ><a href='javascript:void(0)' onclick='parent.showCourseInfo("1014300314")'>[1014300314]数据结构与算法</a></td><td id='tr10_xf' name='xf'  align='right' >4.0</td><td id='tr10_zxs' name='zxs'  align='right' >64</td><td id='tr10_lb' name='lb'  align='left' ></td><td id='tr10_kcsx' name='kcsx'  align='left' ><font title='理论课'>理论课</font></td><td id='tr10_skbh' name='skbh'  align='center' ></td><td id='tr10_skbjmc' name='skbjmc'  align='left' ></td><td id='tr10_xkfs' name='xkfs'  align='center' ></td><td id='tr10_rkjs' name='rkjs'  align='left' ></td><td id='tr10_xk_points' name='xk_points'  style='display:none;' ></td><td id='tr10_is_buy_book' name='is_buy_book'  style='display:none;' ></td><td id='tr10_is_cx' name='is_cx'  style='display:none;' ></td><td id='tr10_xk_status' name='xk_status'  align='center' ></td><td id='tr10_operation' name='operation'  align='center' ><a href='javascript:void(0)' isview='0' onclick='parent.viewResume(this)'>选择</a></td><td id='tr10_kcdm' name='kcdm'  style='display:none;' >1014300314</td><td id='tr10_kclb1' name='kclb1'  style='display:none;' >01</td><td id='tr10_kclb2' name='kclb2'  style='display:none;' >2301</td><td id='tr10_khfs' name='khfs'  style='display:none;' >01</td><td id='tr10_kclb3' name='kclb3'  style='display:none;' >07</td><td id='tr10_is_yxtj' name='is_yxtj'  style='display:none;' ></td><td id='tr10_skbzdm' name='skbzdm'  style='display:none;' ></td><td id='tr10_skbjdm' name='skbjdm'  style='display:none;' ></td></tr><input type=hidden pivColor='Noting' pivFontColor='Noting' valueId='' id='pivRow' value=''></tbody><script language='javascript' >try{parent.showTotalRecord('2568','11');}catch(e){}</script></table></div>
+
+	  	
+	  	<div class="fixedTable">
+	  	</div>
+  	</div>
+  </body>
+  
+  <script type="text/javascript" src="../custom/bootstrap/js/bootstrap.min.js"></script>  
+  <!--[if lt IE 9]>
+	 <script type="text/javascript" src="../common/js/respond.min.js"></script>
+  	 <script type="text/javascript" src="../common/js/html5shiv.min.js"></script>
+  <![endif]-->  
+  <script type="text/JavaScript">
+  
+ 	// 父窗口缩放事件(窗口大小变化多次执行问题)
+	var resizeTimer = null;
+	// 数据列表横向和纵向滚动事件
+	var datalistTimer = null;
+	// 数据列表是否横向(水平)滚动条
+	var scrollHorizontal = false;
+    var kNeedSort= '1';
+	jQuery(document).ready(function(){
+		initFloatBox();
+		// 数据列表是否横向(水平)滚动条: 数据区大于显示区设为true
+		var divwidth = jQuery(".datalist").outerWidth();
+		var tablewidth = jQuery(".datalist table").outerWidth();
+		if (tablewidth > divwidth){
+			scrollHorizontal = true;
+		}
+		//alert("divwidth="+divwidth+"/tablewidth="+tablewidth+"/scrollHorizontal="+scrollHorizontal);
+		
+		calcParentFrameHeight();
+		autoResizeFrmreport();
+		calTableHead();
+		//calTableHeadBgColor();
+		initShowAllContent();
+		
+		// 窗口缩放事件(需要避免resize多次触发执行的问题)
+		//jQuery(parent.window).wresize(resizeMe);  jquery.wresize.js
+		jQuery(parent.window).bind('resize', function () {
+			if (isIE()){
+				// IE兼容模式会多次触发window.resize导致问题，此处屏蔽IE兼容模式的resize事件
+				return ;
+			}
+			if (resizeTimer) { 
+				clearTimeout(resizeTimer); 
+			}
+			resizeTimer = 
+				setTimeout(function(){
+					//calcParentFrameHeight();
+				    autoResizeFrmreport();
+					calTableHead();
+					//calTableHeadBgColor();
+				}, 100); 
+		});
+
+		// 数据列表滚动条事件(横向和纵向)
+		jQuery(".datalist").scroll(function(){
+			if (!scrollHorizontal) {
+				return ;
+			}
+			if (datalistTimer) {
+				clearTimeout(datalistTimer); 
+			}
+			datalistTimer = 
+				setTimeout(function(){
+					calTableHead();	
+					//calTableHeadBgColor();
+				}, 100);
+		});
+
+        //迁移学生系统 需要用到的函数事件
+        //jQuery("td").click(function(event){
+            //if (jQuery(this).children().attr("kind") == "checkbox"){
+                //is_kind_checkbox = true;
+                //event.stopPropagation();
+                //try{
+                    //parent.checkClick(this, "2568");
+                //}catch(e){
+                //}
+            //} else {
+                //is_kind_checkbox = false;
+            //}
+        //});
+
+        // 阻止右键事件
+        window.oncontextmenu = function () {
+                //event.preventDefault(); // 阻止默认事件行为
+                //return false;
+
+        }
+
+        // 阻止F12事件
+        window.onkeydown = window.onkeyup = window.onkeypress = function (event) {
+            // 判断是否按下F12，F12键码为123
+            if (event.keyCode = 123) {
+                //event.preventDefault(); // 阻止默认事件行为
+                //window.event.returnValue = false;
+                //return false;
+            }
+        }
+
+	});
+
+	function initFloatBox() {
+
+		// 创建悬浮框
+		const floatBox = document.createElement('div');
+		floatBox.id = 'floatBox';
+		document.body.appendChild(floatBox);
+
+		// 鼠标移入显示
+		document.addEventListener('mouseover', function(e) {
+			if (e.target.classList.contains('hover-text')) {
+				const text = e.target.getAttribute('data-text');
+				floatBox.innerText = text;
+
+				// 定位到元素正下方
+				const rect = e.target.getBoundingClientRect();
+				floatBox.style.left = rect.left-6+ 'px';
+				floatBox.style.top = rect.bottom + 6 + 'px';
+				floatBox.style.display = 'block';
+			}
+		});
+		// 鼠标移出隐藏
+		document.addEventListener('mouseout', function(e) {
+			if (e.target.classList.contains('hover-text')) {
+				floatBox.style.display = 'none';
+			}
+		});
+
+
+	}
+</script>
+</html>

@@ -1,0 +1,218 @@
+
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>数据列表</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=GBK">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,Chrome=1" />
+	<meta http-equiv="X-UA-Compatible" content="IE=9" />	
+	<meta name="renderer" content="webkit">  
+	<meta http-equiv="pragma" content="no-cache"/>
+	<meta http-equiv="cache-control" content="no-cache"/>
+	<meta http-equiv="expires" content="0"/>	
+	<link rel="stylesheet" type="text/css" media="screen" href="../custom/bootstrap/css/bootstrap.min.css">
+	<!--[if lte IE 6]> 
+		<link rel="stylesheet" type="text/css" media="screen" href="../custom/bootstrap/v2/css/bootstrap-responsive.min.css">
+		<link rel="stylesheet" type="text/css" media="screen" href="../custom/bootstrap/v2/css/bootstrap-ie6.min.css"> 
+		<link rel="stylesheet" type="text/css" media="screen" href="../custom/bootstrap/v2/css/ie.css"> 
+	<![endif]-->
+	<link rel="stylesheet" type="text/css" media="screen" href="../custom/bootstrap/css/gray_common.css">
+	<style>
+		td a:hover{
+			cursor:pointer;
+			text-decoration:underline;
+		}
+		@-ms-viewport { width: device-width; }
+		@-webkit-viewport { width: device-width; }
+		@-moz-viewport { width: device-width; }
+		@-ms-viewport { width: device-width; }
+		@-o-viewport { width: device-width; }
+		@viewport { width: device-width; }
+		select{height:20px;min-height: 20px;padding:1px;}
+		select option{height:30px; min-height:30px;}
+		#floatBox {
+			position: fixed;
+			display: none;
+			padding: 4px 10px;
+			background: white;
+			border: 1px solid #999;
+			font-size: 14px;
+			z-index: 9999999 !important;
+			font-weight: bold;
+
+			max-width: 300px;
+			white-space: normal; /* 允许自动换行 */
+			word-wrap: break-word; /* 长单词/长文本强制换行 */
+
+			/* 红色删除线样式 */
+			text-decoration: line-through;
+			text-decoration-color: rgba(255, 59, 48, 0.6);  /* 透明看不见 */
+			text-decoration-thickness: 2px;     /* 极细，不挡字 */
+		}
+	</style>
+    <script type="text/javascript">
+	  var _stylePathPrefix = "gray";
+	  var isVersion20 = true;
+    </script>
+    <script type="text/javascript" src="../custom/js/jquery.js"></script>
+        <script type="text/javascript" src="./js/ind_DataTable.js?t=88324178936269803425260"></script>
+    <script type="text/javascript" src="../custom/js/stopExecutionOnTimeout.js"></script>
+	  
+	  <script type="text/javascript" src="../custom/js/jquery.tablesorter.min.js"></script>
+	  
+
+	
+  </head>
+ 
+  
+  <body leftmargin="0" topmargin="0">
+	<div class="table_outer">
+	  	
+	  		<div class='datalist' style='OVERFLOW: auto; height:100%;width:100%;'><table style='width:100%;' id='keywords'  class='table table-striped table-bordered table-hover'><thead><tr class='H' style='POSITION: relative'><td width='45px' align=center nowrap >序号</td><td width='10%' id='head_kc' >课程</td><td style='display:none;' id='head_xqmc' >开课校区</td><td width='3%' id='head_xf' >学分</td><td width='4%' id='head_zongxs' >总<br>学时</td><td width='8%' id='head_kclb' >课程类别</td><td width='7%' id='head_cddw' >承担单位</td><td width='3%' id='head_curent_skbjdm' >上课<br>班号</td><td width='4%' id='head_xkrssx' >限选<br>人数</td><td width='4%' id='head_xkrs' >已选/<br>免听</td><td width='4%' id='head_qdrs' >可选<br>人数</td><td width='5%' id='head_qsz' >周次</td><td width='4%' id='head_skfs' >授课<br>方式</td><td width='7%' id='head_rkjs' >任课教师</td><td width='8%' id='head_sksj' >上课时间</td><td width='7%' id='head_skdd' >上课地点</td><td width='6%' id='head_shzt' >审核状态</td><td width='8%' id='head_hfyj' >审核意见</td><td width='8%' id='head_cz' >操作</td><td style='display:none;' id='head_skbjdm' >上课班号</td><td style='display:none;' id='head_skbzdm' >上课班组代码</td></tr></thead><tbody id="sdTable_tbody" ><tr class='O'  id='tr0'  ><td align='center' title='1'>1</td><td id='tr0_kc' name='kc'  align='left' ><a href='javascript:void(0)' title='[1004501303]管理学原理' onclick='parent.showCourseInfo("001282")'>[1004501303]管理学原理</a></td><td id='tr0_xqmc' name='xqmc'  style='display:none;' >麦庐园校区</td><td id='tr0_xf' name='xf'  align='right' >3.0</td><td id='tr0_zongxs' name='zongxs'  align='right' >48</td><td id='tr0_kclb' name='kclb'  align='left' >选修课/2024专业教育课/学科开放课</td><td id='tr0_cddw' name='cddw'  align='left' >工商管理学院</td><td id='tr0_curent_skbjdm' name='curent_skbjdm'  align='center' >012</td><td id='tr0_xkrssx' name='xkrssx'  align='right' >50</td><td id='tr0_xkrs' name='xkrs'  align='right' >36/0</td><td id='tr0_qdrs' name='qdrs'  align='right' >14</td><td id='tr0_qsz' name='qsz'  align='left' >2-17</td><td id='tr0_skfs' name='skfs'  align='center' >理论</td><td id='tr0_rkjs' name='rkjs'  align='left' >何飞云   </td><td id='tr0_sksj' name='sksj'  align='left' >周四[3-5节]</td><td id='tr0_skdd' name='skdd'  align='left' >麦三教3409(麦庐园校区)</td><td id='tr0_shzt' name='shzt'  align='center' ></td><td id='tr0_hfyj' name='hfyj'  align='left' ></td><td id='tr0_cz' name='cz'  align='center' ><a href='javascript:void(0)' onclick="parent.applyaddElectiveCourse('add','001282','001282-012','[1004501303]管理学原理','计算机科学与技术251','何飞云   ','2-17周 四[3-5] 麦三教3409(70)','01','','04','2302','07','3')">申请</a></td><td id='tr0_skbjdm' name='skbjdm'  style='display:none;' >001282-012</td><td id='tr0_skbzdm' name='skbzdm'  style='display:none;' ></td></tr><tr class='E'  id='tr1'  ><td align='center' title='2'>2</td><td id='tr1_kc' name='kc'  align='left' ><a href='javascript:void(0)' title='[1004501303]管理学原理' onclick='parent.showCourseInfo("001282")'>[1004501303]管理学原理</a></td><td id='tr1_xqmc' name='xqmc'  style='display:none;' >麦庐园校区</td><td id='tr1_xf' name='xf'  align='right' >3.0</td><td id='tr1_zongxs' name='zongxs'  align='right' >48</td><td id='tr1_kclb' name='kclb'  align='left' >选修课/2024专业教育课/学科开放课</td><td id='tr1_cddw' name='cddw'  align='left' >工商管理学院</td><td id='tr1_curent_skbjdm' name='curent_skbjdm'  align='center' >014</td><td id='tr1_xkrssx' name='xkrssx'  align='right' >50</td><td id='tr1_xkrs' name='xkrs'  align='right' >50/0</td><td id='tr1_qdrs' name='qdrs'  align='right' >0</td><td id='tr1_qsz' name='qsz'  align='left' >2-17</td><td id='tr1_skfs' name='skfs'  align='center' >理论</td><td id='tr1_rkjs' name='rkjs'  align='left' >刘芸   </td><td id='tr1_sksj' name='sksj'  align='left' >周四[10-12节]</td><td id='tr1_skdd' name='skdd'  align='left' >麦一教1209(麦庐园校区)</td><td id='tr1_shzt' name='shzt'  align='center' ></td><td id='tr1_hfyj' name='hfyj'  align='left' ></td><td id='tr1_cz' name='cz'  align='center' ><a href='javascript:void(0)' onclick="parent.applyaddElectiveCourse('add','001282','001282-014','[1004501303]管理学原理','计算机科学与技术253','刘芸   ','2-17周 四[10-12] 麦一教1209(60)','01','','04','2302','07','3')">申请</a></td><td id='tr1_skbjdm' name='skbjdm'  style='display:none;' >001282-014</td><td id='tr1_skbzdm' name='skbzdm'  style='display:none;' ></td></tr><input type=hidden pivColor='Noting' pivFontColor='Noting' valueId='' id='pivRow' value=''></tbody><script language='javascript' >try{parent.showTotalRecord('5929098','2');}catch(e){}</script></table></div>
+
+	  	
+	  	<div class="fixedTable">
+	  	</div>
+  	</div>
+  </body>
+  
+  <script type="text/javascript" src="../custom/bootstrap/js/bootstrap.min.js"></script>  
+  <!--[if lt IE 9]>
+	 <script type="text/javascript" src="../common/js/respond.min.js"></script>
+  	 <script type="text/javascript" src="../common/js/html5shiv.min.js"></script>
+  <![endif]-->  
+  <script type="text/JavaScript">
+  
+ 	// 父窗口缩放事件(窗口大小变化多次执行问题)
+	var resizeTimer = null;
+	// 数据列表横向和纵向滚动事件
+	var datalistTimer = null;
+	// 数据列表是否横向(水平)滚动条
+	var scrollHorizontal = false;
+    var kNeedSort= '1';
+	jQuery(document).ready(function(){
+		initFloatBox();
+		// 数据列表是否横向(水平)滚动条: 数据区大于显示区设为true
+		var divwidth = jQuery(".datalist").outerWidth();
+		var tablewidth = jQuery(".datalist table").outerWidth();
+		if (tablewidth > divwidth){
+			scrollHorizontal = true;
+		}
+		//alert("divwidth="+divwidth+"/tablewidth="+tablewidth+"/scrollHorizontal="+scrollHorizontal);
+		
+		calcParentFrameHeight();
+		autoResizeFrmreport();
+		calTableHead();
+		//calTableHeadBgColor();
+		initShowAllContent();
+		
+		// 窗口缩放事件(需要避免resize多次触发执行的问题)
+		//jQuery(parent.window).wresize(resizeMe);  jquery.wresize.js
+		jQuery(parent.window).bind('resize', function () {
+			if (isIE()){
+				// IE兼容模式会多次触发window.resize导致问题，此处屏蔽IE兼容模式的resize事件
+				return ;
+			}
+			if (resizeTimer) { 
+				clearTimeout(resizeTimer); 
+			}
+			resizeTimer = 
+				setTimeout(function(){
+					//calcParentFrameHeight();
+				    autoResizeFrmreport();
+					calTableHead();
+					//calTableHeadBgColor();
+				}, 100); 
+		});
+
+		// 数据列表滚动条事件(横向和纵向)
+		jQuery(".datalist").scroll(function(){
+			if (!scrollHorizontal) {
+				return ;
+			}
+			if (datalistTimer) {
+				clearTimeout(datalistTimer); 
+			}
+			datalistTimer = 
+				setTimeout(function(){
+					calTableHead();	
+					//calTableHeadBgColor();
+				}, 100);
+		});
+
+        //迁移学生系统 需要用到的函数事件
+        //jQuery("td").click(function(event){
+            //if (jQuery(this).children().attr("kind") == "checkbox"){
+                //is_kind_checkbox = true;
+                //event.stopPropagation();
+                //try{
+                    //parent.checkClick(this, "5929098");
+                //}catch(e){
+                //}
+            //} else {
+                //is_kind_checkbox = false;
+            //}
+        //});
+
+        // 阻止右键事件
+        window.oncontextmenu = function () {
+                //event.preventDefault(); // 阻止默认事件行为
+                //return false;
+
+        }
+
+        // 阻止F12事件
+        window.onkeydown = window.onkeyup = window.onkeypress = function (event) {
+            // 判断是否按下F12，F12键码为123
+            if (event.keyCode = 123) {
+                //event.preventDefault(); // 阻止默认事件行为
+                //window.event.returnValue = false;
+                //return false;
+            }
+        }
+
+	});
+
+	function initFloatBox() {
+
+		// 创建悬浮框
+		const floatBox = document.createElement('div');
+		floatBox.id = 'floatBox';
+		document.body.appendChild(floatBox);
+
+		// 鼠标移入显示
+		document.addEventListener('mouseover', function(e) {
+			if (e.target.classList.contains('hover-text')) {
+				const text = e.target.getAttribute('data-text');
+				floatBox.innerText = text;
+
+				// 定位到元素正下方
+				const rect = e.target.getBoundingClientRect();
+				floatBox.style.left = rect.left-6+ 'px';
+				floatBox.style.top = rect.bottom + 6 + 'px';
+				floatBox.style.display = 'block';
+			}
+		});
+		// 鼠标移出隐藏
+		document.addEventListener('mouseout', function(e) {
+			if (e.target.classList.contains('hover-text')) {
+				floatBox.style.display = 'none';
+			}
+		});
+
+
+	}
+</script>
+</html>

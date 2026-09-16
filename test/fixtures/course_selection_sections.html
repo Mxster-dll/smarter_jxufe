@@ -1,0 +1,218 @@
+
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>数据列表</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=GBK">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,Chrome=1" />
+	<meta http-equiv="X-UA-Compatible" content="IE=9" />	
+	<meta name="renderer" content="webkit">  
+	<meta http-equiv="pragma" content="no-cache"/>
+	<meta http-equiv="cache-control" content="no-cache"/>
+	<meta http-equiv="expires" content="0"/>	
+	<link rel="stylesheet" type="text/css" media="screen" href="../custom/bootstrap/css/bootstrap.min.css">
+	<!--[if lte IE 6]> 
+		<link rel="stylesheet" type="text/css" media="screen" href="../custom/bootstrap/v2/css/bootstrap-responsive.min.css">
+		<link rel="stylesheet" type="text/css" media="screen" href="../custom/bootstrap/v2/css/bootstrap-ie6.min.css"> 
+		<link rel="stylesheet" type="text/css" media="screen" href="../custom/bootstrap/v2/css/ie.css"> 
+	<![endif]-->
+	<link rel="stylesheet" type="text/css" media="screen" href="../custom/bootstrap/css/gray_common.css">
+	<style>
+		td a:hover{
+			cursor:pointer;
+			text-decoration:underline;
+		}
+		@-ms-viewport { width: device-width; }
+		@-webkit-viewport { width: device-width; }
+		@-moz-viewport { width: device-width; }
+		@-ms-viewport { width: device-width; }
+		@-o-viewport { width: device-width; }
+		@viewport { width: device-width; }
+		select{height:20px;min-height: 20px;padding:1px;}
+		select option{height:30px; min-height:30px;}
+		#floatBox {
+			position: fixed;
+			display: none;
+			padding: 4px 10px;
+			background: white;
+			border: 1px solid #999;
+			font-size: 14px;
+			z-index: 9999999 !important;
+			font-weight: bold;
+
+			max-width: 300px;
+			white-space: normal; /* 允许自动换行 */
+			word-wrap: break-word; /* 长单词/长文本强制换行 */
+
+			/* 红色删除线样式 */
+			text-decoration: line-through;
+			text-decoration-color: rgba(255, 59, 48, 0.6);  /* 透明看不见 */
+			text-decoration-thickness: 2px;     /* 极细，不挡字 */
+		}
+	</style>
+    <script type="text/javascript">
+	  var _stylePathPrefix = "gray";
+	  var isVersion20 = true;
+    </script>
+    <script type="text/javascript" src="../custom/js/jquery.js"></script>
+        <script type="text/javascript" src="./js/ind_DataTable.js?t=01452178936290329442980"></script>
+    <script type="text/javascript" src="../custom/js/stopExecutionOnTimeout.js"></script>
+	  
+	  <script type="text/javascript" src="../custom/js/jquery.tablesorter.min.js"></script>
+	  
+
+	
+  </head>
+ 
+  
+  <body leftmargin="0" topmargin="0">
+	<div class="table_outer">
+	  	
+	  		<div class='datalist' style='OVERFLOW: auto; height:100%;width:100%;'><table style='width:100%;' id='keywords'  class='table table-striped table-bordered table-hover'><thead><tr class='H' style='POSITION: relative'><td width='5%' id='head_curent_skbjdm' >上课班号</td><td width='7%' id='head_skbjmc' >上课班<br>级名称</td><td width='8%' id='head_xzbj' >上课班级构成</td><td width='10%' id='head_skbzmc' >上课班组</td><td width='7%' id='head_xqmc' >开课校区</td><td width='11%' id='head_rkjs' >任课教师</td><td width='5%' id='head_skfs_mc' >授课<br>方式</td><td width='4%' id='head_xkrssx' >限选<br>人数</td><td width='5%' id='head_xkrs' >已选/<br>免听</td><td width='4%' id='head_kxrs' >可选<br>人数</td><td width='18%' id='head_sksj' >上课时间</td><td width='12%' id='head_skdd' >上课地点</td><td width='4%' id='head_ischk' >选择<br>标记</td><td style='display:none;' id='head_skbzdm' >上课班组代码</td><td style='display:none;' id='head_skbjdm' >上课班号</td><td style='display:none;' id='head_xqdm' >校区代码</td><td style='display:none;' id='head_skfs_m' >授课方式</td><td style='display:none;' id='head_outnumber' >允许突破人数上限</td><td style='display:none;' id='head_yxsyxkb' >允许使用选课币</td><td style='display:none;' id='head_zfx_m' >主辅修标记</td></tr></thead><tbody id="sdTable_tbody" ><tr class='O'  id='tr0'  onclick='sglSelectedTr(this)'  ><td id='tr0_curent_skbjdm' name='curent_skbjdm'  align='center' >016</td><td id='tr0_skbjmc' name='skbjmc'  align='left' ><font title='辅修+'>辅修+</font></td><td id='tr0_xzbj' name='xzbj'  align='center' ><a href='javascript:void(0)' onclick='parent.viewSkbjgc("000160-016")'>查看</a></td><td id='tr0_skbzmc' name='skbzmc'  align='left' ><font title=''></font></td><td id='tr0_xqmc' name='xqmc'  align='center' >麦庐园校区</td><td id='tr0_rkjs' name='rkjs'  align='left' ><a href='javascript:void(0);' onclick='parent.showTeacherInfo("2j7tq73iwixs1lt8gj2g7stg1q0dvb00004a&param2=332295c3c3139d13951f04d50e81f64d")' title='杨明'>杨明</a></td><td id='tr0_skfs_mc' name='skfs_mc'  align='center' >理论</td><td id='tr0_xkrssx' name='xkrssx'  align='right' >48</td><td id='tr0_xkrs' name='xkrs'  align='right' >48/0</td><td id='tr0_kxrs' name='kxrs'  align='right' >0</td><td id='tr0_sksj' name='sksj'  align='left' >2-17周 四(3-5节)</td><td id='tr0_skdd' name='skdd'  align='left' >麦三教3213</td><td id='tr0_ischk' name='ischk'  align='center' ><input type='radio' name='radio'    onclick="parent.chksfxjc('0')" /></td><td id='tr0_skbzdm' name='skbzdm'  style='display:none;' ></td><td id='tr0_skbjdm' name='skbjdm'  style='display:none;' >000160-016</td><td id='tr0_xqdm' name='xqdm'  style='display:none;' >3</td><td id='tr0_skfs_m' name='skfs_m'  style='display:none;' >0</td><td id='tr0_outnumber' name='outnumber'  style='display:none;' >0</td><td id='tr0_yxsyxkb' name='yxsyxkb'  style='display:none;' >0</td><td id='tr0_zfx_m' name='zfx_m'  style='display:none;' >0</td></tr><tr class='E'  id='tr1'  onclick='sglSelectedTr(this)'  ><td id='tr1_curent_skbjdm' name='curent_skbjdm'  align='center' >017</td><td id='tr1_skbjmc' name='skbjmc'  align='left' ><font title='辅修+'>辅修+</font></td><td id='tr1_xzbj' name='xzbj'  align='center' ><a href='javascript:void(0)' onclick='parent.viewSkbjgc("000160-017")'>查看</a></td><td id='tr1_skbzmc' name='skbzmc'  align='left' ><font title=''></font></td><td id='tr1_xqmc' name='xqmc'  align='center' >麦庐园校区</td><td id='tr1_rkjs' name='rkjs'  align='left' ><a href='javascript:void(0);' onclick='parent.showTeacherInfo("2j7tq73iwixs1lt8gj2g7stg1q0dvb00004a&param2=332295c3c3139d13951f04d50e81f64d")' title='杨明'>杨明</a></td><td id='tr1_skfs_mc' name='skfs_mc'  align='center' >理论</td><td id='tr1_xkrssx' name='xkrssx'  align='right' >49</td><td id='tr1_xkrs' name='xkrs'  align='right' >49/0</td><td id='tr1_kxrs' name='kxrs'  align='right' >0</td><td id='tr1_sksj' name='sksj'  align='left' >2-17周 三(10-12节)</td><td id='tr1_skdd' name='skdd'  align='left' >麦三教3116</td><td id='tr1_ischk' name='ischk'  align='center' ><input type='radio' name='radio'    onclick="parent.chksfxjc('0')" /></td><td id='tr1_skbzdm' name='skbzdm'  style='display:none;' ></td><td id='tr1_skbjdm' name='skbjdm'  style='display:none;' >000160-017</td><td id='tr1_xqdm' name='xqdm'  style='display:none;' >3</td><td id='tr1_skfs_m' name='skfs_m'  style='display:none;' >0</td><td id='tr1_outnumber' name='outnumber'  style='display:none;' >0</td><td id='tr1_yxsyxkb' name='yxsyxkb'  style='display:none;' >0</td><td id='tr1_zfx_m' name='zfx_m'  style='display:none;' >0</td></tr><tr class='O'  id='tr2'  onclick='sglSelectedTr(this)'  ><td id='tr2_curent_skbjdm' name='curent_skbjdm'  align='center' >018</td><td id='tr2_skbjmc' name='skbjmc'  align='left' ><font title='辅修+主干+'>辅修+主干+</font></td><td id='tr2_xzbj' name='xzbj'  align='center' ><a href='javascript:void(0)' onclick='parent.viewSkbjgc("000160-018")'>查看</a></td><td id='tr2_skbzmc' name='skbzmc'  align='left' ><font title=''></font></td><td id='tr2_xqmc' name='xqmc'  align='center' >麦庐园校区</td><td id='tr2_rkjs' name='rkjs'  align='left' ><a href='javascript:void(0);' onclick='parent.showTeacherInfo("2j7tq73iwixs1lt8gj2g7stg1q0dvb00004a&param2=332295c3c3139d13951f04d50e81f64d")' title='杨明'>杨明</a></td><td id='tr2_skfs_mc' name='skfs_mc'  align='center' >理论</td><td id='tr2_xkrssx' name='xkrssx'  align='right' >44</td><td id='tr2_xkrs' name='xkrs'  align='right' >42/0</td><td id='tr2_kxrs' name='kxrs'  align='right' >2</td><td id='tr2_sksj' name='sksj'  align='left' >2-17周 四(6-8节)</td><td id='tr2_skdd' name='skdd'  align='left' >麦三教3209</td><td id='tr2_ischk' name='ischk'  align='center' ><input type='radio' name='radio'    onclick="parent.chksfxjc('1')" /></td><td id='tr2_skbzdm' name='skbzdm'  style='display:none;' ></td><td id='tr2_skbjdm' name='skbjdm'  style='display:none;' >000160-018</td><td id='tr2_xqdm' name='xqdm'  style='display:none;' >3</td><td id='tr2_skfs_m' name='skfs_m'  style='display:none;' >0</td><td id='tr2_outnumber' name='outnumber'  style='display:none;' >0</td><td id='tr2_yxsyxkb' name='yxsyxkb'  style='display:none;' >0</td><td id='tr2_zfx_m' name='zfx_m'  style='display:none;' >0</td></tr><tr class='E'  id='tr3'  onclick='sglSelectedTr(this)'  ><td id='tr3_curent_skbjdm' name='curent_skbjdm'  align='center' >019</td><td id='tr3_skbjmc' name='skbjmc'  align='left' ><font title='辅修+主干+'>辅修+主干+</font></td><td id='tr3_xzbj' name='xzbj'  align='center' ><a href='javascript:void(0)' onclick='parent.viewSkbjgc("000160-019")'>查看</a></td><td id='tr3_skbzmc' name='skbzmc'  align='left' ><font title=''></font></td><td id='tr3_xqmc' name='xqmc'  align='center' >麦庐园校区</td><td id='tr3_rkjs' name='rkjs'  align='left' ><a href='javascript:void(0);' onclick='parent.showTeacherInfo("2msjzp2il64n1sd37g&param2=5afc08e5700a506207883c08e1ed6b5f")' title='顾署生'>顾署生</a></td><td id='tr3_skfs_mc' name='skfs_mc'  align='center' >理论</td><td id='tr3_xkrssx' name='xkrssx'  align='right' >44</td><td id='tr3_xkrs' name='xkrs'  align='right' >44/0</td><td id='tr3_kxrs' name='kxrs'  align='right' >0</td><td id='tr3_sksj' name='sksj'  align='left' >2-17周 四(3-5节)</td><td id='tr3_skdd' name='skdd'  align='left' >麦三教3210</td><td id='tr3_ischk' name='ischk'  align='center' ><input type='radio' name='radio'    onclick="parent.chksfxjc('1')" /></td><td id='tr3_skbzdm' name='skbzdm'  style='display:none;' ></td><td id='tr3_skbjdm' name='skbjdm'  style='display:none;' >000160-019</td><td id='tr3_xqdm' name='xqdm'  style='display:none;' >3</td><td id='tr3_skfs_m' name='skfs_m'  style='display:none;' >0</td><td id='tr3_outnumber' name='outnumber'  style='display:none;' >0</td><td id='tr3_yxsyxkb' name='yxsyxkb'  style='display:none;' >0</td><td id='tr3_zfx_m' name='zfx_m'  style='display:none;' >0</td></tr><tr class='O'  id='tr4'  onclick='sglSelectedTr(this)'  ><td id='tr4_curent_skbjdm' name='curent_skbjdm'  align='center' >020</td><td id='tr4_skbjmc' name='skbjmc'  align='left' ><font title='辅修+'>辅修+</font></td><td id='tr4_xzbj' name='xzbj'  align='center' ><a href='javascript:void(0)' onclick='parent.viewSkbjgc("000160-020")'>查看</a></td><td id='tr4_skbzmc' name='skbzmc'  align='left' ><font title=''></font></td><td id='tr4_xqmc' name='xqmc'  align='center' >麦庐园校区</td><td id='tr4_rkjs' name='rkjs'  align='left' ><a href='javascript:void(0);' onclick='parent.showTeacherInfo("2msjzp2il64n1sd37g&param2=5afc08e5700a506207883c08e1ed6b5f")' title='顾署生'>顾署生</a></td><td id='tr4_skfs_mc' name='skfs_mc'  align='center' >理论</td><td id='tr4_xkrssx' name='xkrssx'  align='right' >48</td><td id='tr4_xkrs' name='xkrs'  align='right' >48/0</td><td id='tr4_kxrs' name='kxrs'  align='right' >0</td><td id='tr4_sksj' name='sksj'  align='left' >2-17周 五(6-8节)</td><td id='tr4_skdd' name='skdd'  align='left' >麦三教3116</td><td id='tr4_ischk' name='ischk'  align='center' ><input type='radio' name='radio'    onclick="parent.chksfxjc('0')" /></td><td id='tr4_skbzdm' name='skbzdm'  style='display:none;' ></td><td id='tr4_skbjdm' name='skbjdm'  style='display:none;' >000160-020</td><td id='tr4_xqdm' name='xqdm'  style='display:none;' >3</td><td id='tr4_skfs_m' name='skfs_m'  style='display:none;' >0</td><td id='tr4_outnumber' name='outnumber'  style='display:none;' >0</td><td id='tr4_yxsyxkb' name='yxsyxkb'  style='display:none;' >0</td><td id='tr4_zfx_m' name='zfx_m'  style='display:none;' >0</td></tr><tr class='E'  id='tr5'  onclick='sglSelectedTr(this)'  ><td id='tr5_curent_skbjdm' name='curent_skbjdm'  align='center' >023</td><td id='tr5_skbjmc' name='skbjmc'  align='left' ><font title='辅修+主干+'>辅修+主干+</font></td><td id='tr5_xzbj' name='xzbj'  align='center' ><a href='javascript:void(0)' onclick='parent.viewSkbjgc("000160-023")'>查看</a></td><td id='tr5_skbzmc' name='skbzmc'  align='left' ><font title=''></font></td><td id='tr5_xqmc' name='xqmc'  align='center' >麦庐园校区</td><td id='tr5_rkjs' name='rkjs'  align='left' ><a href='javascript:void(0);' onclick='parent.showTeacherInfo("2msjzp2il64n1sd37g&param2=5afc08e5700a506207883c08e1ed6b5f")' title='顾署生'>顾署生</a></td><td id='tr5_skfs_mc' name='skfs_mc'  align='center' >理论</td><td id='tr5_xkrssx' name='xkrssx'  align='right' >70</td><td id='tr5_xkrs' name='xkrs'  align='right' >62/0</td><td id='tr5_kxrs' name='kxrs'  align='right' >8</td><td id='tr5_sksj' name='sksj'  align='left' >2-17周 五(3-5节)</td><td id='tr5_skdd' name='skdd'  align='left' >麦三教3116</td><td id='tr5_ischk' name='ischk'  align='center' ><input type='radio' name='radio'    onclick="parent.chksfxjc('1')" /></td><td id='tr5_skbzdm' name='skbzdm'  style='display:none;' ></td><td id='tr5_skbjdm' name='skbjdm'  style='display:none;' >000160-023</td><td id='tr5_xqdm' name='xqdm'  style='display:none;' >3</td><td id='tr5_skfs_m' name='skfs_m'  style='display:none;' >0</td><td id='tr5_outnumber' name='outnumber'  style='display:none;' >0</td><td id='tr5_yxsyxkb' name='yxsyxkb'  style='display:none;' >0</td><td id='tr5_zfx_m' name='zfx_m'  style='display:none;' >0</td></tr><tr class='O'  id='tr6'  onclick='sglSelectedTr(this)'  ><td id='tr6_curent_skbjdm' name='curent_skbjdm'  align='center' >024</td><td id='tr6_skbjmc' name='skbjmc'  align='left' ><font title='辅修+主干+'>辅修+主干+</font></td><td id='tr6_xzbj' name='xzbj'  align='center' ><a href='javascript:void(0)' onclick='parent.viewSkbjgc("000160-024")'>查看</a></td><td id='tr6_skbzmc' name='skbzmc'  align='left' ><font title=''></font></td><td id='tr6_xqmc' name='xqmc'  align='center' >麦庐园校区</td><td id='tr6_rkjs' name='rkjs'  align='left' ><a href='javascript:void(0);' onclick='parent.showTeacherInfo("2msjzp2il64o1sylwf&param2=991edf546dadfe3c4c0ac2b297ed491f")' title='罗国民'>罗国民</a></td><td id='tr6_skfs_mc' name='skfs_mc'  align='center' >理论</td><td id='tr6_xkrssx' name='xkrssx'  align='right' >44</td><td id='tr6_xkrs' name='xkrs'  align='right' >43/0</td><td id='tr6_kxrs' name='kxrs'  align='right' >1</td><td id='tr6_sksj' name='sksj'  align='left' >2-17周 二(3-5节)</td><td id='tr6_skdd' name='skdd'  align='left' >麦三教3114</td><td id='tr6_ischk' name='ischk'  align='center' ><input type='radio' name='radio'    onclick="parent.chksfxjc('1')" /></td><td id='tr6_skbzdm' name='skbzdm'  style='display:none;' ></td><td id='tr6_skbjdm' name='skbjdm'  style='display:none;' >000160-024</td><td id='tr6_xqdm' name='xqdm'  style='display:none;' >3</td><td id='tr6_skfs_m' name='skfs_m'  style='display:none;' >0</td><td id='tr6_outnumber' name='outnumber'  style='display:none;' >0</td><td id='tr6_yxsyxkb' name='yxsyxkb'  style='display:none;' >0</td><td id='tr6_zfx_m' name='zfx_m'  style='display:none;' >0</td></tr><tr class='E'  id='tr7'  onclick='sglSelectedTr(this)'  ><td id='tr7_curent_skbjdm' name='curent_skbjdm'  align='center' >025</td><td id='tr7_skbjmc' name='skbjmc'  align='left' ><font title='辅修+'>辅修+</font></td><td id='tr7_xzbj' name='xzbj'  align='center' ><a href='javascript:void(0)' onclick='parent.viewSkbjgc("000160-025")'>查看</a></td><td id='tr7_skbzmc' name='skbzmc'  align='left' ><font title=''></font></td><td id='tr7_xqmc' name='xqmc'  align='center' >麦庐园校区</td><td id='tr7_rkjs' name='rkjs'  align='left' ><a href='javascript:void(0);' onclick='parent.showTeacherInfo("2msjzp2il64n1sd37g&param2=5afc08e5700a506207883c08e1ed6b5f")' title='顾署生'>顾署生</a></td><td id='tr7_skfs_mc' name='skfs_mc'  align='center' >理论</td><td id='tr7_xkrssx' name='xkrssx'  align='right' >39</td><td id='tr7_xkrs' name='xkrs'  align='right' >41/0</td><td id='tr7_kxrs' name='kxrs'  align='right' >-2</td><td id='tr7_sksj' name='sksj'  align='left' >2-17周 四(6-8节)</td><td id='tr7_skdd' name='skdd'  align='left' >麦一教1206</td><td id='tr7_ischk' name='ischk'  align='center' ><input type='radio' name='radio'    onclick="parent.chksfxjc('0')" /></td><td id='tr7_skbzdm' name='skbzdm'  style='display:none;' ></td><td id='tr7_skbjdm' name='skbjdm'  style='display:none;' >000160-025</td><td id='tr7_xqdm' name='xqdm'  style='display:none;' >3</td><td id='tr7_skfs_m' name='skfs_m'  style='display:none;' >0</td><td id='tr7_outnumber' name='outnumber'  style='display:none;' >0</td><td id='tr7_yxsyxkb' name='yxsyxkb'  style='display:none;' >0</td><td id='tr7_zfx_m' name='zfx_m'  style='display:none;' >0</td></tr><tr class='O'  id='tr8'  onclick='sglSelectedTr(this)'  ><td id='tr8_curent_skbjdm' name='curent_skbjdm'  align='center' >027</td><td id='tr8_skbjmc' name='skbjmc'  align='left' ><font title='辅修班'>辅修班</font></td><td id='tr8_xzbj' name='xzbj'  align='center' ><a href='javascript:void(0)' onclick='parent.viewSkbjgc("000160-027")'>查看</a></td><td id='tr8_skbzmc' name='skbzmc'  align='left' ><font title=''></font></td><td id='tr8_xqmc' name='xqmc'  align='center' >麦庐园校区</td><td id='tr8_rkjs' name='rkjs'  align='left' ><a href='javascript:void(0);' onclick='parent.showTeacherInfo("2msjzp2il64m1rrrgp&param2=86a18fc56fcfd23edb133767282c8d23")' title='谢波'>谢波</a></td><td id='tr8_skfs_mc' name='skfs_mc'  align='center' >理论</td><td id='tr8_xkrssx' name='xkrssx'  align='right' >51</td><td id='tr8_xkrs' name='xkrs'  align='right' >51/0</td><td id='tr8_kxrs' name='kxrs'  align='right' >0</td><td id='tr8_sksj' name='sksj'  align='left' >2-17周 日(3-5节)</td><td id='tr8_skdd' name='skdd'  align='left' >麦一教1208</td><td id='tr8_ischk' name='ischk'  align='center' ><input type='radio' name='radio'    onclick="parent.chksfxjc('0')" /></td><td id='tr8_skbzdm' name='skbzdm'  style='display:none;' ></td><td id='tr8_skbjdm' name='skbjdm'  style='display:none;' >000160-027</td><td id='tr8_xqdm' name='xqdm'  style='display:none;' >3</td><td id='tr8_skfs_m' name='skfs_m'  style='display:none;' >0</td><td id='tr8_outnumber' name='outnumber'  style='display:none;' >0</td><td id='tr8_yxsyxkb' name='yxsyxkb'  style='display:none;' >0</td><td id='tr8_zfx_m' name='zfx_m'  style='display:none;' >0</td></tr><input type=hidden pivColor='Noting' pivFontColor='Noting' valueId='' id='pivRow' value=''></tbody><script language='javascript' >try{parent.showTotalRecord('6142','9');}catch(e){}</script></table></div>
+
+	  	
+	  	<div class="fixedTable">
+	  	</div>
+  	</div>
+  </body>
+  
+  <script type="text/javascript" src="../custom/bootstrap/js/bootstrap.min.js"></script>  
+  <!--[if lt IE 9]>
+	 <script type="text/javascript" src="../common/js/respond.min.js"></script>
+  	 <script type="text/javascript" src="../common/js/html5shiv.min.js"></script>
+  <![endif]-->  
+  <script type="text/JavaScript">
+  
+ 	// 父窗口缩放事件(窗口大小变化多次执行问题)
+	var resizeTimer = null;
+	// 数据列表横向和纵向滚动事件
+	var datalistTimer = null;
+	// 数据列表是否横向(水平)滚动条
+	var scrollHorizontal = false;
+    var kNeedSort= '1';
+	jQuery(document).ready(function(){
+		initFloatBox();
+		// 数据列表是否横向(水平)滚动条: 数据区大于显示区设为true
+		var divwidth = jQuery(".datalist").outerWidth();
+		var tablewidth = jQuery(".datalist table").outerWidth();
+		if (tablewidth > divwidth){
+			scrollHorizontal = true;
+		}
+		//alert("divwidth="+divwidth+"/tablewidth="+tablewidth+"/scrollHorizontal="+scrollHorizontal);
+		
+		calcParentFrameHeight();
+		autoResizeFrmreport();
+		calTableHead();
+		//calTableHeadBgColor();
+		initShowAllContent();
+		
+		// 窗口缩放事件(需要避免resize多次触发执行的问题)
+		//jQuery(parent.window).wresize(resizeMe);  jquery.wresize.js
+		jQuery(parent.window).bind('resize', function () {
+			if (isIE()){
+				// IE兼容模式会多次触发window.resize导致问题，此处屏蔽IE兼容模式的resize事件
+				return ;
+			}
+			if (resizeTimer) { 
+				clearTimeout(resizeTimer); 
+			}
+			resizeTimer = 
+				setTimeout(function(){
+					//calcParentFrameHeight();
+				    autoResizeFrmreport();
+					calTableHead();
+					//calTableHeadBgColor();
+				}, 100); 
+		});
+
+		// 数据列表滚动条事件(横向和纵向)
+		jQuery(".datalist").scroll(function(){
+			if (!scrollHorizontal) {
+				return ;
+			}
+			if (datalistTimer) {
+				clearTimeout(datalistTimer); 
+			}
+			datalistTimer = 
+				setTimeout(function(){
+					calTableHead();	
+					//calTableHeadBgColor();
+				}, 100);
+		});
+
+        //迁移学生系统 需要用到的函数事件
+        //jQuery("td").click(function(event){
+            //if (jQuery(this).children().attr("kind") == "checkbox"){
+                //is_kind_checkbox = true;
+                //event.stopPropagation();
+                //try{
+                    //parent.checkClick(this, "6142");
+                //}catch(e){
+                //}
+            //} else {
+                //is_kind_checkbox = false;
+            //}
+        //});
+
+        // 阻止右键事件
+        window.oncontextmenu = function () {
+                //event.preventDefault(); // 阻止默认事件行为
+                //return false;
+
+        }
+
+        // 阻止F12事件
+        window.onkeydown = window.onkeyup = window.onkeypress = function (event) {
+            // 判断是否按下F12，F12键码为123
+            if (event.keyCode = 123) {
+                //event.preventDefault(); // 阻止默认事件行为
+                //window.event.returnValue = false;
+                //return false;
+            }
+        }
+
+	});
+
+	function initFloatBox() {
+
+		// 创建悬浮框
+		const floatBox = document.createElement('div');
+		floatBox.id = 'floatBox';
+		document.body.appendChild(floatBox);
+
+		// 鼠标移入显示
+		document.addEventListener('mouseover', function(e) {
+			if (e.target.classList.contains('hover-text')) {
+				const text = e.target.getAttribute('data-text');
+				floatBox.innerText = text;
+
+				// 定位到元素正下方
+				const rect = e.target.getBoundingClientRect();
+				floatBox.style.left = rect.left-6+ 'px';
+				floatBox.style.top = rect.bottom + 6 + 'px';
+				floatBox.style.display = 'block';
+			}
+		});
+		// 鼠标移出隐藏
+		document.addEventListener('mouseout', function(e) {
+			if (e.target.classList.contains('hover-text')) {
+				floatBox.style.display = 'none';
+			}
+		});
+
+
+	}
+</script>
+</html>

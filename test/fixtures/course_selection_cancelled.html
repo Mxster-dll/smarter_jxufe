@@ -1,0 +1,70 @@
+
+
+
+
+
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <title></title>
+	<meta http-equiv="Content-Language" content="zh-cn" />
+	<meta http-equiv="Content-Type" content="text/html; charset=GB2312" />
+	
+	<link rel="stylesheet" href="/css/Form.css" type="text/css" />
+	<link rel="stylesheet" href="/css/FormPlus.css" type="text/css" />
+	<link rel="stylesheet" href="/student/css/Report.css" type="text/css" />
+    <link rel="stylesheet" href="../themes/classical/css/gray/gray_DataTable.css" type="text/css" />
+	<script language="JavaScript" type="text/javascript" src='/js/Form.js'></script>
+	<script type="text/javascript" src='/js/Common.js'></script>
+	<script type="text/javascript" src='/js/Validate.js'></script>
+	<script type="text/javascript" src='/js/AjaxBase.js'></script>
+	<script type="text/javascript" src='/js/Ref_DropList.js'></script>
+	<script type="text/javascript" src='/student/js/loadClassPath.js'></script>
+	
+	<style type="text/css">	
+		#reportArea tbody td{text-align:left;height:20px;vertical-align: middle;text-overflow:ellipsis;overflow:hidden;}
+	</style>
+	<script type="text/javascript">
+		function MyWinOnLoad(){
+			SetHtmlTitle("被取消课程","2");
+		}
+	</script>	
+  </head>
+  
+ <body onload="KAF_WinOnLoad(this)">
+ <form method="post" id="ActionForm" target="frmReport">
+ 
+	 	<table width="99%" height="99%" align="center" style="border:none;"  id="thePageArea">
+			<tbody>
+				<tr>
+					<td  style="text-align:center;width:100%;border:none;">
+						
+							<div id="theOptArea" >
+								<div id="divTitle"></div>
+								
+								<div id="divButton">
+								
+									<input type="hidden" id="xh" name="xh" value="201600035929"/>
+									<input type="hidden" id="xn" name="xn" value="2026"/>
+									<input type="hidden" id="xq" name="xq" value="0"/>
+									<input type="hidden" id="nj" name="nj" value="2025"/>
+									<input type="hidden" id="zydm" name="zydm" value="4405"/>						
+								</div>
+								<div id="divLine"></div>
+								<div style="width:100%;text-align:left;">学年学期：2026-2027学年第一学期</div>
+							</div>
+						
+					</td>
+				</tr>
+				<tr>
+					<td id="theRptArea" align="center" style="padding:0px;margin:0px;border:none;" valign="top" >
+					没有相关数据！
+					</td>
+				</tr>
+			</tbody>
+		</table>
+
+	</form>
+ </body>
+</html>

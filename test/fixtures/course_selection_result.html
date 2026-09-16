@@ -1,0 +1,647 @@
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <title></title>
+	<meta http-equiv="Content-Language" content="zh-cn" />
+	<meta http-equiv="Content-Type" content="text/html; charset=GBK" />
+	<link rel="stylesheet" href="/css/Form.css" type="text/css" />
+	<link rel="stylesheet" href="/css/FormPlus.css" type="text/css" />
+	<link rel="stylesheet" href="/student/css/Report.css" type="text/css" />
+	<link rel="stylesheet" href="../themes/classical/css/gray/gray_DataTable.css" type="text/css" />
+	<style type="text/css">	
+		#reportArea tbody td{text-align:left;height:20px;vertical-align: middle;}
+		table {
+		    margin: 1mm auto;
+		    border: 0px solid #89BFA7;
+		    border-collapse: collapse;
+		    border-spacing: 0;
+		    empty-cells: show;
+		}
+		td {
+		    text-align: left;
+		    border: 1px solid #DDDDDD;
+		    font-size: 9pt;
+		    padding-top: 3px;
+		    padding-bottom: 3px;
+		    padding-left: 3px;
+		    padding-right: 3px;
+		    line-height: 3mm;
+		}				
+		tr.H {
+			background-color: #F6F7FB!important;
+			color: #333!important;
+			font-weight: bold;
+		    text-align: center;
+			white-space:normal;		    
+		}		
+		#theRptArea>div>table{
+			width: 100%!important;
+		}
+	</style>
+
+	<script language="JavaScript" type="text/javascript" src='/js/Form.js'></script>
+	<script type="text/javascript" src='/js/Common.js'></script>
+	<script type="text/javascript" src='/js/Validate.js'></script>
+	<script type="text/javascript" src='/js/Window.js'></script>
+	<script type="text/javascript" src='/js/AjaxBase.js'></script>
+	<script type="text/javascript" src='/js/Ref_DropList.js'></script>
+	<script type="text/javascript" src='/student/js/loadClassPath.js'></script>
+	
+	<script type="text/javascript" src="../custom/js/SetRootPath.jsp"></script>
+	<script type="text/javascript" src="../custom/js/jquery.js"></script>
+	<script type="text/javascript" src="../custom/js/jkingo.noprint.js"></script>
+	<script type="text/javascript" src="../custom/js/jwutil.js"></script>
+	<script type="text/javascript" src="../custom/js/watermark.js"></script>
+	
+	<script type="text/javascript">
+
+		var cKWindow = null;  // 弹窗变量,用于关闭弹出窗口
+	
+		function MyWinOnLoad(){
+		    var title="选课结果";
+		    if(G_SCHOOL_CODE=="10065"){//天津师范大学
+		       title="选课状态";
+		    }
+			SetHtmlTitle(title,"2");
+			initData();										
+		}
+
+		function initData() {
+			var xktime_flag = j$("#xktime_flag").val();
+			if ("0" == xktime_flag) {
+				//j$("#divAlert").html("当前时间不是有效的正选时间区段!");
+				j$("#btnSubmit").attr("disabled",true);
+				j$("input[type=checkbox][disabled=false]").attr("disabled",true);
+			}
+            watermark({"watermark_txt":"[2000000000]某同学"});
+		}
+		
+		// 取消正选
+		function CancelData(){
+			var theRptArea=$("theRptArea");
+			var tables=theRptArea.getElementsByTagName("table");
+			var items="";
+			for(var i=0;i<tables.length;i++){	
+				if(tables[i].id=="reportArea"){
+					var oTbody=tables[i].tBodies[0];
+					var rows=oTbody.rows;
+				
+					for(var ind=0;ind<rows.length;ind++){
+						if(rows[ind].cells[0].firstChild.checked){
+							var l=rows[ind].cells.length;
+							items+=rows[ind].cells[l-1].innerHTML+"|";
+						}
+					}
+				}
+			}
+			if(items=="")return;
+			$("items").value=items;
+			if (confirm("确认要退选选定课程?")) {
+				$("ActionForm").action="../STU_ElectCourseResultAction.do?hidOption=cancel";
+	   			//$("ActionForm").target="_self";
+	   			$("ActionForm").target="hidFrm";
+	   			$("ActionForm").submit();	
+			}
+		}
+		function _callBack(response) {
+			var data = JSON.parse(response); 
+			var status=data.status;
+			var message=data.message;
+			if(status=="400"){
+				alert(message);
+			}else{
+				document.location.reload();
+			}
+		}
+
+		// 显示课程明细				
+		function showCourseInfo(kcdm){
+			var title = "课程信息";
+			var width=window.document.body.offsetWidth;
+			var json = {"_title":title,"_width":"80%","_height":"550px","_left":(width*0.2)/2,"_isStop":true,"_isMove":true,"_imgsrc":"../images/"};
+			var xh = $id("xh").val();
+			var url = _webRootPath + "student/report/wsxk.courseinfo.jsp?kcdm="+kcdm+"&xh="+xh;
+			cKWindow = new CKWindow(json);
+			cKWindow.setSrc(url,"100%","100%");
+			cKWindow.openWindow();
+		}
+
+		// 显示教师明细				
+		function showTeacherInfo(gh) {
+			var title = "教师信息";
+			var json = {"_title":title,"_width":"510px","_height":"510px","_isStop":true,"_isMove":true,"_imgsrc":"../images/"};
+			var url = _webRootPath + "wjstgdfw/grxx.grjbxx_ck.jsp?gh="+gh;
+			var cKWindow = new CKWindow(json);
+			cKWindow.setSrc(url,"100%","100%");
+			cKWindow.openWindow();
+		}
+		// 查看入学以来正选结果			
+		function showAllresult() {
+			var title = "查看入学以来正选结果";
+			var json = {"_title":title,"_width":"1050px","_height":"550px","_isStop":true,"_isMove":true,"_imgsrc":"../images/"};
+			var url = _webRootPath + "student/wsxk.zxjg_all.jsp?xh="+$("xh").value+"&nj="+$("nj").value+"&zydm="+$("zydm").value;
+            var kingoDialog = getKingoDialog();
+            if (!kingoDialog) {
+                var cKWindow = new CKWindow(json);
+                cKWindow.setSrc(url, "100%", "100%");
+                cKWindow.openWindow();
+            }
+            else{
+                var _width = window.document.body.offsetWidth*0.9;
+                var _height = window.document.body.offsetHeight*0.8;
+                var _upFrameId = window.frameElement && window.frameElement.id || '';
+                kingoDialog.openModalDialog({"url":url,"title":title,"width":_width,"height":_height, "upFrameId":_upFrameId});
+			}
+		}
+	</script>	
+  </head>
+
+ <body onload="KAF_WinOnLoad(this)">
+ 	<div id="thePageArea">
+	 	<table width="100%" height="100%" align="center" cellpadding="0" cellspacing="0" style="border:none;">
+			<tbody>
+				<tr>
+					<td height='20px' align="center" valign="top" style="border:none;">
+						<form method="post" id="ActionForm" target="frmReport">
+							<div id="theOptArea">
+								<div id="divTitle"></div>
+								<div id="divButton">
+									
+									<input type="hidden" id="xktype" name="xktype" value="2"/>
+									<input type="hidden" id="xh" name="xh" value="201600035929"/>
+									<input type="hidden" id="xn" name="xn" value="2026"/>
+									<input type="hidden" id="xq" name="xq" value="0">
+									<input type="hidden" id="nj" name="nj" value="2025"/>
+									<input type="hidden" id="zydm" name="zydm" value="4405"/>
+									<input type="hidden" id="zymc" name="zymc" value="计算机科学与技术"/>
+									<input type="hidden" id="xktime_flag" name="xktime_flag" value="1"/>
+									
+									<input type="hidden" id="items" name="items"/>
+									<input type="hidden" name="btnSubmit" id="btnSubmit" value="取消选课" class="button" onclick="CancelData();"/>										
+								</div>
+								<div id="divLine"></div>
+								<fieldset id="theSearchArea">
+									<table id="theOptArea" style="border:none;" cellpadding="0" cellspacing="0">
+										<tr height="24px">
+											<td id="divTip" style="width:49%; text-align: left; border: 0px solid #FF0000;">
+												学年学期：2026-2027学年第一学期
+												&ensp;&ensp;学分上限：26
+												&ensp;&ensp;选课总学分数：25.5
+												&ensp;&ensp;选课总门数：10
+												&ensp;&ensp;&ensp;&ensp;<span id="divAlert" style="color: red;"></span>
+											</td>
+											<td style="width:49%; text-align: right; float:right; border: 0px solid #FF0000; margin-top:8px;">
+												<a style="cursor:pointer;" onclick="showAllresult()">查看入学以来正选结果</a>
+											</td>
+										</tr>
+									</table>		
+								</fieldset>
+							</div>
+						</form>
+					</td>
+				</tr>
+				<tr>
+					<td id="theRptArea" align="center" style="padding:0px;margin:0px;border:none;" valign="top">
+						<div style="width:100%;height:100%;overflow-y:auto;">
+						    <table style="width:760px;float:auto;margin-top:0px; "><tr><td style="text-align: left;">主修年级/专业：2025/计算机科学与技术</td></tr></table>
+					 		<table style="width:100%;float:auto;margin-top:0px; display: none;">
+					 			<thead>
+					 				<tr style="width:100%;"><td colspan="9" id="majorInfo" style="text-align: left;width:100%;">主修年级/专业：2025/计算机科学与技术&ensp;&ensp;学号：2000000000&ensp;&ensp;姓名：某同学</td></tr>
+					 				<tr>
+					 					<td rowspan="2"></td>
+					 					<td rowspan="2">学分</td>
+					 					<td colspan="3"></td>
+					 					<td rowspan="2">门数</td>
+					 					<td colspan="3"></td>
+					 				</tr>
+					 				<tr>
+					 					<td>专业限选</td>
+					 					<td>专业任选</td>
+					 					<td>公共任选</td>
+					 					
+					 					<td>专业限选</td>
+					 					<td>专业任选</td>
+					 					<td>公共任选</td>
+					 				</tr>
+					 			</thead>
+					 			<tbody>
+						 			
+					 				<tr>
+					 					<td style="text-align:center;width:12%;">限选</td>
+					 					
+					 					<td style="width:11%;">26.0</td>
+					 					<td style="width:11%;">0.0</td>
+					 					<td style="width:11%;">0.0</td>
+					 					<td style="width:11%;">0.0</td>
+					 					<td style="width:11%;">0</td>
+					 					<td style="width:11%;">0</td>
+					 					<td style="width:11%;">0</td>
+					 					<td style="width:11%;">0</td>
+					 				</tr>
+					 				<tr>
+					 					<td style="text-align:center;">已选</td>
+					 					
+					 					<td style="width:11%;">25.5</td>
+					 					<td style="width:11%;">0.0</td>
+					 					<td style="width:11%;">0.0</td>
+					 					<td style="width:11%;">1.0</td>
+					 					
+					 					<td style="width:11%;">1</td>
+					 					<td style="width:11%;">0</td>
+					 					<td style="width:11%;">0</td>
+					 					<td style="width:11%;">1</td>
+					 				</tr>
+					 				<tr>
+					 					<td style="text-align:center;">可选</td>
+					 					<td style="width:11%;">0.5</td>
+					 					<td style="width:11%;">0.0</td>
+					 					<td style="width:11%;">0.0</td>
+					 					<td style="width:11%;">0.0</td>
+					 					
+					 					<td style="width:11%;">0</td>
+					 					<td style="width:11%;">0</td>
+					 					<td style="width:11%;">0</td>
+					 					<td style="width:11%;">0</td>
+					 				</tr>
+					 				<tr>
+					 					<td style="text-align:center;">指定</td>
+					 					<td style="width:11%;">0.0</td>
+					 					<td style="width:11%;"></td>
+					 					<td style="width:11%;"></td>
+					 					<td style="width:11%;"></td>
+					 					<td style="width:11%;">0</td>
+					 					<td style="width:11%;"></td>
+					 					<td style="width:11%;"></td>
+					 					<td style="width:11%;"></td>
+					 				</tr>
+					 			</tbody>
+					 		</table>
+							
+							<table id="reportArea" style="width:100%;float:auto;">
+								<thead>
+									<tr class='H'>
+										<td rowspan="2" style="width:2%;display: none;">选定</td>
+										<td rowspan="2" style="">课程</td>
+										<td rowspan="2" style="width:3%;text-align:right;">学分</td>
+										<td rowspan="2" style="width:14%;">课程类别</td>
+										<td rowspan="2" style="width:5%;">任课教师</td>
+										<td rowspan="2" style="width:7%;">上课班级</td>
+										<td rowspan="2" style="width:13%;">上课班级名称</td>
+										<td rowspan="2" style="width:6%;">选课方式</td>
+										
+										<td rowspan="2" style="width:8%;">外年级/专业<br>选课</td>
+										
+										<td rowspan="2" style="width:4%;">选课<br>状态</td>
+										<td colspan="3" style="width:10%;">人数</td>
+										
+										<td rowspan="2" style="width:6%;">校区</td>
+										<td rowspan="2" style="width:12%;">上课时间/上课地点</td>
+										
+									</tr>
+									<tr class='H'>
+										<td style="text-align:center">已选/免听</td>
+										<td style="text-align:center">限选</td>
+										<td style="text-align:center">可选</td>
+									</tr>
+								</thead>
+								<tbody>
+									
+									<tr>
+										<td style="text-align:center;display: none;"><input type="checkbox" disabled %>/></td>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("1004606732")'>
+												[1004606732]英语视听说
+											</a>
+										</td>
+										<td style="text-align:right;">2.0</td>
+										<td>理论课&ensp;&ensp;2024公共课/公共外语课/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64n1rrrgq&param2=e3b9a1f1dca6403362aa2c22ede4044c")'>
+												陈润平
+											</a>
+										</td>
+										<td style="text-align:center;">1004606732-066</td>
+										<td></td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">45/0</td>
+										<td style="text-align:right;"></td>
+										<td style="text-align:right;"></td>
+										
+										   <td>麦庐园校区</td>
+										
+										<td>2-17周 四[3-4] 麦三教3111(70)</td>
+										<td style="display:none;">1004606732-066</td>
+									</tr>
+									
+									<tr>
+										<td style="text-align:center;display: none;"><input type="checkbox" disabled %>/></td>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("002211")'>
+												[1004703634]线性代数(工)
+											</a>
+										</td>
+										<td style="text-align:right;">4.0</td>
+										<td>理论课&ensp;&ensp;2024公共课/公共数学课/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64o1r69ji&param2=988439f3e29dd5911cdba6dcf3aca787")'>
+												韩加林
+											</a>
+										</td>
+										<td style="text-align:center;">002211-004</td>
+										<td>主干+</td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">97/0</td>
+										<td style="text-align:right;"></td>
+										<td style="text-align:right;"></td>
+										
+										   <td>麦庐园校区</td>
+										
+										<td>2-17周 一[6-7] 麦三教3202(101),2-17周 三[1-2] 麦三教3202(101)</td>
+										<td style="display:none;">002211-004</td>
+									</tr>
+									
+									<tr>
+										<td style="text-align:center;display: none;"><input type="checkbox" disabled %>/></td>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("003400")'>
+												[1005000661]体育3
+											</a>
+										</td>
+										<td style="text-align:right;">1.0</td>
+										<td>理论课&ensp;&ensp;2024公共课/体育/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2j6lqf1sd0492jskmm1qly3y&param2=13d899e68d3eb4c992ceb31d96dce98b")'>
+												赵翔
+											</a>
+										</td>
+										<td style="text-align:center;">003400-123</td>
+										<td>篮球</td>
+										<td style="text-align:center;">学生网上选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">31/0</td>
+										<td style="text-align:right;"></td>
+										<td style="text-align:right;"></td>
+										
+										   <td>麦庐园校区</td>
+										
+										<td>2-17周 二[3-4] 麦篮球场T005(40)</td>
+										<td style="display:none;">003400-123</td>
+									</tr>
+									
+									<tr>
+										<td style="text-align:center;display: none;"><input type="checkbox" disabled %>/></td>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("2020774")'>
+												[1012100360]形势与政策III
+											</a>
+										</td>
+										<td style="text-align:right;">0.5</td>
+										<td>理论课&ensp;&ensp;2024公共课/思想政治理论课/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64p1u5fka&param2=d449c3d8beefa97b1585ab9ce6ad9135")'>
+												谢尔艾力.库尔班
+											</a>
+										</td>
+										<td style="text-align:center;">2020774-041</td>
+										<td>思政+</td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">92/0</td>
+										<td style="text-align:right;"></td>
+										<td style="text-align:right;"></td>
+										
+										   <td>麦庐园校区</td>
+										
+										<td>9-12周 三[8-9] 麦三教3401(101)</td>
+										<td style="display:none;">2020774-041</td>
+									</tr>
+									
+									<tr>
+										<td style="text-align:center;display: none;"><input type="checkbox" disabled %>/></td>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("1213501533")'>
+												[1012100533]马克思主义基本原理
+											</a>
+										</td>
+										<td style="text-align:right;">3.0</td>
+										<td>理论课&ensp;&ensp;2024公共课/思想政治理论课/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2j7tq73iwi601l7o86003a6q&param2=d6373e57cbdb02acedbb29fd826c39cf")'>
+												李冰潇
+											</a>
+										</td>
+										<td style="text-align:center;">1213501533-029</td>
+										<td></td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">92/0</td>
+										<td style="text-align:right;"></td>
+										<td style="text-align:right;"></td>
+										
+										   <td>麦庐园校区</td>
+										
+										<td>2-17周 三[3-5] 麦三教3201(101)</td>
+										<td style="display:none;">1213501533-029</td>
+									</tr>
+									
+									<tr>
+										<td style="text-align:center;display: none;"><input type="checkbox" disabled %>/></td>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("1014300174")'>
+												[1014300174]计算机网络
+											</a>
+										</td>
+										<td style="text-align:right;">4.0</td>
+										<td>理论课&ensp;&ensp;2024专业教育课/专业必修课/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2j7tq73iwi601l7o84003a6r&param2=3b5c8dc8ba11da24aec0285f1c580b39")'>
+												陈强
+											</a>
+										</td>
+										<td style="text-align:center;">1014300174-004</td>
+										<td>主干+</td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">71/0</td>
+										<td style="text-align:right;"></td>
+										<td style="text-align:right;"></td>
+										
+										   <td>麦庐园校区</td>
+										
+										<td>2-17周 三[10-12] 麦三教3108(70),2-17周(双) 五[1-2] 麦工商楼G203(80)</td>
+										<td style="display:none;">1014300174-004</td>
+									</tr>
+									
+									<tr>
+										<td style="text-align:center;display: none;"><input type="checkbox" disabled %>/></td>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("1014300184")'>
+												[1014300184]计算机组成原理
+											</a>
+										</td>
+										<td style="text-align:right;">4.0</td>
+										<td>理论课&ensp;&ensp;2024专业教育课/学科基础课/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2j7tq73iwixs1lt8gj2g7stg1q0dv9000046&param2=60f70699d157e3707e75fb8fee8c891c")'>
+												某老师
+											</a>
+										</td>
+										<td style="text-align:center;">1014300184-004</td>
+										<td>主干+</td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">60/0</td>
+										<td style="text-align:right;"></td>
+										<td style="text-align:right;"></td>
+										
+										   <td>麦庐园校区</td>
+										
+										<td>2-17周 一[10-11] 麦三教3306(70),2-17周 四[10-11] 麦三教3306(70)</td>
+										<td style="display:none;">1014300184-004</td>
+									</tr>
+									
+									<tr>
+										<td style="text-align:center;display: none;"><input type="checkbox" disabled %>/></td>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("1014300314")'>
+												[1014300314]数据结构与算法
+											</a>
+										</td>
+										<td style="text-align:right;">4.0</td>
+										<td>理论课&ensp;&ensp;2024专业教育课/学科基础课/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64o1qkse4&param2=5cdeca5b4d29e5c232ca93e6402acd8f")'>
+												焦贤沛
+											</a>
+										</td>
+										<td style="text-align:center;">1014300314-002</td>
+										<td>主干+</td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">55/0</td>
+										<td style="text-align:right;"></td>
+										<td style="text-align:right;"></td>
+										
+										   <td>麦庐园校区</td>
+										
+										<td>2-17周 一[3-4] 麦三教3209(70),2-17周 四[8-9] 数字经济实训大楼S307(66)</td>
+										<td style="display:none;">1014300314-002</td>
+									</tr>
+									
+									<tr>
+										<td style="text-align:center;display: none;"><input type="checkbox" disabled %>/></td>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("1014300422")'>
+												[1014300422]Linux操作系统
+											</a>
+										</td>
+										<td style="text-align:right;">2.0</td>
+										<td>理论课&ensp;&ensp;2024专业教育课/专业方向课/选修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2j7tq73iwi601l7o860038nd&param2=1f03a19e2ad0e74f75a4c2f6fe7f09b0")'>
+												陶小结
+											</a>
+										</td>
+										<td style="text-align:center;">1014300422-001</td>
+										<td></td>
+										<td style="text-align:center;">学生网上选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">78/0</td>
+										<td style="text-align:right;"></td>
+										<td style="text-align:right;"></td>
+										
+										   <td>麦庐园校区</td>
+										
+										<td>2-17周 五[6-7] 数字经济实训大楼S313(66)</td>
+										<td style="display:none;">1014300422-001</td>
+									</tr>
+									
+									<tr>
+										<td style="text-align:center;display: none;"><input type="checkbox" disabled %>/></td>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("2021590")'>
+												[1505002221]体育保健学（MOOC）
+											</a>
+										</td>
+										<td style="text-align:right;">1.0</td>
+										<td>理论课&ensp;&ensp;公共课/任选课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64o1pdwer&param2=2d4367e54c0277333f173ebbaa014d04")'>
+												严伟
+											</a>
+										</td>
+										<td style="text-align:center;">2021590-001</td>
+										<td>体育保健学（MOOC）</td>
+										<td style="text-align:center;">学生网上选</td>
+										<td style="text-align:center;">是</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">450/0</td>
+										<td style="text-align:right;"></td>
+										<td style="text-align:right;"></td>
+										
+										   <td>麦庐园校区</td>
+										
+										<td>2-9周 [] </td>
+										<td style="display:none;">2021590-001</td>
+									</tr>
+									
+								</tbody>
+							</table>
+							
+							<script type="text/javascript">
+								var _theRptArea_=$("theRptArea");
+								var _tables_=_theRptArea_.getElementsByTagName("table");
+								
+								for(var i=0;i<_tables_.length;i++){	
+									if(_tables_[i].id=="reportArea"){
+										var oTbody=_tables_[i].tBodies[0];
+										var rows=oTbody.rows;
+										if(rows.length==0){
+											try{
+												_tables_[i].style.display="none";
+												_theRptArea_.removeChild(_tables_[i]);
+											}catch(e){}
+										}
+									}
+                                    if(_tables_[i].id=="reportArea_wzy"){
+                                        var oTbody=_tables_[i].tBodies[0];
+                                        var rows=oTbody.rows;
+                                        if(rows.length==0){
+                                            try{
+                                                _tables_[i].style.display="none";
+                                                _theRptArea_.removeChild(_tables_[i]);
+                                            }catch(e){}
+                                        }
+                                    }
+								}
+							</script>
+						</div>
+						<iframe id="hidFrm" name="hidFrm" style="display:none;"></iframe>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+ </body>
+</html>
