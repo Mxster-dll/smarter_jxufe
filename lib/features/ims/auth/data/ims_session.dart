@@ -1,7 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
+import 'package:smarter_jxufe/core/network/jw_page_decoding.dart';
 import 'package:smarter_jxufe/features/ims/auth/data/ims_session_renewal.dart';
+import 'package:smarter_jxufe/features/ims/auth/domain/ims_token_refresh.dart';
 
 /// 会话状态（界面据此决定"直接进页面"还是"转圈/报错"）。
 enum ImsSessionPhase {
@@ -135,6 +137,51 @@ class ImsSession {
       _lastError = e;
       debugPrint('[ImsSession] 换票失败 account=$account: $e\n$s');
       rethrow;
+    }
+  }
+
+  /// 只读地看一眼当前令牌（内存 → 磁盘），**不发请求、也不换票**。
+  ///
+  /// 给「设置页卡片首屏」这类只想展示状态的场景用：`ensureReady()` 在本地没有
+  /// 令牌时会顺手走一次 CAS 换票，而打开设置页并不该触发登录。
+  Future<String?> peek() async => _jsessionId ?? await _restore();
+
+  /// 探活：用当前令牌打一个最便宜的**会话门控**端点，看教务还认不认它。
+  ///
+  /// 端点选型 `GET /jw/common/getStuGradeSpeciatyInfo.action?xh=`：教务除
+  /// `/public/*` 外一律要求有效会话（未登录统一回 547 字节 alert 页
+  /// `<script>alert('温馨提示：凭证已失效，请重新登录!');`），而这个端点最小
+  /// （几百字节 JSON）且**不依赖学生号**（实测传空 / 传别人的号都返回同一份本生数据）。
+  ///
+  /// 两个刻意的实现细节：
+  /// 1. 用 `ResponseType.bytes`：`ImsAuthInterceptor` 只认 `String` 响应，所以探活
+  ///    **不会**被拦截器偷换成「自动换票 + 重试」——结论必须原样交给调用方
+  ///    （用户 2026-09-15 口径：先探活、失效才换，有效时不许悄悄换票）；
+  /// 2. 只采信两种结论：`jwSessionExpired` → [ImsProbeResult.expired]、
+  ///    JSON 信封 → [ImsProbeResult.alive]，其余一律 [ImsProbeResult.unknown]
+  ///    （宁可 unknown 后照样换票，也别把登录页 / 半截页当有效）。
+  Future<ImsProbeResult> probe() async {
+    final token = await peek();
+    if (token == null || token.isEmpty) return ImsProbeResult.noSession;
+    try {
+      final res = await dio.get<List<int>>(
+        '/jw/common/getStuGradeSpeciatyInfo.action',
+        queryParameters: const {'xh': ''},
+        options: Options(
+          responseType: ResponseType.bytes,
+          headers: {'Cookie': 'JSESSIONID=$token'},
+        ),
+      );
+      final body = decodeJwPage(res.data ?? const <int>[]);
+      if (jwSessionExpired(body)) return ImsProbeResult.expired;
+      if (res.statusCode == 200 && imsProbeBodyLooksValid(body)) {
+        return ImsProbeResult.alive;
+      }
+      return ImsProbeResult.unknown;
+    } catch (e) {
+      _lastError = e;
+      debugPrint('[ImsSession] 探活失败 account=$account: $e');
+      return ImsProbeResult.unknown;
     }
   }
 
