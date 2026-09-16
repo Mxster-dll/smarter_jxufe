@@ -37,6 +37,21 @@ bool isGuid(String s) {
   return m != null && m.group(0) == s;
 }
 
+/// 3xx 的 `Location` 是否表示「**本章已通过**」。
+///
+/// 实测(2026-09-15,已通关账号):前 4 章 `/Web/Exam?cid=` 返回 200 +
+/// 「已通过本章节考试」,但**最后一章**通过后没有「下一章」可去,平台改为
+/// `302 → /Web/Center/MyGrades`(结算 `JumpWhich == 2` 时也会去
+/// `/Web/Center/Lottery`)。对照:答题尚未开放是 `302 → /html/401.html`。
+///
+/// 二者语义相反,必须区分 —— 早前把任意 3xx 都当成会话失效,导致最后一章
+/// 恒被计为未通过,「入馆教育」进度卡一直显示未完成(4/5 章)。
+bool tsgxsRedirectIsChapterPassed(String location) {
+  final lower = location.toLowerCase();
+  return lower.contains('/web/center/mygrades') ||
+      lower.contains('/web/center/lottery');
+}
+
 /// 从 cblogin 的跳转地址里取**待激活 uid**。
 ///
 /// 首次登录(还没选皮肤)时,tsgxs 会 302 到
