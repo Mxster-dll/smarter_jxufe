@@ -7,6 +7,17 @@ import 'package:flutter/material.dart';
 class FeaturePalette {
   FeaturePalette._();
 
+  /// **全应用卡片强调色**（2026-09-15 用户裁定：卡片样式统一为「综测评测结果卡」形态，
+  /// 「单一的其他颜色」的强调色一律改红）= 主题 `primary` 校红。
+  ///
+  /// 用在卡片标题竖条 / 卡片图标与图标底 / 分区点缀色 / TabBar 指示器 / 主按钮 上；
+  /// 语义色（错误 / 成功 / 等级 / 假日 / 调课·补课·停课状态 / 图表配色）**不要**换成它。
+  /// 与 `lib/design/app_card.dart` 的 `kAppCardAccent` 同值（那里是给无 context 场景的别名）。
+  static const cardAccent = Color(0xFFC3282E);
+
+  /// [cardAccent] 的 10% 淡底（图标底板等），等价 `cardAccent.withValues(alpha: 0.10)`。
+  static const cardAccentSoft = Color(0x1AC3282E);
+
   /// 培养方案课程。
   static const curriculum = Color(0xFF5E35B1);
 
@@ -58,6 +69,12 @@ class FeaturePalette {
   /// 分数估计（靛蓝，取「测算」语义）。
   static const scoreEstimate = Color(0xFF536DFE);
 
+  /// 分数估计 · 构成占比条的期末段（中性蓝灰，与平时分靛蓝成对）。
+  static const scoreEstimateFinal = Color(0xFF90A4AE);
+
+  /// 分数估计 · 平时占比已设但尚未配置分项时的浅色占位段。
+  static const scoreEstimatePending = Color(0xFFB0BEC5);
+
   /// 体测成绩。
   static const tice = Color(0xFF558B2F);
 
@@ -96,4 +113,37 @@ class FeaturePalette {
 
   /// 校历角标「其它事件」（运/考/军/到/教，蓝灰）。
   static const calendarEvent = Color(0xFF546E7A);
+
+  /// 经典阅读 · 畅想之星（深青，与校历浅蓝、上课实况青蓝区分）。
+  static const cxstar = Color(0xFF006064);
+
+  /// 公共查询（按教师/班级/教室/课程查课表 + 多班对照找无课时间，靛紫）。
+  static const publicQuery = Color(0xFF4527A0);
+
+  /// 选课（网上选课 / 选课结果 / 退选与扩容，玫红）。
+  static const courseSelection = Color(0xFFAD1457);
+
+  /// 教务会话（设置页「教务会话」节：令牌探活 / 手动换票，深青绿）。
+  static const imsSession = Color(0xFF00695C);
+
+  /// 截止日期 · 网课（青，取「在线」语义）。
+  static const deadlineOnline = Color(0xFF00838F);
+
+  /// 截止日期 · 作业（沿用分数估计靛蓝）。
+  static const deadlineHomework = scoreEstimate;
+
+  /// 截止日期 · 考试（紫）。
+  static const deadlineExam = Color(0xFF7B1FA2);
+
+  /// 截止日期 · 其它（灰蓝）。
+  static const deadlineOther = Color(0xFF78909C);
+
+  /// 截止日期 · 今天截止 / 3 天内（橙，取临近语义）。
+  static const deadlineSoon = Color(0xFFEF6C00);
+
+  /// 截止日期 · 已过期（红，取警示语义）。
+  static const deadlineOverdue = Color(0xFFC62828);
+
+  /// 截止日期 · 已完成（灰）。
+  static const deadlineDone = Color(0xFF757575);
 }
