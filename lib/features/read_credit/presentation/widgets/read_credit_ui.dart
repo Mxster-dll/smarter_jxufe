@@ -108,5 +108,5 @@ Color readCreditActualBarColor(BuildContext context) =>
 Color readCreditServerBarColor(BuildContext context) =>
     Theme.of(context).colorScheme.primary;
 
-/// 该 feature 的统一点缀色。
-const Color readCreditAccent = FeaturePalette.jhRead;
+/// 该 feature 的统一点缀色（2026-09-15 起 = 全应用卡片强调色）。
+const Color readCreditAccent = FeaturePalette.cardAccent;

@@ -1,6 +1,7 @@
 import 'package:smarter_jxufe/features/comprehensive_service/data/datasource/ssp_auth_remote_datasource.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/datasource/volunteer_hours_remote_datasource.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/volunteer_activity.dart';
+import 'package:smarter_jxufe/features/comprehensive_service/data/models/volunteer_export_file.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/ssp_auth_repository.dart';
 
 /// 志愿服务时长业务仓库。
@@ -33,6 +34,26 @@ class VolunteerHoursRepository {
       final freshSessionId = await _sspAuthRepository.refreshSessionId(account);
       try {
         return await _remoteDataSource.fetchVolunteerActivities(
+          sessionId: freshSessionId,
+        );
+      } on SspSessionExpiredException {
+        throw Exception('综合管理平台会话刷新失败，请稍后重试');
+      }
+    }
+  }
+
+  /// 下载指定账户的「志愿服务时长认定登记表」（Word 原件）。
+  ///
+  /// 会话处理与 [fetchActivities] 完全一致：命中本地会话直接下载，
+  /// 过期则自动刷新后重试一次，仍失败给出明确错误。
+  Future<VolunteerExportFile> exportRecognitionForm(String account) async {
+    final sessionId = await _sspAuthRepository.getSessionId(account);
+    try {
+      return await _remoteDataSource.fetchRecognitionForm(sessionId: sessionId);
+    } on SspSessionExpiredException {
+      final freshSessionId = await _sspAuthRepository.refreshSessionId(account);
+      try {
+        return await _remoteDataSource.fetchRecognitionForm(
           sessionId: freshSessionId,
         );
       } on SspSessionExpiredException {

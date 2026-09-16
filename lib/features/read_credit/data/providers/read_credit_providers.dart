@@ -8,6 +8,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:smarter_jxufe/core/network/device_profile_repository_provider.dart';
 import 'package:smarter_jxufe/core/network/dio_providers.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_provider.dart';
+import 'package:smarter_jxufe/features/cxstar/data/providers/cxstar_providers.dart';
 import 'package:smarter_jxufe/features/data_center/data/providers/data_center_providers.dart';
 import 'package:smarter_jxufe/features/library_edu/data/providers/tsgxs_providers.dart';
 import 'package:smarter_jxufe/features/library_edu/data/tsgxs_api_remote_datasource.dart';
@@ -151,24 +152,51 @@ final readCreditProgressProvider = FutureProvider<ReadCreditProgressBundle>((
     details: details,
     libraryEdu: await _eduProgress(ref),
     borrowCounts: await _borrowCounts(ref, account),
+    cxstar: await _cxstarProgress(ref),
   );
 });
 
+/// 畅想之星平台侧的个人阅读计数（经典阅读的**实际**口径，App 内实时）。
+///
+/// 只采信**个人**会话：校园网 IP 免密登录得到的是全校公用账号（全校聚合），
+/// 拿它当个人进度会严重高估（实测 2160 册 vs 个人 13 册）。
+Future<ReadCreditCxstarProgress?> _cxstarProgress(Ref ref) async {
+  try {
+    final overview = await ref.read(cxstarOverviewProvider.future);
+    if (!overview.personal) return null;
+    return (
+      books: overview.summary.readCount,
+      minutes: overview.summary.readMinutes,
+    );
+  } catch (_) {
+    return null;
+  }
+}
+
 /// 入馆教育五章闯关实时进度（App 直连 tsgxs，不依赖平台汇总）。
+///
+/// 逐章口径：已通过 → 计入；服务端明确「答题尚未开放」（`blocked` =
+/// 前序章节未通过 / 线索未学完）→ 不计入（这是确定的未通过）。但请求
+/// 本身失败（会话失效 / 网络抖动）属于**未知**，不能当成未通过 ——
+/// 早前按未通过计，任何一次抖动都会让整项掉成 4/5 并显示「未完成」。
+/// 出现未知时整体返回 null，卡片回退服务端状态并给出说明。
 Future<ReadCreditEduProgress?> _eduProgress(Ref ref) async {
   try {
     final home = await ref.read(tsgxsHomeProvider.future);
     final ids = home.chapterIds;
     if (ids.isEmpty) return null;
     var passed = 0;
+    var unknown = false;
     for (final id in ids) {
       try {
         final status = await ref.read(tsgxsExamStatusProvider(id).future);
         if (status.state == TsgxsExamState.passed) passed++;
       } catch (_) {
-        // 单章状态取不到（未解锁 / 会话失效）按未通过计。
+        // 状态取不到 = 未知（会话 / 网络），不当作未通过。
+        unknown = true;
       }
     }
+    if (unknown) return null;
     return (passed: passed, total: ids.length);
   } catch (_) {
     return null;

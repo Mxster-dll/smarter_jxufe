@@ -1,8 +1,11 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:html/parser.dart' as html_parser;
 
 import 'package:smarter_jxufe/features/comprehensive_service/data/datasource/ssp_auth_remote_datasource.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/volunteer_activity.dart';
+import 'package:smarter_jxufe/features/comprehensive_service/data/models/volunteer_export_file.dart';
 
 class VolunteerHoursRemoteDataSource {
   final Dio _dio;
@@ -46,6 +49,77 @@ class VolunteerHoursRemoteDataSource {
     }
 
     return _parseHtml(body);
+  }
+
+  /// 下载「志愿服务时长认定登记表」（学校平台导出的 Word 原件）。
+  ///
+  /// 对应学校页面「学生活动时长统计」右上角的
+  /// **下载时长认定登记表** 按钮（`downloadInfo.do`）。
+  /// 返回的字节流原样透传，不在 App 侧改写任何内容。
+  ///
+  /// 会话失效判定与 [fetchVolunteerActivities] 一致：
+  /// 3xx 重定向或返回登录页 HTML → 抛 [SspSessionExpiredException]。
+  Future<VolunteerExportFile> fetchRecognitionForm({
+    required String sessionId,
+  }) async {
+    final response = await _dio.get<List<int>>(
+      '/admin/tzz/StuVolWork/downloadInfo.do',
+      options: Options(
+        headers: {
+          'Cookie': 'JSESSIONID=$sessionId',
+          'Referer':
+              'http://ssp.jxufe.edu.cn/admin/tzz/StuVolWork/stu_list.html',
+        },
+        followRedirects: false,
+        responseType: ResponseType.bytes,
+      ),
+    );
+
+    final status = response.statusCode ?? 0;
+
+    // 3xx（登录页/失效页重定向）→ 会话已过期
+    if (status >= 300 && status < 400) {
+      throw SspSessionExpiredException();
+    }
+
+    if (status != 200) {
+      throw Exception('下载失败: $status');
+    }
+
+    final bytes = switch (response.data) {
+      final List<int> data when data.isNotEmpty => Uint8List.fromList(data),
+      _ => Uint8List(0),
+    };
+
+    if (bytes.isEmpty) {
+      throw Exception('下载失败：服务器返回空文件');
+    }
+
+    // 会话失效时服务器可能用 200 返回登录页 HTML，而不是文件字节
+    if (_looksLikeHtmlBytes(bytes)) {
+      throw SspSessionExpiredException();
+    }
+
+    return VolunteerExportFile(
+      bytes: bytes,
+      fileName: volunteerExportFileName(
+        response.headers.value('content-disposition'),
+      ),
+    );
+  }
+
+  /// 判断响应体是否为登录页/失效页 HTML（只看开头一小段）。
+  ///
+  /// 真实的登记表是 OOXML 压缩包（`PK\x03\x04`）或旧版 OLE（`D0 CF 11 E0`），
+  /// 都不会以 `<` 开头。
+  bool _looksLikeHtmlBytes(Uint8List bytes) {
+    final head = bytes
+        .take(512)
+        .map((byte) => byte < 0x80 ? String.fromCharCode(byte) : ' ')
+        .join()
+        .trimLeft();
+    if (head.startsWith('<')) return true;
+    return head.contains('authFailure') || head.contains('/sso/login');
   }
 
   /// 判断响应体是否为登录页/失效页（authFailure 或 SSO 登录入口）。

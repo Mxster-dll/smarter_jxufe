@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -176,7 +178,7 @@ void main() {
       expect(part.lines.single, contains('2026/7/1 15:29:33'));
     });
 
-    test('会话不可用时不给实际值，并说明原因', () {
+    test('实时进度不可用（会话/网络）时不给实际值，并说明原因', () {
       final bundle = buildReadCreditProgress(
         score: null,
         details: const {},
@@ -185,7 +187,9 @@ void main() {
       final part = bundle.partOf(ReadCreditKind.libraryEdu)!;
       expect(part.bars, isEmpty);
       expect(part.actualMet, isNull);
-      expect(part.actualSourceNote, contains('会话不可用'));
+      // 措辞含「未按未通过计」：取不到状态 ≠ 未通过（否则一次网络抖动
+      // 就会把整项显示成未完成）。
+      expect(part.actualSourceNote, contains('未按未通过计'));
       expect(part.lines.single, contains('暂无'));
     });
 
@@ -405,6 +409,126 @@ void main() {
       expect(widths.length, greaterThanOrEqualTo(3));
       expect(widths[0], closeTo(widths[1], 0.5), reason: '轨道与红条应同宽');
       expect(widths[2], lessThan(widths[0]));
+    });
+  });
+
+  group('入口分派：经典阅读 → 畅想之星（用户 2026-09-15 裁定）', () {
+    ReadCreditProgressBundle bundleForEntry() => buildReadCreditProgress(
+      score: ReadCreditScore(
+        items: [
+          _item(ReadCreditKind.ordinary, passed: false),
+          _item(ReadCreditKind.classic, passed: false),
+          _item(ReadCreditKind.libraryEdu, passed: false),
+          _item(ReadCreditKind.culture, passed: false),
+        ],
+      ),
+      details: {
+        ReadCreditKind.classic: _detail(
+          ReadCreditKind.classic,
+          ['已读完图书书名', '总阅读时长(秒)'],
+          [
+            ['书A', '7201'],
+          ],
+        ),
+      },
+      libraryEdu: (passed: 0, total: 5),
+      borrowCounts: const {},
+    );
+
+    testWidgets('点经典阅读卡走 onOpenClassic，不触达入馆教育回调', (tester) async {
+      final bundle = bundleForEntry();
+      var openedClassic = false;
+      var openedEdu = false;
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [readCreditProgressProvider.overrideWith((ref) => bundle)],
+          child: MaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: ReadCreditProgressSection(
+                  onOpenLibraryEdu: () => openedEdu = true,
+                  onOpenClassic: () => openedClassic = true,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final classicTitle = find.descendant(
+        of: find.byType(ReadCreditPartCard),
+        matching: find.text('经典阅读'),
+      );
+      await tester.ensureVisible(classicTitle);
+      await tester.pumpAndSettle();
+      await tester.tap(classicTitle);
+      await tester.pump();
+
+      expect(openedClassic, isTrue, reason: '经典阅读卡应跳畅想之星（用户裁定）');
+      expect(openedEdu, isFalse);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('未注入 onOpenClassic 时回退平台明细页（保底）', (tester) async {
+      final bundle = bundleForEntry();
+      var openedEdu = false;
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [readCreditProgressProvider.overrideWith((ref) => bundle)],
+          child: MaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: ReadCreditProgressSection(
+                  onOpenLibraryEdu: () => openedEdu = true,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final classicTitle = find.descendant(
+        of: find.byType(ReadCreditPartCard),
+        matching: find.text('经典阅读'),
+      );
+      await tester.ensureVisible(classicTitle);
+      await tester.pumpAndSettle();
+      // 不注入回调时仍可点（走内置的 ReadCreditDetailScreen 兜底），
+      // 这里只断言没有异常且不会误触发入馆教育回调。
+      await tester.tap(classicTitle);
+      await tester.pump();
+      expect(openedEdu, isFalse);
+    });
+
+    test('蛟湖阅读页已删畅想之星独立入口，经典阅读卡注入 onOpenClassic', () {
+      final source = File(
+        'lib/features/comprehensive_service/presentation/jh_read_screen.dart',
+      ).readAsStringSync();
+      expect(
+        source.contains('onOpenClassic:'),
+        isTrue,
+        reason: '经典阅读卡必须注入 onOpenClassic（跳畅想之星）',
+      );
+      expect(source.contains('CxstarScreen()'), isTrue);
+      expect(
+        source.contains('_CxstarCard'),
+        isFalse,
+        reason: '用户 2026-09-15 裁定：取消畅想之星独立入口',
+      );
+      expect(
+        source.contains('畅想之星 · 经典阅读平台'),
+        isFalse,
+        reason: '用户 2026-09-15 裁定：删除该节标题',
+      );
+
+      // 原「经典阅读明细」数据归并到畅想之星页内（同一份 readCreditDetailProvider）。
+      final cxstarSource = File(
+        'lib/features/cxstar/presentation/cxstar_screen.dart',
+      ).readAsStringSync();
+      expect(cxstarSource.contains('_ReadCreditClassicSection'), isTrue);
+      expect(cxstarSource.contains('readCreditDetailProvider'), isTrue);
+      expect(cxstarSource.contains('学分平台 · 经典阅读明细'), isTrue);
     });
   });
 
