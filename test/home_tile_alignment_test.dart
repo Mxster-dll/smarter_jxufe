@@ -2,39 +2,64 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// 首页宫格守卫：`_items(context)` 与顶层 `const _tileColors` 必须按索引一一对齐。
+import 'package:smarter_jxufe/features/home/presentation/home_service_catalog.dart';
+
+/// 首页服务目录守卫。
 ///
-/// AGENTS.md §3 的铁律——渲染取 `_tileColors[i % _tileColors.length]`，
-/// 只增删一侧会让后面所有磁贴错色（曾因「我的」磁贴删除而差点错位）。
-/// 这里读源码做静态计数，比 widget 测试更早发现错位。
+/// **历史**：条目原先写在 `home_screen.dart` 的私有 `_items(context)` 里，强调色存在
+/// 顶层 `const _tileColors`，两者按**索引**对齐 —— 本文件当时守的就是「条目数 == 色数」。
+/// 2026-09-15 起（用户裁定第 1 条：主页要能切「左侧导航栏视图」）宫格与侧栏共用
+/// `home_service_catalog.dart`，**强调色随条目定义**（`HomeServiceEntry.accent`），
+/// 索引对齐这条约定作废（侧栏按分组重排，索引本来就会变）。
+/// 现在守的是：目录完整性、标题唯一、分组覆盖、以及「别再退回索引取色」。
 void main() {
-  test('首页宫格条目数与功能分色数一致', () {
+  final entries = homeServiceEntries(push: (_) {});
+  final titles = entries.map((e) => e.title).toList();
+
+  test('目录条目齐全（21 条）', () {
+    expect(entries.length, 21, reason: '增删服务入口请同步本测试与 AGENTS.md §3');
+  });
+
+  test('标题唯一（同一入口不会出现两次）', () {
+    expect(titles.toSet().length, titles.length, reason: '$titles');
+  });
+
+  test('每条都有图标与分组，且分组并集 = 全目录', () {
+    for (final e in entries) {
+      expect(e.subtitle, isNotNull);
+      expect(e.accent, isNotNull);
+    }
+    final grouped = [
+      for (final group in HomeServiceGroup.values)
+        ...homeServiceEntriesInGroup(entries, group),
+    ];
+    expect(
+      grouped.length,
+      entries.length,
+      reason: '有条目没归入任何分组 → 侧栏视图会漏掉它',
+    );
+    expect(grouped.map((e) => e.title).toSet(), titles.toSet());
+  });
+
+  test('「上课实况窗」已从主页目录移除（2026-09-15 迁到设置页）', () {
+    expect(titles, isNot(contains('上课实况窗')));
+  });
+
+  test('「我的」不在目录里（入口 = 顶栏右上角头像，2026-09-11 裁定）', () {
+    expect(titles, isNot(contains('我的')));
+  });
+
+  test('home_screen.dart 不再按索引取色（强调色随条目走）', () {
     final file = File('lib/features/home/presentation/home_screen.dart');
     expect(file.existsSync(), isTrue, reason: '找不到 ${file.path}');
-    final lines = file.readAsLinesSync();
-
-    // 宫格条目：`_items` 里每项以「缩进 + _HomeItem(」开头（类构造是 `const _HomeItem(`，不会命中）。
-    final itemCount = lines
-        .where((l) => RegExp(r'^\s*_HomeItem\($').hasMatch(l))
-        .length;
-
-    // 分色列表：`const _tileColors = <Color>[` 到对应 `];` 之间的 FeaturePalette 常量行。
-    final start = lines.indexWhere((l) => l.startsWith('const _tileColors'));
-    expect(start, greaterThan(0), reason: '找不到 _tileColors 定义');
-    final end = lines.indexWhere((l) => l.trim() == '];', start);
-    expect(end, greaterThan(start), reason: '_tileColors 未正常闭合');
-    final colorCount = lines
-        .sublist(start + 1, end)
-        .where((l) => l.trimLeft().startsWith('FeaturePalette.'))
-        .length;
-
-    expect(itemCount, greaterThan(10), reason: '宫格条目数解析异常（$itemCount）');
+    final source = file.readAsStringSync();
     expect(
-      colorCount,
-      itemCount,
-      reason:
-          '宫格条目数（$itemCount）与 _tileColors 条目数（$colorCount）不一致：'
-          '增删磁贴必须同步增删 _tileColors（AGENTS.md §3）',
+      source.contains('_tileColors'),
+      isFalse,
+      reason: '索引对齐的色表已废除：强调色定义在 HomeServiceEntry.accent',
     );
+    expect(source.contains('homeServiceEntries('), isTrue);
+    expect(source.contains('HomeServiceGrid('), isTrue);
+    expect(source.contains('HomeSidebar('), isTrue);
   });
 }
