@@ -3,7 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../../design/feature_palette.dart';
+import '../../../design/app_card.dart';
 import '../domain/ge_models.dart';
 
 /// 数字展示：保留 [decimals] 位并去掉无意义尾零（100.0 → 100；0.5 → 0.5）。
@@ -212,27 +212,25 @@ class GeModeChip extends StatelessWidget {
   }
 }
 
-// ---- 与 App 首页统一的卡片语言 ----
+// ---- 与 App 统一的卡片语言 ----
 
-/// 卡片外形：圆角 8 + outline 细边框（无阴影），与首页功能卡一致。
-RoundedRectangleBorder geCardShape(BuildContext context) {
-  final scheme = Theme.of(context).colorScheme;
-  return RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(8),
-    side: BorderSide(color: scheme.outline),
-  );
-}
+/// 卡片外形：**统一口径已迁到 `lib/design/app_card.dart`**（圆角 12 + `outlineVariant` 60%
+/// 淡边框 + 纯白，无阴影 —— 用户 2026-09-15 裁定全应用统一为「综测评测结果卡」形态）。
+/// 这里只做兼容转发，历史 48 处调用点无需改动；新代码直接 `appCardShape(context)`。
+RoundedRectangleBorder geCardShape(BuildContext context) =>
+    appCardShape(context);
 
 /// 卡内区块标题：3px 竖条 + 标题（仿首页「全部服务」节标题）。
 ///
-/// [accent] 默认模块靛蓝；[trailing] 非空时靠右显示。
+/// [accent] 默认 `colorScheme.primary`（校红；用户裁定「单一的其他颜色」的卡片强调色一律改红）；
+/// [trailing] 非空时靠右显示。
 Widget geCardTitle(
   BuildContext context, {
   required String text,
   Widget? trailing,
   Color? accent,
 }) {
-  final a = accent ?? FeaturePalette.scoreEstimate;
+  final a = accent ?? appCardAccent(context);
   return Row(
     children: [
       Container(

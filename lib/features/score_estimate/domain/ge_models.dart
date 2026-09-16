@@ -15,6 +15,9 @@
 ///                        满分填成与分值上限相同即为「直接填得分」。
 library;
 
+import 'ge_deadline.dart';
+import 'ge_memo.dart';
+
 /// 分项计分方式。
 enum GePartMode { up, down, score }
 
@@ -148,6 +151,16 @@ class GeCourse {
   /// 备注（可选），如授课教师。
   final String note;
 
+  /// 课程备忘录（自由文字 + 图片文件名列表），见 [GeMemo]。
+  ///
+  /// 图片本体在应用私有目录（`ge_memos/<账号>/<课程 id>/`），这里只存文件名。
+  final GeMemo memo;
+
+  /// 课程截止日期（网课 / 作业 / 考试），见 [GeDeadline]。
+  ///
+  /// 只属于本课程；提醒排期走 `data/ge_deadline_reminders.dart`。
+  final List<GeDeadline> deadlines;
+
   /// 创建时间（epoch ms），列表排序用。
   final int createdAt;
 
@@ -160,6 +173,8 @@ class GeCourse {
     this.parts = const [],
     this.finalScore,
     this.note = '',
+    this.memo = GeMemo.empty,
+    this.deadlines = const [],
     this.createdAt = 0,
   });
 
@@ -175,6 +190,8 @@ class GeCourse {
     'parts': [for (final p in parts) p.toJson()],
     'finalScore': finalScore,
     'note': note,
+    'memo': memo.toJson(),
+    'deadlines': [for (final d in deadlines) d.toJson()],
     'createdAt': createdAt,
   };
 
@@ -194,6 +211,10 @@ class GeCourse {
       ],
       finalScore: (json['finalScore'] as num?)?.toDouble(),
       note: json['note'] as String? ?? '',
+      // 旧数据没有 memo 字段 → 空备忘录（容错在 GeMemo.fromJson 里）。
+      memo: GeMemo.fromJson(json['memo']),
+      // 旧数据没有 deadlines 字段 → 空列表（脏项在 geDeadlinesFromJson 里被跳过）。
+      deadlines: geDeadlinesFromJson(json['deadlines']),
       createdAt: (json['createdAt'] as num?)?.toInt() ?? 0,
     );
   }
@@ -207,6 +228,8 @@ class GeCourse {
     List<GePart>? parts,
     double? finalScore,
     String? note,
+    GeMemo? memo,
+    List<GeDeadline>? deadlines,
     int? createdAt,
     bool clearFinalScore = false,
   }) => GeCourse(
@@ -218,6 +241,8 @@ class GeCourse {
     parts: parts ?? this.parts,
     finalScore: clearFinalScore ? null : (finalScore ?? this.finalScore),
     note: note ?? this.note,
+    memo: memo ?? this.memo,
+    deadlines: deadlines ?? this.deadlines,
     createdAt: createdAt ?? this.createdAt,
   );
 }
