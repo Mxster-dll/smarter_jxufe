@@ -18,6 +18,8 @@
 ///   没出来则提示「课表还没出来」）。
 library;
 
+import 'package:smarter_jxufe/features/school_calendar/domain/school_calendar.dart'
+    show xqDisplayName;
 import 'package:smarter_jxufe/features/school_calendar/domain/wxcal_semester.dart';
 
 /// 由 [now] 推「此刻应展示的学段」。
@@ -30,8 +32,7 @@ import 'package:smarter_jxufe/features/school_calendar/domain/wxcal_semester.dar
 ({int xn, int xq}) currentSchoolTerm(
   DateTime now, {
   List<WxSemesterArrangement> terms = const [],
-}) =>
-    _termFromCalendar(now, terms) ?? _termFromMonths(now);
+}) => _termFromCalendar(now, terms) ?? _termFromMonths(now);
 
 /// 校历区间判定：命中区间 → 该学期；落在两学期空档（假期）→ 下一学期。
 ///
@@ -95,5 +96,57 @@ import 'package:smarter_jxufe/features/school_calendar/domain/wxcal_semester.dar
 }
 
 /// 学期展示文本，如 `2026-2027 学年第一学期`。
+///
+/// 学段名走 [xqDisplayName]（0 第一学期 / 1 第二学期 / 2 第二阶段）——
+/// 从前这里写的是 `xq == 0 ? 第一学期 : 第二学期`，第二阶段会被显示成
+/// 「第二学期」（2026-09-15 随学期码选择器一并修正）。
 String schoolTermLabel(int xn, int xq) =>
-    '$xn-${xn + 1} 学年${xq == 0 ? '第一学期' : '第二学期'}';
+    '$xn-${xn + 1} 学年${xqDisplayName(xq)}';
+
+// ─── 学期码 `xxy`（用户 2026-09-15 口径）──────────────────────────────
+//
+// 用户原话：「以阵列显示如下文本 251 261 271 / 252 262 272 / 253 263 273，
+// 其中 xxy 代表 xx-(xx+1) 学年，y=1 第一学期、y=2 第二学期、y=3 第二阶段」。
+//
+// ⚠ 别与 `wxcal_semester.dart` 的 [wxTermCode] 混用：那个是**小程序校历数据源**
+// 的 term 字段（无暑期段，xq=2 时它给 `…2`），只用于匹配接口数据；本节的
+// `xxy` 是**用户界面口径**（y = xq + 1，第二阶段是 3）。
+
+/// 学期码：`xxy`，如 (2026, 0) → `261`、(2025, 1) → `252`。`y = xq + 1`。
+String schoolTermCode(int xn, int xq) =>
+    '${(xn % 100).toString().padLeft(2, '0')}${xq + 1}';
+
+/// 学期码 → `(xn, xq)`；非法（非 3 位数字、末位不在 1~3）返回 null。
+({int xn, int xq})? schoolTermFromCode(String code) {
+  final text = code.trim();
+  if (!RegExp(r'^\d{3}$').hasMatch(text)) return null;
+  final y = int.parse(text.substring(2));
+  if (y < 1 || y > 3) return null;
+  return (xn: 2000 + int.parse(text.substring(0, 2)), xq: y - 1);
+}
+
+/// 学期选择器的学年范围（用户口径：**入学年份 ~ 当前学年**）。
+///
+/// [enrollYear] 取学籍 `StudentInfo.enrollYear`（如 2025）；取不到或不可信
+/// （非数字、晚于 [currentYear]）时退化为「当前学年往前 [fallbackSpan] 年」
+/// —— 四年制本科一个完整周期。范围裁剪（不早于 2018 / 不晚于 2030）由界面侧
+/// 用 `ScheduleTitleBar.firstYear/lastYear` 完成。
+({int startYear, int endYear}) schoolTermPickerRange({
+  int? enrollYear,
+  required int currentYear,
+  int fallbackSpan = 4,
+}) {
+  final valid =
+      enrollYear != null && enrollYear >= 1980 && enrollYear <= currentYear;
+  final start = valid ? enrollYear : currentYear - fallbackSpan;
+  return (startYear: start, endYear: currentYear);
+}
+
+/// 学年区间内的全部学期，按「学年 → 学段」排列（阵列的列 = 学年、行 = 学段）。
+List<({int xn, int xq})> schoolTermsInRange({
+  required int startYear,
+  required int endYear,
+}) => [
+  for (var y = startYear; y <= endYear; y++)
+    for (var xq = 0; xq < 3; xq++) (xn: y, xq: xq),
+];

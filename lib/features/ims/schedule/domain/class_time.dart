@@ -152,7 +152,9 @@ class ClassTime {
       startPeriod: startPeriod.toInt(),
       endPeriod: endPeriod.toInt(),
       classroom: classroom,
-      capacity: raw['capacity'] is num ? (raw['capacity'] as num).toInt() : null,
+      capacity: raw['capacity'] is num
+          ? (raw['capacity'] as num).toInt()
+          : null,
       campus: raw['campus'] is String ? raw['campus'] as String : null,
     );
   }

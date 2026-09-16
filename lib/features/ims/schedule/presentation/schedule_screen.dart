@@ -1,16 +1,22 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'package:smarter_jxufe/features/ims/schedule/data/providers/live_class_providers.dart';
 import 'package:smarter_jxufe/features/ims/schedule/data/providers/reschedule_providers.dart';
 import 'package:smarter_jxufe/features/ims/schedule/data/providers/schedule_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/class_time.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/reschedule.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/reschedule_engine.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/schedule_entry.dart';
+import 'package:smarter_jxufe/features/ims/schedule/domain/schedule_view_mode.dart';
+import 'package:smarter_jxufe/features/ims/schedule/domain/term_weeks.dart';
 import 'package:smarter_jxufe/features/ims/schedule/presentation/reschedule_editor_sheet.dart';
 import 'package:smarter_jxufe/features/ims/schedule/presentation/reschedule_list_screen.dart';
 import 'package:smarter_jxufe/features/ims/schedule/presentation/schedule_grid_view.dart';
 import 'package:smarter_jxufe/features/ims/schedule/presentation/schedule_horizontal_view.dart';
+import 'package:smarter_jxufe/features/ims/schedule/presentation/schedule_title_bar.dart';
+import 'package:smarter_jxufe/features/ims/schedule/presentation/week_pager.dart';
 import 'package:smarter_jxufe/features/ims/student_info/data/providers/student_info_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/student_info/domain/student_info.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/school_calendar_providers.dart';
@@ -40,6 +46,12 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   late int _selectedYear;
   late String _selectedSemester;
   String _serialNo = '';
+
+  /// 学籍入学年（`StudentInfo.enrollYear`，如 2025）。
+  ///
+  /// **只用作手机端学期选择器的范围起点**（用户 2026-09-15：「范围设为入学年份-
+  /// 当前学年」）——绝不当「当前学年」用，见 §9 的历史 bug。
+  int? _enrollYear;
 
   // ─── 调课 ─────────────────────────────────────────────────────
 
@@ -77,6 +89,55 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     return fm.add(Duration(days: (w - 1) * 7));
   }
 
+  /// 本学期最后教学周（教务校历周次表 → 课表周次 → 兜底），见 `term_weeks.dart`。
+  ///
+  /// 用户 2026-09-15：「第一周和最后一周不允许再滑动，具体第一周和最后一周的
+  /// 界定教务系统应该有接口……你找找然后复用」—— 第 1 周来自
+  /// `resolveTeachingWeek`（已在用），最后一周复用同源的教务校历
+  /// `schoolCalendarProvider((xn:, xq:))` 的周次表，不写死。
+  int get _lastWeek {
+    final xq = int.tryParse(_selectedSemester) ?? 0;
+    final calendar = ref
+        .read(schoolCalendarProvider((xn: _selectedYear, xq: xq)))
+        .valueOrNull;
+    return resolveLastTeachingWeek(
+      calendar: calendar,
+      entries: _entries ?? const [],
+    );
+  }
+
+  /// 切到指定教学周；越界一律夹在 `[1, _lastWeek]`（首/末周不再动）。
+  void _goToWeek(int target) {
+    final current = _week;
+    if (current == null) return; // 整学期视图不切周
+    final clamped = clampTeachingWeek(target, lastWeek: _lastWeek);
+    if (clamped == current) return;
+    setState(() => _week = clamped);
+  }
+
+  // ─── 移动端左右滑动切周（翻页手感在 WeekPager 内）──────────────
+
+  /// 是否手机式输入（手机平台恒真；桌面窄窗口也允许滑动切周）。
+  bool _swipeEnabled(BuildContext context) {
+    if (_week == null) return false; // 整学期视图无周可切
+    final size = MediaQuery.sizeOf(context);
+    return scheduleMobileInput(
+      platform: Theme.of(context).platform,
+      width: size.width,
+      height: size.height,
+    );
+  }
+
+  /// 某一教学周的周一（分页器一页一周，每页各算各的日期）。
+  DateTime? _mondayOfWeek(int week) =>
+      _firstMonday?.add(Duration(days: (week - 1) * 7));
+
+  /// 分页器手势翻到的周（用户 2026-09-15：滑动切周要像手机桌面翻页）。
+  void _onPagerWeekChanged(int week) {
+    if (week == _week) return;
+    setState(() => _week = week);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -112,8 +173,13 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       );
       StudentInfo? info;
       studentInfoRepo.getCachedStudentInfo().fold((_) {}, (i) => info = i);
-      // 学籍只用来取学号；学年学期由 currentSchoolTerm 决定（见 initState）。
-      if (info != null) _serialNo = info!.serialNo;
+      // 学籍只用来取教务 xh（= <xh>，即 serialNo）——教务自己的页面就是这么填的；
+      // 学年学期由 currentSchoolTerm 决定（见 initState）。
+      if (info != null) {
+        _serialNo = info!.serialNo;
+        // 入学年只喂给学期选择器的范围起点（当前学年仍由 currentSchoolTerm 给）。
+        _enrollYear = int.tryParse(info!.enrollYear.trim());
+      }
     } catch (_) {}
     _syncTermContext(resetWeek: true);
     if (!mounted) return;
@@ -240,19 +306,78 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final platform = Theme.of(context).platform;
+    // 手机端（Android / iOS）恒按手机排版；桌面端按窗口宽度（口径见
+    // `domain/schedule_view_mode.dart`，别在页面里另写一套判断）。
+    final compact = scheduleCompactLayout(
+      platform: platform,
+      width: size.width,
+    );
+    // 手机：按设备横竖屏自动选视图（用户 2026-09-15：「移动端取消切换横置/
+    // 竖置按钮，而是适应屏幕是横屏还是竖屏」）；桌面：听用户的 `_isHorizontal`。
+    final horizontal =
+        scheduleViewModeFor(
+          platform: platform,
+          width: size.width,
+          height: size.height,
+          manualHorizontal: _isHorizontal,
+        ) ==
+        ScheduleViewMode.horizontal;
+
     final body = Column(
       children: [
-        _buildFilters(context),
-        const SizedBox(height: 8),
-        Expanded(child: _buildBody()),
+        // 标题栏（AppBar）已承载学期/周次选择时，正文不再重复一条筛选栏，
+        // 课表可用的高度也更充裕。
+        if (!widget.showAppBar) ...[
+          _buildFilters(context),
+          const SizedBox(height: 8),
+        ],
+        Expanded(child: _buildBody(horizontal)),
       ],
     );
 
     if (widget.showAppBar) {
+      // 宽度够就排成一行（学年 + 学段 + 周次切换），窄宽度（手机竖屏）才两行
+      // ——用户 2026-09-15 问「为什么学期选择和周数显示不在同一行」：此前是写死
+      // 两行，桌面端白白浪费一行高度，现改为按可用宽度自适应。
+      final oneRow = ScheduleTitleBar.fitsOneRow(
+        context,
+        compact: compact,
+        isCurrentTerm: _isCurrentTerm,
+        currentWeek: _currentWeek,
+        // `week` 必须传：本周按钮在 `week == currentWeek` 时不渲染，
+        // 不传会把它的宽度白算进去（用户 2026-09-15：「还有很大的空隙就换行」）。
+        week: _week,
+      );
+      final range = _termPickerRange;
       return Scaffold(
         appBar: AppBar(
-          title: const Text('课程表'),
-          centerTitle: true,
+          centerTitle: false,
+          titleSpacing: 0,
+          toolbarHeight: ScheduleTitleBar.toolbarHeight(
+            oneRow: oneRow,
+            compact: compact,
+          ),
+          // 用户 2026-09-15：标题栏不再显示「课表」，改为学期选择器 +
+          // 周数选择 / 整学期切换（手机端字号收紧）。
+          title: ScheduleTitleBar(
+            selectedYear: _selectedYear,
+            selectedSemester: _selectedSemester,
+            week: _week,
+            currentWeek: _currentWeek,
+            isCurrentTerm: _isCurrentTerm,
+            compact: compact,
+            pickerStartYear: range.startYear,
+            pickerEndYear: range.endYear,
+            onYearChanged: _onYearChanged,
+            onSemesterChanged: _onSemesterChanged,
+            onTermPicked: _onTermPicked,
+            onGoToWeek: _goToWeek,
+            onToggleView: () => setState(
+              () => _week = _week == null ? (_currentWeek ?? 1) : null,
+            ),
+          ),
           actions: [
             IconButton(
               icon: const Icon(Icons.event_repeat),
@@ -272,6 +397,49 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     return body;
   }
 
+  void _onYearChanged(int year) {
+    setState(() => _selectedYear = year);
+    _syncTermContext(resetWeek: true);
+    _loadData();
+  }
+
+  void _onSemesterChanged(String value) {
+    setState(() => _selectedSemester = value);
+    _syncTermContext(resetWeek: true);
+    _loadData();
+  }
+
+  /// 手机端学期码选择器的学年范围（入学年 ~ 当前学年，见 `schoolTermPickerRange`），
+  /// 并夹在 `ScheduleTitleBar.firstYear/lastYear` 内。
+  ({int startYear, int endYear}) get _termPickerRange {
+    final current = currentSchoolTerm(
+      DateTime.now(),
+      terms: ref.read(offlineSemesterTermsProvider),
+    );
+    final raw = schoolTermPickerRange(
+      enrollYear: _enrollYear,
+      currentYear: current.xn,
+    );
+    final start = raw.startYear
+        .clamp(ScheduleTitleBar.firstYear, ScheduleTitleBar.lastYear)
+        .toInt();
+    final end = raw.endYear
+        .clamp(ScheduleTitleBar.firstYear, ScheduleTitleBar.lastYear)
+        .toInt();
+    return (startYear: start, endYear: end < start ? start : end);
+  }
+
+  /// 手机端从学期码阵列里选中一个学期（学年 + 学段一起改）。
+  void _onTermPicked(({int xn, int xq}) term) {
+    if (term.xn == _selectedYear && '${term.xq}' == _selectedSemester) return;
+    setState(() {
+      _selectedYear = term.xn;
+      _selectedSemester = '${term.xq}';
+    });
+    _syncTermContext(resetWeek: true);
+    _loadData();
+  }
+
   Widget _buildFilters(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
@@ -281,103 +449,34 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           AcademicYearPicker(
-            startYear: 2018,
-            endYear: 2030,
+            startYear: ScheduleTitleBar.firstYear,
+            endYear: ScheduleTitleBar.lastYear,
             initialYear: _selectedYear,
-            onChanged: (y) {
-              setState(() => _selectedYear = y);
-              _syncTermContext(resetWeek: true);
-              _loadData();
-            },
+            onChanged: _onYearChanged,
           ),
-          _semesterDropdown(context),
-          _weekSwitcher(context),
-        ],
-      ),
-    );
-  }
-
-  Widget _semesterDropdown(BuildContext context) {
-    return DropdownButtonHideUnderline(
-      child: DropdownButton<String>(
-        value: _selectedSemester,
-        isDense: true,
-        style: TextStyle(
-          fontSize: 13,
-          color: Theme.of(context).colorScheme.onSurface,
-        ),
-        items: const [
-          DropdownMenuItem(value: '0', child: Text('第一学期')),
-          DropdownMenuItem(value: '1', child: Text('第二学期')),
-          DropdownMenuItem(value: '2', child: Text('第二阶段')),
-        ],
-        onChanged: (v) {
-          if (v != null) {
-            setState(() => _selectedSemester = v);
-            _syncTermContext(resetWeek: true);
-            _loadData();
-          }
-        },
-      ),
-    );
-  }
-
-  /// 周次切换：`‹ 第 N 周 ›`，右侧按钮在「周视图 / 整学期」间切换。
-  Widget _weekSwitcher(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final w = _week;
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          tooltip: '上一周',
-          visualDensity: VisualDensity.compact,
-          onPressed: w == null
-              ? null
-              : () => setState(() => _week = w > 1 ? w - 1 : 1),
-          icon: const Icon(Icons.chevron_left, size: 20),
-        ),
-        GestureDetector(
-          onTap: () => setState(() => _week = _currentWeek ?? 1),
-          child: Text(
-            w == null ? '整学期' : '第 $w 周',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: scheme.onSurface,
+          ScheduleSemesterSelector(
+            selectedSemester: _selectedSemester,
+            compact: false,
+            onChanged: _onSemesterChanged,
+          ),
+          ScheduleWeekSwitcher(
+            week: _week,
+            currentWeek: _currentWeek,
+            isCurrentTerm: _isCurrentTerm,
+            compact: false,
+            onGoToWeek: _goToWeek,
+            onToggleView: () => setState(
+              () => _week = _week == null ? (_currentWeek ?? 1) : null,
             ),
           ),
-        ),
-        IconButton(
-          tooltip: '下一周',
-          visualDensity: VisualDensity.compact,
-          onPressed: w == null ? null : () => setState(() => _week = w + 1),
-          icon: const Icon(Icons.chevron_right, size: 20),
-        ),
-        if (_isCurrentTerm && _currentWeek != null && w != _currentWeek)
-          TextButton(
-            onPressed: () => setState(() => _week = _currentWeek),
-            child: const Text('本周'),
-          ),
-        IconButton(
-          tooltip: w == null ? '切换到周视图' : '切换到整学期视图',
-          visualDensity: VisualDensity.compact,
-          onPressed: () => setState(
-            () => _week = w == null ? (_currentWeek ?? 1) : null,
-          ),
-          icon: Icon(
-            w == null ? Icons.view_week : Icons.grid_view,
-            size: 18,
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
   void _toggleView() => setState(() => _isHorizontal = !_isHorizontal);
 
-  Widget _buildBody() {
+  Widget _buildBody(bool horizontal) {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -442,27 +541,72 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       );
     }
 
-    // 切换按钮内置在课表左上角格子中
-    return _isHorizontal
+    // 切换按钮内置在课表左上角格子中；手机端按横竖屏自动选视图 → 不渲染按钮。
+    final showToggle = !scheduleAutoViewByOrientation(
+      Theme.of(context).platform,
+    );
+
+    // 整学期视图（`_week == null`）= 单一模板页，没有「相邻周」可言 → 不分页。
+    final week = _week;
+    if (week == null) {
+      return _buildWeekView(
+        week: null,
+        horizontal: horizontal,
+        showToggle: showToggle,
+      );
+    }
+
+    // 周视图 = 一页一周的翻页器（用户 2026-09-15：「像手机桌面翻页一样」）：
+    // 相邻周并排在左右两侧随手指位移，松手按距离/速度 snap，首末周自然回弹。
+    return WeekPager(
+      weekCount: _lastWeek,
+      week: week,
+      enabled: _swipeEnabled(context),
+      onWeekChanged: _onPagerWeekChanged,
+      pageBuilder: (context, w) => _buildWeekView(
+        week: w,
+        horizontal: horizontal,
+        showToggle: showToggle,
+      ),
+    );
+  }
+
+  /// 渲染某一教学周（或整学期模板，`week == null`）的课表视图。
+  Widget _buildWeekView({
+    required int? week,
+    required bool horizontal,
+    required bool showToggle,
+  }) {
+    final weekMonday = week == null ? _weekMonday : _mondayOfWeek(week);
+    // 作息表（节次格里显示上下课时间）：实时优先，未回来时先用缓存/内置兜底
+    // ——两层都是免登录数据，见 live_class_providers.dart。
+    final periods =
+        ref.watch(currentPeriodTableProvider).valueOrNull ??
+        ref.watch(cachedPeriodTableProvider).valueOrNull;
+    return horizontal
         ? ScheduleHorizontalView(
             entries: _entries!,
             reschedules: _reschedules,
-            week: _week,
-            weekMonday: _weekMonday,
+            week: week,
+            weekMonday: weekMonday,
             onTapClass: _onTapClass,
             onTapEmptySlot: _onTapEmptySlot,
             onToggle: _toggleView,
-            isHorizontal: _isHorizontal,
+            isHorizontal: horizontal,
+            showToggle: showToggle,
+            periods: periods,
           )
         : ScheduleGridView(
             entries: _entries!,
             reschedules: _reschedules,
-            week: _week,
-            weekMonday: _weekMonday,
+            week: week,
+            weekMonday: weekMonday,
             onTapClass: _onTapClass,
             onTapEmptySlot: _onTapEmptySlot,
             onToggle: _toggleView,
-            isHorizontal: _isHorizontal,
+            isHorizontal: horizontal,
+            showToggle: showToggle,
+            periods: periods,
           );
   }
 }

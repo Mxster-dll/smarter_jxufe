@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/class_time.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/reschedule.dart';
+import 'package:smarter_jxufe/features/ims/schedule/domain/period_time.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/reschedule_engine.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/schedule_entry.dart';
+import 'package:smarter_jxufe/features/ims/schedule/domain/schedule_view_mode.dart';
 import 'package:smarter_jxufe/features/ims/schedule/presentation/reschedule_marks.dart';
 
 /// 7×12 课表网格组件
@@ -37,6 +39,17 @@ class ScheduleGridView extends StatelessWidget {
   final VoidCallback? onToggle;
   final bool isHorizontal;
 
+  /// 是否渲染左上角的「横/竖版切换」按钮（手机端按设备横竖屏自动切 → `false`）。
+  final bool showToggle;
+
+  /// 作息时间表（节次 → 上下课钟点）。
+  ///
+  /// 用户 2026-09-16：「在显示节数的格子里显示上课下课的时间，上课时间显示在
+  /// 节数上方，下课时间在下方」。数据来自教务公开页 `SchoolTimetable.jsp`
+  /// （免登录，见 `PeriodTableRepository`：实时 → 按学期缓存 → 内置兜底）；
+  /// 取不到（null / 缺该节次）时退回只显示节次的旧样式。
+  final PeriodTable? periods;
+
   const ScheduleGridView({
     super.key,
     required this.entries,
@@ -47,14 +60,57 @@ class ScheduleGridView extends StatelessWidget {
     this.onTapEmptySlot,
     this.onToggle,
     this.isHorizontal = false,
+    this.showToggle = true,
+    this.periods,
   });
 
   // ─── 布局常量 ─────────────────────────────────────────────────
 
   static const _periodLabelWidth = 36.0;
+  static const _compactPeriodLabelWidth = 30.0;
   static const _headerHeight = 40.0;
-  static const _cellMinHeight = 56.0;
+  static const _compactHeaderHeight = 34.0;
+
+  /// 单个节次的最小行高。**留够「课程名 + 教师 + 教室（两行）」**——
+  /// 用户 2026-09-15 要求「课程教室不能在一行显示时自动换行」，
+  /// 教室多占一行就必须多给高度，否则 RenderFlex 溢出。
+  static const _cellMinHeight = 68.0;
+  static const _compactCellMinHeight = 64.0;
   static const _borderWidth = 0.5;
+
+  /// 桌面端列宽区间：区间内**适应屏宽**（列宽 = 可用宽度 / 7），
+  /// 宽到 160 就不再拉伸（改为整表居中），窄到 80 才允许横向滚动。
+  static const _minColWidth = 80.0;
+  static const _maxColWidth = 160.0;
+
+  /// 移动端断点：小于此宽度视为手机竖屏 —— 左右**无边距**、列宽等分屏宽
+  /// （整表恰好铺满，不再横向滚动）、字号收紧。
+  ///
+  /// 值定义在 `domain/schedule_view_mode.dart`（视图选型与排版的唯一口径）。
+  static const compactBreakpoint = scheduleCompactBreakpoint;
+
+  double _labelWidth(bool compact) =>
+      compact ? _compactPeriodLabelWidth : _periodLabelWidth;
+  double _headerHeightOf(bool compact) =>
+      compact ? _compactHeaderHeight : _headerHeight;
+
+  /// 单个节次的最小行高（教室要能换行，见 [_cellMinHeight] 注释）。
+  double _minCellHeightOf(bool compact) =>
+      compact ? _compactCellMinHeight : _cellMinHeight;
+
+  /// 实际行高：**有空间就把 12 行撑满可用高度**（不留底部空档），
+  /// 空间不足才退回最小行高并纵向滚动。
+  double _fitCellHeight({
+    required bool compact,
+    required double maxHeight,
+    required double verticalPadding,
+  }) {
+    final available =
+        maxHeight - verticalPadding * 2 - _headerHeightOf(compact);
+    final fitted = available / 12;
+    final minCell = _minCellHeightOf(compact);
+    return fitted > minCell ? fitted : minCell;
+  }
 
   // ─── 调色板 ───────────────────────────────────────────────────
 
@@ -100,28 +156,50 @@ class ScheduleGridView extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final viewportWidth = constraints.maxWidth - 24; // 减去 padding
-        // 列宽自适应屏幕，最小 80dp 保证可读，最大 160dp
-        final colWidth = ((viewportWidth - _periodLabelWidth) / 7).clamp(
-          80.0,
-          160.0,
+        // 手机判定用**短边**：手机横屏时宽度已过断点，按宽度会误判成桌面。
+        final shortestSide = constraints.maxWidth < constraints.maxHeight
+            ? constraints.maxWidth
+            : constraints.maxHeight;
+        final compact = shortestSide < compactBreakpoint;
+        // 手机端左右无边距（用户 2026-09-15 要求），桌面端保留 12。
+        final hPadding = compact ? 0.0 : 12.0;
+        final labelWidth = _labelWidth(compact);
+        final available = constraints.maxWidth - hPadding * 2;
+        final rawColWidth = (available - labelWidth) / 7;
+        // 手机：列宽 = 可用宽度 / 7 → 整表恰好铺满屏宽；
+        // 桌面：80~160 之间自适应屏宽，越界不再拉伸 / 不足则横向滚动。
+        final colWidth = compact
+            ? (rawColWidth > 0 ? rawColWidth : _minColWidth)
+            : rawColWidth.clamp(_minColWidth, _maxColWidth);
+        final totalWidth = labelWidth + 7 * colWidth;
+        final fitsWidth = totalWidth <= available + 0.5;
+
+        final verticalPadding = compact ? 6.0 : 12.0;
+        // 行高：有空间就撑满可用高度（底部不留空档），不够才滚动。
+        final cellHeight = _fitCellHeight(
+          compact: compact,
+          maxHeight: constraints.maxHeight,
+          verticalPadding: verticalPadding,
         );
-        final totalWidth = _periodLabelWidth + 7 * colWidth;
-        final fitsWidth = totalWidth <= viewportWidth;
 
         final gridContent = SizedBox(
-          width: fitsWidth ? viewportWidth : totalWidth,
+          width: totalWidth,
           child: IntrinsicHeight(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildPeriodLabelColumn(),
+                _buildPeriodLabelColumn(
+                  compact: compact,
+                  cellHeight: cellHeight,
+                ),
                 ...List.generate(
                   7,
                   (day) => _buildDayColumn(
                     day,
                     grid[day],
                     colWidth: colWidth,
+                    compact: compact,
+                    cellHeight: cellHeight,
                     onceMarks: onceMarks,
                   ),
                 ),
@@ -131,18 +209,24 @@ class ScheduleGridView extends StatelessWidget {
         );
 
         if (fitsWidth) {
-          // 占满屏幕宽度，无需水平滚动
+          // 铺满可用宽度时无需滚动；桌面超宽时 totalWidth < 可用宽度 → 居中。
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(12),
-            child: gridContent,
+            padding: EdgeInsets.fromLTRB(
+              hPadding,
+              verticalPadding,
+              hPadding,
+              verticalPadding,
+            ),
+            child: Center(child: gridContent),
           );
         }
-        // 内容超出 → 水平滚动
+        // 内容超出 → 水平滚动（仅窄桌面窗口会走到这里）
         return SingleChildScrollView(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.symmetric(vertical: verticalPadding),
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            child: SizedBox(width: totalWidth, child: gridContent),
+            padding: EdgeInsets.symmetric(horizontal: hPadding),
+            child: gridContent,
           ),
         );
       },
@@ -151,37 +235,62 @@ class ScheduleGridView extends StatelessWidget {
 
   // ─── 左侧节次标签 ─────────────────────────────────────────────
 
-  Widget _buildPeriodLabelColumn() {
+  /// 节次格里的小字钟点（上=上课、下=下课）。
+  ///
+  /// 窄格（手机 30dp）也要放下 `08:00` 五个字符，故字号压到 7.5/8.5，
+  /// 并用等宽数字（`tabularFigures`）让 12 行的冒号对齐。
+  Widget _periodTimeText(String value, {required bool compact}) => Text(
+    value,
+    style: TextStyle(
+      fontSize: compact ? 7.5 : 8.5,
+      height: 1.2,
+      color: Colors.grey.shade500,
+      fontFeatures: const [FontFeature.tabularFigures()],
+    ),
+  );
+
+  Widget _buildPeriodLabelColumn({
+    required bool compact,
+    required double cellHeight,
+  }) {
+    final labelWidth = _labelWidth(compact);
+    final headerHeight = _headerHeightOf(compact);
+
     return Column(
       children: [
-        // 左上角：切换横/竖版按钮
-        GestureDetector(
-          onTap: onToggle,
-          child: Container(
-            width: _periodLabelWidth,
-            height: _headerHeight,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.shade200,
-                  width: _borderWidth,
+        // 左上角：切换横/竖版按钮（手机端按横竖屏自动切视图，故不渲染）
+        if (showToggle)
+          GestureDetector(
+            onTap: onToggle,
+            child: Container(
+              width: labelWidth,
+              height: headerHeight,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: Colors.grey.shade200,
+                    width: _borderWidth,
+                  ),
                 ),
               ),
+              child: Icon(
+                isHorizontal ? Icons.view_day : Icons.view_week,
+                color: const Color(0xFFC62828),
+                size: compact ? 16 : 18,
+              ),
             ),
-            child: Icon(
-              isHorizontal ? Icons.view_day : Icons.view_week,
-              color: const Color(0xFFC62828),
-              size: 18,
-            ),
-          ),
-        ),
-        // 12 节标签
+          )
+        else
+          SizedBox(width: labelWidth, height: headerHeight),
+        // 12 节标签：上课时间 / 节次 / 下课时间（用户 2026-09-16 裁定）
         ...List.generate(12, (i) {
           final period = i + 1;
+          final slot = periods?.periodOf(period);
           return Container(
-            width: _periodLabelWidth,
-            height: _cellMinHeight,
+            key: Key('schedulePeriodCell-$period'),
+            width: labelWidth,
+            height: cellHeight,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               border: Border(
@@ -196,14 +305,42 @@ class ScheduleGridView extends StatelessWidget {
               ),
               color: period == 5 ? Colors.grey.shade100 : null,
             ),
-            child: Text(
-              '$period',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey.shade600,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+            child: slot == null
+                ? Text(
+                    '$period',
+                    style: TextStyle(
+                      fontSize: compact ? 10.5 : 12,
+                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  )
+                : Column(
+                    // 时间贴格子上下两端，节数居中（用户 2026-09-16：「时间显示在
+                    // 格子两端，而不是紧贴节数号」）——中间用 Expanded 撑开。
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(top: 3),
+                        child: _periodTimeText(slot.start, compact: compact),
+                      ),
+                      Expanded(
+                        child: Center(
+                          child: Text(
+                            '$period',
+                            style: TextStyle(
+                              fontSize: compact ? 10.5 : 12,
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w500,
+                              height: 1.2,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 3),
+                        child: _periodTimeText(slot.end, compact: compact),
+                      ),
+                    ],
+                  ),
           );
         }),
       ],
@@ -216,6 +353,8 @@ class ScheduleGridView extends StatelessWidget {
     int day,
     Map<int, List<EffectiveClass>> dayData, {
     required double colWidth,
+    required bool compact,
+    required double cellHeight,
     required Map<String, int> onceMarks,
   }) {
     // 预计算每个节次是否被上方跨行课程占用
@@ -223,7 +362,7 @@ class ScheduleGridView extends StatelessWidget {
     final widgets = <Widget>[];
 
     // 表头
-    widgets.add(_buildDayHeader(day, colWidth: colWidth));
+    widgets.add(_buildDayHeader(day, colWidth: colWidth, compact: compact));
 
     // 逐节次构建
     for (int period = 1; period <= 12; period++) {
@@ -232,7 +371,13 @@ class ScheduleGridView extends StatelessWidget {
       final slots = dayData[period];
       if (slots == null || slots.isEmpty) {
         widgets.add(
-          _buildEmptyCell(day: day, period: period, colWidth: colWidth),
+          _buildEmptyCell(
+            day: day,
+            period: period,
+            colWidth: colWidth,
+            compact: compact,
+            cellHeight: cellHeight,
+          ),
         );
         continue;
       }
@@ -252,24 +397,33 @@ class ScheduleGridView extends StatelessWidget {
           day: day,
           period: period,
           colWidth: colWidth,
+          compact: compact,
+          cellHeight: cellHeight,
           onceMarks: onceMarks,
         ),
       );
     }
 
-    return SizedBox(width: colWidth, child: Column(children: widgets));
+    return SizedBox(
+      width: colWidth,
+      child: Column(children: widgets),
+    );
   }
 
   // ─── 表头 ─────────────────────────────────────────────────────
 
-  Widget _buildDayHeader(int day, {required double colWidth}) {
+  Widget _buildDayHeader(
+    int day, {
+    required double colWidth,
+    required bool compact,
+  }) {
     const names = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
     final isWeekend = day >= 5;
     final date = weekMonday?.add(Duration(days: day));
 
     return Container(
       width: colWidth,
-      height: _headerHeight,
+      height: _headerHeightOf(compact),
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: isWeekend ? Colors.blueGrey.shade700 : const Color(0xFFC62828),
@@ -285,7 +439,9 @@ class ScheduleGridView extends StatelessWidget {
             names[day],
             style: TextStyle(
               color: Colors.white,
-              fontSize: date == null ? 14 : 13,
+              fontSize: compact
+                  ? (date == null ? 12 : 11.5)
+                  : (date == null ? 14 : 13),
               fontWeight: FontWeight.bold,
               height: 1.1,
             ),
@@ -293,9 +449,9 @@ class ScheduleGridView extends StatelessWidget {
           if (date != null)
             Text(
               '${date.month}/${date.day}',
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white70,
-                fontSize: 9,
+                fontSize: compact ? 8 : 9,
                 height: 1.2,
               ),
             ),
@@ -310,11 +466,13 @@ class ScheduleGridView extends StatelessWidget {
     required int day,
     required int period,
     required double colWidth,
+    required bool compact,
+    required double cellHeight,
   }) {
     final isBeforeNoon = period == 5;
     final cell = Container(
       width: colWidth,
-      height: _cellMinHeight,
+      height: cellHeight,
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(color: Colors.grey.shade200, width: _borderWidth),
@@ -339,6 +497,8 @@ class ScheduleGridView extends StatelessWidget {
     required int day,
     required int period,
     required double colWidth,
+    required bool compact,
+    required double cellHeight,
     required Map<String, int> onceMarks,
   }) {
     final first = slots.first;
@@ -368,12 +528,21 @@ class ScheduleGridView extends StatelessWidget {
         break;
     }
 
-    final cellHeight = _cellMinHeight * span;
+    final cellSpanHeight = cellHeight * span;
+
+    // 周次信息（区间 + 单双周）**只在整学期视图显示**（用户 2026-09-15 裁定）：
+    // 周视图已按该教学周过滤，格子里出现的都是本周真要上的课，周次字样是冗余信息。
+    final showWeekInfo = week == null;
 
     // 单双周标签
     final weekLabel = classTime.weekParity != WeekParity.every
         ? ' (${classTime.weekParity.displayName})'
         : '';
+
+    // 教室放不下整行时**换行**（用户 2026-09-15：「课表中的课程教室不能在一行
+    // 显示时，自动换行」）；同格有多门课时留给「分隔线 + 第二门课」的位置，
+    // 此时教室仍限一行（行高预算见 `_cellMinHeight` 注释）。
+    final classroomLines = slots.length > 1 ? 1 : 2;
 
     // 角标：调 / 停 / 补；整学期视图下若无标记则用「单次调整」提示角标
     final badge =
@@ -384,21 +553,21 @@ class ScheduleGridView extends StatelessWidget {
 
     final card = Container(
       width: colWidth,
-      height: cellHeight,
+      height: cellSpanHeight,
       decoration: BoxDecoration(
         color: bgColor,
         border: Border(
           top: mark == EffectiveMark.moved
-              ? const BorderSide(
-                  color: FeaturePalette.reschedule,
-                  width: 2,
-                )
+              ? const BorderSide(color: FeaturePalette.reschedule, width: 2)
               : BorderSide.none,
           bottom: BorderSide(color: Colors.grey.shade300, width: _borderWidth),
           right: BorderSide(color: Colors.grey.shade300, width: _borderWidth),
         ),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 3 : 6,
+        vertical: compact ? 3 : 4,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -411,11 +580,12 @@ class ScheduleGridView extends StatelessWidget {
                 child: Text(
                   entry.courseName,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: compact ? 11 : 12,
                     fontWeight: FontWeight.bold,
                     color: textColor,
                     height: 1.2,
-                    decoration: mark == EffectiveMark.cancelled ||
+                    decoration:
+                        mark == EffectiveMark.cancelled ||
                             mark == EffectiveMark.movedAway
                         ? TextDecoration.lineThrough
                         : null,
@@ -432,21 +602,33 @@ class ScheduleGridView extends StatelessWidget {
           if (mark == EffectiveMark.movedAway) ...[
             Text(
               '已调至 ${rescheduleTargetShort(first.reschedule)}',
-              style: TextStyle(fontSize: 10, color: textColor, height: 1.25),
+              style: TextStyle(
+                fontSize: compact ? 9 : 10,
+                color: textColor,
+                height: 1.25,
+              ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
           ] else if (mark == EffectiveMark.cancelled) ...[
             Text(
               '本次停课',
-              style: TextStyle(fontSize: 10, color: textColor, height: 1.25),
+              style: TextStyle(
+                fontSize: compact ? 9 : 10,
+                color: textColor,
+                height: 1.25,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            if (span >= 2)
+            if (showWeekInfo && span >= 2)
               Text(
                 '${classTime.startWeek}-${classTime.endWeek}周$weekLabel',
-                style: TextStyle(fontSize: 9, color: textColor, height: 1.25),
+                style: TextStyle(
+                  fontSize: compact ? 8.5 : 9,
+                  color: textColor,
+                  height: 1.25,
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -455,32 +637,34 @@ class ScheduleGridView extends StatelessWidget {
             Text(
               first.teacherName,
               style: TextStyle(
-                fontSize: 10,
+                fontSize: compact ? 9 : 10,
                 color: textColor.withAlpha(190),
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            // 教室：节数多时分两行更清晰
+            // 教室：节数多时分两行更清晰；放不下一行也换行
             if (span >= 2) ...[
               const SizedBox(height: 2),
               Text(
                 classTime.classroom,
                 style: TextStyle(
-                  fontSize: 10,
+                  fontSize: compact ? 9 : 10,
                   color: textColor.withAlpha(180),
+                  height: 1.2,
                 ),
-                maxLines: 1,
+                maxLines: classroomLines,
                 overflow: TextOverflow.ellipsis,
               ),
             ] else
               Text(
                 classTime.classroom,
                 style: TextStyle(
-                  fontSize: 9,
+                  fontSize: compact ? 8.5 : 9,
                   color: textColor.withAlpha(150),
+                  height: 1.2,
                 ),
-                maxLines: 1,
+                maxLines: classroomLines,
                 overflow: TextOverflow.ellipsis,
               ),
             // 周次 / 调课来源（单节格子放不下第 4 行，只在跨节格子里显示）
@@ -488,17 +672,20 @@ class ScheduleGridView extends StatelessWidget {
               Text(
                 '调自 ${rescheduleOriginShort(first.reschedule)}',
                 style: TextStyle(
-                  fontSize: 9,
+                  fontSize: compact ? 8.5 : 9,
                   color: FeaturePalette.reschedule,
                   height: 1.25,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               )
-            else if (span >= 2)
+            else if (showWeekInfo && span >= 2)
               Text(
                 '${classTime.startWeek}-${classTime.endWeek}周$weekLabel',
-                style: TextStyle(fontSize: 9, color: textColor.withAlpha(140)),
+                style: TextStyle(
+                  fontSize: compact ? 8.5 : 9,
+                  color: textColor.withAlpha(140),
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -510,10 +697,12 @@ class ScheduleGridView extends StatelessWidget {
             for (final s in slots.skip(1))
               Text(
                 s.mark == EffectiveMark.normal
-                    ? '${s.classTime.weekParity.displayName}: ${s.classTime.classroom}'
+                    ? (showWeekInfo
+                          ? '${s.classTime.weekParity.displayName}: ${s.classTime.classroom}'
+                          : s.classTime.classroom)
                     : '${s.mark.name}: ${s.classTime.classroom}',
                 style: TextStyle(
-                  fontSize: 9,
+                  fontSize: compact ? 8.5 : 9,
                   color: textColor.withAlpha(160),
                 ),
                 maxLines: 1,

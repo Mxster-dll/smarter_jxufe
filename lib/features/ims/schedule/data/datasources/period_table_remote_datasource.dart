@@ -20,10 +20,7 @@ class PeriodTableRemoteDataSource {
   ///
   /// 未来学期尚无数据时服务端返回空表（实测 2026-1 为 0 行），
   /// 此时返回的 HTML 可正常解析但无节次，由仓库层回退。
-  Future<String> fetchTimetableHtml({
-    required int xn,
-    required int xq,
-  }) async {
+  Future<String> fetchTimetableHtml({required int xn, required int xq}) async {
     await _ensureSession();
 
     final random = '${Random().nextDouble()}';

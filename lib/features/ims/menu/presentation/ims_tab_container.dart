@@ -47,72 +47,89 @@ class _ImsTabContainerState extends ConsumerState<ImsTabContainer> {
     });
 
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
-        centerTitle: true,
-        actions: [
-          if (_currentTab == ImsTab.grade) ...[
-            if (_showNoUpdateText)
-              GestureDetector(
-                onTap: () => setState(() => _showNoUpdateText = false),
-                child: AnimatedOpacity(
-                  opacity: _showNoUpdateText ? 1 : 0,
-                  duration: const Duration(milliseconds: 300),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.error.withValues(alpha: 0.9),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '无更新',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Theme.of(context).colorScheme.onError,
+      // 课表页自带 AppBar（标题栏里是学期/周次选择器，见 schedule_screen.dart），
+      // 容器不再叠一层「课表」标题。
+      appBar: _currentTab == ImsTab.schedule
+          ? null
+          : AppBar(
+              // 返回按钮只在「真的有上一页」时出现：主页侧栏视图把本页内嵌在
+              // 右侧面板时（用户 2026-09-15 裁定第 2 条），本页是该面板路由栈的
+              // 首页 → canPop false → 不画返回按钮；从主页宫格 push 进来时照旧显示。
+              leading: Navigator.of(context).canPop()
+                  ? IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () => Navigator.of(context).maybePop(),
+                    )
+                  : null,
+              centerTitle: true,
+              actions: [
+                if (_currentTab == ImsTab.grade) ...[
+                  if (_showNoUpdateText)
+                    GestureDetector(
+                      onTap: () => setState(() => _showNoUpdateText = false),
+                      child: AnimatedOpacity(
+                        opacity: _showNoUpdateText ? 1 : 0,
+                        duration: const Duration(milliseconds: 300),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.error.withValues(alpha: 0.9),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '无更新',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Theme.of(context).colorScheme.onError,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
+                  const SizedBox(width: 8),
+                  Builder(
+                    builder: (context) {
+                      final params = ref.read(gradesViewModelProvider).params;
+                      final isLoading = ref
+                          .watch(gradesProvider(params))
+                          .isLoading;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: IconButton(
+                          icon: isLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.refresh),
+                          tooltip: '',
+                          onPressed: isLoading
+                              ? null
+                              : () {
+                                  ref
+                                          .read(
+                                            refreshRequestedProvider.notifier,
+                                          )
+                                          .state =
+                                      true;
+                                  ref.invalidate(gradesProvider(params));
+                                },
+                        ),
+                      );
+                    },
                   ),
-                ),
-              ),
-            const SizedBox(width: 8),
-            Builder(
-              builder: (context) {
-                final params = ref.read(gradesViewModelProvider).params;
-                final isLoading = ref.watch(gradesProvider(params)).isLoading;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 12),
-                  child: IconButton(
-                    icon: isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.refresh),
-                    tooltip: '',
-                    onPressed: isLoading
-                        ? null
-                        : () {
-                            ref.read(refreshRequestedProvider.notifier).state =
-                                true;
-                            ref.invalidate(gradesProvider(params));
-                          },
-                  ),
-                );
-              },
+                ],
+              ],
+              title: Text(_currentTab.title),
             ),
-          ],
-        ],
-        title: Text(_currentTab.title),
-      ),
       body: _getPage(_currentTab),
     );
   }
@@ -120,7 +137,7 @@ class _ImsTabContainerState extends ConsumerState<ImsTabContainer> {
   Widget _getPage(ImsTab tab) => switch (tab) {
     .curriculum => CurriculumScreen(showAppBar: false),
     .grade => GradesScreen(showAppBar: false),
-    .schedule => ScheduleScreen(showAppBar: false),
+    .schedule => const ScheduleScreen(),
     .graduationRequirements => GraduationRequirementsScreen(showAppBar: false),
     .studentInfo => StudentInfoScreen(showAppBar: false),
   };

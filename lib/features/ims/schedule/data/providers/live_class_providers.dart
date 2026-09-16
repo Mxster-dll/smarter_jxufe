@@ -17,9 +17,8 @@ import 'package:smarter_jxufe/features/school_calendar/domain/teaching_week.dart
 /// 因而不受教务会话过期影响。
 final periodTableRemoteDataSourceProvider =
     Provider<PeriodTableRemoteDataSource>(
-      (ref) => PeriodTableRemoteDataSource(
-        ref.watch(schoolCalendarDioProvider),
-      ),
+      (ref) =>
+          PeriodTableRemoteDataSource(ref.watch(schoolCalendarDioProvider)),
     );
 
 /// 作息时间表 HTML 解析器。
@@ -57,8 +56,8 @@ final cachedPeriodTableProvider = FutureProvider<PeriodTable>(
 
 /// 当前教学周。
 ///
-/// 口径说明见 `domain/teaching_week.dart`：优先取「本科生开始上课」事件
-/// 作为第一教学周起点，而非学期 `start`（261 学期两者相差一周）。
+/// 口径说明见 `domain/teaching_week.dart`：**第 1 教学周 = 学期 `start` 所在周**
+/// （261 → 2026-09-07）。注意「老生开始上课」09-14 属第 2 周，不是第 1 周。
 final teachingWeekProvider = FutureProvider<TeachingWeek?>((ref) async {
   return resolveTeachingWeek(
     DateTime.now(),

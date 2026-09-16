@@ -160,7 +160,9 @@ class _RescheduleEditorSheetState extends State<_RescheduleEditorSheet> {
     final e = widget.existing;
     final o = widget.origin;
 
-    _kind = e?.kind ?? (widget.asExtra ? RescheduleKind.extra : RescheduleKind.move);
+    _kind =
+        e?.kind ??
+        (widget.asExtra ? RescheduleKind.extra : RescheduleKind.move);
     _scope = e?.scope ?? RescheduleScope.once;
     _week = e?.week ?? widget.initialWeek;
 
@@ -299,7 +301,8 @@ class _RescheduleEditorSheetState extends State<_RescheduleEditorSheet> {
       targetClassroom: _kind == RescheduleKind.cancel
           ? ''
           : _roomCtrl.text.trim(),
-      newTeacher: _isExtra || teacherText.isEmpty || teacherText == _originTeacher
+      newTeacher:
+          _isExtra || teacherText.isEmpty || teacherText == _originTeacher
           ? null
           : teacherText,
       note: _noteCtrl.text.trim(),
@@ -363,7 +366,10 @@ class _RescheduleEditorSheetState extends State<_RescheduleEditorSheet> {
               c.endPeriod >= _startPeriod &&
               !(c.courseCode.isNotEmpty && c.courseCode == _courseCode),
         )
-        .map((c) => '${c.courseName}(${c.dayIndex == _targetDay.dayIndex ? c.periodText : ''})')
+        .map(
+          (c) =>
+              '${c.courseName}(${c.dayIndex == _targetDay.dayIndex ? c.periodText : ''})',
+        )
         .toSet()
         .take(3)
         .toList();
@@ -647,7 +653,10 @@ class _RescheduleEditorSheetState extends State<_RescheduleEditorSheet> {
           ),
           const SizedBox(height: 4),
           Text(
-            [if (teacher.isNotEmpty) teacher, if (place.isNotEmpty) place].join(' · '),
+            [
+              if (teacher.isNotEmpty) teacher,
+              if (place.isNotEmpty) place,
+            ].join(' · '),
             style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
           ),
         ],
