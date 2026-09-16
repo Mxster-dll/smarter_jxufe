@@ -4,12 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/core/network/dio_providers.dart';
+import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/providers/volunteer_hours_providers.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/volunteer_hours_screen.dart';
 import 'package:smarter_jxufe/features/electricity/data/models/electricity_models.dart';
 import 'package:smarter_jxufe/features/electricity/data/providers/electricity_providers.dart';
 import 'package:smarter_jxufe/features/electricity/presentation/electricity_screen.dart';
+import 'package:smarter_jxufe/features/home/domain/grade_rank_badge.dart';
 import 'package:smarter_jxufe/features/home_widget/data/home_widget_sync.dart';
 import 'package:smarter_jxufe/features/ims/grades/data/providers/weighted_grade_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/weighted_grade.dart';
@@ -47,27 +49,23 @@ String todayLabel(DateTime now) {
 }
 
 /// 电费：当前账号若有本地绑定记忆，取服务端实时余额；否则为 null（未绑定）。
-final dashboardElectricityProvider = FutureProvider<ElectricityBalance?>(
-  (ref) async {
-    final account = ref.watch(currentAccountProvider);
-    if (account.isEmpty) return null;
-    final box = await ref.read(electricityBindingBoxProvider.future);
-    final raw = box.get(account);
-    if (raw == null || raw.isEmpty) return null;
-    final decoded = jsonDecode(raw);
-    if (decoded is! Map) return null;
-    final record = RoomBindingRecord.fromJson(
-      decoded.map((k, v) => MapEntry(k.toString(), v)),
-    );
-    if (record.roomId <= 0) return null;
-    final dataSource =
-        ref.watch(electricityRemoteDataSourceProvider);
-    return dataSource.fetchBalance(
-      username: account,
-      roomId: record.roomId,
-    );
-  },
-);
+final dashboardElectricityProvider = FutureProvider<ElectricityBalance?>((
+  ref,
+) async {
+  final account = ref.watch(currentAccountProvider);
+  if (account.isEmpty) return null;
+  final box = await ref.read(electricityBindingBoxProvider.future);
+  final raw = box.get(account);
+  if (raw == null || raw.isEmpty) return null;
+  final decoded = jsonDecode(raw);
+  if (decoded is! Map) return null;
+  final record = RoomBindingRecord.fromJson(
+    decoded.map((k, v) => MapEntry(k.toString(), v)),
+  );
+  if (record.roomId <= 0) return null;
+  final dataSource = ref.watch(electricityRemoteDataSourceProvider);
+  return dataSource.fetchBalance(username: account, roomId: record.roomId);
+});
 
 /// 志愿时长：当前账号活动记录 `recognizedHours` 求和。
 final dashboardVolunteerHoursProvider = FutureProvider<double>((ref) async {
@@ -79,43 +77,43 @@ final dashboardVolunteerHoursProvider = FutureProvider<double>((ref) async {
 });
 
 /// 今日课程：取当前学期课表，按今天星期过滤并按时段排序。
-final dashboardTodayCoursesProvider = FutureProvider<List<TodayCourse>>(
-  (ref) async {
-    final account = ref.watch(currentAccountProvider);
-    if (account.isEmpty) return const [];
-    final now = DateTime.now();
-    // 当前学期口径 = 课表页同一函数（校历区间优先，假期取下一学期）。
-    final term = currentSchoolTerm(
-      now,
-      terms: ref.watch(offlineSemesterTermsProvider),
-    );
-    final repository = await ref.watch(scheduleRepositoryProvider.future);
-    final entries = await repository.getSchedule(
-      year: '${term.xn}',
-      semester: '${term.xq}',
-      studentId: account,
-    );
-    final weekday = now.weekday; // 1=周一 … 7=周日
-    final result = <TodayCourse>[];
-    for (final entry in entries) {
-      for (final ct in entry.classTimes) {
-        if (ct.dayOfWeek.dayIndex == weekday) {
-          result.add(
-            TodayCourse(
-              courseName: entry.courseName,
-              startPeriod: ct.startPeriod,
-              endPeriod: ct.endPeriod,
-              classroom: ct.classroom,
-              campus: ct.campus,
-            ),
-          );
-        }
+final dashboardTodayCoursesProvider = FutureProvider<List<TodayCourse>>((
+  ref,
+) async {
+  final account = ref.watch(currentAccountProvider);
+  if (account.isEmpty) return const [];
+  final now = DateTime.now();
+  // 当前学期口径 = 课表页同一函数（校历区间优先，假期取下一学期）。
+  final term = currentSchoolTerm(
+    now,
+    terms: ref.watch(offlineSemesterTermsProvider),
+  );
+  final repository = await ref.watch(scheduleRepositoryProvider.future);
+  final entries = await repository.getSchedule(
+    year: '${term.xn}',
+    semester: '${term.xq}',
+    studentId: account,
+  );
+  final weekday = now.weekday; // 1=周一 … 7=周日
+  final result = <TodayCourse>[];
+  for (final entry in entries) {
+    for (final ct in entry.classTimes) {
+      if (ct.dayOfWeek.dayIndex == weekday) {
+        result.add(
+          TodayCourse(
+            courseName: entry.courseName,
+            startPeriod: ct.startPeriod,
+            endPeriod: ct.endPeriod,
+            classroom: ct.classroom,
+            campus: ct.campus,
+          ),
+        );
       }
     }
-    result.sort((a, b) => a.startPeriod.compareTo(b.startPeriod));
-    return result;
-  },
-);
+  }
+  result.sort((a, b) => a.startPeriod.compareTo(b.startPeriod));
+  return result;
+});
 
 /// 首页仪表盘总览面板：电费 / 网费 / 成绩（累计加权）/ 志愿时长 / 今日课程。
 ///
@@ -188,8 +186,7 @@ class DashboardPanel extends ConsumerWidget {
           builder: (context, constraints) {
             const minCard = 210.0;
             const gap = 12.0;
-            final cols =
-                (constraints.maxWidth + gap) ~/ (minCard + gap);
+            final cols = (constraints.maxWidth + gap) ~/ (minCard + gap);
             final width = (constraints.maxWidth - gap * (cols - 1)) / cols;
             return Wrap(
               spacing: gap,
@@ -222,7 +219,8 @@ class DashboardPanel extends ConsumerWidget {
                     child: _valueArea<NetFeeSummary>(
                       scheme,
                       netFeeAsync,
-                      valueOf: (s) => s.balance == null ? '--' : fmtYuan(s.balance!),
+                      valueOf: (s) =>
+                          s.balance == null ? '--' : fmtYuan(s.balance!),
                       unitOf: (s) => s.balance == null ? '' : '元',
                       emptyText: '暂无数据',
                       valueKey: const Key('dash_netfee'),
@@ -235,8 +233,14 @@ class DashboardPanel extends ConsumerWidget {
                     icon: Icons.auto_graph_outlined,
                     color: FeaturePalette.grade,
                     label: '课程加权',
-                    onTap: () =>
-                        _push(context, ImsSplashScreen(initialTab: ImsTab.grade)),
+                    onTap: () => _push(
+                      context,
+                      ImsSplashScreen(initialTab: ImsTab.grade),
+                    ),
+                    // 排名不占卡片高度：塞右上角一枚胶囊（班级/专业/年级）。
+                    trailing: gradeAsync.valueOrNull == null
+                        ? null
+                        : _gradeRankCapsule(context, gradeAsync.valueOrNull!),
                     child: _buildGradeContent(scheme, gradeAsync),
                   ),
                 ),
@@ -246,8 +250,7 @@ class DashboardPanel extends ConsumerWidget {
                     icon: Icons.volunteer_activism,
                     color: FeaturePalette.volunteer,
                     label: '志愿时长',
-                    onTap: () =>
-                        _push(context, const VolunteerHoursScreen()),
+                    onTap: () => _push(context, const VolunteerHoursScreen()),
                     child: _valueArea<double>(
                       scheme,
                       volunteerAsync,
@@ -271,7 +274,11 @@ class DashboardPanel extends ConsumerWidget {
   static String _trimHours(double v) =>
       v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
 
-  /// 课程加权卡内容：完整加权分（单行自适应）+ 专业排名第二行。
+  /// 课程加权卡内容：只有加权分（单行自适应）。
+  ///
+  /// 排名（班级 / 专业 / 年级）自 2026-09-15 起不再占一行高度 ——
+  /// 用户裁定「排名不要占用高度，而是显示在右上角的一个胶囊」，
+  /// 胶囊由 [_gradeRankCapsule] 渲染、挂在卡片头部行的尾部。
   Widget _buildGradeContent(
     ColorScheme scheme,
     AsyncValue<WeightedGrade?> async,
@@ -282,52 +289,55 @@ class DashboardPanel extends ConsumerWidget {
         height: 18,
         child: CircularProgressIndicator(strokeWidth: 2),
       ),
-      error: (_, _) => _inlineStatus(
-        scheme,
-        Icons.error_outline,
-        '获取失败，点右上角刷新',
-      ),
+      error: (_, _) =>
+          _inlineStatus(scheme, Icons.error_outline, '获取失败，点右上角刷新'),
       data: (grade) {
         if (grade == null) {
           return _inlineStatus(scheme, Icons.link_off, '暂无成绩');
         }
-        final rank = grade.majorRank;
         return Column(
           key: const Key('dash_grade'),
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _fittedValueRow(
-              scheme,
-              value: grade.grade,
-              unit: '分',
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(Icons.emoji_events_outlined,
-                    size: 14, color: scheme.onSurfaceVariant),
-                const SizedBox(width: 5),
-                Text(
-                  '专业排名',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  rank > 0 ? '第 $rank 名' : '未上榜',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: scheme.primary,
-                  ),
-                ),
-              ],
-            ),
-          ],
+          mainAxisSize: MainAxisSize.min,
+          children: [_fittedValueRow(scheme, value: grade.grade, unit: '分')],
         );
       },
+    );
+  }
+
+  /// 排名胶囊：`#班级/专业/年级`（用户 2026-09-15 裁定 a/b/c 三个数字，
+  /// 同日二轮改为 `#a/b/c` 紧凑写法：`#` 前缀 + 斜杠分隔、无空格）。
+  ///
+  /// 取不到的排名（≤ 0）写 `—`；完整含义放 tooltip（桌面悬停 / 手机长按）。
+  Widget _gradeRankCapsule(BuildContext context, WeightedGrade grade) {
+    final accent = appCardAccent(context);
+    return Tooltip(
+      message: gradeRankTooltip(
+        classRank: grade.classRank,
+        majorRank: grade.majorRank,
+        gradeRank: grade.gradeRank,
+      ),
+      child: Container(
+        key: const Key('dash_grade_rank'),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: appCardAccentSoft(context),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          gradeRankBadge(
+            classRank: grade.classRank,
+            majorRank: grade.majorRank,
+            gradeRank: grade.gradeRank,
+          ),
+          style: TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w600,
+            color: accent,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+      ),
     );
   }
 
@@ -378,11 +388,8 @@ class DashboardPanel extends ConsumerWidget {
         height: 18,
         child: CircularProgressIndicator(strokeWidth: 2),
       ),
-      error: (_, _) => _inlineStatus(
-        scheme,
-        Icons.error_outline,
-        '获取失败，点右上角刷新',
-      ),
+      error: (_, _) =>
+          _inlineStatus(scheme, Icons.error_outline, '获取失败，点右上角刷新'),
       data: (data) {
         if (data == null) {
           return _inlineStatus(scheme, Icons.link_off, emptyText);
@@ -407,8 +414,7 @@ class DashboardPanel extends ConsumerWidget {
               const SizedBox(width: 4),
               Text(
                 unitOf(data),
-                style: TextStyle(
-                    fontSize: 12, color: scheme.onSurfaceVariant),
+                style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
               ),
             ],
           ),
@@ -445,10 +451,7 @@ class DashboardPanel extends ConsumerWidget {
   ) {
     return Material(
       color: Theme.of(context).cardTheme.color,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: scheme.outlineVariant),
-      ),
+      shape: appCardShape(context),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () =>
@@ -464,11 +467,14 @@ class DashboardPanel extends ConsumerWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: FeaturePalette.schedule.withValues(alpha: 0.10),
+                      color: appCardAccentSoft(context),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(Icons.today_outlined,
-                        size: 20, color: FeaturePalette.schedule),
+                    child: Icon(
+                      Icons.today_outlined,
+                      size: 20,
+                      color: appCardAccent(context),
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -492,8 +498,11 @@ class DashboardPanel extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  const Icon(Icons.chevron_right,
-                      size: 20, color: Colors.transparent),
+                  const Icon(
+                    Icons.chevron_right,
+                    size: 20,
+                    color: Colors.transparent,
+                  ),
                 ],
               ),
               const SizedBox(height: 10),
@@ -524,8 +533,11 @@ class DashboardPanel extends ConsumerWidget {
         ),
       ],
       error: (e, _) => [
-        _inlineStatus(scheme, Icons.error_outline,
-            '课表获取失败：${e.toString().replaceAll('Exception: ', '')}'),
+        _inlineStatus(
+          scheme,
+          Icons.error_outline,
+          '课表获取失败：${e.toString().replaceAll('Exception: ', '')}',
+        ),
       ],
       data: (courses) {
         if (courses.isEmpty) {
@@ -546,9 +558,11 @@ class DashboardPanel extends ConsumerWidget {
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
-                      color: FeaturePalette.schedule.withValues(alpha: 0.10),
+                      color: appCardAccentSoft(context),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
@@ -556,7 +570,7 @@ class DashboardPanel extends ConsumerWidget {
                       style: TextStyle(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w600,
-                        color: FeaturePalette.schedule,
+                        color: appCardAccent(context),
                       ),
                     ),
                   ),
@@ -592,11 +606,15 @@ class DashboardPanel extends ConsumerWidget {
 }
 
 /// 指标卡：App 同源白卡，自定义内容区（[child]）。[color] 为功能点缀色。
+///
+/// [trailing] 挂在卡片头部行的尾部（右上角），**不占内容区高度** ——
+/// 「课程加权」的排名胶囊就走这里。
 class _MetricCard extends StatelessWidget {
   final IconData icon;
   final Color color;
   final String label;
   final VoidCallback? onTap;
+  final Widget? trailing;
   final Widget child;
 
   const _MetricCard({
@@ -604,6 +622,7 @@ class _MetricCard extends StatelessWidget {
     required this.color,
     required this.label,
     this.onTap,
+    this.trailing,
     required this.child,
   });
 
@@ -612,10 +631,7 @@ class _MetricCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Material(
       color: Theme.of(context).cardTheme.color,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: scheme.outlineVariant),
-      ),
+      shape: appCardShape(context),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
@@ -649,6 +665,10 @@ class _MetricCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (trailing != null) ...[
+                    const SizedBox(width: 6),
+                    trailing!,
+                  ],
                 ],
               ),
               const SizedBox(height: 14),

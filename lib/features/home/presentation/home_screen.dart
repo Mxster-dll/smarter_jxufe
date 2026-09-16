@@ -1,108 +1,169 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:smarter_jxufe/design/feature_palette.dart';
-import 'package:smarter_jxufe/features/campus_address/presentation/campus_address_screen.dart';
-import 'package:smarter_jxufe/features/campus_address/presentation/campus_map_screen.dart';
-import 'package:smarter_jxufe/features/comprehensive_service/presentation/jh_read_screen.dart';
-import 'package:smarter_jxufe/features/comprehensive_service/presentation/second_class_credit_screen.dart';
-import 'package:smarter_jxufe/features/comprehensive_service/presentation/volunteer_hours_screen.dart';
-import 'package:smarter_jxufe/features/data_center/presentation/data_center_screen.dart';
-import 'package:smarter_jxufe/features/electricity/presentation/electricity_screen.dart';
+import 'package:smarter_jxufe/design/app_page_transitions.dart';
+import 'package:smarter_jxufe/features/home/data/home_layout_prefs.dart';
+import 'package:smarter_jxufe/features/home/domain/home_layout.dart';
 import 'package:smarter_jxufe/features/home/presentation/dashboard_panel.dart';
+import 'package:smarter_jxufe/features/home/presentation/home_detail_pane.dart';
+import 'package:smarter_jxufe/features/home/presentation/home_service_catalog.dart';
+import 'package:smarter_jxufe/features/home/presentation/home_service_grid.dart';
+import 'package:smarter_jxufe/features/home/presentation/home_sidebar.dart';
 import 'package:smarter_jxufe/features/home_widget/presentation/home_widget_sync_scope.dart';
-import 'package:smarter_jxufe/features/ims/menu/domain/ims_tab.dart';
-import 'package:smarter_jxufe/features/ims/schedule/presentation/live_class_screen.dart';
-import 'package:smarter_jxufe/features/ims/splash/presentation/ims_splash_screen.dart';
-import 'package:smarter_jxufe/features/ims/student_info/presentation/student_info_screen.dart';
-import 'package:smarter_jxufe/features/leave/presentation/leave_screen.dart';
-import 'package:smarter_jxufe/features/materials/presentation/materials_screen.dart';
-import 'package:smarter_jxufe/features/net_fee/presentation/net_fee_screen.dart';
-import 'package:smarter_jxufe/features/rules/presentation/rules_home_screen.dart';
-import 'package:smarter_jxufe/features/school_calendar/presentation/school_calendar_screen.dart';
-import 'package:smarter_jxufe/features/score_estimate/presentation/score_estimate_screen.dart';
 import 'package:smarter_jxufe/features/settings/presentation/settings_screen.dart';
-import 'package:smarter_jxufe/features/tice/presentation/tice_screen.dart';
-import 'package:smarter_jxufe/features/zongce/presentation/zongce_screen.dart';
+import 'package:smarter_jxufe/features/ims/student_info/presentation/student_info_screen.dart';
 import 'package:smarter_jxufe/shared/widgets/account_avatar.dart';
 
 /// 单页功能主页 —— 登录后的统一落地页。
 ///
-/// 所有功能入口扁平平铺（无平台分组、无二级菜单），点击直达功能页面。
-class HomeScreen extends ConsumerWidget {
+/// 两种布局（用户 2026-09-15 裁定第 1 条，**切换入口只在设置页**、选择记住）：
+/// - **宫格视图**（默认，手机端唯一形态）：图标磁贴铺满页面，点磁贴 push 整页；
+/// - **左侧导航栏视图**（仅电脑端且宽度 ≥ [homeSidebarMinWidth]）：左侧按分组
+///   列出全部服务，点击**把功能页内嵌在右侧面板**（`HomeDetailPane`，用户同日
+///   第 2 条），右侧默认内容是「数据一览」概览。
+///
+/// 服务条目表在 `home_service_catalog.dart`（宫格与侧栏共用一份，强调色随条目走）。
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  /// 侧栏当前选中的服务标题；`null` = 右侧显示「数据一览」概览。
+  ///
+  /// 只活在页面 State 里（不进 Hive）：切走再回来仍是概览，符合「主页 = 概览」
+  /// 的直觉；窄窗口 / 宫格视图下这个字段被忽略。
+  String? _selectedService;
+
+  @override
+  Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final layout = ref.watch(homeLayoutStoreProvider).layout;
+    final desktop = homeDesktopPlatform(Theme.of(context).platform.name);
 
     return Scaffold(
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildTopBar(context, scheme),
-            const Divider(height: 1),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 48),
-                children: [
-                  // 桌面小组件同步触发点（首帧推送 + 回前台重推 + 冷启动路由）
-                  const HomeWidgetSyncScope(child: DashboardPanel()),
-                  const SizedBox(height: 26),
-                  _buildSectionHeader(context, '全部服务'),
-                  const SizedBox(height: 14),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final items = _items(context);
-                      const minCard = 208.0;
-                      const gap = 12.0;
-                      // 手机等窄屏：固定格子尺寸（单元格上限约 108px），
-                      // 列数随可用宽度自适应（等价 SliverGridDelegate
-                      // WithMaxCrossAxisExtent 语义），而不是固定列数。
-                      final isCompact = constraints.maxWidth < 620;
-                      var cols = 0;
-                      double width = 0;
-                      if (isCompact) {
-                        const tileExtent = 108.0;
-                        cols =
-                            ((constraints.maxWidth + gap) / (tileExtent + gap))
-                                .ceil();
-                        if (cols < 2) cols = 2;
-                        width =
-                            (constraints.maxWidth - gap * (cols - 1)) / cols;
-                      } else {
-                        cols = (constraints.maxWidth + gap) ~/ (minCard + gap);
-                        if (cols < 1) cols = 1;
-                        if (cols > 6) cols = 6;
-                        width =
-                            (constraints.maxWidth - gap * (cols - 1)) / cols;
-                      }
-                      return Wrap(
-                        spacing: gap,
-                        runSpacing: gap,
-                        children: [
-                          for (var i = 0; i < items.length; i++)
-                            SizedBox(
-                              width: width,
-                              child: _buildFeatureCard(
-                                context,
-                                items[i],
-                                _tileColors[i % _tileColors.length],
-                                compact: isCompact,
-                              ),
-                            ),
-                        ],
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ],
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final entries = homeServiceEntries(
+              push: (screen) => Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => screen)),
+            );
+            final useSidebar = homeUsesSidebarLayout(
+              layout: layout,
+              desktop: desktop,
+              width: constraints.maxWidth,
+            );
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildTopBar(context, scheme),
+                const Divider(height: 1),
+                Expanded(
+                  child: useSidebar
+                      ? _buildSidebarBody(context, entries)
+                      : _buildGridBody(context, entries),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
+  }
+
+  /// 宫格视图：数据一览 + 全部服务宫格。
+  Widget _buildGridBody(BuildContext context, List<HomeServiceEntry> entries) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 48),
+      children: [
+        // 桌面小组件同步触发点（首帧推送 + 回前台重推 + 冷启动路由）
+        const HomeWidgetSyncScope(child: DashboardPanel()),
+        const SizedBox(height: 26),
+        _buildSectionHeader(context, '全部服务'),
+        const SizedBox(height: 14),
+        HomeServiceGrid(entries: entries),
+      ],
+    );
+  }
+
+  /// 左侧导航栏视图：侧栏（全部服务，按分组）+ 右侧「概览 / 内嵌功能页」。
+  Widget _buildSidebarBody(BuildContext context, List<HomeServiceEntry> entries) {
+    final selected = _selectedEntry(entries);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        HomeSidebar(
+          entries: entries,
+          selectedTitle: selected?.title,
+          onOverview: () => _select(null),
+          onSelect: (entry) => _select(entry.title),
+        ),
+        const VerticalDivider(width: 1, thickness: 1),
+        Expanded(
+          // 换服务 → 右栏内容横向滑入 + 淡入（与页面转场同一语言，见
+          // lib/design/app_page_transitions.dart）。原来是从概览/上一个服务**硬切**。
+          //
+          // ⚠ 必须自备 layoutBuilder：AnimatedSwitcher 默认那个用
+          // `Stack(alignment: center)` 且不撑满 → 右栏内容（ListView / 内嵌 Navigator）
+          // 会缩成内容大小、贴着中间，看起来像「页面变小了」。
+          child: AnimatedSwitcher(
+            duration: appPaneSwitchDuration,
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            layoutBuilder: (current, previous) => Stack(
+              fit: StackFit.expand,
+              children: <Widget>[...previous, ?current],
+            ),
+            transitionBuilder: (child, animation) => FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(appPaneSwitchOffsetX, 0),
+                  end: Offset.zero,
+                ).animate(animation),
+                child: child,
+              ),
+            ),
+            child: KeyedSubtree(
+              key: ValueKey<String>(
+                selected?.title ?? homeSidebarOverviewTitle,
+              ),
+              child: selected == null
+                  ? _buildOverviewPane()
+                  : HomeDetailPane(entry: selected),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 右侧默认内容：数据一览概览。
+  Widget _buildOverviewPane() {
+    return ListView(
+      key: const Key('homeOverviewPane'),
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 48),
+      children: const [HomeWidgetSyncScope(child: DashboardPanel())],
+    );
+  }
+
+  /// 按标题找回当前条目；目录里已不存在该标题（改版残留）→ 回落概览。
+  HomeServiceEntry? _selectedEntry(List<HomeServiceEntry> entries) {
+    final title = _selectedService;
+    if (title == null) return null;
+    for (final entry in entries) {
+      if (entry.title == title) return entry;
+    }
+    return null;
+  }
+
+  void _select(String? title) {
+    if (_selectedService == title) return;
+    setState(() => _selectedService = title);
   }
 
   Widget _buildSectionHeader(BuildContext context, String text) {
@@ -151,7 +212,7 @@ class HomeScreen extends ConsumerWidget {
             ),
             alignment: Alignment.center,
             child: Text(
-              '尼',
+              '智',
               style: TextStyle(
                 color: scheme.onPrimary,
                 fontSize: 16,
@@ -161,7 +222,7 @@ class HomeScreen extends ConsumerWidget {
           ),
           const SizedBox(width: 12),
           const Text(
-            '智慧尼采',
+            '智慧er江财',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),
           const Spacer(),
@@ -193,293 +254,4 @@ class HomeScreen extends ConsumerWidget {
       ),
     );
   }
-
-  // ---------- 功能卡片 ----------
-  Widget _buildFeatureCard(
-    BuildContext context,
-    _HomeItem item,
-    Color accent, {
-    bool compact = false,
-  }) {
-    final scheme = Theme.of(context).colorScheme;
-    final accentBg = accent.withValues(alpha: 0.10);
-
-    if (compact) {
-      // 窄屏紧凑宫格：图标在上、名称在下（表格视图）。
-      return Material(
-        color: Theme.of(context).cardTheme.color,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-          side: BorderSide(color: scheme.outline),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: item.onTap,
-          hoverColor: accent.withValues(alpha: 0.05),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: accentBg,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(item.icon, color: accent, size: 22),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  item.title,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    height: 16 / 13,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Material(
-      color: Theme.of(context).cardTheme.color,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: scheme.outline),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: item.onTap,
-        hoverColor: accent.withValues(alpha: 0.05),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: accentBg,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(item.icon, color: accent, size: 22),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.title,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        height: 20 / 15,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      item.subtitle,
-                      style: TextStyle(
-                        fontSize: 12,
-                        height: 16 / 12,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  List<_HomeItem> _items(BuildContext context) {
-    void push(Widget screen) {
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
-    }
-
-    Widget imsTab(ImsTab tab) => ImsSplashScreen(initialTab: tab);
-
-    return [
-      _HomeItem(
-        ImsTab.curriculum.icon,
-        ImsTab.curriculum.title,
-        ImsTab.curriculum.subtitle,
-        () => push(imsTab(ImsTab.curriculum)),
-      ),
-      _HomeItem(
-        ImsTab.schedule.icon,
-        ImsTab.schedule.title,
-        ImsTab.schedule.subtitle,
-        () => push(imsTab(ImsTab.schedule)),
-      ),
-      _HomeItem(
-        ImsTab.grade.icon,
-        ImsTab.grade.title,
-        ImsTab.grade.subtitle,
-        () => push(imsTab(ImsTab.grade)),
-      ),
-      _HomeItem(
-        ImsTab.graduationRequirements.icon,
-        ImsTab.graduationRequirements.title,
-        ImsTab.graduationRequirements.subtitle,
-        () => push(imsTab(ImsTab.graduationRequirements)),
-      ),
-      // 「我的」不在宫格里（用户 2026-09-11 裁定）——入口 = 顶栏右上角头像。
-      _HomeItem(
-        Icons.place_outlined,
-        '学校地址',
-        '四校区地址与邮编一览',
-        () => push(const CampusAddressScreen()),
-      ),
-      _HomeItem(
-        Icons.map_outlined,
-        '校区地图',
-        '官网四校区地图与交通示意图',
-        () => push(const CampusMapScreen()),
-      ),
-      _HomeItem(
-        Icons.volunteer_activism,
-        '志愿服务时长',
-        '查看学生志愿活动时长统计',
-        () => push(const VolunteerHoursScreen()),
-      ),
-      _HomeItem(
-        Icons.school_outlined,
-        '第二课堂学分',
-        '成绩单与学分预警 · 毕业达标进度',
-        () => push(const SecondClassCreditScreen()),
-      ),
-      _HomeItem(
-        Icons.auto_stories_outlined,
-        '蛟湖阅读',
-        '阅读学分四部分进度 · 入馆教育与借阅达标',
-        () => push(const JhReadScreen()),
-      ),
-      _HomeItem(
-        Icons.insights,
-        '学生个人数据中心',
-        '学业成绩 · 消费 · 图书 · 校园卡全景',
-        () => push(const DataCenterScreen()),
-      ),
-      _HomeItem(
-        Icons.electrical_services,
-        '宿舍电费',
-        '选择宿舍查询剩余电量 · 未绑定可一键绑定',
-        () => push(const ElectricityScreen()),
-      ),
-      _HomeItem(
-        Icons.wifi_outlined,
-        '网费',
-        '校园网余额 · 充值记录一览',
-        () => push(const NetFeeScreen()),
-      ),
-      _HomeItem(
-        Icons.event_note_outlined,
-        '请假',
-        '学生请假申请记录 · 审批进度查看',
-        () => push(const LeaveScreen()),
-      ),
-      _HomeItem(
-        Icons.workspace_premium_outlined,
-        '综合测评',
-        '证明材料自动测算 · 五育等次参考',
-        () => push(const ZongceScreen()),
-      ),
-      _HomeItem(
-        Icons.calculate_outlined,
-        '分数估计',
-        '平时分项计数 · 期末反推 · 达线预警',
-        () => push(const ScoreEstimateScreen()),
-      ),
-      _HomeItem(
-        Icons.fitness_center,
-        '体测成绩',
-        '国家体质测试总分与分项 · 本人成绩查询',
-        () => push(const TiceScreen()),
-      ),
-      _HomeItem(
-        Icons.folder_outlined,
-        '材料库',
-        '证明文件归档 · 自动带入综测',
-        () => push(const MaterialsScreen()),
-      ),
-      _HomeItem(
-        Icons.calendar_month,
-        '校历',
-        '学期教学周历 · 开学与假期起止一览',
-        () => push(const SchoolCalendarScreen()),
-      ),
-      _HomeItem(
-        Icons.rule_folder_outlined,
-        '规章制度',
-        '校规校纪 · 学分学籍 · 竞赛目录 · 奖助办法',
-        () => push(const RulesHomeScreen()),
-      ),
-      _HomeItem(
-        Icons.podcasts_outlined,
-        '上课实况窗',
-        '上课中与下一节课 · 通知栏常驻倒计时',
-        () => push(const LiveClassScreen()),
-      ),
-    ];
-  }
-}
-
-// ---------- 宫格功能分色（与 FeaturePalette 一一对应） ----------
-const _tileColors = <Color>[
-  FeaturePalette.curriculum,
-  FeaturePalette.schedule,
-  FeaturePalette.grade,
-  FeaturePalette.graduation,
-  // 索引 4 原为 FeaturePalette.studentInfo（「我的」磁贴已删）——与 `_items` 严格按索引对齐，
-  // 增删条目必须同步增删本列表（AGENTS.md §3）。
-  FeaturePalette.campus,
-  FeaturePalette.campusMap,
-  FeaturePalette.volunteer,
-  FeaturePalette.secondClass,
-  FeaturePalette.jhRead,
-  // 索引 9 原为 FeaturePalette.libraryEdu（「新生入馆教育」磁贴已并入「蛟湖阅读」页，
-  // 用户 2026-09-11 裁定）——与 `_items` 严格按索引对齐，增删条目必须同步本列表。
-  FeaturePalette.dataCenter,
-  FeaturePalette.electricity,
-  FeaturePalette.netFee,
-  FeaturePalette.leave,
-  // 索引 14 原为 FeaturePalette.guidGuide（「获取平台标识」磁贴已迁到设置页，2026-09-11）。
-  FeaturePalette.zongce,
-  FeaturePalette.scoreEstimate,
-  FeaturePalette.tice,
-  FeaturePalette.materials,
-  FeaturePalette.calendar,
-  FeaturePalette.rules,
-  FeaturePalette.liveClass,
-];
-
-// ---------- 当前账号显示名 ----------
-// 已迁到 `lib/features/auth/data/providers/account_display_name_provider.dart`
-// （`currentAccountNameProvider`）——共享头像组件也要用它，放在页面文件里会
-// 逼着共享件反向 import 首页。
-
-class _HomeItem {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  const _HomeItem(this.icon, this.title, this.subtitle, this.onTap);
 }
