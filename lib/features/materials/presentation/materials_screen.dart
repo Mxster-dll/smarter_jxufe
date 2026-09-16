@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/features/zongce/data/zc_providers.dart';
 import 'package:smarter_jxufe/features/zongce/data/zc_store.dart';
 import 'package:smarter_jxufe/features/zongce/domain/zc_activity.dart';
@@ -56,7 +57,10 @@ class _MaterialsScreenState extends ConsumerState<MaterialsScreen> {
             children: [
               Text(
                 zcYearLabel(_year),
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               Text(
                 '材料按盖章时间归入 ${_year - 1}-09-01 ~ $_year-08-31',
@@ -78,10 +82,7 @@ class _MaterialsScreenState extends ConsumerState<MaterialsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('材料库'),
-        centerTitle: false,
-      ),
+      appBar: AppBar(title: const Text('材料库'), centerTitle: false),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _addMaterial,
         icon: const Icon(Icons.add),
@@ -102,9 +103,11 @@ class _MaterialsScreenState extends ConsumerState<MaterialsScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('材料加载失败：$e',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: scheme.error)),
+              Text(
+                '材料加载失败：$e',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: scheme.error),
+              ),
               const SizedBox(height: 12),
               FilledButton.tonal(
                 onPressed: () => ref.invalidate(zcMaterialsProvider),
@@ -133,8 +136,11 @@ class _MaterialsScreenState extends ConsumerState<MaterialsScreen> {
               Text(
                 '竞赛证书、奖状、评优证明等按类型录入留档，综合测评会自动读取计分，可附加证书照片作证明。\n${zcYearLabel(_year)}窗口：${_year - 1}-09-01 ~ $_year-08-31',
                 textAlign: TextAlign.center,
-                style:
-                    TextStyle(fontSize: 12, color: scheme.outline, height: 1.6),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: scheme.outline,
+                  height: 1.6,
+                ),
               ),
             ],
           );
@@ -149,7 +155,11 @@ class _MaterialsScreenState extends ConsumerState<MaterialsScreen> {
               padding: const EdgeInsets.fromLTRB(4, 10, 4, 4),
               child: Text(
                 '提示：证明材料仅在本档案中维护；综合测评按所选学年自动读取计分，分值口径与测评页计分明细一致。',
-                style: TextStyle(fontSize: 11, color: scheme.outline, height: 1.5),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: scheme.outline,
+                  height: 1.5,
+                ),
               ),
             ),
           ],
@@ -159,16 +169,19 @@ class _MaterialsScreenState extends ConsumerState<MaterialsScreen> {
   }
 
   String _dimName(String dim) => switch (dim) {
-        'd' => '德育',
-        'z' => '智育',
-        't' => '体育',
-        'm' => '美育',
-        'l' => '劳育',
-        _ => '',
-      };
+    'd' => '德育',
+    'z' => '智育',
+    't' => '体育',
+    'm' => '美育',
+    'l' => '劳育',
+    _ => '',
+  };
 
   List<Widget> _materialSection(
-      BuildContext context, String dim, List<ZcMaterial> mats) {
+    BuildContext context,
+    String dim,
+    List<ZcMaterial> mats,
+  ) {
     final scheme = Theme.of(context).colorScheme;
     final list = [
       for (final m in mats)
@@ -189,9 +202,13 @@ class _MaterialsScreenState extends ConsumerState<MaterialsScreen> {
               ),
             ),
             const SizedBox(width: 8),
-            Text('${_dimName(dim)}加分材料 · ${list.length}',
-                style:
-                    const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+            Text(
+              '${_dimName(dim)}加分材料 · ${list.length}',
+              style: const TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
       ),
@@ -208,11 +225,11 @@ class _MaterialsScreenState extends ConsumerState<MaterialsScreen> {
       margin: const EdgeInsets.only(bottom: 8),
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(kAppCardRadius),
         side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.6)),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(kAppCardRadius),
         onTap: () => _editMaterial(m),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
@@ -225,18 +242,26 @@ class _MaterialsScreenState extends ConsumerState<MaterialsScreen> {
                   color: scheme.primary.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(_zcTypeIcon(spec.id), size: 19, color: scheme.primary),
+                child: Icon(
+                  _zcTypeIcon(spec.id),
+                  size: 19,
+                  color: scheme.primary,
+                ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(m.displayName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontSize: 13.5, fontWeight: FontWeight.w600)),
+                    Text(
+                      m.displayName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const SizedBox(height: 2),
                     Text(
                       [
@@ -339,9 +364,9 @@ class _MaterialsScreenState extends ConsumerState<MaterialsScreen> {
         ref.invalidate(zcMaterialsProvider);
       } catch (e) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('删除失败：$e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('删除失败：$e')));
       }
       return;
     }
@@ -362,9 +387,9 @@ class _MaterialsScreenState extends ConsumerState<MaterialsScreen> {
       ref.invalidate(zcMaterialsProvider);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('保存失败：$e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('保存失败：$e')));
     }
   }
 }
@@ -412,32 +437,32 @@ class _MaterialDraft {
   });
 
   factory _MaterialDraft.from(ZcMaterial m) => _MaterialDraft(
-        typeId: m.typeId,
-        name: m.name,
-        dateIso: m.dateIso,
-        org: m.org,
-        cat: m.cat,
-        level: m.level,
-        opt: m.opt,
-        qty: m.qty,
-        files: m.files,
-        note: m.note,
-        catAuto: m.cat.isNotEmpty,
-      );
+    typeId: m.typeId,
+    name: m.name,
+    dateIso: m.dateIso,
+    org: m.org,
+    cat: m.cat,
+    level: m.level,
+    opt: m.opt,
+    qty: m.qty,
+    files: m.files,
+    note: m.note,
+    catAuto: m.cat.isNotEmpty,
+  );
 
   ZcMaterial toMaterial({String? id}) => ZcMaterial(
-        id: id ?? '',
-        typeId: typeId,
-        name: name.trim(),
-        dateIso: dateIso,
-        org: org.trim(),
-        cat: cat,
-        level: level,
-        opt: opt,
-        qty: qty,
-        files: files,
-        note: note.trim(),
-      );
+    id: id ?? '',
+    typeId: typeId,
+    name: name.trim(),
+    dateIso: dateIso,
+    org: org.trim(),
+    cat: cat,
+    level: level,
+    opt: opt,
+    qty: qty,
+    files: files,
+    note: note.trim(),
+  );
 }
 
 class _MaterialEditDialog extends StatefulWidget {
@@ -544,7 +569,10 @@ class _MaterialEditDialogState extends State<_MaterialEditDialog> {
     try {
       final res = await FilePicker.pickFiles(allowMultiple: true);
       if (res == null) return;
-      final paths = [for (final f in res.files) if (f.path != null) f.path!];
+      final paths = [
+        for (final f in res.files)
+          if (f.path != null) f.path!,
+      ];
       if (paths.isEmpty) return;
       for (final path in paths) {
         try {
@@ -553,23 +581,28 @@ class _MaterialEditDialogState extends State<_MaterialEditDialog> {
           setState(() => _d.files = [..._d.files, rel]);
         } catch (e) {
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('导入附件失败：$e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('导入附件失败：$e')));
         }
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('选择文件失败：$e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('选择文件失败：$e')));
     }
   }
 
   Future<void> _removeFile(String rel) async {
     await widget.store.deleteFile(rel);
     if (!mounted) return;
-    setState(() => _d.files = [for (final f in _d.files) if (f != rel) f]);
+    setState(
+      () => _d.files = [
+        for (final f in _d.files)
+          if (f != rel) f,
+      ],
+    );
   }
 
   Future<void> _pickDate() async {
@@ -595,8 +628,7 @@ class _MaterialEditDialogState extends State<_MaterialEditDialog> {
     if (_d.dateIso.isEmpty) return false;
     if (spec.needCat && _d.cat.isEmpty) return false;
     if (_d.level < 0 || _d.level >= spec.levels.length) return false;
-    if (spec.opts.isNotEmpty &&
-        (_d.opt < 0 || _d.opt >= spec.opts.length)) {
+    if (spec.opts.isNotEmpty && (_d.opt < 0 || _d.opt >= spec.opts.length)) {
       return false;
     }
     return true;
@@ -632,7 +664,9 @@ class _MaterialEditDialogState extends State<_MaterialEditDialog> {
                     child: Text(
                       widget.existing == null ? '添加证明材料' : '编辑证明材料',
                       style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.w700),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                   IconButton(
@@ -649,7 +683,8 @@ class _MaterialEditDialogState extends State<_MaterialEditDialog> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (widget.existing == null && widget.initialType == null) ...[
+                    if (widget.existing == null &&
+                        widget.initialType == null) ...[
                       DropdownButtonFormField<ZcTypeId>(
                         initialValue: _d.typeId,
                         decoration: const InputDecoration(
@@ -666,17 +701,21 @@ class _MaterialEditDialogState extends State<_MaterialEditDialog> {
                         },
                       ),
                       const SizedBox(height: 6),
-                      Text('${spec.section} · 计入${spec.hint}',
-                          style: TextStyle(
-                              fontSize: 11, color: scheme.outline)),
+                      Text(
+                        '${spec.section} · 计入${spec.hint}',
+                        style: TextStyle(fontSize: 11, color: scheme.outline),
+                      ),
                     ] else
                       Padding(
                         padding: const EdgeInsets.only(bottom: 10),
-                        child: Text('${spec.label} · ${spec.section}',
-                            style: TextStyle(
-                                fontSize: 12.5,
-                                color: scheme.primary,
-                                fontWeight: FontWeight.w600)),
+                        child: Text(
+                          '${spec.label} · ${spec.section}',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            color: scheme.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     const SizedBox(height: 12),
                     if (spec.needName) ...[
@@ -704,9 +743,7 @@ class _MaterialEditDialogState extends State<_MaterialEditDialog> {
                                 border: OutlineInputBorder(),
                               ),
                               child: Text(
-                                _d.dateIso.isEmpty
-                                    ? '选择日期'
-                                    : _d.dateIso,
+                                _d.dateIso.isEmpty ? '选择日期' : _d.dateIso,
                                 style: TextStyle(
                                   color: _d.dateIso.isEmpty
                                       ? scheme.outline
@@ -734,8 +771,7 @@ class _MaterialEditDialogState extends State<_MaterialEditDialog> {
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<int>(
-                      initialValue:
-                          _clampI(_d.level, spec.levels.length - 1),
+                      initialValue: _clampI(_d.level, spec.levels.length - 1),
                       decoration: const InputDecoration(
                         labelText: '级别 / 档位',
                         isDense: true,
@@ -743,7 +779,10 @@ class _MaterialEditDialogState extends State<_MaterialEditDialog> {
                       ),
                       items: [
                         for (var i = 0; i < spec.levels.length; i++)
-                          DropdownMenuItem(value: i, child: Text(spec.levels[i])),
+                          DropdownMenuItem(
+                            value: i,
+                            child: Text(spec.levels[i]),
+                          ),
                       ],
                       onChanged: (v) {
                         if (v != null) setState(() => _d.level = v);
@@ -760,7 +799,10 @@ class _MaterialEditDialogState extends State<_MaterialEditDialog> {
                         ),
                         items: [
                           for (var i = 0; i < spec.opts.length; i++)
-                            DropdownMenuItem(value: i, child: Text(spec.opts[i])),
+                            DropdownMenuItem(
+                              value: i,
+                              child: Text(spec.opts[i]),
+                            ),
                         ],
                         onChanged: (v) {
                           if (v != null) setState(() => _d.opt = v);
@@ -789,8 +831,10 @@ class _MaterialEditDialogState extends State<_MaterialEditDialog> {
                             _d.files.isEmpty
                                 ? '证明文件（可选）'
                                 : '证明文件 ${_d.files.length}',
-                            style:
-                                TextStyle(fontSize: 13, color: scheme.outline),
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: scheme.outline,
+                            ),
                           ),
                         ),
                         TextButton.icon(
@@ -806,19 +850,27 @@ class _MaterialEditDialogState extends State<_MaterialEditDialog> {
                           padding: const EdgeInsets.only(bottom: 4),
                           child: Row(
                             children: [
-                              const Icon(Icons.insert_drive_file,
-                                  size: 16, color: Colors.grey),
+                              const Icon(
+                                Icons.insert_drive_file,
+                                size: 16,
+                                color: Colors.grey,
+                              ),
                               const SizedBox(width: 6),
                               Expanded(
-                                child: Text(f,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontSize: 12)),
+                                child: Text(
+                                  f,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 12),
+                                ),
                               ),
                               InkWell(
                                 onTap: () => _removeFile(f),
-                                child: const Icon(Icons.close,
-                                    size: 16, color: Colors.grey),
+                                child: const Icon(
+                                  Icons.close,
+                                  size: 16,
+                                  color: Colors.grey,
+                                ),
                               ),
                             ],
                           ),
@@ -870,8 +922,10 @@ class _MaterialEditDialogState extends State<_MaterialEditDialog> {
             if (_invalidHint != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: Text(_invalidHint!,
-                    style: TextStyle(fontSize: 12, color: scheme.error)),
+                child: Text(
+                  _invalidHint!,
+                  style: TextStyle(fontSize: 12, color: scheme.error),
+                ),
               ),
           ],
         ),
@@ -896,9 +950,10 @@ class _MaterialEditDialogState extends State<_MaterialEditDialog> {
               child: Text(
                 '自动识别：${zcCatNames[_d.cat]}',
                 style: TextStyle(
-                    fontSize: 11.5,
-                    color: scheme.primary,
-                    fontWeight: FontWeight.w600),
+                  fontSize: 11.5,
+                  color: scheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -910,8 +965,10 @@ class _MaterialEditDialogState extends State<_MaterialEditDialog> {
               decoration: const InputDecoration(
                 isDense: true,
                 border: OutlineInputBorder(),
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
               ),
               items: [
                 for (final e in zcCatNames.entries)
@@ -956,31 +1013,32 @@ class _PickDirect extends _PickOutcome {}
 const _dimOrder = ['z', 'd', 't', 'm', 'l'];
 
 String _dimLabel(String dim) => switch (dim) {
-      'z' => '智育',
-      'd' => '德育',
-      't' => '体育',
-      'm' => '美育',
-      'l' => '劳育',
-      _ => '',
-    };
+  'z' => '智育',
+  'd' => '德育',
+  't' => '体育',
+  'm' => '美育',
+  'l' => '劳育',
+  _ => '',
+};
 
 IconData _zcTypeIcon(ZcTypeId id) => switch (id) {
-      ZcTypeId.contest => Icons.emoji_events_outlined,
-      ZcTypeId.paper => Icons.description_outlined,
-      ZcTypeId.foreign => Icons.translate,
-      ZcTypeId.startup => Icons.rocket_launch_outlined,
-      ZcTypeId.honorP || ZcTypeId.honorG => Icons.workspace_premium_outlined,
-      ZcTypeId.deed => Icons.favorite_outline,
-      ZcTypeId.eduCon || ZcTypeId.eduPart => Icons.school_outlined,
-      ZcTypeId.servicePost => Icons.groups_outlined,
-      ZcTypeId.sportComp || ZcTypeId.psych || ZcTypeId.sportTeam =>
-        Icons.directions_run,
-      ZcTypeId.artsComp || ZcTypeId.artAct => Icons.palette_outlined,
-      ZcTypeId.media => Icons.campaign_outlined,
-      ZcTypeId.social => Icons.handshake_outlined,
-      ZcTypeId.laborAct => Icons.construction_outlined,
-      ZcTypeId.dorm => Icons.home_outlined,
-    };
+  ZcTypeId.contest => Icons.emoji_events_outlined,
+  ZcTypeId.paper => Icons.description_outlined,
+  ZcTypeId.foreign => Icons.translate,
+  ZcTypeId.startup => Icons.rocket_launch_outlined,
+  ZcTypeId.honorP || ZcTypeId.honorG => Icons.workspace_premium_outlined,
+  ZcTypeId.deed => Icons.favorite_outline,
+  ZcTypeId.eduCon || ZcTypeId.eduPart => Icons.school_outlined,
+  ZcTypeId.servicePost => Icons.groups_outlined,
+  ZcTypeId.sportComp ||
+  ZcTypeId.psych ||
+  ZcTypeId.sportTeam => Icons.directions_run,
+  ZcTypeId.artsComp || ZcTypeId.artAct => Icons.palette_outlined,
+  ZcTypeId.media => Icons.campaign_outlined,
+  ZcTypeId.social => Icons.handshake_outlined,
+  ZcTypeId.laborAct => Icons.construction_outlined,
+  ZcTypeId.dorm => Icons.home_outlined,
+};
 
 /// 第一级页：19 类活动（材料类型）按五育分组，点选返回 [ZcTypeId]。
 class _MaterialTypePickerPage extends StatelessWidget {
@@ -1009,7 +1067,10 @@ class _MaterialTypePickerPage extends StatelessWidget {
 
   List<Widget> _dimSection(BuildContext context, String dim) {
     final scheme = Theme.of(context).colorScheme;
-    final specs = [for (final s in zcTypeSpecs) if (s.dim == dim) s];
+    final specs = [
+      for (final s in zcTypeSpecs)
+        if (s.dim == dim) s,
+    ];
     if (specs.isEmpty) return const [];
     return [
       Padding(
@@ -1025,9 +1086,13 @@ class _MaterialTypePickerPage extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            Text('${_dimLabel(dim)} · ${specs.length}',
-                style:
-                    const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+            Text(
+              '${_dimLabel(dim)} · ${specs.length}',
+              style: const TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
       ),
@@ -1036,9 +1101,10 @@ class _MaterialTypePickerPage extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 8),
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(kAppCardRadius),
             side: BorderSide(
-                color: scheme.outlineVariant.withValues(alpha: 0.6)),
+              color: scheme.outlineVariant.withValues(alpha: 0.6),
+            ),
           ),
           child: ListTile(
             contentPadding: const EdgeInsets.fromLTRB(12, 4, 8, 4),
@@ -1049,18 +1115,26 @@ class _MaterialTypePickerPage extends StatelessWidget {
                 color: scheme.primary.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child:
-                  Icon(_zcTypeIcon(s.id), size: 19, color: scheme.primary),
+              child: Icon(_zcTypeIcon(s.id), size: 19, color: scheme.primary),
             ),
-            title: Text(s.label,
-                style: const TextStyle(
-                    fontSize: 13.5, fontWeight: FontWeight.w600)),
-            subtitle: Text(s.section,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 11, color: scheme.outline)),
-            trailing:
-                Icon(Icons.chevron_right, size: 18, color: scheme.outlineVariant),
+            title: Text(
+              s.label,
+              style: const TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            subtitle: Text(
+              s.section,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 11, color: scheme.outline),
+            ),
+            trailing: Icon(
+              Icons.chevron_right,
+              size: 18,
+              color: scheme.outlineVariant,
+            ),
             onTap: () => Navigator.of(context).pop(s.id),
           ),
         ),
@@ -1140,8 +1214,9 @@ class _ActivityPickPageState extends State<_ActivityPickPage> {
                   prefixIcon: const Icon(Icons.search, size: 20),
                   hintText: '搜索比赛名称，如 数学建模 / RoboMaster / CCPC',
                   isDense: true,
-                  border:
-                      OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(kAppCardRadius),
+                  ),
                 ),
               ),
             ),
@@ -1193,14 +1268,19 @@ class _ActivityPickPageState extends State<_ActivityPickPage> {
       }
       if (it.group != null && it.group != cur) {
         cur = it.group;
-        out.add(Padding(
-          padding: const EdgeInsets.fromLTRB(4, 6, 4, 2),
-          child: Text(cur!,
+        out.add(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 6, 4, 2),
+            child: Text(
+              cur!,
               style: TextStyle(
-                  fontSize: 12,
-                  color: scheme.outline,
-                  fontWeight: FontWeight.w600)),
-        ));
+                fontSize: 12,
+                color: scheme.outline,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        );
       }
       out.add(_candidateTile(context, it));
     }
@@ -1216,7 +1296,7 @@ class _ActivityPickPageState extends State<_ActivityPickPage> {
       margin: const EdgeInsets.only(bottom: 6),
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(kAppCardRadius),
         side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.6)),
       ),
       child: ListTile(
@@ -1231,16 +1311,23 @@ class _ActivityPickPageState extends State<_ActivityPickPage> {
           ),
           child: Icon(icon, size: 17, color: scheme.primary),
         ),
-        title: Text(it.title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style:
-                const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+        title: Text(
+          it.title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        ),
         subtitle: it.other
-            ? Text('手动填写名称（比赛类将自动识别类别）',
-                style: TextStyle(fontSize: 11, color: scheme.outline))
+            ? Text(
+                '手动填写名称（比赛类将自动识别类别）',
+                style: TextStyle(fontSize: 11, color: scheme.outline),
+              )
             : null,
-        trailing: Icon(Icons.chevron_right, size: 18, color: scheme.outlineVariant),
+        trailing: Icon(
+          Icons.chevron_right,
+          size: 18,
+          color: scheme.outlineVariant,
+        ),
         onTap: () => _pick(it),
       ),
     );
@@ -1252,11 +1339,11 @@ class _ActivityPickPageState extends State<_ActivityPickPage> {
       margin: EdgeInsets.zero,
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(kAppCardRadius),
         side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.6)),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(kAppCardRadius),
         onTap: _direct,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
@@ -1268,16 +1355,17 @@ class _ActivityPickPageState extends State<_ActivityPickPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('直接填写（不选具体活动）',
-                        style: TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w600)),
+                    const Text(
+                      '直接填写（不选具体活动）',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const SizedBox(height: 2),
                     Text(
-                      _isContest
-                          ? '手动输入比赛名称，提交时将自动识别类别'
-                          : '手动填写名称与档位',
-                      style:
-                          TextStyle(fontSize: 11, color: scheme.outline),
+                      _isContest ? '手动输入比赛名称，提交时将自动识别类别' : '手动填写名称与档位',
+                      style: TextStyle(fontSize: 11, color: scheme.outline),
                     ),
                   ],
                 ),

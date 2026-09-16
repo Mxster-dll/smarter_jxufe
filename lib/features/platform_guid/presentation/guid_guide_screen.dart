@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/features/leave/data/providers/leave_providers.dart';
 import 'package:smarter_jxufe/features/net_fee/data/providers/net_fee_providers.dart';
 import 'package:smarter_jxufe/features/platform_guid/data/guid_capture_session.dart';
@@ -85,10 +86,12 @@ class _GuidGuideScreenState extends ConsumerState<GuidGuideScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
-        ..showSnackBar(SnackBar(
-          content: Text('已保存平台标识，网费 / 请假 / 校历实时源已生效'),
-          duration: const Duration(seconds: 2),
-        ));
+        ..showSnackBar(
+          SnackBar(
+            content: Text('已保存平台标识，网费 / 请假 / 校历实时源已生效'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
     }
   }
 
@@ -100,10 +103,12 @@ class _GuidGuideScreenState extends ConsumerState<GuidGuideScreen> {
     if (guid == null) {
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
-        ..showSnackBar(const SnackBar(
-          content: Text('剪贴板中未找到平台标识（GUID），请先运行一键脚本复制'),
-          duration: Duration(seconds: 3),
-        ));
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('剪贴板中未找到平台标识（GUID），请先运行一键脚本复制'),
+            duration: Duration(seconds: 3),
+          ),
+        );
       return;
     }
     await _saveGuid(guid);
@@ -116,10 +121,12 @@ class _GuidGuideScreenState extends ConsumerState<GuidGuideScreen> {
     if (guid == null || !isValidGuid(guid)) {
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
-        ..showSnackBar(const SnackBar(
-          content: Text('未能识别出平台标识：请粘贴包含 GUID 的完整内容'),
-          duration: Duration(seconds: 3),
-        ));
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('未能识别出平台标识：请粘贴包含 GUID 的完整内容'),
+            duration: Duration(seconds: 3),
+          ),
+        );
       return;
     }
     await _saveGuid(guid);
@@ -243,10 +250,7 @@ class _GuidGuideScreenState extends ConsumerState<GuidGuideScreen> {
             Expanded(
               child: Text(
                 _session.detail ?? '准备中…',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: scheme.onSurface,
-                ),
+                style: TextStyle(fontSize: 13, color: scheme.onSurface),
               ),
             ),
           ],
@@ -409,10 +413,7 @@ class _GuidGuideScreenState extends ConsumerState<GuidGuideScreen> {
             const SizedBox(height: 4),
             Text(
               '系统设置已自动还原。点击保存即配置到网费 / 请假 / 校历。',
-              style: TextStyle(
-                fontSize: 12,
-                color: scheme.onSurfaceVariant,
-              ),
+              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
             ),
             const SizedBox(height: 12),
             Row(
@@ -577,10 +578,12 @@ class _GuidGuideScreenState extends ConsumerState<GuidGuideScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
-        ..showSnackBar(const SnackBar(
-          content: Text('已清除平台标识'),
-          duration: Duration(seconds: 2),
-        ));
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('已清除平台标识'),
+            duration: Duration(seconds: 2),
+          ),
+        );
     }
   }
 
@@ -667,10 +670,7 @@ class _GuidGuideScreenState extends ConsumerState<GuidGuideScreen> {
           children: [
             Text(
               '也可把包含 GUID 的任意内容（网页地址 / 抓包文本等）粘贴到下方识别：',
-              style: TextStyle(
-                fontSize: 12.5,
-                color: scheme.onSurfaceVariant,
-              ),
+              style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
             ),
             const SizedBox(height: 10),
             TextField(
@@ -739,13 +739,9 @@ class _GuidGuideScreenState extends ConsumerState<GuidGuideScreen> {
     required Widget child,
     Color? color,
   }) {
-    final scheme = Theme.of(context).colorScheme;
     return Material(
       color: color ?? Theme.of(context).cardTheme.color,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-        side: BorderSide(color: scheme.outlineVariant),
-      ),
+      shape: appCardShape(context),
       clipBehavior: Clip.antiAlias,
       child: child,
     );

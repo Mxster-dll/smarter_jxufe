@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../design/JxufeTheme.dart';
+import '../../../design/app_card.dart';
 import '../domain/doc_blocks.dart';
 import '../domain/rule_doc.dart';
 import '../data/rules_repository.dart';
@@ -62,9 +63,9 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
       await openOriginalPdf(widget.doc);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('无法打开原件 PDF：$e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('无法打开原件 PDF：$e')));
     }
   }
 
@@ -88,16 +89,12 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
           ),
           IconButton(
             tooltip: '减小字号',
-            onPressed: _font > 13.5
-                ? () => setState(() => _font -= 1)
-                : null,
+            onPressed: _font > 13.5 ? () => setState(() => _font -= 1) : null,
             icon: const Icon(Icons.text_decrease),
           ),
           IconButton(
             tooltip: '增大字号',
-            onPressed: _font < 22
-                ? () => setState(() => _font += 1)
-                : null,
+            onPressed: _font < 22 ? () => setState(() => _font += 1) : null,
             icon: const Icon(Icons.text_increase),
           ),
           const SizedBox(width: 4),
@@ -108,8 +105,10 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
         error: (e, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
-            child: Text('文档解析失败：$e',
-                style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            child: Text(
+              '文档解析失败：$e',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
           ),
         ),
         data: (article) => _buildBody(article, catalog),
@@ -269,9 +268,7 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
           decoration: BoxDecoration(
-            color: active
-                ? scheme.primary
-                : scheme.surfaceContainerHighest,
+            color: active ? scheme.primary : scheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(999),
           ),
           child: label,
@@ -296,10 +293,7 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
             ),
           ),
         ),
-        Divider(
-          height: 1,
-          color: Theme.of(context).colorScheme.outlineVariant,
-        ),
+        Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
         if (sideRail)
           Expanded(
             child: ListView.builder(
@@ -345,9 +339,8 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
       final b = blocks[i];
       if (b.kind != BlockKind.heading) continue;
       final isChapter = _chapterBody.hasMatch(b.text);
-      final isBigTitle = b.level == 1 &&
-          !b.text.contains('通知') &&
-          b.text.length >= 8;
+      final isBigTitle =
+          b.level == 1 && !b.text.contains('通知') && b.text.length >= 8;
       if (isChapter || isBigTitle) {
         noticeEnd = i;
         break;
@@ -366,7 +359,8 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
     while (i < blocks.length) {
       final b = blocks[i];
       if (b.kind == BlockKind.heading) {
-        final isDocBanner = !bannerDone &&
+        final isDocBanner =
+            !bannerDone &&
             b.level == 1 &&
             b.text.length >= 6 &&
             !b.text.contains('通知') &&
@@ -402,13 +396,12 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
         continue;
       }
       if (b.kind == BlockKind.table) {
-        children.add(Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          child: DocTable(
-            data: b.table!,
-            cellFontSize: _font - 3,
+        children.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: DocTable(data: b.table!, cellFontSize: _font - 3),
           ),
-        ));
+        );
         i++;
         continue;
       }
@@ -433,33 +426,37 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
   }) {
     final text = blocks[idx].text;
     if (inNotice && _wenhaoBody.hasMatch(text) && text.length <= 26) {
-      out.add(Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 13.5,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 2,
-            color: JxufeTheme.primaryColor,
+      out.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Text(
+            text,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 2,
+              color: JxufeTheme.primaryColor,
+            ),
           ),
         ),
-      ));
+      );
       return 1;
     }
     if (text == '（此页无正文）') {
-      out.add(Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: _font - 4,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+      out.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Text(
+            text,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: _font - 4,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
-      ));
+      );
       return 1;
     }
     if (_dateBody.hasMatch(text)) return 1; // 日期由前块落款消费
@@ -473,38 +470,42 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
         date = blocks[idx + 1].text;
         consumed = 2;
       }
-      out.add(Padding(
-        padding: const EdgeInsets.only(top: 12, bottom: 4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              text,
-              style: TextStyle(
-                fontSize: _font - 1,
-                fontWeight: FontWeight.w600,
-                height: 1.6,
+      out.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 12, bottom: 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                text,
+                style: TextStyle(
+                  fontSize: _font - 1,
+                  fontWeight: FontWeight.w600,
+                  height: 1.6,
+                ),
               ),
-            ),
-            if (date.isNotEmpty)
-              Text(date, style: TextStyle(fontSize: _font - 1, height: 1.6)),
-          ],
+              if (date.isNotEmpty)
+                Text(date, style: TextStyle(fontSize: _font - 1, height: 1.6)),
+            ],
+          ),
         ),
-      ));
+      );
       return consumed;
     }
     if (_isRecipient(text)) {
-      out.add(Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Text(
-          text,
-          style: TextStyle(
-            fontSize: _font - 1,
-            fontWeight: FontWeight.w500,
-            height: 1.7,
+      out.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: _font - 1,
+              fontWeight: FontWeight.w500,
+              height: 1.7,
+            ),
           ),
         ),
-      ));
+      );
       return 1;
     }
     // 正文段落以「第X条」开头（v3 md 中条号未标题化）→ 内联条号样式。
@@ -520,57 +521,63 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
         out.add(_clauseHeader(text));
         return 1;
       }
-      out.add(Padding(
-        padding: EdgeInsets.only(top: rest.isEmpty ? 10 : 0, bottom: 9),
-        child: Text.rich(
-          TextSpan(
-            children: [
-              TextSpan(
-                text: '\u3000\u3000$prefix',
-                style: TextStyle(
-                  fontSize: _font,
-                  fontWeight: FontWeight.w700,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
-              if (rest.isNotEmpty)
+      out.add(
+        Padding(
+          padding: EdgeInsets.only(top: rest.isEmpty ? 10 : 0, bottom: 9),
+          child: Text.rich(
+            TextSpan(
+              children: [
                 TextSpan(
-                  text: ' $rest',
-                  style: TextStyle(fontSize: _font, height: 1.8),
+                  text: '\u3000\u3000$prefix',
+                  style: TextStyle(
+                    fontSize: _font,
+                    fontWeight: FontWeight.w700,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
-            ],
+                if (rest.isNotEmpty)
+                  TextSpan(
+                    text: ' $rest',
+                    style: TextStyle(fontSize: _font, height: 1.8),
+                  ),
+              ],
+            ),
+            textAlign: TextAlign.justify,
           ),
-          textAlign: TextAlign.justify,
         ),
-      ));
+      );
       return 1;
     }
     if (text.startsWith('注') && (text.length < 3 || text.contains('：'))) {
-      out.add(Padding(
-        padding: const EdgeInsets.only(top: 4, bottom: 10),
-        child: Text(
-          text,
-          style: TextStyle(
-            fontSize: _font - 3.5,
-            height: 1.7,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+      out.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 4, bottom: 10),
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: _font - 3.5,
+              height: 1.7,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
-      ));
+      );
       return 1;
     }
     if (_isSubHead(text)) {
-      out.add(Padding(
-        padding: const EdgeInsets.only(top: 10, bottom: 2),
-        child: Text(
-          text,
-          style: TextStyle(
-            fontSize: _font - 1.5,
-            fontWeight: FontWeight.w700,
-            height: 1.5,
+      out.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 10, bottom: 2),
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: _font - 1.5,
+              fontWeight: FontWeight.w700,
+              height: 1.5,
+            ),
           ),
         ),
-      ));
+      );
       return 1;
     }
     out.add(_bodyPara(text));
@@ -584,23 +591,28 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
       final b = zone[i];
       if (b.kind == BlockKind.heading) {
         firstTitle ??= b.text;
-        children.add(Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Text(
-            b.text,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w700,
-              height: 1.45,
+        children.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text(
+              b.text,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                height: 1.45,
+              ),
             ),
           ),
-        ));
+        );
         continue;
       }
       _paraWidgetsAt(zone, i, children, inNotice: true);
     }
-    return NoticeCard(header: widget.doc.wenhao ?? firstTitle ?? '发文通知', children: children);
+    return NoticeCard(
+      header: widget.doc.wenhao ?? firstTitle ?? '发文通知',
+      children: children,
+    );
   }
 
   // ---------- 模板二：分类目录 ----------
@@ -617,14 +629,16 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
         heads.add(b.text);
       }
     }
-    children.add(_catalogBanner(
-      headline: heads.isEmpty ? widget.doc.title : heads.last,
-      chips: [
-        if (heads.length > 1) '附件',
-        if (widget.doc.year.isNotEmpty) '${widget.doc.year} 学年/年度',
-        if (widget.doc.wenhao != null) widget.doc.wenhao!,
-      ],
-    ));
+    children.add(
+      _catalogBanner(
+        headline: heads.isEmpty ? widget.doc.title : heads.last,
+        chips: [
+          if (heads.length > 1) '附件',
+          if (widget.doc.year.isNotEmpty) '${widget.doc.year} 学年/年度',
+          if (widget.doc.wenhao != null) widget.doc.wenhao!,
+        ],
+      ),
+    );
     children.add(const SizedBox(height: 14));
 
     // 分区标题与表格按顺序配对（提取器将标题集中在表前，顺序即对应关系）。
@@ -648,20 +662,24 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
     }
 
     if (paraIntro.isNotEmpty) {
-      children.add(Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Text(
-          paraIntro.join('\n'),
-          style: TextStyle(
-            fontSize: _font - 3,
-            height: 1.8,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+      children.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Text(
+            paraIntro.join('\n'),
+            style: TextStyle(
+              fontSize: _font - 3,
+              height: 1.8,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
-      ));
+      );
     }
 
-    final count = sections.length < tables.length ? sections.length : tables.length;
+    final count = sections.length < tables.length
+        ? sections.length
+        : tables.length;
     final zipped = <(String, TableData)>[];
     if (sections.length == tables.length && count > 0) {
       for (var s = 0; s < sections.length; s++) {
@@ -682,9 +700,7 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
             _sectionBody.hasMatch(b.text)) {
           current = b.text;
         } else if (b.kind == BlockKind.table) {
-          final label = current.isEmpty
-              ? '竞赛目录'
-              : unique(current);
+          final label = current.isEmpty ? '竞赛目录' : unique(current);
           zipped.add((label, b.table!));
         }
       }
@@ -692,11 +708,7 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
 
     for (final (label, data) in zipped) {
       toc.add((label, 'section'));
-      children.add(_sectionHeader(
-        label,
-        data,
-        key: _keyFor(label),
-      ));
+      children.add(_sectionHeader(label, data, key: _keyFor(label)));
       children.add(const SizedBox(height: 8));
       children.add(DocTable(data: data, cellFontSize: _font - 3.5));
       children.add(const SizedBox(height: 20));
@@ -736,7 +748,10 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
     );
   }
 
-  Widget _catalogBanner({required String headline, List<String> chips = const []}) {
+  Widget _catalogBanner({
+    required String headline,
+    List<String> chips = const [],
+  }) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
       decoration: BoxDecoration(
@@ -769,10 +784,9 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
                       vertical: 3,
                     ),
                     decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onPrimaryContainer
-                          .withValues(alpha: 0.08),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onPrimaryContainer.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
@@ -978,9 +992,9 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
   // ---------- 拆分互链：通知 ↔ 附件 ----------
 
   void _openDoc(RuleDoc doc) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => RulesReaderScreen(doc: doc)),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => RulesReaderScreen(doc: doc)));
   }
 
   /// 附件文档顶部的“所属通知”返回条。
@@ -1021,7 +1035,11 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
                     style: const TextStyle(fontSize: 13, height: 1.4),
                   ),
                 ),
-                Icon(Icons.chevron_right, size: 19, color: scheme.onSurfaceVariant),
+                Icon(
+                  Icons.chevron_right,
+                  size: 19,
+                  color: scheme.onSurfaceVariant,
+                ),
               ],
             ),
           ),
@@ -1059,10 +1077,7 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
               padding: const EdgeInsets.only(bottom: 6),
               child: Material(
                 color: Theme.of(context).cardTheme.color,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(9),
-                  side: BorderSide(color: scheme.outline),
-                ),
+                shape: appCardShape(context),
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
                   onTap: () => _openDoc(child),

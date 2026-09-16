@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/features/data_center/data/models/data_center_models.dart';
 import 'package:smarter_jxufe/features/data_center/data/providers/data_center_providers.dart';
 
@@ -18,10 +19,13 @@ class DataCenterScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
+        // 内嵌进主页右侧面板时（该面板路由栈的首页）不画返回按钮，见 §17.7。
+        leading: Navigator.of(context).canPop()
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => Navigator.of(context).maybePop(),
+              )
+            : null,
         title: const Text('学生个人数据中心'),
         centerTitle: true,
       ),
@@ -98,8 +102,7 @@ class DataCenterScreen extends ConsumerWidget {
   Widget _buildStudentCard(BuildContext context, DataCenterOverview o) {
     final name = o.username.isEmpty ? '?' : o.username;
     return Card(
-      elevation: 1.5,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: appCardShape(context),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
@@ -170,8 +173,7 @@ class DataCenterScreen extends ConsumerWidget {
 
   Widget _buildWeekCard(BuildContext context, DataCenterOverview o) {
     return Card(
-      elevation: 1.5,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: appCardShape(context),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -243,8 +245,7 @@ class DataCenterScreen extends ConsumerWidget {
 
   Widget _buildAcademicCard(BuildContext context, DataCenterOverview o) {
     return Card(
-      elevation: 1.5,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: appCardShape(context),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
         child: Column(
@@ -318,8 +319,7 @@ class DataCenterScreen extends ConsumerWidget {
     }).toList();
     final hasData = visible.isNotEmpty && o.peerCounts.isNotEmpty;
     return Card(
-      elevation: 1.5,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: appCardShape(context),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -393,8 +393,7 @@ class DataCenterScreen extends ConsumerWidget {
 
   Widget _buildMetricsCard(BuildContext context, DataCenterOverview o) {
     return Card(
-      elevation: 1.5,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: appCardShape(context),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
         child: Column(
@@ -455,8 +454,7 @@ class DataCenterScreen extends ConsumerWidget {
 
   Widget _buildCardSpendCard(BuildContext context, DataCenterOverview o) {
     return Card(
-      elevation: 1.5,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: appCardShape(context),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -556,8 +554,7 @@ class DataCenterScreen extends ConsumerWidget {
 
   Widget _buildTextbookCard(BuildContext context, DataCenterOverview o) {
     return Card(
-      elevation: 1.5,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: appCardShape(context),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
         child: Row(
@@ -595,8 +592,7 @@ class DataCenterScreen extends ConsumerWidget {
   Widget _buildBorrowCard(BuildContext context, DataCenterOverview o) {
     const order = ['本周', '本月', '本年'];
     return Card(
-      elevation: 1.5,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: appCardShape(context),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -649,8 +645,7 @@ class DataCenterScreen extends ConsumerWidget {
 
   Widget _buildAwardCard(BuildContext context, DataCenterOverview o) {
     return Card(
-      elevation: 1.5,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: appCardShape(context),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -713,8 +708,7 @@ class DataCenterScreen extends ConsumerWidget {
 
   Widget _buildLoginTrendCard(BuildContext context, DataCenterOverview o) {
     return Card(
-      elevation: 1.5,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: appCardShape(context),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/features/campus_address/domain/my_campus.dart';
 
-const _accent = FeaturePalette.campus;
+const _accent = FeaturePalette.cardAccent;
 
 /// 「我的校区」徽标（图钉 + 文字）。
 ///
@@ -24,11 +24,7 @@ Widget myCampusBadge(BuildContext context, {bool onImage = false}) {
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(
-          Icons.push_pin,
-          size: 11,
-          color: onImage ? Colors.white : _accent,
-        ),
+        Icon(Icons.push_pin, size: 11, color: onImage ? Colors.white : _accent),
         const SizedBox(width: 4),
         Text(
           '我的校区',

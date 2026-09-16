@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/features/campus_address/data/my_campus_prefs.dart';
 import 'package:smarter_jxufe/features/campus_address/domain/campus_address.dart';
@@ -17,14 +18,18 @@ class CampusAddressScreen extends ConsumerWidget {
   const CampusAddressScreen({super.key});
 
   void _copy(BuildContext context, CampusInfo c) {
-    Clipboard.setData(ClipboardData(text: '${c.name} ${c.address} 邮编：${c.postcode}'));
+    Clipboard.setData(
+      ClipboardData(text: '${c.name} ${c.address} 邮编：${c.postcode}'),
+    );
     if (!context.mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
-        content: Text('已复制${c.name}地址'),
-        duration: const Duration(seconds: 1),
-      ));
+      ..showSnackBar(
+        SnackBar(
+          content: Text('已复制${c.name}地址'),
+          duration: const Duration(seconds: 1),
+        ),
+      );
   }
 
   @override
@@ -51,15 +56,14 @@ class CampusAddressScreen extends ConsumerWidget {
           }
           final c = ordered[index - 1];
           final pinned = isMine(c);
-          final accent = pinned ? FeaturePalette.campus : scheme.primary;
+          final accent = pinned ? FeaturePalette.cardAccent : scheme.primary;
           return Material(
             color: Theme.of(context).cardTheme.color,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-              side: BorderSide(
-                color: pinned ? FeaturePalette.campus : scheme.outline,
-              ),
-            ),
+            shape: pinned
+                ? appCardShape(
+                    context,
+                  ).copyWith(side: BorderSide(color: FeaturePalette.cardAccent))
+                : appCardShape(context),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
               onTap: () => _copy(context, c),
@@ -75,8 +79,11 @@ class CampusAddressScreen extends ConsumerWidget {
                         color: accent.withValues(alpha: 0.10),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Icon(Icons.place_outlined,
-                          color: accent, size: 22),
+                      child: Icon(
+                        Icons.place_outlined,
+                        color: accent,
+                        size: 22,
+                      ),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -96,7 +103,9 @@ class CampusAddressScreen extends ConsumerWidget {
                               ),
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 2),
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
                                 decoration: BoxDecoration(
                                   color: scheme.primary.withValues(alpha: 0.08),
                                   borderRadius: BorderRadius.circular(999),
@@ -133,8 +142,11 @@ class CampusAddressScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Icon(Icons.copy_outlined,
-                        size: 18, color: scheme.onSurfaceVariant),
+                    Icon(
+                      Icons.copy_outlined,
+                      size: 18,
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ],
                 ),
               ),
