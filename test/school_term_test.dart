@@ -9,14 +9,19 @@
 // 回归目标（本次 bug）：`2026-09` 曾因用「入学年 + 月份」判学期而显示
 // `2025-2026 第一学期`；`2026-01` / `2027-01` 又因月份规则跨年错位。
 
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smarter_jxufe/features/school_calendar/data/anti_corruption/school_calendar_html_parser.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/wxcal_repository.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/school_term.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/teaching_week.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/wxcal_semester.dart';
 
-({int xn, int xq}) at(String day, {List<WxSemesterArrangement> terms = const []}) =>
-    currentSchoolTerm(DateTime.parse(day), terms: terms);
+({int xn, int xq}) at(
+  String day, {
+  List<WxSemesterArrangement> terms = const [],
+}) => currentSchoolTerm(DateTime.parse(day), terms: terms);
 
 WxSemesterArrangement term(String code, String start, String end) =>
     WxSemesterArrangement(
@@ -34,20 +39,19 @@ void main() {
   group('校历区间优先 · 真实离线快照', () {
     test('261 学期区间内一律判 2026-2027 第一学期', () {
       for (final day in [
-        '2026-09-07', // 学期 start（新生军训周 / 老生未开课）
-        '2026-09-10', // 开学前（第 0 周）
-        '2026-09-14', // 老生开始上课（第 1 教学周）
-        '2026-09-28', // 新生开始上课
+        '2026-09-07', // 学期 start（= 第 1 教学周周一；新生军训 / 老生报到周）
+        '2026-09-10', // 第 1 教学周
+        '2026-09-14', // 老生开始上课（第 2 教学周）
+        '2026-09-28', // 新生开始上课（第 4 教学周）
         '2026-10-15',
         '2026-12-31',
         '2027-01-10', // ← 跨年边界：旧月份规则会错判成 2027-2028 第一学期
         '2027-01-16', // 学期 end（寒假开始）
       ]) {
-        expect(
-          at(day, terms: real),
-          (xn: 2026, xq: 0),
-          reason: '$day 应判为 2026-2027 学年第一学期（261）',
-        );
+        expect(at(day, terms: real), (
+          xn: 2026,
+          xq: 0,
+        ), reason: '$day 应判为 2026-2027 学年第一学期（261）');
       }
     });
 
@@ -129,14 +133,28 @@ void main() {
       expect(tw, isNotNull);
       expect(tw!.term.matches(xn: 2026, xq: 0), isTrue);
       expect(tw.week, greaterThanOrEqualTo(1));
-      expect(tw.firstMonday, DateTime.parse('2026-09-14'));
+      // 第 1 教学周 = 学期 start 所在周（09-07），不是「老生开始上课」09-14
+      expect(tw.firstMonday, DateTime.parse('2026-09-07'));
     });
 
-    test('开学前（261 的 09-07 ~ 09-13）：仍是 261 但 week = 0 → 整学期视图', () {
+    test('学期 start 那一周就是第 1 教学周（261 的 09-07 ~ 09-13）', () {
       final tw = resolveTeachingWeek(DateTime.parse('2026-09-10'), terms: real);
       expect(tw, isNotNull);
       expect(tw!.term.matches(xn: 2026, xq: 0), isTrue);
-      expect(tw.week, 0);
+      expect(tw.week, 1);
+      expect(tw.label, '第 1 教学周');
+    });
+
+    test('老生开课日 09-14 是第 2 教学周（回归：曾错判成第 1 周 → 开学当天课表全空）', () {
+      expect(
+        resolveTeachingWeek(DateTime.parse('2026-09-14'), terms: real)!.week,
+        2,
+      );
+      // 该生真实课表：12 个时段 2-17 周 + 形势与政策III 9-12 周 → 第 2 周起才有课
+      expect(
+        resolveTeachingWeek(DateTime.parse('2026-09-21'), terms: real)!.week,
+        3,
+      );
     });
 
     test('假期里 resolveTeachingWeek 给的是「上一学期」→ 界面必须用学期匹配守卫', () {
@@ -146,6 +164,96 @@ void main() {
       expect(tw, isNotNull);
       expect(tw!.term.matches(xn: 2026, xq: 0), isFalse);
       expect(tw.term.matches(xn: 2025, xq: 1), isTrue);
+    });
+  });
+
+  // ── 漂移守卫：直接用**教务校历原文**（fixture）核对「周次 ↔ 教学周推算」 ──
+  //
+  // 教务校历是「周次 + 周一~周日日期」的月历表，是学校自己的周次口径。
+  // 旧实现把「老生开始上课」当第 1 周，整学期错位一周（2026-09-14 显示第 1 周，
+  // 而校历写的是第 2 周）——本组测试正是用来钉死这个锚点的。
+  group('校历周次 ↔ 教学周推算（真实 fixture 逐行核对）', () {
+    test('261 第一学期：校历每一行的周次都等于 resolveTeachingWeek 算出的周次', () {
+      final fixture = File('test/fixtures/_cal_261_xq0.html');
+      expect(
+        fixture.existsSync(),
+        isTrue,
+        reason: 'fixture 不存在，请先抓取教务校历 HTML 存档',
+      );
+      final calendar = SchoolCalendarHtmlParser().parse(
+        fixture.readAsStringSync(),
+        xn: 2026,
+        xq: 0,
+      );
+
+      var checked = 0;
+      final mismatches = <String>[];
+      for (final month in calendar.months) {
+        for (final row in month.rows) {
+          final weekNo = int.tryParse((row.weekNo ?? '').trim());
+          if (weekNo == null) continue; // 跨月续周的空周次行
+          final mondayIndex = row.days.indexWhere((d) => d != null);
+          if (mondayIndex < 0) continue;
+          final monday = DateTime(
+            month.year,
+            month.month,
+            row.days[mondayIndex]!,
+          ).subtract(Duration(days: mondayIndex));
+          final tw = resolveTeachingWeek(monday, terms: real);
+          checked++;
+          if (tw == null ||
+              tw.week != weekNo ||
+              tw.firstMonday != DateTime(2026, 9, 7)) {
+            mismatches.add(
+              '${month.label} 第$weekNo周（$monday）→ 实算 ${tw?.week}，'
+              'firstMonday=${tw?.firstMonday}',
+            );
+          }
+        }
+      }
+
+      expect(checked, greaterThanOrEqualTo(20), reason: '应覆盖校历全部周次行');
+      expect(mismatches, isEmpty, reason: mismatches.join('\n'));
+    });
+
+    test('261 第一学期：校历的周次覆盖 1~20（含期末复习周），第 1 周起点 09-07', () {
+      final calendar = SchoolCalendarHtmlParser().parse(
+        File('test/fixtures/_cal_261_xq0.html').readAsStringSync(),
+        xn: 2026,
+        xq: 0,
+      );
+      final weeks = <int>{
+        for (final m in calendar.months)
+          for (final r in m.rows)
+            if (int.tryParse((r.weekNo ?? '').trim()) != null)
+              int.parse(r.weekNo!.trim()),
+      };
+      expect(weeks.reduce((a, b) => a < b ? a : b), 1);
+      expect(weeks.reduce((a, b) => a > b ? a : b), greaterThanOrEqualTo(19));
+
+      // 第 1 周那行的周一就是 09-07；第 2 周那行是 09-14
+      final sep = calendar.months.firstWhere(
+        (m) => m.month == 9 && m.year == 2026,
+      );
+      DateTime? mondayOfWeek(int w) {
+        for (final r in sep.rows) {
+          if (int.tryParse((r.weekNo ?? '').trim()) != w) continue;
+          final i = r.days.indexWhere((d) => d != null);
+          if (i < 0) return null;
+          return DateTime(
+            sep.year,
+            sep.month,
+            r.days[i]!,
+          ).subtract(Duration(days: i));
+        }
+        return null;
+      }
+
+      expect(mondayOfWeek(1), DateTime(2026, 9, 7));
+      expect(mondayOfWeek(2), DateTime(2026, 9, 14));
+      expect(mondayOfWeek(4), DateTime(2026, 9, 28));
+      // 「2026-10-10 补第4周周五的课」→ 10-10（周六）属第 5 周
+      expect(resolveTeachingWeek(DateTime(2026, 10, 10), terms: real)!.week, 5);
     });
   });
 

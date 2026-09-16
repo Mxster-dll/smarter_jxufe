@@ -16,6 +16,18 @@ import 'package:smarter_jxufe/features/ims/menu/presentation/ims_tab_container.d
 /// - 全局会话本地已有 → `ensureReady()` **一个请求都不发**，直接进页面；
 /// - 会话真失效 → 业务请求触发拦截器自动用 TGC 静默换票并重试，用户无感；
 /// - 本地压根没有会话且换票失败 → 明确报错，可「重试」，也可以「先看缓存」。
+///
+/// **不再 pushReplacement，改成就地渲染目标页**（2026-09-16 改，用户反馈
+/// 「点开这四个部分时会显示一个由中心向外的扩张动画」）：
+/// - 旧实现是 `Navigator.pushReplacement(context, MaterialPageRoute(target))`，
+///   于是「点一下」会连做两次路由转场（本页转场 → 目标页转场），中间还闪一帧转圈；
+///   再叠上 Flutter 默认的 zoom 转场，观感就是「从中心扩出来」。
+/// - 现在本页**自己就是**目标页的宿主：会话就绪即渲染 `ImsTabContainer` /
+///   `ImsMenuScreen`，整个打开动作只有**一次**转场
+///   （横向共享轴，见 `lib/design/app_page_transitions.dart`）。
+/// - 副作用（都是想要的）：不再有 `setState during build` 风险（压根不动 Navigator）；
+///   首页侧栏的右侧内嵌面板里，本页仍作为面板栈的首页存在 → `canPop() == false`
+///   → 内嵌页照旧不显示返回按钮（用户 2026-09-15 裁定第 2 条）。
 class ImsSplashScreen extends ConsumerStatefulWidget {
   final ImsTab? initialTab;
 
@@ -26,11 +38,14 @@ class ImsSplashScreen extends ConsumerStatefulWidget {
 }
 
 class _ImsSplashScreenState extends ConsumerState<ImsSplashScreen> {
-  /// 会话准备中的进度提示（null = 无需等待，正在跳转）。
+  /// 会话准备中的进度提示（false 且未就绪 = 无需等待）。
   bool _preparing = false;
 
   /// 换票失败时的错误文案（非 null = 显示失败面板）。
   String? _error;
+
+  /// 会话就绪 → 直接渲染目标页。
+  bool _ready = false;
 
   @override
   void initState() {
@@ -42,8 +57,9 @@ class _ImsSplashScreenState extends ConsumerState<ImsSplashScreen> {
     final session = ref.read(imsSessionProvider);
 
     // 本地已有会话时这里不发任何请求（ensureReady 只读持久化）。
+    // 且这是同步分支：首帧 build 之前就把 _ready 置好 → 不闪转圈、不换路由。
     if (session.hasSession) {
-      _go();
+      _ready = true;
       return;
     }
 
@@ -62,27 +78,24 @@ class _ImsSplashScreenState extends ConsumerState<ImsSplashScreen> {
       return;
     }
     if (!mounted) return;
-    _go();
+    setState(() {
+      _preparing = false;
+      _ready = true;
+    });
   }
 
-  void _go() {
-    if (!mounted) return;
+  /// 目标页：本页即宿主（**不要再换成 push / pushReplacement**）。
+  Widget _target() {
     final initialTab = widget.initialTab;
-    final target = initialTab == null
-        ? const ImsMenuScreen()
-        : ImsTabContainer(initialTab: initialTab);
-    // 不能在本 widget 的首帧 build 阶段直接 push：给祖先 Navigator 打脏标记会触发
-    // 「setState() or markNeedsBuild() called during build」。统一推到本帧结束后。
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => target));
-    });
+    if (initialTab == null) return const ImsMenuScreen();
+    return ImsTabContainer(initialTab: initialTab);
   }
 
   @override
   Widget build(BuildContext context) {
     final error = _error;
     if (error != null) return _buildFailure(context, error);
+    if (_ready) return _target();
     return Scaffold(
       body: Center(
         child: Column(
@@ -135,7 +148,10 @@ class _ImsSplashScreenState extends ConsumerState<ImsSplashScreen> {
             ),
             const SizedBox(height: 8),
             OutlinedButton(
-              onPressed: _go,
+              onPressed: () => setState(() {
+                _error = null;
+                _ready = true;
+              }),
               child: const Text('先看本地缓存'),
             ),
             const SizedBox(height: 20),

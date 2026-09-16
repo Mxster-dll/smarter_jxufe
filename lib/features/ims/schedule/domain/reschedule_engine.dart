@@ -72,10 +72,12 @@ class EffectiveClass {
   bool get isExtra => mark == EffectiveMark.extra;
 
   /// 是否属于「因调课而改变时间/地点」的课（补课也算）。
-  bool get isRescheduled => mark == EffectiveMark.moved || mark == EffectiveMark.extra;
+  bool get isRescheduled =>
+      mark == EffectiveMark.moved || mark == EffectiveMark.extra;
 
   /// 是否参与实况窗/通知（停课与「已调走」占位都不参与）。
-  bool get isLive => mark != EffectiveMark.cancelled && mark != EffectiveMark.movedAway;
+  bool get isLive =>
+      mark != EffectiveMark.cancelled && mark != EffectiveMark.movedAway;
 
   /// 星期几（1 = 周一）。
   int get dayIndex => classTime.dayOfWeek.dayIndex;
@@ -213,8 +215,7 @@ Map<String, int> onceMarksBySlot(List<Reschedule> reschedules) {
     final s = r.originStartPeriod;
     final e = r.originEndPeriod;
     if (d == null || s == null || e == null || r.courseCode.isEmpty) continue;
-    final key =
-        '${r.courseCode.trim().toLowerCase()}|${d.name}|$s|$e';
+    final key = '${r.courseCode.trim().toLowerCase()}|${d.name}|$s|$e';
     out[key] = (out[key] ?? 0) + 1;
   }
   return out;

@@ -111,9 +111,8 @@ class RescheduleStore extends ChangeNotifier {
 
   /// 删除一条记录。
   Future<void> remove(RescheduleTerm term, String id) async {
-    final list = [
-      ..._cache[term.key] ?? const <Reschedule>[],
-    ]..removeWhere((r) => r.id == id);
+    final list = [..._cache[term.key] ?? const <Reschedule>[]]
+      ..removeWhere((r) => r.id == id);
     await _commit(term, list);
   }
 

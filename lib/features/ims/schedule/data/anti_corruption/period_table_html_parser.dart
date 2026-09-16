@@ -64,7 +64,8 @@ class PeriodTableHtmlParser {
   ClassPeriod? _parseRow(List<String> cells) {
     for (var i = 0; i + 2 < cells.length; i++) {
       if (!_periodCell.hasMatch(cells[i])) continue;
-      if (!_hhmmCell.hasMatch(cells[i + 1]) || !_hhmmCell.hasMatch(cells[i + 2])) {
+      if (!_hhmmCell.hasMatch(cells[i + 1]) ||
+          !_hhmmCell.hasMatch(cells[i + 2])) {
         continue;
       }
       final index = int.tryParse(cells[i]);

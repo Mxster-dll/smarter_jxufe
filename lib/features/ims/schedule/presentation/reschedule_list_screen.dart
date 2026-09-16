@@ -100,9 +100,7 @@ class _RescheduleListScreenState extends ConsumerState<RescheduleListScreen> {
       builder: (ctx) => AlertDialog(
         icon: const Icon(Icons.delete_outline),
         title: const Text('删除这条调课记录？'),
-        content: Text(
-          '「${r.courseName}」${r.scopeText} 将恢复成教务课表的原始安排。',
-        ),
+        content: Text('「${r.courseName}」${r.scopeText} 将恢复成教务课表的原始安排。'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -180,7 +178,7 @@ class _RescheduleListScreenState extends ConsumerState<RescheduleListScreen> {
               geCardTitle(
                 context,
                 text: '生效中 / 将来',
-                accent: FeaturePalette.reschedule,
+                accent: FeaturePalette.cardAccent,
                 trailing: Text(
                   '${active.length} 条',
                   style: TextStyle(
@@ -227,7 +225,7 @@ class _RescheduleListScreenState extends ConsumerState<RescheduleListScreen> {
           const Icon(
             Icons.info_outline,
             size: 18,
-            color: FeaturePalette.reschedule,
+            color: FeaturePalette.cardAccent,
           ),
           const SizedBox(width: 10),
           Expanded(

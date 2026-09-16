@@ -82,25 +82,40 @@ void main() {
   group('resolveTeachingWeek（真实校历离线数据）', () {
     final terms = wxcalOfflineToDomain();
 
-    test('261 学期：2026-09-10 为开学前第 0 周（老生 09-14 才上课）', () {
-      final tw = resolveTeachingWeek(DateTime(2026, 9, 10), terms: terms)!;
-      expect(tw.week, 0);
-      expect(tw.isBeforeTerm, isTrue);
-      expect(tw.label, '开学前');
-      // 学期 start 是 09-07（教职工上班/新生军训周），但第一教学周自 09-14 起
-      expect(tw.firstMonday, DateTime(2026, 9, 14));
+    test('261 学期：第 1 教学周自 2026-09-07（学期 start）起', () {
+      final tw = resolveTeachingWeek(DateTime(2026, 9, 7), terms: terms)!;
+      expect(tw.week, 1);
+      expect(tw.isOdd, isTrue);
+      expect(tw.firstMonday, DateTime(2026, 9, 7));
     });
 
-    test('261 学期：2026-09-14（周一）为第 1 教学周', () {
-      final tw = resolveTeachingWeek(DateTime(2026, 9, 14), terms: terms)!;
+    test('261 学期：2026-09-10 属第 1 教学周（老生 09-14 才开课，但那是第 2 周）', () {
+      final tw = resolveTeachingWeek(DateTime(2026, 9, 10), terms: terms)!;
       expect(tw.week, 1);
+      expect(tw.isBeforeTerm, isFalse);
+      expect(tw.label, '第 1 教学周');
+      expect(tw.firstMonday, DateTime(2026, 9, 7));
+    });
+
+    test('261 学期：2026-09-14（老生开课日）是第 2 教学周', () {
+      final tw = resolveTeachingWeek(DateTime(2026, 9, 14), terms: terms)!;
+      expect(tw.week, 2);
+      expect(tw.isEven, isTrue);
+    });
+
+    test('261 学期：2026-12-31 落在第 17 教学周（= 校历「学生课程结束」所在周）', () {
+      final tw = resolveTeachingWeek(DateTime(2026, 12, 31), terms: terms)!;
+      expect(tw.week, 17);
       expect(tw.isOdd, isTrue);
     });
 
-    test('261 学期：2026-12-31 落在第 16 教学周（与「上课 16 周」吻合）', () {
-      final tw = resolveTeachingWeek(DateTime(2026, 12, 31), terms: terms)!;
-      expect(tw.week, 16);
-      expect(tw.isEven, isTrue);
+    test('261 学期：校历「10-10 补第4周周五的课」→ 第 4 周 = 09-28~10-04、10-10 属第 5 周', () {
+      expect(resolveTeachingWeek(DateTime(2026, 9, 28), terms: terms)!.week, 4);
+      expect(resolveTeachingWeek(DateTime(2026, 10, 2), terms: terms)!.week, 4);
+      expect(
+        resolveTeachingWeek(DateTime(2026, 10, 10), terms: terms)!.week,
+        5,
+      );
     });
 
     test('252 学期：2026-03-02（周一）为第 1 教学周', () {
@@ -112,8 +127,8 @@ void main() {
     test('周一分界：周日仍属上一周，周一进入下一周', () {
       final sun = resolveTeachingWeek(DateTime(2026, 9, 20), terms: terms)!;
       final mon = resolveTeachingWeek(DateTime(2026, 9, 21), terms: terms)!;
-      expect(sun.week, 1);
-      expect(mon.week, 2);
+      expect(sun.week, 2);
+      expect(mon.week, 3);
     });
 
     test('空学期列表返回 null', () {
@@ -122,8 +137,8 @@ void main() {
 
     test('includesWeek 区间判定', () {
       final tw = resolveTeachingWeek(DateTime(2026, 10, 5), terms: terms)!;
-      // 2026-10-05 是周一，距 09-14 三周 → 第 4 教学周
-      expect(tw.week, 4);
+      // 2026-10-05 是周一，距 09-07 四周 → 第 5 教学周
+      expect(tw.week, 5);
       expect(tw.includesWeek(1, 16), isTrue);
       expect(tw.includesWeek(1, 3), isFalse);
       expect(tw.includesWeek(4, 8), isTrue);
@@ -174,7 +189,7 @@ void main() {
   // ───────────────────────────── 课表 → 当天日程 ─────────────────────────────
 
   group('sessionsOfDay / resolveLiveSession', () {
-    // 2026-09-14 是周一，属第 1 教学周
+    // 2026-09-14 是周一，属第 2 教学周（261 第 1 周自 09-07 起）
     final monday = DateTime(2026, 9, 14);
 
     ScheduleEntry entryWith(List<ClassTime> times, {String name = '高等数学'}) =>
@@ -215,7 +230,9 @@ void main() {
 
     test('周一的 1-2 节被正确推算为 08:00-09:35', () {
       final s = sessionsOfDay(
-        entries: [entryWith([ct()])],
+        entries: [
+          entryWith([ct()]),
+        ],
         table: PeriodTable.builtin,
         teachingWeek: 1,
         day: monday,
@@ -229,7 +246,9 @@ void main() {
 
     test('开学前（第 0 周）无任何课', () {
       final s = sessionsOfDay(
-        entries: [entryWith([ct()])],
+        entries: [
+          entryWith([ct()]),
+        ],
         table: PeriodTable.builtin,
         teachingWeek: 0,
         day: monday,
@@ -239,7 +258,9 @@ void main() {
 
     test('过滤掉非当天的课', () {
       final s = sessionsOfDay(
-        entries: [entryWith([ct(day: DayOfWeek.tuesday)])],
+        entries: [
+          entryWith([ct(day: DayOfWeek.tuesday)]),
+        ],
         table: PeriodTable.builtin,
         teachingWeek: 1,
         day: monday,
@@ -250,7 +271,9 @@ void main() {
     test('过滤掉不在本周的单周课', () {
       // 第 2 周是双周 → 单周课不成立
       final s = sessionsOfDay(
-        entries: [entryWith([ct(p: WeekParity.odd)])],
+        entries: [
+          entryWith([ct(p: WeekParity.odd)]),
+        ],
         table: PeriodTable.builtin,
         teachingWeek: 2,
         day: monday,
@@ -277,7 +300,9 @@ void main() {
         label: 'x',
       );
       final s = sessionsOfDay(
-        entries: [entryWith([ct(sp: 3, ep: 4)])],
+        entries: [
+          entryWith([ct(sp: 3, ep: 4)]),
+        ],
         table: tiny,
         teachingWeek: 1,
         day: monday,
@@ -287,7 +312,9 @@ void main() {
 
     test('08:20 处于 1-2 节课内 → LiveInClass，剩 75 分钟', () {
       final state = resolveLiveSession(
-        entries: [entryWith([ct()])],
+        entries: [
+          entryWith([ct()]),
+        ],
         table: PeriodTable.builtin,
         teachingWeek: 1,
         now: DateTime(2026, 9, 14, 8, 20),
@@ -295,12 +322,17 @@ void main() {
       expect(state, isA<LiveInClass>());
       final s = (state as LiveInClass).session;
       expect(s.remainingAt(DateTime(2026, 9, 14, 8, 20)).inMinutes, 75);
-      expect(formatCountdown(s.remainingAt(DateTime(2026, 9, 14, 8, 20))), '1 小时 15 分钟');
+      expect(
+        formatCountdown(s.remainingAt(DateTime(2026, 9, 14, 8, 20))),
+        '1 小时 15 分钟',
+      );
     });
 
     test('08:00 整已在上课（边界含首）', () {
       final state = resolveLiveSession(
-        entries: [entryWith([ct()])],
+        entries: [
+          entryWith([ct()]),
+        ],
         table: PeriodTable.builtin,
         teachingWeek: 1,
         now: DateTime(2026, 9, 14, 8, 0),
@@ -310,7 +342,9 @@ void main() {
 
     test('09:35 整已下课（边界不含尾）', () {
       final state = resolveLiveSession(
-        entries: [entryWith([ct()])],
+        entries: [
+          entryWith([ct()]),
+        ],
         table: PeriodTable.builtin,
         teachingWeek: 1,
         now: DateTime(2026, 9, 14, 9, 35),
@@ -350,7 +384,9 @@ void main() {
 
     test('当天课全部结束后 → LiveIdle，但保留今日课程列表', () {
       final state = resolveLiveSession(
-        entries: [entryWith([ct()])],
+        entries: [
+          entryWith([ct()]),
+        ],
         table: PeriodTable.builtin,
         teachingWeek: 1,
         now: DateTime(2026, 9, 14, 22, 0),
@@ -361,7 +397,9 @@ void main() {
 
     test('上午 10:00 无课且下午有课 → LiveUpcoming', () {
       final state = resolveLiveSession(
-        entries: [entryWith([ct(sp: 6, ep: 7)], name: '大学物理')],
+        entries: [
+          entryWith([ct(sp: 6, ep: 7)], name: '大学物理'),
+        ],
         table: PeriodTable.builtin,
         teachingWeek: 1,
         now: DateTime(2026, 9, 14, 10, 0),
@@ -372,7 +410,9 @@ void main() {
 
     test('进度：08:00-09:35 在 08:45 时为 45/95 分钟', () {
       final s = sessionsOfDay(
-        entries: [entryWith([ct()])],
+        entries: [
+          entryWith([ct()]),
+        ],
         table: PeriodTable.builtin,
         teachingWeek: 1,
         day: monday,
@@ -393,33 +433,32 @@ void main() {
       int ep = 2,
       String name = '高等数学',
       String code = '1001',
-    }) =>
-        ScheduleEntry(
-          classCode: '001',
-          className: '主干+',
-          courseCode: code,
-          courseName: name,
-          totalHours: 64,
-          credits: 4,
-          studyNature: '初修',
-          teacherCode: 'T1',
-          teacherName: '张老师',
-          selectionStatus: '选中',
-          isCrossMajor: false,
-          hasTextbook: true,
-          classTimes: [
-            ClassTime(
-              startWeek: 1,
-              endWeek: 16,
-              weekParity: WeekParity.every,
-              dayOfWeek: DayOfWeek.monday,
-              startPeriod: sp,
-              endPeriod: ep,
-              classroom: '麦三教3407',
-              campus: '麦庐园校区',
-            ),
-          ],
-        );
+    }) => ScheduleEntry(
+      classCode: '001',
+      className: '主干+',
+      courseCode: code,
+      courseName: name,
+      totalHours: 64,
+      credits: 4,
+      studyNature: '初修',
+      teacherCode: 'T1',
+      teacherName: '张老师',
+      selectionStatus: '选中',
+      isCrossMajor: false,
+      hasTextbook: true,
+      classTimes: [
+        ClassTime(
+          startWeek: 1,
+          endWeek: 16,
+          weekParity: WeekParity.every,
+          dayOfWeek: DayOfWeek.monday,
+          startPeriod: sp,
+          endPeriod: ep,
+          classroom: '麦三教3407',
+          campus: '麦庐园校区',
+        ),
+      ],
+    );
 
     test('上课中：标题含课程与教室，倒计时目标 = 下课时刻', () {
       final now = DateTime(2026, 9, 14, 8, 20);
@@ -504,7 +543,10 @@ void main() {
 
     test('formatCountdown 文本', () {
       expect(formatCountdown(const Duration(minutes: 23)), '23 分钟');
-      expect(formatCountdown(const Duration(hours: 1, minutes: 5)), '1 小时 5 分钟');
+      expect(
+        formatCountdown(const Duration(hours: 1, minutes: 5)),
+        '1 小时 5 分钟',
+      );
       expect(formatCountdown(const Duration(hours: 2)), '2 小时');
       expect(formatCountdown(Duration.zero), '已结束');
       expect(formatCountdown(const Duration(seconds: -5)), '已结束');
@@ -645,7 +687,10 @@ void main() {
     });
 
     test('垃圾 HTML 返回 null 而非抛异常', () {
-      expect(PeriodTableHtmlParser().parse('<html><body>无表格</body></html>'), isNull);
+      expect(
+        PeriodTableHtmlParser().parse('<html><body>无表格</body></html>'),
+        isNull,
+      );
     });
   });
 }

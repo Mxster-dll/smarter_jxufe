@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 /// 横向滑动学年选择器。
 ///
-/// 组件尺寸等于高亮框尺寸（122×44），年份溢出到组件外。
+/// 组件尺寸等于高亮框尺寸（默认 122×44，[compact] 时约 100×34），年份溢出到组件外。
 /// [hovered] 由父级注入，控制是否展开完整交互。
 class AcademicYearPicker extends StatefulWidget {
   final int startYear;
@@ -12,6 +12,9 @@ class AcademicYearPicker extends StatefulWidget {
   final ValueChanged<int>? onChanged;
   final ValueChanged<bool>? onHoverChanged;
 
+  /// 紧凑形态（手机端标题栏等窄空间）：字号与高度一并收紧。
+  final bool compact;
+
   const AcademicYearPicker({
     super.key,
     required this.startYear,
@@ -19,6 +22,7 @@ class AcademicYearPicker extends StatefulWidget {
     this.initialYear = 2025,
     this.onChanged,
     this.onHoverChanged,
+    this.compact = false,
   });
 
   @override
@@ -26,8 +30,12 @@ class AcademicYearPicker extends StatefulWidget {
 }
 
 class _AcademicYearPickerState extends State<AcademicYearPicker> {
-  static const double _yearW = 56.0;
-  static const double _dashW = 10.0;
+  double get _yearW => widget.compact ? 46.0 : 56.0;
+  double get _dashW => widget.compact ? 8.0 : 10.0;
+  double get _height => widget.compact ? 34.0 : 44.0;
+  double get _highlightFontSize => widget.compact ? 15.0 : 18.0;
+  double get _dimFontSize => widget.compact ? 11.5 : 13.0;
+
   double get _step => _yearW + _dashW;
   double get _highlightW => _yearW * 2 + _dashW;
 
@@ -38,6 +46,7 @@ class _AcademicYearPickerState extends State<AcademicYearPicker> {
   bool _hovered = false;
   bool _dragging = false;
   bool _mouseLeft = false;
+
   /// 补间代次：拖动开始或发起新补间时自增，使在途的旧补间自动作废。
   int _animToken = 0;
 
@@ -166,7 +175,7 @@ class _AcademicYearPickerState extends State<AcademicYearPicker> {
         },
         child: SizedBox(
           width: _highlightW + 4,
-          height: 44,
+          height: _height,
           child: Stack(
             clipBehavior: Clip.none,
             children: [
@@ -254,7 +263,7 @@ class _AcademicYearPickerState extends State<AcademicYearPicker> {
         child: AnimatedDefaultTextStyle(
           duration: const Duration(milliseconds: 150),
           style: TextStyle(
-            fontSize: highlight ? 18 : 13,
+            fontSize: highlight ? _highlightFontSize : _dimFontSize,
             fontWeight: highlight ? FontWeight.bold : FontWeight.normal,
             color: highlight
                 ? t.colorScheme.error
@@ -279,7 +288,7 @@ class _AcademicYearPickerState extends State<AcademicYearPicker> {
         child: AnimatedDefaultTextStyle(
           duration: const Duration(milliseconds: 150),
           style: TextStyle(
-            fontSize: highlight ? 18 : 13,
+            fontSize: highlight ? _highlightFontSize : _dimFontSize,
             fontWeight: highlight ? FontWeight.bold : FontWeight.normal,
             color: highlight
                 ? t.colorScheme.error

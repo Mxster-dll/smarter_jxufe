@@ -3,18 +3,28 @@
 /// 课表的每个时段都带 `startWeek/endWeek/weekParity`（如 `1-16周(单)`），
 /// 要判断「今天该上哪些课」就必须先知道**现在是第几教学周**。
 ///
-/// ## 为什么不用学期起始日直接算
-/// 校历的学期 `start` 是**教职工上班日**，不一定是第一教学周。以 261 学期为例：
-/// `start = 2026-09-07`，但那一周是**新生军训周**，老生 2026-09-14 才开始上课。
-/// 若按 `start` 算，整个学期的课都会错位一周。
+/// ## 第 1 教学周 = 学期起始日所在那一周（教务校历的「周次」口径）
+/// 教务校历（`SchoolCalendar.show.jsp`）本身就是按周排的月历表，**行首即教学周次**
+/// （见 `domain/school_calendar.dart` 的 `CalendarWeekRow.weekNo`），其第 1 周正是
+/// 学期 `start` 所在周：261 → 09-07~09-13，252 → 03-02~03-08，251 → 09-01~09-07。
+/// 课表的周次标签与校历出自同一个教务系统，故必须用同一个锚点，否则整学期错位。
 ///
-/// 故这里优先取校历中「本科生开始上课」事件的日期作为第一教学周起点
-/// （261 → 2026-09-14；252 → 2026-03-02），取不到时回退到学期 `start`。
+/// ## ⚠ 历史 bug（2026-09-14 修正，勿改回去）
+/// 旧实现取校历里**最早一条本科生「开始上课」事件**当第 1 周：261 命中
+/// 「老生开始上课」2026-09-14 → 判 09-14 为第 1 教学周 → **整学期错位一周**，
+/// 表现为开学当天课表页显示「第 1 周」且一片空白（该生所有课程都从第 2 周起）。
+/// 「开始上课」是**学生第一次上课的日子**，不等于第 1 教学周 —— 261 的第 1 周是
+/// 新生军训 / 老生报到周，老生从第 2 周（09-14）才开课。
 ///
-/// ## 口径已交叉验证
-/// 以 2026-09-10 验证：按本规则得**第 0 周**（开学前），而学校数据中台
-/// （`dzj.jxufe.edu.cn`）独立返回的 `weekTitle` 同为「2026 第一学期 第0周」。
-/// 另 2026-12-31 落在第 16 周，与校历「本科生上课 16 周」吻合。
+/// 三条自洽佐证（真实数据，可复核）：
+/// - 校历周次表：第 1 周 09-07~09-13、第 2 周 09-14~09-20、第 17 周 12-28~2027-01-03；
+/// - 校历写「2026-10-10 补第4周周五的课」→ 第 4 周周五 = 10-02，正在国庆假（10-01~10-07）内 ✅
+///   （若按 09-14 为第 1 周，第 4 周周五是 10-09，并非假日，补课无从谈起）；
+/// - 课表课程的周次是 `2-17 周`（老生 09-14 开课 = 第 2 周）↔ 校历「学生课程结束 12-31」
+///   = 第 17 周周四 ✅（若按旧锚点，课程要上到 2027-01-10，已过期末复习 01-04）。
+///
+/// 守卫测试：`test/school_term_test.dart` 的「校历周次 ↔ 教学周推算」用真实 fixture
+/// `test/fixtures/_cal_261_xq0.html` 逐行核对，改锚点必炸。
 library;
 
 import 'package:smarter_jxufe/features/school_calendar/domain/wxcal_semester.dart';
@@ -72,8 +82,7 @@ TeachingWeek? resolveTeachingWeek(
   final term = _pickTerm(day, terms);
   if (term == null) return null;
 
-  final firstDay = _firstTeachingDay(term);
-  final firstMonday = _mondayOf(firstDay);
+  final firstMonday = _firstTeachingMonday(term);
   final rawWeek = (day.difference(firstMonday).inDays / 7).floor() + 1;
 
   return TeachingWeek(
@@ -110,24 +119,17 @@ WxSemesterArrangement? _pickTerm(
   return exact ?? lastPast ?? earliest;
 }
 
-/// 第一教学周的起始日。
+/// 第 1 教学周的周一 = 学期 `start` 所在周的周一。
 ///
-/// 规则：取校历中「本科生开始上课」事件的最早日期（排除研究生事件）。
-/// 261 学期命中「老生开始上课」2026-09-14（而非「新生开始上课」09-28），
-/// 252 学期命中「本科生开始上课。」2026-03-02。
-/// 无此类事件（paragraph 旧版校历）时回退到学期 `start`。
-DateTime _firstTeachingDay(WxSemesterArrangement term) {
-  DateTime? best;
-  for (final e in term.events) {
-    // ⚠ 分类字段带字间空格（「本 科 生」「研 究 生」），必须先去掉空白再比对，
-    // 否则 contains('本科') 恒为 false，全部事件被漏掉 → 退回学期 start → 整学期错位一周。
-    final category = e.category?.replaceAll(RegExp(r'\s+'), '');
-    if (category != null && !category.contains('本科')) continue;
-    if (!e.text.contains('开始上课')) continue;
-    if (best == null || e.from.isBefore(best)) best = e.from;
-  }
-  return best ?? term.start;
-}
+/// 教务校历的「周次」列以学期起始周为第 1 周（261 → 2026-09-07，252 → 2026-03-02，
+/// 251 → 2025-09-01），证据与历史 bug 见文件头。
+/// **不要**再用「本科生开始上课」事件当锚点：那是学生第一次上课的日子，
+/// 261 的老生开课日 09-14 属于**第 2 周**。
+///
+/// 注：2018 年及更早的学期 `start` 有的是报到日（周六/周日），此时取所在周的周一；
+/// 这些历史学期不参与「当前教学周」（调用方都有学期匹配守卫），故无影响。
+DateTime _firstTeachingMonday(WxSemesterArrangement term) =>
+    _mondayOf(term.start);
 
 /// [d] 所在周的周一（当天即为周一时返回当天）。
 DateTime _mondayOf(DateTime d) =>

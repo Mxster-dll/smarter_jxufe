@@ -20,7 +20,11 @@ class ClassPeriod {
   /// 结束时刻，`HH:mm`。
   final String end;
 
-  const ClassPeriod({required this.index, required this.start, required this.end});
+  const ClassPeriod({
+    required this.index,
+    required this.start,
+    required this.end,
+  });
 
   /// 开始时刻距 00:00 的分钟数。格式非法时返回 0。
   int get startMinutes => parseHhmm(start);
@@ -107,7 +111,11 @@ class PeriodTable {
   /// 连续节次段 `[fromPeriod, toPeriod]` 在 [day] 那天的起止时刻。
   ///
   /// 任一端的节次缺失时返回 `(null, null)`。
-  ({DateTime? start, DateTime? end}) span(DateTime day, int fromPeriod, int toPeriod) {
+  ({DateTime? start, DateTime? end}) span(
+    DateTime day,
+    int fromPeriod,
+    int toPeriod,
+  ) {
     final s = startAt(day, fromPeriod);
     final e = endAt(day, toPeriod);
     if (s == null || e == null) return (start: null, end: null);

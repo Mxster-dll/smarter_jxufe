@@ -197,7 +197,8 @@ class Reschedule {
   String get summary => switch (kind) {
     RescheduleKind.move =>
       originText.isEmpty ? targetText : '$originText → $targetText',
-    RescheduleKind.cancel => '${originText.isEmpty ? courseName : originText} 停课',
+    RescheduleKind.cancel =>
+      '${originText.isEmpty ? courseName : originText} 停课',
     RescheduleKind.extra => '补课 $targetText',
   };
 
@@ -324,7 +325,9 @@ class Reschedule {
       targetCampus: raw['targetCampus'] is String
           ? raw['targetCampus'] as String
           : null,
-      newTeacher: raw['newTeacher'] is String && (raw['newTeacher'] as String).isNotEmpty
+      newTeacher:
+          raw['newTeacher'] is String &&
+              (raw['newTeacher'] as String).isNotEmpty
           ? raw['newTeacher'] as String
           : null,
       note: str('note'),

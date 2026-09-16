@@ -314,9 +314,7 @@ class _LiveClassScreenState extends ConsumerState<LiveClassScreen> {
   /// 通知栏胶囊的放大预览。
   Widget _buildCapsulePreview(BuildContext context) {
     final state = _resolve();
-    final content = state == null
-        ? null
-        : liveNotificationContent(state, _now);
+    final content = state == null ? null : liveNotificationContent(state, _now);
 
     return Card(
       elevation: 0,
@@ -330,7 +328,7 @@ class _LiveClassScreenState extends ConsumerState<LiveClassScreen> {
             geCardTitle(
               context,
               text: '实况窗预览',
-              accent: FeaturePalette.liveClass,
+              accent: FeaturePalette.cardAccent,
             ),
             const SizedBox(height: 14),
             _capsule(context, content, state),
@@ -347,9 +345,7 @@ class _LiveClassScreenState extends ConsumerState<LiveClassScreen> {
   ) {
     final scheme = Theme.of(context).colorScheme;
     final inClass = state is LiveInClass;
-    final accent = content == null
-        ? scheme.outline
-        : (inClass ? FeaturePalette.liveClass : FeaturePalette.schedule);
+    final accent = content == null ? scheme.outline : FeaturePalette.cardAccent;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -450,7 +446,7 @@ class _LiveClassScreenState extends ConsumerState<LiveClassScreen> {
             geCardTitle(
               context,
               text: '当前教学周',
-              accent: FeaturePalette.calendar,
+              accent: FeaturePalette.cardAccent,
             ),
             const SizedBox(height: 12),
             Row(
@@ -548,7 +544,7 @@ class _LiveClassScreenState extends ConsumerState<LiveClassScreen> {
             geCardTitle(
               context,
               text: '今日课程',
-              accent: FeaturePalette.schedule,
+              accent: FeaturePalette.cardAccent,
               trailing: Text(
                 '${sessions.length} 节',
                 style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
@@ -606,7 +602,7 @@ class _LiveClassScreenState extends ConsumerState<LiveClassScreen> {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: ongoing ? FontWeight.w700 : FontWeight.w500,
-                color: ongoing ? FeaturePalette.liveClass : null,
+                color: ongoing ? FeaturePalette.cardAccent : null,
               ),
             ),
           ),
@@ -647,7 +643,7 @@ class _LiveClassScreenState extends ConsumerState<LiveClassScreen> {
                           vertical: 1,
                         ),
                         decoration: BoxDecoration(
-                          color: FeaturePalette.liveClass.withValues(
+                          color: FeaturePalette.cardAccent.withValues(
                             alpha: 0.14,
                           ),
                           borderRadius: BorderRadius.circular(4),
@@ -656,7 +652,7 @@ class _LiveClassScreenState extends ConsumerState<LiveClassScreen> {
                           '上课中',
                           style: TextStyle(
                             fontSize: 11,
-                            color: FeaturePalette.liveClass,
+                            color: FeaturePalette.cardAccent,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -671,7 +667,10 @@ class _LiveClassScreenState extends ConsumerState<LiveClassScreen> {
                       : '${s.periodLabel} ${s.clockLabel} · ${s.classroom}'
                             '${s.campus == null ? '' : ' · ${s.campus}'}'
                             '${(s.teacherOverride ?? '').isEmpty ? '' : ' · ${s.teacherOverride}'}',
-                  style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: scheme.onSurfaceVariant,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),

@@ -1,6 +1,7 @@
 import 'package:html/dom.dart';
 import 'package:html/parser.dart' as parser;
 
+import 'package:smarter_jxufe/core/network/jw_page_decoding.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/class_time.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/schedule_entry.dart';
 import 'package:smarter_jxufe/utils/Log.dart';
@@ -61,6 +62,17 @@ class ScheduleHtmlParser {
   List<List<String>> _extractRawRows(String html) {
     final document = parser.parse(html);
     final tables = document.querySelectorAll('table');
+
+    // 该学期课表**尚未发布**时，教务返回的是不含任何表格的空页 —— 这是正常状态，
+    // 界面据此显示「课表还没出来 / 暂无课表数据」（学期选择器可以翻到未来的学期）。
+    // 但**会话失效页同样没有表格**，且它必须继续抛出去（否则「失效」会被伪装成「没数据」，
+    // 这正是 2026-09-15 踩过的坑）→ 用与其它教务页同一口径 [jwSessionExpired] 先排除。
+    if (tables.isEmpty) {
+      if (jwSessionExpired(html)) {
+        throw Exception('凭证已失效，请重新登录！');
+      }
+      return const [];
+    }
 
     if (tables.length != 1) {
       logInfo(html);

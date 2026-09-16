@@ -64,9 +64,8 @@ class ScheduledSession {
   int get endPeriod => classTime.endPeriod;
 
   /// 如「第3-4节」；单节时为「第3节」。
-  String get periodLabel => startPeriod == endPeriod
-      ? '第$startPeriod节'
-      : '第$startPeriod-$endPeriod节';
+  String get periodLabel =>
+      startPeriod == endPeriod ? '第$startPeriod节' : '第$startPeriod-$endPeriod节';
 
   /// 如「09:55-11:30」。
   String get clockLabel => '${formatHhmm(startAt)}-${formatHhmm(endAt)}';
