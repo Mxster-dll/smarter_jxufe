@@ -1,4 +1,4 @@
-#include <flutter/dart_project.h>
+﻿#include <flutter/dart_project.h>
 #include <flutter/flutter_view_controller.h>
 #include <windows.h>
 
@@ -27,7 +27,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
   Win32Window::Size size(1280, 720);
-  if (!window.Create(L"smarter_jxufe", origin, size)) {
+  // 窗口标题 = 应用中文名「智慧er江财」（用 \u 转义，与源码编码 / MSVC 代码页无关）。
+  if (!window.Create(L"\u667A\u6167er\u6C5F\u8D22", origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);

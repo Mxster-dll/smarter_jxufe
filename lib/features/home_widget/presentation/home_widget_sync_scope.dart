@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/features/home_widget/data/home_widget_sync.dart';
 import 'package:smarter_jxufe/features/home_widget/presentation/home_widget_launcher.dart';
+import 'package:smarter_jxufe/features/score_estimate/data/ge_deadline_reminders.dart';
+import 'package:smarter_jxufe/features/score_estimate/data/ge_providers.dart';
 
 /// 桌面小组件同步触发点（包在首页外层）。
 ///
@@ -50,9 +54,23 @@ class _HomeWidgetSyncScopeState extends ConsumerState<HomeWidgetSyncScope>
       await HomeWidgetLauncher.consumePendingRoute();
       if (!mounted) return;
     }
+    // 课程截止提醒与小组件同一时机重排（首帧 + 回前台）：重复条目要往后滚动，
+    // 否则「每周作业」的提醒只覆盖到下一个月就断了。幂等，数据没变时不做任何事。
+    unawaited(_syncDeadlineReminders());
     final sync = ref.read(homeWidgetSyncProvider);
     await sync.pushAuthSnapshot();
     await sync.syncAll(force: initial);
+  }
+
+  /// 按当前账号的课程重排截止提醒；失败只打日志（提醒不该影响首页任何功能）。
+  Future<void> _syncDeadlineReminders() async {
+    try {
+      final store = await ref.read(geStoreProvider.future);
+      final courses = await store.loadCourses();
+      await syncGeDeadlineReminders(courses: courses);
+    } catch (e) {
+      debugPrint('[deadline] 截止提醒同步失败：$e');
+    }
   }
 
   @override

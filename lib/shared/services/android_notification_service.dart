@@ -1,11 +1,15 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 import 'package:smarter_jxufe/shared/services/notification_service.dart';
 
 class AndroidNotificationService extends NotificationService {
   /// 实况窗通知通道 id。
   static const liveClassChannelId = 'live_class';
+
+  /// 截止提醒通知通道 id。
+  static const reminderChannelId = 'deadline_reminders';
 
   /// 实况窗固定通知 id —— 复用同一 id 即可原地更新同一条通知。
   static const liveClassNotificationId = 8801;
@@ -136,6 +140,74 @@ class AndroidNotificationService extends NotificationService {
       _plugin!.cancel(id: liveClassNotificationId);
     } catch (e) {
       debugPrint('Android 实况窗取消失败: $e');
+    }
+  }
+
+  @override
+  Future<bool> scheduleAt({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime when,
+    String? payload,
+  }) async {
+    if (!_ready || _plugin == null) return false;
+    // 已过去的时刻不排：AlarmManager 会立刻弹出（Windows 侧则会抛异常）。
+    if (!when.isAfter(DateTime.now())) return false;
+    try {
+      await _plugin!.zonedSchedule(
+        id: id,
+        title: title,
+        body: body,
+        payload: payload,
+        // 用 **UTC Location** 承载绝对时刻：不依赖设备时区名，
+        // 因此无需 flutter_timezone / setLocalLocation（`tz.UTC` 也无需载时区库）。
+        scheduledDate: tz.TZDateTime.from(when.toUtc(), tz.UTC),
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            reminderChannelId,
+            '截止提醒',
+            channelDescription: '网课 / 作业 / 考试截止前的提醒',
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+          iOS: DarwinNotificationDetails(),
+        ),
+        // 刻意用 inexact：精确闹钟在 Android 14+ 默认被拒（要用户去系统设置授权），
+        // 而截止提醒差几分钟无所谓。
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      );
+      return true;
+    } catch (e) {
+      debugPrint('Android 定时通知排期失败: $e');
+      return false;
+    }
+  }
+
+  @override
+  Future<void> cancelScheduled(Iterable<int> ids) async {
+    if (!_ready || _plugin == null) return;
+    for (final id in ids) {
+      try {
+        await _plugin!.cancel(id: id);
+      } catch (e) {
+        debugPrint('Android 撤销定时通知 #$id 失败: $e');
+      }
+    }
+  }
+
+  @override
+  Future<List<ScheduledNotificationInfo>> pendingScheduled() async {
+    if (!_ready || _plugin == null) return const [];
+    try {
+      final list = await _plugin!.pendingNotificationRequests();
+      return [
+        for (final p in list)
+          ScheduledNotificationInfo(id: p.id, payload: p.payload),
+      ];
+    } catch (e) {
+      debugPrint('Android 查询已排定通知失败: $e');
+      return const [];
     }
   }
 }

@@ -5,6 +5,18 @@ import 'package:flutter/foundation.dart';
 import 'package:smarter_jxufe/shared/services/android_notification_service.dart';
 import 'package:smarter_jxufe/shared/services/windows_notification_service.dart';
 
+/// 已排定的**定时**通知（对账用，见 `scheduleAt`）。
+@immutable
+class ScheduledNotificationInfo {
+  const ScheduledNotificationInfo({required this.id, this.payload});
+
+  /// 通知 id。
+  final int id;
+
+  /// 排期时写入的负载（截止提醒写的是触发时刻的 epoch 毫秒）。
+  final String? payload;
+}
+
 /// 系统通知服务接口。
 abstract class NotificationService {
   /// 初始化通知服务。
@@ -35,6 +47,24 @@ abstract class NotificationService {
 
   /// 撤销实况窗（今日无课或用户关闭时调用）。
   void cancelLiveClass();
+
+  /// 排定一条**定时**通知（绝对时刻 [when]）。
+  ///
+  /// 返回是否真的排上：服务未就绪 / 平台不支持 / 时刻已过 → `false`。
+  /// [payload] 供 `pendingScheduled()` 对账（截止提醒写触发时刻的 epoch 毫秒）。
+  Future<bool> scheduleAt({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime when,
+    String? payload,
+  }) async => false;
+
+  /// 撤销若干条定时通知（id 不存在时静默）。
+  Future<void> cancelScheduled(Iterable<int> ids) async {}
+
+  /// 当前已排定的定时通知（对账用；未就绪 / 失败返回空表）。
+  Future<List<ScheduledNotificationInfo>> pendingScheduled() async => const [];
 
   /// 根据当前平台获取实例。
   static NotificationService get instance {

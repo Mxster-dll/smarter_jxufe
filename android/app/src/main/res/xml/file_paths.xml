@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 「导出文件 + 调起系统分享」桥（FileShareBridge.kt）的共享目录白名单。
+     Dart 侧导出的文件（如志愿服务时长认定登记表 Word 原件）写在
+     cacheDir/shared/ 下，这里只暴露这一个子目录，不做整盘暴露。 -->
+<paths>
+    <cache-path name="shared" path="shared/" />
+</paths>
