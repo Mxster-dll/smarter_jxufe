@@ -3,20 +3,33 @@
 /// 所有改动即时写 Hive（串行队列），返回列表页即见最新摘要。
 library;
 
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/current_account_provider.dart';
 import '../../../design/feature_palette.dart';
 import '../data/ge_curriculum.dart';
+import '../data/ge_deadline_reminders.dart';
+import '../data/ge_memo_importer.dart';
+import '../data/ge_memo_providers.dart';
+import '../data/ge_memo_store.dart';
 import '../data/ge_prior_grades.dart';
 import '../data/ge_providers.dart';
 import '../data/ge_store.dart';
 import '../data/ge_summary.dart';
+import '../domain/ge_deadline.dart';
 import '../domain/ge_engine.dart';
+import '../domain/ge_memo.dart';
 import '../domain/ge_models.dart';
 import 'ge_common.dart';
+import 'ge_deadline_card.dart';
 import 'ge_dialogs.dart';
+import 'ge_memo_card.dart';
+import 'ge_ratio_bar.dart';
 import 'ge_summary_card.dart';
 
 class CourseDetailScreen extends ConsumerStatefulWidget {
@@ -46,8 +59,10 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
 
   late final TextEditingController _finalCtrl;
   late final TextEditingController _goalCtrl;
-  late final TextEditingController _dpCtrl;
-  final FocusNode _dpFocus = FocusNode();
+
+  /// 备忘录图片存储（应用私有目录；初始化失败只是图片功能不可用）。
+  GeMemoStore? _memoStore;
+  bool _memoBusy = false;
 
   @override
   void initState() {
@@ -57,16 +72,14 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
       text: _c.finalScore == null ? '' : geFmt(_c.finalScore!, decimals: 1),
     );
     _goalCtrl = TextEditingController(text: '85');
-    _dpCtrl = TextEditingController(text: '${_c.dailyPercent.round()}');
     _initStore();
+    _initMemoStore();
   }
 
   @override
   void dispose() {
     _finalCtrl.dispose();
     _goalCtrl.dispose();
-    _dpCtrl.dispose();
-    _dpFocus.dispose();
     super.dispose();
   }
 
@@ -90,6 +103,8 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
         _allCourses = all;
         _loading = false;
       });
+      // 进详情页即按当前数据重排截止提醒（幂等，数据没变时不做任何事）。
+      _syncDeadlineReminders();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -302,6 +317,10 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
           const SizedBox(height: 12),
           _goalCard(scheme),
           const SizedBox(height: 12),
+          _memoCard(),
+          const SizedBox(height: 12),
+          _deadlineCard(),
+          const SizedBox(height: 12),
           Card(
             margin: EdgeInsets.zero,
             elevation: 0,
@@ -316,7 +335,7 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
                     width: 3,
                     height: 13,
                     decoration: BoxDecoration(
-                      color: FeaturePalette.scoreEstimate,
+                      color: FeaturePalette.cardAccent,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -341,28 +360,198 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
     );
   }
 
-  // ---- 构成占比卡 ----
-  // ---- 构成占比卡 ----
+  // ---- 备忘录（文字 + 图片） ----
 
-  /// 滑块步进 10%：更新值并同步手输框文本。
-  void _setDailyPercent(double v) {
-    _dpCtrl.text = '${v.round()}';
-    _mutate(_c.copyWith(dailyPercent: v));
+  /// 当前账号（备忘录图片按账号分档存放，切号不串图）。
+  String get _account => ref.read(currentAccountProvider);
+
+  Future<void> _initMemoStore() async {
+    try {
+      final store = await ref.read(geMemoStoreProvider.future);
+      if (!mounted) return;
+      setState(() => _memoStore = store);
+    } catch (e) {
+      // 私有目录拿不到只是「不能存图片」，文字备忘录与整页功能照常。
+      debugPrint('[score_estimate] 备忘录目录初始化失败：$e');
+    }
   }
 
-  /// 手输平时占比（0-100 整数）；空串或非法则回写当前值。
-  void _applyDailyText() {
-    final v = int.tryParse(_dpCtrl.text.trim());
-    if (v == null) {
-      _dpCtrl.text = '${_c.dailyPercent.round()}';
+  /// 图片文件名 → 绝对路径（目录未就绪 / 文件缺失 → null，界面出占位图）。
+  String? _memoPath(GeMemoImage image) =>
+      _memoStore?.resolve(_account, _c.id, image.fileName);
+
+  Widget _memoCard() => GeMemoCard(
+    memo: _c.memo,
+    busy: _memoBusy,
+    mobile: geMemoMobilePlatformOn(defaultTargetPlatform.name),
+    resolvePath: _memoPath,
+    onChanged: (memo) => _mutate(_c.copyWith(memo: memo)),
+    onPickImages: _addMemoImages,
+    onRemoveImage: _removeMemoImage,
+  );
+
+  /// 选图 → 按 1600px 压缩 → 落盘 → 追加进备忘录（逐张失败原因汇总提示）。
+  Future<void> _addMemoImages(GeMemoPickSource source) async {
+    final store = _memoStore;
+    if (store == null) {
+      _memoSnack('备忘录目录还没准备好，请稍后重试');
       return;
     }
-    final clamped = v.clamp(0, 100);
-    _dpCtrl.text = '$clamped';
-    if (clamped != _c.dailyPercent.round()) {
-      _mutate(_c.copyWith(dailyPercent: clamped.toDouble()));
+    if (_memoBusy) return;
+    if (_c.memo.isFull) {
+      _memoSnack('已达 $geMemoMaxImages 张上限，删掉一些再加');
+      return;
+    }
+
+    setState(() => _memoBusy = true);
+    try {
+      final sources = await ref.read(geMemoPickerProvider).pick(source);
+      if (sources.isEmpty) return; // 用户取消
+      final result = await importGeMemoImages(
+        store: store,
+        account: _account,
+        courseId: _c.id,
+        sources: sources,
+        remainingSlots: _c.memo.remainingSlots,
+      );
+      if (!mounted) return;
+      if (result.added.isNotEmpty) {
+        _mutate(
+          _c.copyWith(
+            memo: _c.memo.copyWith(
+              images: [..._c.memo.images, ...result.added],
+            ),
+          ),
+        );
+      }
+      _memoReport(result);
+    } catch (e) {
+      debugPrint('[score_estimate] 备忘录导入异常：$e');
+      _memoSnack('导入失败：$e');
+    } finally {
+      if (mounted) setState(() => _memoBusy = false);
     }
   }
+
+  /// 删除一张图片：先摘记录（界面同帧消失），再删私有目录里的文件。
+  Future<void> _removeMemoImage(GeMemoImage image) async {
+    _mutate(
+      _c.copyWith(
+        memo: _c.memo.copyWith(
+          images: [
+            for (final x in _c.memo.images)
+              if (x.fileName != image.fileName) x,
+          ],
+        ),
+      ),
+    );
+    await _memoStore?.remove(
+      account: _account,
+      courseId: _c.id,
+      fileName: image.fileName,
+    );
+  }
+
+  /// 导入结果提示（成功条数 + 前 3 条跳过原因）。
+  void _memoReport(GeMemoImportResult result) {
+    if (result.isEmpty) return;
+    final lines = <String>[result.summary];
+    for (final skip in result.skipped.take(3)) {
+      lines.add('· ${geMemoSkipText(skip)}');
+    }
+    if (result.skipped.length > 3) {
+      lines.add('· 另有 ${result.skipped.length - 3} 张被跳过');
+    }
+    _memoSnack(lines.join('\n'));
+  }
+
+  void _memoSnack(String text) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(text), duration: const Duration(seconds: 4)),
+    );
+  }
+
+  // ---- 截止日期（网课 / 作业 / 考试） ----
+
+  Widget _deadlineCard() => GeDeadlineCard(
+    deadlines: _c.deadlines,
+    onAdd: () => _openDeadlineEditor(),
+    onEdit: _openDeadlineEditor,
+    onToggleDone: _toggleDeadlineDone,
+    onDelete: _deleteDeadline,
+  );
+
+  /// 新增 / 编辑一条（弹层返回 null = 取消）。
+  Future<void> _openDeadlineEditor([GeDeadline? existing]) async {
+    final result = await showGeDeadlineEditor(context, existing: existing);
+    if (result == null || !mounted) return;
+    final next = [..._c.deadlines];
+    final idx = next.indexWhere((x) => x.id == result.id);
+    if (idx < 0) {
+      next.add(result);
+    } else {
+      next[idx] = result;
+    }
+    _mutate(_c.copyWith(deadlines: next));
+    _syncDeadlineReminders();
+  }
+
+  /// 勾选 / 取消完成。重复条目 = **完成本期**：周期滚过去后完成态自动失效，
+  /// 不需要任何后台任务重置（见 `geDeadlineDoneNow`）。
+  void _toggleDeadlineDone(GeDeadline d) {
+    final now = DateTime.now();
+    final wasDone = geDeadlineDoneNow(d, now);
+    _mutate(
+      _c.copyWith(
+        deadlines: [
+          for (final x in _c.deadlines)
+            if (x.id == d.id)
+              (wasDone ? x.copyWith(clearDone: true) : x.copyWith(doneAt: now))
+            else
+              x,
+        ],
+      ),
+    );
+    _syncDeadlineReminders();
+  }
+
+  /// 删除一条（确认框；已排的提醒会在重排时一并撤销）。
+  Future<void> _deleteDeadline(GeDeadline d) async {
+    final ok = await geConfirmDelete(
+      context,
+      title: '删除截止日期',
+      message: '确定删除「${d.displayTitle}」吗？已排的提醒会一并撤销。',
+    );
+    if (!ok || !mounted) return;
+    _mutate(
+      _c.copyWith(
+        deadlines: [
+          for (final x in _c.deadlines)
+            if (x.id != d.id) x,
+        ],
+      ),
+    );
+    _syncDeadlineReminders();
+  }
+
+  /// 把系统里的通知排期对齐到当前数据（幂等；失败只打日志，不影响页面）。
+  void _syncDeadlineReminders() {
+    unawaited(syncGeDeadlineReminders(courses: _summaryCourses()));
+  }
+
+  // ---- 构成占比卡 ----
+
+  /// 设平时占比（弹层内滑动条 / 手输 / 快捷比例统一走这里，即时写库）。
+  void _setDailyPercent(double v) => _mutate(_c.copyWith(dailyPercent: v));
+
+  /// 打开比例设置弹层（点构成占比条触发）。
+  Future<void> _openRatioSheet() => showGeRatioSheet(
+    context,
+    parts: _c.parts,
+    dailyPercent: _c.dailyPercent,
+    onChanged: _setDailyPercent,
+  );
 
   Widget _ratioCard() {
     final scheme = Theme.of(context).colorScheme;
@@ -381,13 +570,20 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
             geCardTitle(
               context,
               text: '构成占比',
-              trailing: Text(
-                '${geFmt(_c.credits)} 学分 · 期末 ${geFmt(fp)}%',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: scheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${geFmt(_c.credits)} 学分 · 期末 ${geFmt(fp)}%',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: scheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Icon(Icons.tune, size: 14, color: scheme.onSurfaceVariant),
+                ],
               ),
             ),
             if (_planCreditHint != null) ...[
@@ -398,87 +594,20 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
                   fontSize: 11.5,
                   height: 1.35,
                   fontWeight: FontWeight.w600,
-                  color: FeaturePalette.scoreEstimate,
+                  color: FeaturePalette.cardAccent,
                 ),
               ),
             ],
-            Row(
-              children: [
-                Expanded(
-                  child: SliderTheme(
-                    data: SliderTheme.of(context).copyWith(
-                      activeTrackColor: FeaturePalette.scoreEstimate,
-                      inactiveTrackColor: scheme.surfaceContainerHighest,
-                      thumbColor: FeaturePalette.scoreEstimate,
-                      overlayColor: FeaturePalette.scoreEstimate.withValues(
-                        alpha: 0.12,
-                      ),
-                      activeTickMarkColor: Colors.transparent,
-                      inactiveTickMarkColor: Colors.transparent,
-                    ),
-                    child: Slider(
-                      value: dp.clamp(0, 100),
-                      max: 100,
-                      divisions: 10,
-                      label: '平时 ${geFmt(dp)}%',
-                      onChanged: _setDailyPercent,
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  width: 84,
-                  child: TextField(
-                    controller: _dpCtrl,
-                    focusNode: _dpFocus,
-                    keyboardType: TextInputType.number,
-                    textAlign: TextAlign.end,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(3),
-                    ],
-                    style: const TextStyle(fontSize: 13.5),
-                    decoration: const InputDecoration(
-                      isDense: true,
-                      suffixText: '%',
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 6,
-                      ),
-                    ),
-                    onSubmitted: (_) => _applyDailyText(),
-                    onTapOutside: (_) {
-                      _dpFocus.unfocus();
-                      _applyDailyText();
-                    },
-                  ),
-                ),
-              ],
-            ),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: SizedBox(
-                height: 8,
-                width: double.infinity,
-                child: Row(
-                  children: [
-                    Expanded(
-                      flex: dp.round(),
-                      child: const ColoredBox(
-                        color: FeaturePalette.scoreEstimate,
-                      ),
-                    ),
-                    Expanded(
-                      flex: fp.round(),
-                      child: const ColoredBox(color: Color(0xFF90A4AE)),
-                    ),
-                  ],
-                ),
-              ),
+            const SizedBox(height: 10),
+            GeRatioChart(
+              parts: _c.parts,
+              dailyPercent: dp,
+              onTap: _openRatioSheet,
             ),
             const SizedBox(height: 8),
             Text(
-              '总评 = 平时均分 × ${geFmt(dp)}% + 期末 × ${geFmt(fp)}%',
+              '总评 = 平时均分 × ${geFmt(dp)}% + 期末 × ${geFmt(fp)}%'
+              '${_c.parts.isEmpty ? ' · 点条可调比例，加分项后按分值分段' : ' · 点条可调比例'}',
               style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant),
             ),
           ],
@@ -609,7 +738,7 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
                         style: TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.w700,
-                          color: FeaturePalette.scoreEstimate,
+                          color: FeaturePalette.cardAccent,
                         ),
                       ),
                       Text(
@@ -628,7 +757,7 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
                           height: 1.1,
                           color: total < 60
                               ? scheme.error
-                              : FeaturePalette.scoreEstimate,
+                              : FeaturePalette.cardAccent,
                         ),
                       ),
                       Text(
@@ -645,9 +774,10 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
                       child: LinearProgressIndicator(
                         value: (total ?? calc.dailyContrib + 0) / 100,
                         minHeight: 7,
-                        color: FeaturePalette.scoreEstimate,
-                        backgroundColor: FeaturePalette.scoreEstimate
-                            .withValues(alpha: 0.12),
+                        color: FeaturePalette.cardAccent,
+                        backgroundColor: FeaturePalette.cardAccent.withValues(
+                          alpha: 0.12,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -715,16 +845,14 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
                         vertical: 1,
                       ),
                       decoration: BoxDecoration(
-                        color: FeaturePalette.scoreEstimate.withValues(
-                          alpha: 0.1,
-                        ),
+                        color: FeaturePalette.cardAccent.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
                         '满分 ${geFmt(calc.capSum, decimals: 2)}',
                         style: TextStyle(
                           fontSize: 11,
-                          color: FeaturePalette.scoreEstimate.withValues(
+                          color: FeaturePalette.cardAccent.withValues(
                             alpha: 0.95,
                           ),
                           fontWeight: FontWeight.w600,

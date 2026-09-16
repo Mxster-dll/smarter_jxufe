@@ -15,6 +15,8 @@ import '../../ims/schedule/domain/schedule_entry.dart';
 import '../../school_calendar/data/providers/wxcal_providers.dart';
 import '../../school_calendar/domain/school_term.dart';
 import '../data/ge_curriculum.dart';
+import '../data/ge_deadline_reminders.dart';
+import '../data/ge_memo_providers.dart';
 import '../data/ge_prior_grades.dart';
 import '../data/ge_providers.dart';
 import '../data/ge_store.dart';
@@ -23,6 +25,8 @@ import '../domain/ge_engine.dart';
 import '../domain/ge_models.dart';
 import 'ge_common.dart';
 import 'ge_dialogs.dart';
+import 'ge_memo_card.dart';
+import 'ge_ratio_bar.dart';
 import 'course_detail_screen.dart';
 import 'ge_summary_card.dart';
 
@@ -78,7 +82,7 @@ class ScoreEstimateScreen extends ConsumerStatefulWidget {
 }
 
 class _ScoreEstimateScreenState extends ConsumerState<ScoreEstimateScreen> {
-  static const _accent = FeaturePalette.scoreEstimate;
+  static const _accent = FeaturePalette.cardAccent;
 
   GeStore? _store;
   List<GeCourse> _courses = const [];
@@ -279,7 +283,27 @@ class _ScoreEstimateScreenState extends ConsumerState<ScoreEstimateScreen> {
       for (final x in _courses)
         if (x.id != c.id) x,
     ]);
+    // 备忘录图片躺在私有目录里，不随课程记录一起消失 → 主动清掉。
+    await _removeMemoFiles(c);
+    // 截止提醒的排期也要立刻对齐（否则被删课程的提醒到点还会响）。
+    await syncGeDeadlineReminders(
+      courses: [
+        for (final x in _courses)
+          if (x.id != c.id) x,
+      ],
+    );
     await _reload();
+  }
+
+  /// 删除课程时清掉它的备忘录图片（失败不影响「课程已删除」这一事实）。
+  Future<void> _removeMemoFiles(GeCourse c) async {
+    if (c.memo.imageCount == 0) return;
+    try {
+      final memoStore = await ref.read(geMemoStoreProvider.future);
+      await memoStore.removeAllOfCourse(ref.read(currentAccountProvider), c.id);
+    } catch (e) {
+      debugPrint('[score_estimate] 清理备忘录图片失败：$e');
+    }
   }
 
   Future<void> _openDetail(GeCourse c) async {
@@ -581,14 +605,14 @@ class _CourseCard extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: FeaturePalette.scoreEstimate.withValues(alpha: 0.1),
+                  color: FeaturePalette.cardAccent.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 alignment: Alignment.center,
                 child: const Icon(
                   Icons.calculate_outlined,
                   size: 22,
-                  color: FeaturePalette.scoreEstimate,
+                  color: FeaturePalette.cardAccent,
                 ),
               ),
               const SizedBox(width: 12),
@@ -609,6 +633,11 @@ class _CourseCard extends StatelessWidget {
                             ),
                           ),
                         ),
+                        // 有备忘录（文字 / 图片）→ 课程名后一个小图标。
+                        if (course.memo.isNotEmpty) ...[
+                          const SizedBox(width: 6),
+                          GeMemoBadge(memo: course.memo),
+                        ],
                         // 估计计入的课无需胶囊；未计入 / 教务成绩各给一个。
                         if (score.kind != _ScoreKind.estimate) ...[
                           const SizedBox(width: 6),
@@ -627,7 +656,15 @@ class _CourseCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 2),
+                    // 构成占比细条：平时分按分项分值断开（点行进详情页可调比例）。
+                    const SizedBox(height: 6),
+                    GeRatioBar(
+                      parts: course.parts,
+                      dailyPercent: course.dailyPercent,
+                      height: geRatioBarThinHeight,
+                      gap: 1.5,
+                    ),
+                    const SizedBox(height: 6),
                     Text(
                       '学分 ${geFmt(score.credits)}'
                       '（${score.creditsSource}）'
@@ -694,7 +731,7 @@ class _CourseCard extends StatelessWidget {
     final pending = score.kind == _ScoreKind.pending;
     final color = switch (score.kind) {
       _ScoreKind.grades => const Color(0xFF2E7D32),
-      _ScoreKind.estimate => FeaturePalette.scoreEstimate,
+      _ScoreKind.estimate => FeaturePalette.cardAccent,
       _ScoreKind.pending => scheme.onSurfaceVariant,
     };
     final label = switch (score.kind) {
@@ -729,7 +766,7 @@ class _CourseCard extends StatelessWidget {
               fontWeight: FontWeight.w600,
               color: pending
                   ? scheme.onSurfaceVariant
-                  : FeaturePalette.scoreEstimate.withValues(alpha: 0.9),
+                  : FeaturePalette.cardAccent.withValues(alpha: 0.9),
             ),
           ),
         ],
@@ -938,7 +975,7 @@ class _CreditSyncDialog extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
-                  color: FeaturePalette.scoreEstimate,
+                  color: FeaturePalette.cardAccent,
                 ),
               ),
             ),

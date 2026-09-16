@@ -23,7 +23,7 @@ class GeWeightedSummaryCard extends StatelessWidget {
     super.key,
     required this.summary,
     required this.pendingCount,
-    this.accent = FeaturePalette.scoreEstimate,
+    this.accent = FeaturePalette.cardAccent,
     this.planMajorName = '',
   });
 
