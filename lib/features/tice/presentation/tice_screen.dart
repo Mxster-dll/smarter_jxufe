@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/school_calendar_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/wxcal_providers.dart';
 import 'package:smarter_jxufe/features/tice/data/models/tice_models.dart';
@@ -147,8 +148,11 @@ class _TiceScreenState extends ConsumerState<TiceScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          Icon(Icons.calendar_today_outlined,
-              size: 15, color: scheme.onSurfaceVariant),
+          Icon(
+            Icons.calendar_today_outlined,
+            size: 15,
+            color: scheme.onSurfaceVariant,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: SingleChildScrollView(
@@ -256,10 +260,7 @@ class _TiceScreenState extends ConsumerState<TiceScreen> {
               textAlign: TextAlign.center,
               style: TextStyle(color: Theme.of(context).colorScheme.outline),
             ),
-            if (action != null) ...[
-              const SizedBox(height: 24),
-              action,
-            ],
+            if (action != null) ...[const SizedBox(height: 24), action],
           ],
         ),
       ),
@@ -351,7 +352,10 @@ class _TiceScreenState extends ConsumerState<TiceScreen> {
                 const SizedBox(height: 4),
                 Text(
                   '学号 ${info.stuNum}',
-                  style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: scheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -364,8 +368,11 @@ class _TiceScreenState extends ConsumerState<TiceScreen> {
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               child: Row(
                 children: [
-                  Icon(Icons.account_balance_outlined,
-                      size: 14, color: scheme.onSurfaceVariant),
+                  Icon(
+                    Icons.account_balance_outlined,
+                    size: 14,
+                    color: scheme.onSurfaceVariant,
+                  ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
@@ -387,9 +394,7 @@ class _TiceScreenState extends ConsumerState<TiceScreen> {
 
   Widget _sexChip(String sex) {
     final isMale = sex == '男';
-    final color = isMale
-        ? const Color(0xFF1565C0)
-        : const Color(0xFFAD1457);
+    final color = isMale ? const Color(0xFF1565C0) : const Color(0xFFAD1457);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1.5),
       decoration: BoxDecoration(
@@ -398,7 +403,11 @@ class _TiceScreenState extends ConsumerState<TiceScreen> {
       ),
       child: Text(
         sex,
-        style: TextStyle(fontSize: 11.5, color: color, fontWeight: FontWeight.w600),
+        style: TextStyle(
+          fontSize: 11.5,
+          color: color,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -488,10 +497,7 @@ class _TiceScreenState extends ConsumerState<TiceScreen> {
               const SizedBox(width: 4),
               Text(
                 name,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: scheme.onSurfaceVariant,
-                ),
+                style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
               ),
             ],
           ),
@@ -660,8 +666,10 @@ class _TiceScreenState extends ConsumerState<TiceScreen> {
                     const SizedBox(height: 2),
                     Text(
                       item.result.isEmpty ? '未记录' : '原始：${item.result}',
-                      style:
-                          TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: scheme.onSurfaceVariant,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -724,10 +732,7 @@ class _TiceScreenState extends ConsumerState<TiceScreen> {
   }) {
     return Material(
       color: Theme.of(context).cardTheme.color,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: scheme.outlineVariant),
-      ),
+      shape: appCardShape(context),
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
