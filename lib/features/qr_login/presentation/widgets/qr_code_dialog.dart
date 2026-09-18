@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:smarter_jxufe/design/JxufeTheme.dart';
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/qr_login_viewmodel.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/widgets/qr_code_card.dart';
 
@@ -30,6 +30,7 @@ class QrCodeDialog extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(qrLoginViewModelProvider);
     final viewModel = ref.read(qrLoginViewModelProvider.notifier);
+    final scheme = Theme.of(context).colorScheme;
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -39,7 +40,7 @@ class QrCodeDialog extends ConsumerWidget {
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeOut,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.card(context),
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
@@ -68,29 +69,29 @@ class QrCodeDialog extends ConsumerWidget {
                         width: 48,
                         height: 48,
                         decoration: BoxDecoration(
-                          color: JxufeTheme.primaryColor,
+                          color: scheme.primary,
                           borderRadius: BorderRadius.circular(24),
                           boxShadow: [
                             BoxShadow(
-                              color: JxufeTheme.primaryColor.withAlpha(50),
+                              color: scheme.primary.withAlpha(50),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
                           ],
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.qr_code_scanner_rounded,
-                          color: Colors.white,
+                          color: scheme.onPrimary,
                           size: 26,
                         ),
                       ),
                       const SizedBox(height: 16),
                       Text(
                         title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
-                          color: JxufeTheme.textColor,
+                          color: AppColors.textBase(context),
                           letterSpacing: -0.3,
                         ),
                       ),
@@ -98,9 +99,9 @@ class QrCodeDialog extends ConsumerWidget {
                         const SizedBox(height: 6),
                         Text(
                           info,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
-                            color: JxufeTheme.hintColor,
+                            color: AppColors.textMuted(context),
                             height: 1.4,
                           ),
                           textAlign: TextAlign.center,
@@ -125,13 +126,13 @@ class QrCodeDialog extends ConsumerWidget {
                       ),
                       decoration: BoxDecoration(
                         color: state.trustDevice
-                            ? JxufeTheme.primaryColor
-                            : JxufeTheme.inputBgColor,
+                            ? scheme.primary
+                            : AppColors.fill(context),
                         borderRadius: BorderRadius.circular(22),
                         border: Border.all(
                           color: state.trustDevice
-                              ? JxufeTheme.primaryColor
-                              : JxufeTheme.borderColor,
+                              ? scheme.primary
+                              : AppColors.stroke(context),
                           width: 1,
                         ),
                       ),
@@ -144,8 +145,8 @@ class QrCodeDialog extends ConsumerWidget {
                                 : Icons.circle_outlined,
                             size: 16,
                             color: state.trustDevice
-                                ? Colors.white
-                                : JxufeTheme.hintColor,
+                                ? scheme.onPrimary
+                                : AppColors.textMuted(context),
                           ),
                           const SizedBox(width: 8),
                           Text(
@@ -153,8 +154,8 @@ class QrCodeDialog extends ConsumerWidget {
                             style: TextStyle(
                               fontSize: 13,
                               color: state.trustDevice
-                                  ? Colors.white
-                                  : JxufeTheme.textColor,
+                                  ? scheme.onPrimary
+                                  : AppColors.textBase(context),
                               fontWeight: state.trustDevice
                                   ? FontWeight.w600
                                   : FontWeight.normal,

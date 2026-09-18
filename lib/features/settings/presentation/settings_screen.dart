@@ -11,6 +11,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/features/campus_address/data/my_campus_prefs.dart';
 import 'package:smarter_jxufe/features/campus_address/domain/my_campus.dart';
@@ -21,24 +22,27 @@ import 'package:smarter_jxufe/features/home_widget/domain/home_widget_snapshot.d
 import 'package:smarter_jxufe/features/ims/auth/data/ims_session.dart';
 import 'package:smarter_jxufe/features/ims/auth/data/providers/ims_session_provider.dart';
 import 'package:smarter_jxufe/features/ims/auth/domain/ims_token_refresh.dart';
+import 'package:smarter_jxufe/features/ims/schedule/data/providers/schedule_display_providers.dart';
+import 'package:smarter_jxufe/features/ims/schedule/data/schedule_display_prefs.dart';
+import 'package:smarter_jxufe/features/ims/schedule/domain/schedule_display_days.dart';
+import 'package:smarter_jxufe/features/ims/schedule/domain/schedule_entry.dart';
 import 'package:smarter_jxufe/features/ims/schedule/presentation/live_class_screen.dart';
 import 'package:smarter_jxufe/features/library_edu/data/tsgxs_prefs.dart';
 import 'package:smarter_jxufe/features/library_edu/domain/tsgxs_exam.dart';
+import 'package:smarter_jxufe/features/library_sync/presentation/libsp_sync_card.dart';
 import 'package:smarter_jxufe/features/platform_guid/presentation/guid_guide_screen.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/calendar_prefs_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/wxcal_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/calendar_day_mark.dart';
+import 'package:smarter_jxufe/features/school_calendar/domain/school_term.dart';
 import 'package:smarter_jxufe/features/score_estimate/presentation/ge_common.dart';
+import 'package:smarter_jxufe/features/settings/domain/settings_section.dart';
+import 'package:smarter_jxufe/features/settings/data/theme_prefs.dart';
+import 'package:smarter_jxufe/features/ai/presentation/widgets/ai_settings_section.dart';
 
-// 各节卡片强调色：2026-09-15 全应用统一为综测卡样式 → 一律用主题红（原来各节一个单色）。
-const _accent = FeaturePalette.cardAccent;
-const _calendarAccent = FeaturePalette.cardAccent;
-const _widgetAccent = FeaturePalette.cardAccent;
-const _libraryEduAccent = FeaturePalette.cardAccent;
-const _guidAccent = FeaturePalette.cardAccent;
-const _sessionAccent = FeaturePalette.cardAccent;
-const _layoutAccent = FeaturePalette.cardAccent;
-const _liveClassAccent = FeaturePalette.cardAccent;
+// 各节卡片的强调色：2026-09-15 全应用统一为综测卡样式 → 一律主题红；
+// 2026-09-16 深色适配起**改为随主题解析**（`fp(context).cardAccent`：
+// 浅色校红 #C3282E / 深色亮红 #F2555A），不再用 const。
 
 /// 「不设置」在选择面板里的哨兵值。
 ///
@@ -46,60 +50,128 @@ const _liveClassAccent = FeaturePalette.cardAccent;
 /// 故清空走一个显式哨兵。
 const _clearSentinel = '__clear__';
 
+/// 设置页的分节（定义在 `domain/settings_section.dart`，页面只引那个小文件）。
+///
+/// 用户 2026-09-16 裁定：**每个服务主页的标题栏右上角都显示设置按钮**，从主页
+/// 进入 = 完整设置页；从某个功能页进入 = **只显示该页相关的这一节**。页面把
+/// 自己要显示的节交给 `paneAppBar(..., settingsSections: […])`（见
+/// `settings_entry.dart`），没有对应节的页面就传空 = 完整设置页。
 /// 设置页。
 class SettingsScreen extends ConsumerWidget {
-  const SettingsScreen({super.key});
+  const SettingsScreen({super.key, this.sections = const <SettingsSection>[]});
+
+  /// 只显示这些节；**空 = 完整设置页**（主页 / 无对应节的页面进入）。
+  final List<SettingsSection> sections;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mine = ref.watch(myCampusStoreProvider).campus;
+    // 全部分节（顺序 = 完整设置页里的顺序）。
+    final blocks = <({SettingsSection section, Widget title, Widget card})>[
+      // 外观（跟随系统 / 浅色 / 深色）：2026-09-16 深色模式适配新增。
+      // 用户裁定「全局偏好入口 = 设置页」，故不另开弹层；排在第一节。
+      (
+        section: SettingsSection.appearance,
+        title: geCardTitle(
+          context,
+          text: '外观',
+          accent: fp(context).cardAccent,
+        ),
+        card: const _AppearanceCard(),
+      ),
+      // 内置 AI 助手（用户 2026-09-19 立项）：供应商预设 / 多套配置 / 悬浮球开关。
+      // 整块的实现放在 `features/ai/presentation/widgets/ai_settings_section.dart`，
+      // 设置页只挂一个入口（避免 1600 行的设置页再涨）。
+      (
+        section: SettingsSection.aiAssistant,
+        title: geCardTitle(context, text: 'AI 助手', accent: fp(context).cardAccent),
+        card: const AiAssistantSettingsCard(),
+      ),
+      (
+        section: SettingsSection.campus,
+        title: geCardTitle(context, text: '校区', accent: fp(context).cardAccent),
+        card: _MyCampusTile(
+          mine: mine,
+          onTap: () => _pickCampus(context, ref, mine),
+        ),
+      ),      (
+        section: SettingsSection.scope,
+        title: geCardTitle(context, text: '生效范围', accent: fp(context).cardAccent),
+        card: _EffectCard(mine: mine),
+      ),
+      // 主页布局（宫格 / 左侧导航栏）：用户 2026-09-15 裁定「只在设置页切换 + 记住」。
+      (
+        section: SettingsSection.homeLayout,
+        title: geCardTitle(context, text: '主页布局', accent: fp(context).cardAccent),
+        card: const _HomeLayoutCard(),
+      ),
+      (
+        section: SettingsSection.calendar,
+        title: geCardTitle(context, text: '校历', accent: fp(context).cardAccent),
+        card: const _CalendarDisplayCard(),
+      ),
+      // 课表显示（是否显示周六 / 周日）：用户 2026-09-17 要求，入口按铁律收拢在设置页
+      // （课表页齿轮进本节，页面上不另开弹层）。
+      (
+        section: SettingsSection.schedule,
+        title: geCardTitle(context, text: '课表', accent: fp(context).cardAccent),
+        card: const _ScheduleDisplayCard(),
+      ),
+      (
+        section: SettingsSection.libraryEdu,
+        title: geCardTitle(context, text: '入馆教育', accent: fp(context).cardAccent),
+        card: const _LibraryEduModeCard(),
+      ),
+      // 入口 2026-09-11 从首页宫格迁到设置页（用户裁定）。
+      (
+        section: SettingsSection.platformGuid,
+        title: geCardTitle(context, text: '平台标识', accent: fp(context).cardAccent),
+        card: const _PlatformGuidCard(),
+      ),
+      // 「上课实况窗」入口 2026-09-15 从首页宫格迁到设置页（用户裁定：主页不要显示）。
+      (
+        section: SettingsSection.liveClass,
+        title: geCardTitle(context, text: '上课实况窗', accent: fp(context).cardAccent),
+        card: const _LiveClassCard(),
+      ),
+      // 教务登录令牌（JSESSIONID）的探活 / 手动换票入口（用户 2026-09-15 要求）。
+      (
+        section: SettingsSection.imsSession,
+        title: geCardTitle(context, text: '教务会话', accent: fp(context).cardAccent),
+        card: const _ImsSessionCard(),
+      ),
+      // 云同步（用图书馆「我的订阅」当存储面；协议见
+      // `reverse_engineering/图书馆订阅词云同步方案.md`）。用户 2026-09-17 裁定
+      // 做成正式功能（所有装了 App 的同学都能同步），故入口收拢在设置页。
+      (
+        section: SettingsSection.cloudSync,
+        title: geCardTitle(context, text: '云同步', accent: fp(context).cardAccent),
+        card: const LibspSyncCard(),
+      ),
+      (
+        section: SettingsSection.homeWidget,
+        title: geCardTitle(context, text: '桌面小组件', accent: fp(context).cardAccent),
+        card: const _HomeWidgetCard(),
+      ),
+    ];
+    final visible = [
+      for (final b in blocks)
+        if (sections.isEmpty || sections.contains(b.section)) b,
+    ];
     return Scaffold(
-      appBar: AppBar(title: const Text('设置'), centerTitle: true),
+      appBar: AppBar(
+        title: Text(sections.length == 1 ? sections.first.label : '设置'),
+        centerTitle: true,
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(24, 20, 24, 48),
         children: [
-          geCardTitle(context, text: '校区', accent: _accent),
-          const SizedBox(height: 12),
-          _MyCampusTile(
-            mine: mine,
-            onTap: () => _pickCampus(context, ref, mine),
-          ),
-          const SizedBox(height: 26),
-          geCardTitle(context, text: '生效范围', accent: _accent),
-          const SizedBox(height: 12),
-          _EffectCard(mine: mine),
-          const SizedBox(height: 26),
-          // 主页布局（宫格 / 左侧导航栏）：用户 2026-09-15 裁定「只在设置页切换 + 记住」。
-          geCardTitle(context, text: '主页布局', accent: _layoutAccent),
-          const SizedBox(height: 12),
-          const _HomeLayoutCard(),
-          const SizedBox(height: 26),
-          geCardTitle(context, text: '校历', accent: _calendarAccent),
-          const SizedBox(height: 12),
-          const _CalendarDisplayCard(),
-          const SizedBox(height: 26),
-          geCardTitle(context, text: '入馆教育', accent: _libraryEduAccent),
-          const SizedBox(height: 12),
-          const _LibraryEduModeCard(),
-          const SizedBox(height: 26),
-          // 入口 2026-09-11 从首页宫格迁到设置页（用户裁定）。
-          geCardTitle(context, text: '平台标识', accent: _guidAccent),
-          const SizedBox(height: 12),
-          const _PlatformGuidCard(),
-          const SizedBox(height: 26),
-          // 「上课实况窗」入口 2026-09-15 从首页宫格迁到设置页（用户裁定：主页不要显示）。
-          geCardTitle(context, text: '上课实况窗', accent: _liveClassAccent),
-          const SizedBox(height: 12),
-          const _LiveClassCard(),
-          const SizedBox(height: 26),
-          // 教务登录令牌（JSESSIONID）的探活 / 手动换票入口（用户 2026-09-15 要求）。
-          geCardTitle(context, text: '教务会话', accent: _sessionAccent),
-          const SizedBox(height: 12),
-          const _ImsSessionCard(),
-          const SizedBox(height: 26),
-          geCardTitle(context, text: '桌面小组件', accent: _widgetAccent),
-          const SizedBox(height: 12),
-          const _HomeWidgetCard(),
+          for (var i = 0; i < visible.length; i++) ...[
+            visible[i].title,
+            const SizedBox(height: 12),
+            visible[i].card,
+            if (i != visible.length - 1) const SizedBox(height: 26),
+          ],
         ],
       ),
     );
@@ -133,7 +205,7 @@ class SettingsScreen extends ConsumerWidget {
                       ? Icons.radio_button_checked
                       : Icons.radio_button_unchecked,
                   color: c == current
-                      ? _accent
+                      ? fp(context).cardAccent
                       : Theme.of(sheetContext).colorScheme.onSurfaceVariant,
                 ),
                 title: Text(c.label),
@@ -192,12 +264,12 @@ class _MyCampusTile extends StatelessWidget {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: _accent.withValues(alpha: 0.10),
+                  color: AppColors.tint(context, fp(context).cardAccent, 0.10),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.place_outlined,
-                  color: _accent,
+                  color: fp(context).cardAccent,
                   size: 22,
                 ),
               ),
@@ -290,8 +362,8 @@ class _EffectCard extends StatelessWidget {
                       child: Container(
                         width: 4,
                         height: 4,
-                        decoration: const BoxDecoration(
-                          color: _accent,
+                        decoration: BoxDecoration(
+                          color: fp(context).cardAccent,
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -318,6 +390,93 @@ class _EffectCard extends StatelessWidget {
 /// 切换入口**只在这里**（不往顶栏加按钮），选择落 Hive `homePrefs`
 /// （`HomeLayoutStore`，改动即时通知 → 主页无需重进即跟随）；
 /// 手机端恒为宫格，判定集中在 `features/home/domain/home_layout.dart`。
+/// 「外观」节：跟随系统 / 浅色 / 深色（用户 2026-09-16 拍板，默认跟随系统）。
+///
+/// - 选择存 Hive（`features/settings/data/theme_prefs.dart`），`MaterialApp.themeMode`
+///   直接 `watch` 同一个 store → 点一下立即整树重建，中间没有「先闪一次旧值」的空窗。
+/// - 深色配色 = **A 中性深灰** + 亮红强调（`lib/design/app_ladder.dart` /
+///   `lib/design/app_theme.dart`），取值来自用户过目过的
+///   `design_preview/dark_mode_preview.html`。
+class _AppearanceCard extends ConsumerWidget {
+  const _AppearanceCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final store = ref.watch(themeModeStoreProvider);
+    final accent = fp(context).cardAccent;
+    return Card(
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      shape: geCardShape(context),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (final mode in ThemeMode.values)
+            InkWell(
+              key: Key('themeModeOption-${mode.name}'),
+              onTap: () => store.save(mode),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      mode == store.mode
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked,
+                      size: 20,
+                      color: mode == store.mode
+                          ? accent
+                          : scheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            themeModeLabel(mode),
+                            style: const TextStyle(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            themeModeDescription(mode),
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              height: 1.25,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+            child: Text(
+              '深色外观为中性深灰底 + 亮红强调色，卡片、文字、分隔线会一并切换；'
+              '首次安装默认跟随系统。',
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.3,
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _HomeLayoutCard extends ConsumerWidget {
   const _HomeLayoutCard();
 
@@ -347,7 +506,7 @@ class _HomeLayoutCard extends ConsumerWidget {
                           : Icons.radio_button_unchecked,
                       size: 20,
                       color: value == store.layout
-                          ? _layoutAccent
+                          ? fp(context).cardAccent
                           : scheme.onSurfaceVariant,
                     ),
                     const SizedBox(width: 12),
@@ -423,12 +582,12 @@ class _LiveClassCard extends StatelessWidget {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: _liveClassAccent.withValues(alpha: 0.10),
+                  color: AppColors.tint(context, fp(context).cardAccent, 0.10),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.podcasts_outlined,
-                  color: _liveClassAccent,
+                  color: fp(context).cardAccent,
                   size: 22,
                 ),
               ),
@@ -490,7 +649,7 @@ class _CalendarDisplayCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const _SubLabel(
+            _SubLabel(
               icon: Icons.label_outline,
               title: '角标风格',
               subtitle: '月历上「假 / 班 / 运 / 考」等角标的画法',
@@ -568,6 +727,185 @@ class _CalendarDisplayCard extends ConsumerWidget {
   }
 }
 
+/// 课表显示卡：是否显示周六 / 周日（用户 2026-09-17 要求）。
+///
+/// **唯一入口**（工作区铁律 §3：新增偏好一律收拢到设置页，页面不另开弹层）。
+/// 偏好存 Hive `schedulePrefs`，课表竖版 / 横版读同一个控制器实例，改完立即生效。
+/// 关闭某天时若**该学期**那天有课 → 先弹确认框（用户原话「当周六/周日有课时，
+/// 关闭对应显示要弹出确认框提示用户」）：课程本身与调课记录都不受影响，只是课表
+/// 里不再画那一天，随时可以打开。
+class _ScheduleDisplayCard extends ConsumerWidget {
+  const _ScheduleDisplayCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final prefs = ref.watch(scheduleDisplayPrefsStoreProvider).prefs;
+    // 读的是**该学期**的课表缓存（不联网）：设置页拿不到课表页的学籍号，
+    // 故用 `readCacheAnyStudent` 的「任一学生」口径。
+    // 传了内置学期快照 → 一定命中当前学期（假期取下一学期），返回值非空。
+    final term = currentSchoolTerm(
+      DateTime.now(),
+      terms: ref.watch(offlineSemesterTermsProvider),
+    );
+    final entries =
+        ref.watch(scheduleCachedEntriesProvider(term)).valueOrNull ??
+        const <ScheduleEntry>[];
+    final scheme = Theme.of(context).colorScheme;
+
+    return Card(
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      shape: geCardShape(context),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const _SubLabel(
+              icon: Icons.calendar_view_week,
+              title: '显示范围',
+              subtitle: '是否显示周六 / 周日（竖版与横版课表都生效）',
+            ),
+            const SizedBox(height: 6),
+            _daySwitch(
+              context,
+              ref,
+              prefs: prefs,
+              label: '显示周六',
+              dayIndex: scheduleSaturdayIndex,
+              value: prefs.showSaturday,
+              entries: entries,
+            ),
+            _daySwitch(
+              context,
+              ref,
+              prefs: prefs,
+              label: '显示周日',
+              dayIndex: scheduleSundayIndex,
+              value: prefs.showSunday,
+              entries: entries,
+            ),
+            const SizedBox(height: 4),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  size: 15,
+                  color: scheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 6),
+                const Expanded(
+                  child: Text(
+                    '关掉的只是「不显示」：课程、调课记录与统计都不受影响，'
+                    '课表里的列数与列宽会自动按剩余天数重新铺满。',
+                    style: TextStyle(fontSize: 11.5, height: 1.5),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+            const _SubLabel(
+              icon: Icons.grid_on,
+              title: '表格线',
+              subtitle: '是否显示课表的网格线（竖版与横版都生效）',
+            ),
+            const SizedBox(height: 6),
+            // 用户 2026-09-17：「我希望课表可以设置是否显示表格线」。
+            // 不需要确认框（纯观感开关，点错了再点回来即可）。
+            SwitchListTile(
+              key: const Key('scheduleGridLinesSwitch'),
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              value: prefs.showGridLines,
+              title: const Text('显示表格线', style: TextStyle(fontSize: 13.5)),
+              subtitle: const Text(
+                '关掉后不画任何网格线，课格靠自身底色区分（调课标记不受影响）',
+                style: TextStyle(fontSize: 11.5),
+              ),
+              onChanged: (v) => ref
+                  .read(scheduleDisplayPrefsStoreProvider)
+                  .save(prefs.copyWith(showGridLines: v)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 一天一个开关：关闭前先看该学期这一天有没有课（有则确认）。
+  Widget _daySwitch(
+    BuildContext context,
+    WidgetRef ref, {
+    required ScheduleDisplayPrefs prefs,
+    required String label,
+    required int dayIndex,
+    required bool value,
+    required List<ScheduleEntry> entries,
+  }) {
+    final store = ref.read(scheduleDisplayPrefsStoreProvider);
+    final count = scheduleDayCourseCount(entries, dayIndex);
+    return SwitchListTile(
+      contentPadding: EdgeInsets.zero,
+      dense: true,
+      value: value,
+      title: Text(label, style: const TextStyle(fontSize: 13.5)),
+      subtitle: Text(
+        count > 0
+            ? '本学期有 $count 门课安排在这一天'
+            : '本学期这一天没有课',
+        style: const TextStyle(fontSize: 11.5),
+      ),
+      onChanged: (v) async {
+        if (!v && count > 0) {
+          final confirmed = await _confirmHide(
+            context,
+            dayName: scheduleDayNames[dayIndex],
+            count: count,
+          );
+          if (!confirmed) return;
+        }
+        await store.save(
+          dayIndex == scheduleSaturdayIndex
+              ? prefs.copyWith(showSaturday: v)
+              : prefs.copyWith(showSunday: v),
+        );
+      },
+    );
+  }
+
+  /// 隐藏有课的那一天 → 先确认（用户要求）。
+  Future<bool> _confirmHide(
+    BuildContext context, {
+    required String dayName,
+    required int count,
+  }) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(Icons.visibility_off_outlined),
+        title: Text('隐藏$dayName？'),
+        content: Text(
+          '$dayName 这一学期有 $count 门课，隐藏后课表里就看不到它们了。\n'
+          '课程本身与调课记录都不受影响，随时可以重新打开。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('仍然隐藏'),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
+  }
+}
+
 /// 入馆教育卡：公共 / 后门模式切换。
 ///
 /// **唯一入口**（用户 2026-09-11 裁定：「公共模式的切换和后门模式,不应该显示在
@@ -589,11 +927,11 @@ class _LibraryEduModeCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const _SubLabel(
+            _SubLabel(
               icon: Icons.menu_book_outlined,
               title: '闯关答题模式',
               subtitle: '入馆教育章节页与答题页的作答方式（仅此处可切换）',
-              accent: _libraryEduAccent,
+              accent: fp(context).cardAccent,
             ),
             const SizedBox(height: 12),
             SegmentedButton<TsgxsAnswerMode>(
@@ -629,7 +967,7 @@ class _LibraryEduModeCard extends ConsumerWidget {
                           : Icons.radio_button_unchecked,
                       size: 14,
                       color: m == store.mode
-                          ? _libraryEduAccent
+                          ? fp(context).cardAccent
                           : scheme.onSurfaceVariant,
                     ),
                     const SizedBox(width: 6),
@@ -696,11 +1034,11 @@ class _PlatformGuidCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const _SubLabel(
+            _SubLabel(
               icon: Icons.vpn_key_outlined,
               title: '微信平台标识（GUID）',
-              subtitle: '网费实时源 / 请假记录 / 校历官方安排 都依赖它',
-              accent: _guidAccent,
+              subtitle: '校园网实时源 / 请假记录 / 校历官方安排 都依赖它',
+              accent: fp(context).cardAccent,
             ),
             const SizedBox(height: 12),
             Row(
@@ -712,7 +1050,7 @@ class _PlatformGuidCard extends ConsumerWidget {
                   ),
                   decoration: BoxDecoration(
                     color: configured
-                        ? Colors.green.withValues(alpha: 0.12)
+                        ? AppColors.successFill(context)
                         : scheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(999),
                   ),
@@ -722,7 +1060,7 @@ class _PlatformGuidCard extends ConsumerWidget {
                       fontSize: 11.5,
                       fontWeight: FontWeight.w600,
                       color: configured
-                          ? Colors.green.shade800
+                          ? AppColors.success(context)
                           : scheme.onSurfaceVariant,
                     ),
                   ),
@@ -876,28 +1214,28 @@ class _ImsSessionCardState extends ConsumerState<_ImsSessionCard> {
     if (_busy) {
       return (
         label: '刷新中',
-        tint: _sessionAccent.withValues(alpha: 0.12),
-        text: _sessionAccent,
+        tint: AppColors.tint(context, fp(context).cardAccent, 0.12),
+        text: fp(context).cardAccent,
       );
     }
     if (_loading) {
       return (
         label: '读取中',
-        tint: _sessionAccent.withValues(alpha: 0.12),
-        text: _sessionAccent,
+        tint: AppColors.tint(context, fp(context).cardAccent, 0.12),
+        text: fp(context).cardAccent,
       );
     }
     if (ready) {
       return (
         label: '已就绪',
-        tint: Colors.green.withValues(alpha: 0.12),
-        text: Colors.green.shade800,
+        tint: AppColors.successFill(context),
+        text: AppColors.success(context),
       );
     }
     if (failed) {
       return (
         label: '不可用',
-        tint: scheme.error.withValues(alpha: 0.12),
+        tint: AppColors.statusFill(context, scheme.error),
         text: scheme.error,
       );
     }
@@ -946,11 +1284,11 @@ class _ImsSessionCardState extends ConsumerState<_ImsSessionCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const _SubLabel(
+            _SubLabel(
               icon: Icons.verified_user_outlined,
               title: '教务登录令牌（IMS 会话）',
               subtitle: '成绩 / 课表 / 选课 / 公共查询 共用同一张令牌',
-              accent: _sessionAccent,
+              accent: fp(context).cardAccent,
             ),
             const SizedBox(height: 12),
             Row(
@@ -1059,24 +1397,27 @@ class _SubLabel extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
-  final Color accent;
+
+  /// 强调色；`null` = 用随主题解析的主题红（浅色校红 / 深色亮红）。
+  final Color? accent;
 
   const _SubLabel({
     required this.icon,
     required this.title,
     required this.subtitle,
-    this.accent = _calendarAccent,
+    this.accent,
   });
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final tint = accent ?? fp(context).cardAccent;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Icon(icon, size: 16, color: accent),
+            Icon(icon, size: 16, color: tint),
             const SizedBox(width: 6),
             Text(
               title,
@@ -1131,8 +1472,8 @@ class _HomeWidgetCardState extends State<_HomeWidgetCard>
     '5x2',
   ];
 
-  /// 「已在桌面」的绿（与其他模块的达标绿一致）。
-  static const _placedColor = Color(0xFF2E7D32);
+  /// 「已在桌面」的绿（与其他模块的达标绿一致）—— 现在随主题解析，
+  /// 用 `AppColors.success(context)`（深色下自动提亮），不再是固定 const。
 
   /// 「指标:尺寸」→ 桌面上已放置的实例数（原生 `getAppWidgetIds`）。
   Map<String, int> _counts = const {};
@@ -1162,11 +1503,12 @@ class _HomeWidgetCardState extends State<_HomeWidgetCard>
     HomeWidgetMetric.grades => Icons.school_outlined,
   };
 
-  static Color _color(HomeWidgetMetric metric) => switch (metric) {
-    HomeWidgetMetric.dashboard => FeaturePalette.dashboard,
-    HomeWidgetMetric.electricity => FeaturePalette.electricity,
-    HomeWidgetMetric.grades => FeaturePalette.grade,
-  };
+  static Color _color(BuildContext context, HomeWidgetMetric metric) =>
+      switch (metric) {
+        HomeWidgetMetric.dashboard => fp(context).dashboard,
+        HomeWidgetMetric.electricity => fp(context).electricity,
+        HomeWidgetMetric.grades => fp(context).grade,
+      };
 
   Future<void> _loadCounts() async {
     final counts = await HomeWidgetBridge.pinnedCounts();
@@ -1206,7 +1548,11 @@ class _HomeWidgetCardState extends State<_HomeWidgetCard>
     final placed = _counts[homeWidgetPinKey(metric, size)] ?? 0;
     return ActionChip(
       avatar: placed > 0
-          ? const Icon(Icons.check_circle, size: 15, color: _placedColor)
+          ? Icon(
+              Icons.check_circle,
+              size: 15,
+              color: AppColors.success(context),
+            )
           : null,
       label: Text(
         size.replaceAll('x', '×'),
@@ -1233,17 +1579,17 @@ class _HomeWidgetCardState extends State<_HomeWidgetCard>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const _SubLabel(
+            _SubLabel(
               icon: Icons.widgets_outlined,
               title: '添加到桌面',
               subtitle: '点尺寸即请求系统固定该小组件，已放置的尺寸带 ✓',
-              accent: _widgetAccent,
+              accent: fp(context).cardAccent,
             ),
             for (final metric in HomeWidgetMetric.values) ...[
               const SizedBox(height: 14),
               Row(
                 children: [
-                  Icon(_icon(metric), size: 15, color: _color(metric)),
+                  Icon(_icon(metric), size: 15, color: _color(context, metric)),
                   const SizedBox(width: 6),
                   Text(
                     metric.defaultLabel,
@@ -1286,7 +1632,7 @@ class _HomeWidgetCardState extends State<_HomeWidgetCard>
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.check_circle, size: 15, color: _placedColor),
+                  Icon(Icons.check_circle, size: 15, color: AppColors.success(context)),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(

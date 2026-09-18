@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:smarter_jxufe/design/Icons.dart';
-import 'package:smarter_jxufe/design/JxufeTheme.dart';
+import 'package:smarter_jxufe/design/app_theme.dart';
 
 /// 手机验证码 MFA 对话框。
 ///
@@ -136,6 +136,7 @@ class _MobileMfaDialogState extends State<MobileMfaDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 20),
@@ -144,7 +145,7 @@ class _MobileMfaDialogState extends State<MobileMfaDialog> {
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeOut,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.card(context),
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
@@ -189,10 +190,10 @@ class _MobileMfaDialogState extends State<MobileMfaDialog> {
                 // 标题
                 Text(
                   widget.title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
-                    color: JxufeTheme.textColor,
+                    color: AppColors.textBase(context),
                     letterSpacing: -0.3,
                   ),
                 ),
@@ -200,9 +201,9 @@ class _MobileMfaDialogState extends State<MobileMfaDialog> {
                   const SizedBox(height: 6),
                   Text(
                     widget.info,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
-                      color: JxufeTheme.hintColor,
+                      color: AppColors.textMuted(context),
                       height: 1.4,
                     ),
                     textAlign: TextAlign.center,
@@ -232,11 +233,11 @@ class _MobileMfaDialogState extends State<MobileMfaDialog> {
                       Text.rich(
                         TextSpan(
                           children: [
-                            const TextSpan(
+                            TextSpan(
                               text: '使用 ',
                               style: TextStyle(
                                 fontSize: 13,
-                                color: JxufeTheme.textColor,
+                                color: AppColors.textBase(context),
                               ),
                             ),
                             const TextSpan(
@@ -247,11 +248,11 @@ class _MobileMfaDialogState extends State<MobileMfaDialog> {
                                 color: Color(0xFF73A9EC),
                               ),
                             ),
-                            const TextSpan(
+                            TextSpan(
                               text: ' 查看验证码',
                               style: TextStyle(
                                 fontSize: 13,
-                                color: JxufeTheme.textColor,
+                                color: AppColors.textBase(context),
                               ),
                             ),
                           ],
@@ -282,7 +283,7 @@ class _MobileMfaDialogState extends State<MobileMfaDialog> {
                           errorText: _errorText,
                           errorMaxLines: 2,
                           filled: true,
-                          fillColor: JxufeTheme.inputBgColor,
+                          fillColor: AppColors.fill(context),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide.none,
@@ -290,7 +291,7 @@ class _MobileMfaDialogState extends State<MobileMfaDialog> {
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: JxufeTheme.borderColor,
+                              color: AppColors.stroke(context),
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
@@ -302,12 +303,14 @@ class _MobileMfaDialogState extends State<MobileMfaDialog> {
                           ),
                           errorBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.red),
+                            borderSide: BorderSide(
+                              color: AppColors.critical(context),
+                            ),
                           ),
                           focusedErrorBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(
-                              color: Colors.red,
+                            borderSide: BorderSide(
+                              color: AppColors.critical(context),
                               width: 1.5,
                             ),
                           ),
@@ -371,13 +374,13 @@ class _MobileMfaDialogState extends State<MobileMfaDialog> {
                       ),
                       decoration: BoxDecoration(
                         color: _trustDevice
-                            ? JxufeTheme.primaryColor
-                            : JxufeTheme.inputBgColor,
+                            ? scheme.primary
+                            : AppColors.fill(context),
                         borderRadius: BorderRadius.circular(22),
                         border: Border.all(
                           color: _trustDevice
-                              ? JxufeTheme.primaryColor
-                              : JxufeTheme.borderColor,
+                              ? scheme.primary
+                              : AppColors.stroke(context),
                           width: 1,
                         ),
                       ),
@@ -390,8 +393,8 @@ class _MobileMfaDialogState extends State<MobileMfaDialog> {
                                 : Icons.circle_outlined,
                             size: 16,
                             color: _trustDevice
-                                ? Colors.white
-                                : JxufeTheme.hintColor,
+                                ? scheme.onPrimary
+                                : AppColors.textMuted(context),
                           ),
                           const SizedBox(width: 8),
                           Text(
@@ -399,8 +402,8 @@ class _MobileMfaDialogState extends State<MobileMfaDialog> {
                             style: TextStyle(
                               fontSize: 13,
                               color: _trustDevice
-                                  ? Colors.white
-                                  : JxufeTheme.textColor,
+                                  ? scheme.onPrimary
+                                  : AppColors.textBase(context),
                               fontWeight: _trustDevice
                                   ? FontWeight.w600
                                   : FontWeight.normal,
@@ -420,10 +423,9 @@ class _MobileMfaDialogState extends State<MobileMfaDialog> {
                   child: ElevatedButton(
                     onPressed: _validating ? null : _validate,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: JxufeTheme.primaryColor,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: JxufeTheme.primaryColor
-                          .withAlpha(150),
+                      backgroundColor: scheme.primary,
+                      foregroundColor: scheme.onPrimary,
+                      disabledBackgroundColor: scheme.primary.withAlpha(150),
                       disabledForegroundColor: Colors.white70,
                       elevation: 0,
                       shape: RoundedRectangleBorder(

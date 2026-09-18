@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../design/JxufeTheme.dart';
 import '../../../design/app_card.dart';
+import '../../../design/app_theme.dart';
 import '../domain/doc_blocks.dart';
 import '../domain/rule_doc.dart';
 import '../data/rules_repository.dart';
@@ -436,7 +436,7 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
               fontSize: 13.5,
               fontWeight: FontWeight.w600,
               letterSpacing: 2,
-              color: JxufeTheme.primaryColor,
+              color: Theme.of(context).colorScheme.primary,
             ),
           ),
         ),
@@ -784,9 +784,11 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
                       vertical: 3,
                     ),
                     decoration: BoxDecoration(
-                      color: Theme.of(
+                      color: AppColors.tint(
                         context,
-                      ).colorScheme.onPrimaryContainer.withValues(alpha: 0.08),
+                        Theme.of(context).colorScheme.onPrimaryContainer,
+                        0.08,
+                      ),
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
@@ -812,7 +814,7 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
       margin: const EdgeInsets.only(top: 18, bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       decoration: BoxDecoration(
-        color: scheme.primary.withValues(alpha: 0.07),
+        color: AppColors.tint(context, scheme.primary, 0.07),
         borderRadius: BorderRadius.circular(9),
       ),
       child: Row(
@@ -921,7 +923,7 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
-              color: scheme.primary.withValues(alpha: 0.08),
+              color: AppColors.tint(context, scheme.primary, 0.08),
               borderRadius: BorderRadius.circular(999),
             ),
             child: Text(
@@ -1003,7 +1005,7 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Material(
-        color: scheme.primary.withValues(alpha: 0.06),
+        color: AppColors.tint(context, scheme.primary, 0.06),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
           side: BorderSide(color: scheme.primary.withValues(alpha: 0.30)),
@@ -1093,7 +1095,11 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
                           width: 30,
                           height: 30,
                           decoration: BoxDecoration(
-                            color: scheme.primary.withValues(alpha: 0.10),
+                            color: AppColors.tint(
+                              context,
+                              scheme.primary,
+                              0.10,
+                            ),
                             borderRadius: BorderRadius.circular(7),
                           ),
                           child: Icon(

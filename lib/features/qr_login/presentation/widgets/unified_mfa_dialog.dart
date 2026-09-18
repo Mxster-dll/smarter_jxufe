@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:smarter_jxufe/design/JxufeTheme.dart';
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/Icons.dart';
 import 'package:smarter_jxufe/features/qr_login/domain/entities/qr_code_status.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/qr_login_viewmodel.dart';
@@ -292,6 +292,12 @@ class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
     required VoidCallback? onTap,
   }) {
     final isHovering = ValueNotifier<bool>(false);
+    // 激活 / hover 时背景就是该按钮自己的强调色 → 前景取「压在该色上」的那一档。
+    // ⚠ 别用 `ThemeData.estimateBrightnessForColor`：深色主题的亮红 #F2555A
+    // 会被它判成「暗底」→ 取白字只有 3.38:1，
+    // 而深字有 5.16:1（实测）。`AppColors.onAccent` 按实测对比度择字。
+    // 浅色下恒为白，与原先写死的 `Colors.white` 逐像素相同。
+    final onColor = AppColors.onAccent(context, color);
     return MouseRegion(
       onEnter: (_) => isHovering.value = true,
       onExit: (_) => isHovering.value = false,
@@ -307,10 +313,10 @@ class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: showActive ? color : JxufeTheme.inputBgColor,
+                color: showActive ? color : AppColors.fill(context),
                 borderRadius: BorderRadius.circular(22),
                 border: Border.all(
-                  color: showActive ? color : JxufeTheme.borderColor,
+                  color: showActive ? color : AppColors.stroke(context),
                   width: showActive ? 2 : 1,
                 ),
                 boxShadow: showActive
@@ -325,7 +331,7 @@ class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
               ),
               child: Icon(
                 icon,
-                color: showActive ? Colors.white : color,
+                color: showActive ? onColor : color,
                 size: 21,
               ),
             );
@@ -337,6 +343,7 @@ class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
 
   /// 操作芯片 — AnimatedCrossFade 实现按钮左右换位动画，Row 自适应宽度
   Widget _buildActionChip() {
+    final scheme = Theme.of(context).colorScheme;
     final isQr = _qrMode;
     final isQrTarget = _targetIsQr;
     final label = isQr
@@ -362,13 +369,13 @@ class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
       width: 24,
       height: 24,
       child: showLoading
-          ? const Center(
+          ? Center(
               child: SizedBox(
                 width: 14,
                 height: 14,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation(JxufeTheme.primaryColor),
+                  valueColor: AlwaysStoppedAnimation(scheme.primary),
                 ),
               ),
             )
@@ -380,9 +387,9 @@ class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
                 size: 16,
               ),
               style: IconButton.styleFrom(
-                backgroundColor: JxufeTheme.primaryColor,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: JxufeTheme.primaryColor.withAlpha(100),
+                backgroundColor: scheme.primary,
+                foregroundColor: scheme.onPrimary,
+                disabledBackgroundColor: scheme.primary.withAlpha(100),
                 disabledForegroundColor: Colors.white70,
               ),
             ),
@@ -390,7 +397,7 @@ class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
 
     final textWidget = Text(
       label,
-      style: const TextStyle(fontSize: 13, color: JxufeTheme.textColor),
+      style: TextStyle(fontSize: 13, color: AppColors.textBase(context)),
     );
 
     return AnimatedAlign(
@@ -418,9 +425,9 @@ class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
           return Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: JxufeTheme.inputBgColor,
+              color: AppColors.fill(context),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: JxufeTheme.borderColor),
+              border: Border.all(color: AppColors.stroke(context)),
             ),
             child: AnimatedCrossFade(
               duration: const Duration(milliseconds: 300),
@@ -476,10 +483,10 @@ class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
     );
   }
 
-  List<InlineSpan> get _qrHintSpans => const [
+  List<InlineSpan> get _qrHintSpans => [
     TextSpan(
       text: '使用 ',
-      style: TextStyle(fontSize: 13, color: JxufeTheme.textColor),
+      style: TextStyle(fontSize: 13, color: AppColors.textBase(context)),
     ),
     TextSpan(
       text: '微信',
@@ -491,7 +498,7 @@ class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
     ),
     TextSpan(
       text: ' 或 ',
-      style: TextStyle(fontSize: 13, color: JxufeTheme.textColor),
+      style: TextStyle(fontSize: 13, color: AppColors.textBase(context)),
     ),
     TextSpan(
       text: '企业微信',
@@ -503,17 +510,17 @@ class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
     ),
     TextSpan(
       text: ' 扫码完成验证',
-      style: TextStyle(fontSize: 13, color: JxufeTheme.textColor),
+      style: TextStyle(fontSize: 13, color: AppColors.textBase(context)),
     ),
   ];
 
   Widget _qrHintBar() =>
       _buildHintBar(icon: Icons.info_outline, spans: _qrHintSpans);
 
-  List<InlineSpan> get _smsHintSpans => const [
+  List<InlineSpan> get _smsHintSpans => [
     TextSpan(
       text: '输入 ',
-      style: TextStyle(fontSize: 13, color: JxufeTheme.textColor),
+      style: TextStyle(fontSize: 13, color: AppColors.textBase(context)),
     ),
     TextSpan(
       text: '企业微信',
@@ -525,7 +532,7 @@ class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
     ),
     TextSpan(
       text: ' 中收到的验证码完成验证',
-      style: TextStyle(fontSize: 13, color: JxufeTheme.textColor),
+      style: TextStyle(fontSize: 13, color: AppColors.textBase(context)),
     ),
   ];
 
@@ -537,6 +544,7 @@ class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
   // ── SMS 模式 ──
 
   Widget _buildSmsBody() {
+    final scheme = Theme.of(context).colorScheme;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -564,15 +572,18 @@ class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
           child: _errorText != null
               ? Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.warning_amber,
                       size: 14,
-                      color: Colors.red,
+                      color: AppColors.critical(context),
                     ),
                     const SizedBox(width: 6),
                     Text(
                       _errorText!,
-                      style: const TextStyle(color: Colors.red, fontSize: 13),
+                      style: TextStyle(
+                        color: AppColors.critical(context),
+                        fontSize: 13,
+                      ),
                     ),
                   ],
                 )
@@ -585,9 +596,9 @@ class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
           child: ElevatedButton(
             onPressed: _validating ? null : _validate,
             style: ElevatedButton.styleFrom(
-              backgroundColor: JxufeTheme.primaryColor,
-              foregroundColor: Colors.white,
-              disabledBackgroundColor: JxufeTheme.primaryColor.withAlpha(150),
+              backgroundColor: scheme.primary,
+              foregroundColor: scheme.onPrimary,
+              disabledBackgroundColor: scheme.primary.withAlpha(150),
               disabledForegroundColor: Colors.white70,
               elevation: 0,
               shape: RoundedRectangleBorder(
@@ -608,6 +619,7 @@ class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
   @override
   Widget build(BuildContext context) {
     final viewModel = ref.read(qrLoginViewModelProvider.notifier);
+    final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       body: Stack(
@@ -629,10 +641,10 @@ class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
                           const SizedBox(height: 16),
                           Text(
                             widget.title,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w700,
-                              color: JxufeTheme.textColor,
+                              color: AppColors.textBase(context),
                               letterSpacing: -0.3,
                             ),
                           ),
@@ -688,10 +700,10 @@ class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
                                       child: Text.rich(
                                         TextSpan(
                                           text: state.username,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.w600,
-                                            color: JxufeTheme.textColor,
+                                            color: AppColors.textBase(context),
                                           ),
                                         ),
 
@@ -741,13 +753,13 @@ class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
                                     ),
                                     decoration: BoxDecoration(
                                       color: state.trustDevice
-                                          ? JxufeTheme.primaryColor
-                                          : JxufeTheme.inputBgColor,
+                                          ? scheme.primary
+                                          : AppColors.fill(context),
                                       borderRadius: BorderRadius.circular(22),
                                       border: Border.all(
                                         color: state.trustDevice
-                                            ? JxufeTheme.primaryColor
-                                            : JxufeTheme.borderColor,
+                                            ? scheme.primary
+                                            : AppColors.stroke(context),
                                         width: 1,
                                       ),
                                     ),
@@ -760,8 +772,8 @@ class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
                                               : Icons.circle_outlined,
                                           size: 16,
                                           color: state.trustDevice
-                                              ? Colors.white
-                                              : JxufeTheme.hintColor,
+                                              ? scheme.onPrimary
+                                              : AppColors.textMuted(context),
                                         ),
                                         const SizedBox(width: 8),
                                         Text(
@@ -769,8 +781,8 @@ class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
                                           style: TextStyle(
                                             fontSize: 13,
                                             color: state.trustDevice
-                                                ? Colors.white
-                                                : JxufeTheme.textColor,
+                                                ? scheme.onPrimary
+                                                : AppColors.textBase(context),
                                             fontWeight: state.trustDevice
                                                 ? FontWeight.w600
                                                 : FontWeight.normal,
@@ -796,9 +808,9 @@ class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
                       height: 375,
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: AppColors.card(context),
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: JxufeTheme.borderColor),
+                        border: Border.all(color: AppColors.stroke(context)),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withAlpha(8),
@@ -841,7 +853,7 @@ class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
                       children: [
                         _buildModeButton(
                           icon: Icons.qr_code_scanner_rounded,
-                          color: JxufeTheme.primaryColor,
+                          color: scheme.primary,
                           active: _qrMode,
                           onTap: _qrMode ? null : _switchToQr,
                         ),
