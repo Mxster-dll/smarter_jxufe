@@ -28,14 +28,14 @@
     <string name="home_widget_grade_3x2_desc">课程加权与专业排名 · 3×2 （含专业排名）</string>
     <string name="home_widget_grade_4x2_desc">课程加权与专业排名 · 4×2 （含排名与更新时间）</string>
     <string name="home_widget_grade_5x2_desc">课程加权与专业排名 · 5×2 （含排名与更新时间）</string>
-    <string name="home_widget_dashboard_2x1_desc">数据一览：电费 / 网费 / 课程加权 / 志愿时长 / 今日课程 · 2×1 （单行条，前 2 项）</string>
-    <string name="home_widget_dashboard_3x1_desc">数据一览：电费 / 网费 / 课程加权 / 志愿时长 / 今日课程 · 3×1 （单行条，前 3 项）</string>
-    <string name="home_widget_dashboard_4x1_desc">数据一览：电费 / 网费 / 课程加权 / 志愿时长 / 今日课程 · 4×1 （单行条，前 4 项）</string>
-    <string name="home_widget_dashboard_5x1_desc">数据一览：电费 / 网费 / 课程加权 / 志愿时长 / 今日课程 · 5×1 （单行条，前 5 项）</string>
-    <string name="home_widget_dashboard_2x2_desc">数据一览：电费 / 网费 / 课程加权 / 志愿时长 / 今日课程 · 2×2 （前 4 项）</string>
-    <string name="home_widget_dashboard_3x2_desc">数据一览：电费 / 网费 / 课程加权 / 志愿时长 / 今日课程 · 3×2 （前 5 项）</string>
-    <string name="home_widget_dashboard_4x2_desc">数据一览：电费 / 网费 / 课程加权 / 志愿时长 / 今日课程 · 4×2 （含更新时间）</string>
-    <string name="home_widget_dashboard_5x2_desc">数据一览：电费 / 网费 / 课程加权 / 志愿时长 / 今日课程 · 5×2 （含更新时间）</string>
+    <string name="home_widget_dashboard_2x1_desc">数据一览：电费 / 校园网 / 课程加权 / 志愿时长 / 今日课程 · 2×1 （单行条，前 2 项）</string>
+    <string name="home_widget_dashboard_3x1_desc">数据一览：电费 / 校园网 / 课程加权 / 志愿时长 / 今日课程 · 3×1 （单行条，前 3 项）</string>
+    <string name="home_widget_dashboard_4x1_desc">数据一览：电费 / 校园网 / 课程加权 / 志愿时长 / 今日课程 · 4×1 （单行条，前 4 项）</string>
+    <string name="home_widget_dashboard_5x1_desc">数据一览：电费 / 校园网 / 课程加权 / 志愿时长 / 今日课程 · 5×1 （单行条，前 5 项）</string>
+    <string name="home_widget_dashboard_2x2_desc">数据一览：电费 / 校园网 / 课程加权 / 志愿时长 / 今日课程 · 2×2 （前 4 项）</string>
+    <string name="home_widget_dashboard_3x2_desc">数据一览：电费 / 校园网 / 课程加权 / 志愿时长 / 今日课程 · 3×2 （前 5 项）</string>
+    <string name="home_widget_dashboard_4x2_desc">数据一览：电费 / 校园网 / 课程加权 / 志愿时长 / 今日课程 · 4×2 （含更新时间）</string>
+    <string name="home_widget_dashboard_5x2_desc">数据一览：电费 / 校园网 / 课程加权 / 志愿时长 / 今日课程 · 5×2 （含更新时间）</string>
 
     <!-- 小组件在添加面板里的名称（manifest 的 android:label，带上尺寸以防同名难辨） -->
     <string name="home_widget_electricity_2x1_label">电费余额 2×1</string>
