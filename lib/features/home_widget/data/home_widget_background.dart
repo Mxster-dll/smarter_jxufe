@@ -169,7 +169,7 @@ Future<WeightedGrade?> _refreshGrades(Map<String, Object?> auth) async {
 
 /// 把后台能拿到的两格（电费 / 加权）并进仪表盘快照。
 ///
-/// 网费 / 志愿时长 / 今日课程依赖 App 侧会话或本地课表缓存（后台 isolate
+/// 校园网（余额）/ 志愿时长 / 今日课程依赖 App 侧会话或本地课表缓存（后台 isolate
 /// 不碰 Hive），后台不动它们 —— 沿用上一次快照里的值，等 App 前台刷新时更新。
 Future<void> _refreshDashboard({String? electricity, String? grade}) async {
   try {
@@ -184,7 +184,7 @@ Future<void> _refreshDashboard({String? electricity, String? grade}) async {
 
     final values = <String, String?>{
       '电费': electricity ?? prev['电费'],
-      '网费': prev['网费'],
+      '校园网': prev['校园网'],
       '加权': grade ?? prev['加权'],
       '志愿': prev['志愿'],
       '今日': prev['今日'],

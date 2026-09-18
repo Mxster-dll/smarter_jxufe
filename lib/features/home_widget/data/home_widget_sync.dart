@@ -142,7 +142,7 @@ class HomeWidgetSync {
     return _push(snapshot, force: force);
   }
 
-  /// 仪表盘快照：口径 = 首页「数据一览」的 5 项（电费 / 网费 / 课程加权 /
+  /// 仪表盘快照：口径 = 首页「数据一览」的 5 项（电费 / 校园网 / 课程加权 /
   /// 志愿时长 / 今日课程）。
   ///
   /// 每一项独立容错：单项失败只让该格显示 `—`，不牵连整卡；网格容量小的档位
@@ -168,7 +168,7 @@ class HomeWidgetSync {
       final balance = await _ref.read(dashboardElectricityProvider.future);
       return balance == null ? null : _shortValue(balance.balance, decimals: 1);
     });
-    await add('网费', () async {
+    await add('校园网', () async {
       final summary = await _ref.read(netFeeSummaryProvider.future);
       final balance = summary.balance;
       return balance == null ? null : fmtYuan(balance);
@@ -178,8 +178,8 @@ class HomeWidgetSync {
       return grade == null ? null : _shortValue(grade.grade);
     });
     await add('志愿', () async {
-      final hours = await _ref.read(dashboardVolunteerHoursProvider.future);
-      return '${_trimHours(hours)}h';
+      final stats = await _ref.read(dashboardVolunteerHoursProvider.future);
+      return '${_trimHours(stats.total)}h';
     });
     await add('今日', () async {
       final courses = await _ref.read(dashboardTodayCoursesProvider.future);

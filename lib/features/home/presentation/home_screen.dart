@@ -44,10 +44,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final desktop = homeDesktopPlatform(Theme.of(context).platform.name);
 
     return Scaffold(
+      // 底部**不**留 SafeArea 内边距：Android 已铺满整屏（edge-to-edge），
+      // 若在这里避开导航栏，导航栏那一条只会露出 Scaffold 的白底（用户
+      // 2026-09-16：「主页宫格底部只显示白色而不是内容」）。不避开后磁贴
+      // 会一直画到屏幕底边；列表底部 48 的内边距保证最后一行仍在导航栏之上。
       body: SafeArea(
+        bottom: false,
         child: LayoutBuilder(
           builder: (context, constraints) {
+            // 强调色随亮度解析（宫格磁贴与侧栏共用这一份目录）：
+            // 深色下 `FeatureColors.forBrightness` 会把每条 accent 提到可读档。
             final entries = homeServiceEntries(
+              brightness: Theme.of(context).brightness,
               push: (screen) => Navigator.of(
                 context,
               ).push(MaterialPageRoute(builder: (_) => screen)),
@@ -60,7 +68,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _buildTopBar(context, scheme),
+                // 侧栏视图下顶栏不再放设置/头像（它们在侧栏底部固定区）。
+                _buildTopBar(
+                  context,
+                  scheme,
+                  showAccountActions: !useSidebar,
+                ),
                 const Divider(height: 1),
                 Expanded(
                   child: useSidebar
@@ -75,23 +88,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  /// 宫格视图：数据一览 + 全部服务宫格。
+  /// 宫格视图：仪表盘（左：指标卡；右：今日课程 12 格）+ 服务宫格。
+  ///
+  /// 两个小标题（原「数据一览」「全部服务」）已按用户 2026-09-18 裁定撤掉。
   Widget _buildGridBody(BuildContext context, List<HomeServiceEntry> entries) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 48),
+      // 底部内边距只留 12：Android 已铺满整屏（edge-to-edge），导航栏那一栏
+      // 归 App 绘制；留 48 会让列表末尾空出一条通屏宽白带（用户 2026-09-16
+      // 两次追问「主页宫格底部为什么只显示白色」，并裁定「铺到最底」）。
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
       children: [
         // 桌面小组件同步触发点（首帧推送 + 回前台重推 + 冷启动路由）
         const HomeWidgetSyncScope(child: DashboardPanel()),
         const SizedBox(height: 26),
-        _buildSectionHeader(context, '全部服务'),
-        const SizedBox(height: 14),
         HomeServiceGrid(entries: entries),
       ],
     );
   }
 
   /// 左侧导航栏视图：侧栏（全部服务，按分组）+ 右侧「概览 / 内嵌功能页」。
-  Widget _buildSidebarBody(BuildContext context, List<HomeServiceEntry> entries) {
+  Widget _buildSidebarBody(
+    BuildContext context,
+    List<HomeServiceEntry> entries,
+  ) {
     final selected = _selectedEntry(entries);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -101,6 +120,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           selectedTitle: selected?.title,
           onOverview: () => _select(null),
           onSelect: (entry) => _select(entry.title),
+          // 底部固定区：头像在上、设置在下（用户 2026-09-16 裁定 —— 桌面端这两个
+          // 入口从顶栏搬到这里，恒贴侧栏底部、不随服务列表滚动）。
+          footer: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              HomeSidebarFooterRow(
+                key: homeSidebarProfileKey,
+                leading: const AccountAvatar(radius: 15),
+                label: '我的',
+                onTap: () => _pushPage(context, const StudentInfoScreen()),
+              ),
+              HomeSidebarFooterRow(
+                key: homeSidebarSettingsKey,
+                leading: Icon(
+                  Icons.settings_outlined,
+                  size: 18,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+                label: '设置',
+                onTap: () => _pushPage(context, const SettingsScreen()),
+              ),
+            ],
+          ),
         ),
         const VerticalDivider(width: 1, thickness: 1),
         Expanded(
@@ -166,38 +208,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     setState(() => _selectedService = title);
   }
 
-  Widget _buildSectionHeader(BuildContext context, String text) {
-    final scheme = Theme.of(context).colorScheme;
-    return Row(
-      children: [
-        Container(
-          width: 3,
-          height: 13,
-          decoration: BoxDecoration(
-            color: scheme.primary,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: 7),
-        Text(
-          text,
-          style: TextStyle(
-            fontSize: 13.5,
-            fontWeight: FontWeight.w600,
-            color: scheme.onSurface,
-            letterSpacing: 0.3,
-          ),
-        ),
-      ],
-    );
+  /// push 一个整页（顶栏品牌区与侧栏底部共用同一种转场）。
+  void _pushPage(BuildContext context, Widget screen) {
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
   }
 
-  // ---------- 顶部：品牌 + 设置 + 头像（点头像进「我的」） ----------
+  // ---------- 顶部：品牌（+ 宫格视图下的设置 / 头像） ----------
   //
   // 顶栏不再显示账号名/卡号，也不再有「切换账号」按钮：
   // 姓名与卡号在「我的」页里看，账号管理（添加/切换/删除账户）走
   // 「我的」页右上角的退出图标 → AccountScreen。
-  Widget _buildTopBar(BuildContext context, ColorScheme scheme) {
+  //
+  // **侧栏视图下设置与头像不在这里**（用户 2026-09-16 裁定）：它们搬到左侧导航栏
+  // 底部的固定区（头像在上、设置在下，见 `home_sidebar.dart`），顶栏只留品牌。
+  Widget _buildTopBar(
+    BuildContext context,
+    ColorScheme scheme, {
+    required bool showAccountActions,
+  }) {
     return Container(
       color: Theme.of(context).cardTheme.color,
       padding: const EdgeInsets.fromLTRB(24, 10, 12, 10),
@@ -226,30 +254,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),
           const Spacer(),
-          // 全局设置入口（紧凑排布，避免窄屏顶栏溢出）。
-          IconButton(
-            tooltip: '设置',
-            icon: const Icon(Icons.settings_outlined, size: 20),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            visualDensity: VisualDensity.compact,
-            onPressed: () {
-              Navigator.of(
-                context,
-              ).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
-            },
-          ),
-          const SizedBox(width: 4),
-          // 个人入口：本地头像（未设置则姓名首字，再退通用图标）。
-          AccountAvatar(
-            radius: 18,
-            tooltip: '我的',
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const StudentInfoScreen()),
-              );
-            },
-          ),
+          if (showAccountActions) ...[
+            // 全局设置入口（紧凑排布，避免窄屏顶栏溢出）。
+            IconButton(
+              tooltip: '设置',
+              icon: const Icon(Icons.settings_outlined, size: 20),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+              visualDensity: VisualDensity.compact,
+              onPressed: () => _pushPage(context, const SettingsScreen()),
+            ),
+            const SizedBox(width: 4),
+            // 个人入口：本地头像（未设置则姓名首字，再退通用图标）。
+            AccountAvatar(
+              radius: 18,
+              tooltip: '我的',
+              onTap: () => _pushPage(context, const StudentInfoScreen()),
+            ),
+          ],
         ],
       ),
     );
