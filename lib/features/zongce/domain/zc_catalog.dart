@@ -63,6 +63,11 @@ class ZcTypeSpec {
   /// 次数输入标签（思想教育参与度：0.5 分/次，上限 2）。
   final String? qtyLabel;
 
+  /// 分值**手动填写**（用户 2026-09-17：外语「不要分成 xxx≥aaa/xxx>bbb，直接按证书
+  /// 名字，然后手动填入分数」）——`levels` 只作参考文案，表单给一个「得分」输入框，
+  /// 分数存进 `ZcMaterial.manualScore`。
+  final bool manualScore;
+
   /// 下拉一选项 label（级别/档位/类型；带分值文案）。
   final List<String> levels;
 
@@ -84,6 +89,7 @@ class ZcTypeSpec {
     this.needOrg = false,
     this.needCat = false,
     this.qtyLabel,
+    this.manualScore = false,
     this.levels = const [],
     this.opts = const [],
     this.hint = '',
@@ -137,8 +143,10 @@ final List<ZcTypeSpec> zcTypeSpecs = [
     slot: 'foreign',
     agg: ZcAgg.max,
     needName: true,
+    // 用户 2026-09-17：按证书名目选，得分自己填（levels 只作参考文案）。
+    manualScore: true,
     levels: [for (final f in zcForeignLevels) '${f.$1}（${_fmtD(f.$2)} 分）'],
-    hint: '外语加分单项取最高一次计分。',
+    hint: '按证书名目录入，得分自行填写（表 10 档位仅供参考）；单项取最高一次计分。',
   ),
   ZcTypeSpec(
     id: ZcTypeId.startup,
@@ -350,10 +358,17 @@ final Map<ZcTypeId, ZcTypeSpec> zcTypeSpecOf = {
 // ---------------------------------------------------------------------------
 
 final RegExp _zcNormRe = RegExp(
-  r'''[\s"'“”‘’《》〈〉「」『』·・—–—_()（）【】\[\]①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳,，.。:：;；/\\]''',
+  r'''[\s\u200b-\u200d\ufeff"'“”‘’《》〈〉「」『』·・—–—_()（）【】\[\]①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳,，.。:：;；/\\]''',
 );
 
-String _zcNorm(String s) {
+/// 名称归一化（**自动识别与搜索共用**）：小写、去全部空白与零宽字符、去标点、
+/// 全角数字转半角。
+///
+/// ⚠ 学科竞赛目录是人工从校发文件（含 PDF/网页换行）抄来的，名字里夹着空白
+/// （`华为 ICT 大赛`、`中国机器人大赛暨 RoboCup 机器人世界杯中国赛`）与
+/// 换行残留（`团体程序设计天梯 赛`）→ **两侧都要过这个函数**再比较，
+/// 否则「华为ICT大赛」永远搜不到「华为 ICT 大赛」（用户 2026-09-18 报告）。
+String zcNameKey(String s) {
   final lower = s.toLowerCase().replaceAll(_zcNormRe, '');
   final buf = StringBuffer();
   for (final code in lower.runes) {
@@ -365,6 +380,130 @@ String _zcNorm(String s) {
     }
   }
   return buf.toString();
+}
+
+/// 是否为「中文侧」字符（CJK 汉字 / 中文标点 / 全角符号）。
+bool _zcIsCjkSide(int code) =>
+    (code >= 0x4e00 && code <= 0x9fff) ||
+    (code >= 0x3400 && code <= 0x4dbf) ||
+    (code >= 0xf900 && code <= 0xfaff) ||
+    (code >= 0x3000 && code <= 0x303f) ||
+    (code >= 0xff01 && code <= 0xff5e);
+
+/// 清理**原稿换行**留下的空白（显示与回填用，不动目录数据）。
+///
+/// 规则：两侧都是中文的空白 = 换行残留 → 删除（`团体程序设计天梯 赛` →
+/// `团体程序设计天梯赛`）；其余空白（中英之间）折叠成一个空格并保留
+/// （`华为 ICT 大赛` 原样，这种间隔是排版需要）。零宽字符一律删除。
+String zcCleanName(String raw) {
+  final noZeroWidth = raw.replaceAll(RegExp(r'[\u200b-\u200d\ufeff]'), '');
+  final collapsed = noZeroWidth.replaceAll(RegExp(r'\s+'), ' ');
+  final buf = StringBuffer();
+  for (var i = 0; i < collapsed.length; i++) {
+    final ch = collapsed[i];
+    if (ch == ' ' && i > 0 && i < collapsed.length - 1) {
+      final prev = collapsed.codeUnitAt(i - 1);
+      final next = collapsed.codeUnitAt(i + 1);
+      if (_zcIsCjkSide(prev) && _zcIsCjkSide(next)) continue;
+    }
+    buf.write(ch);
+  }
+  return buf.toString().trim();
+}
+
+/// 带圈序号（复合赛事名的子项标记）。
+const String _zcCompositeMarks = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳';
+
+/// 复合赛事名拆解：`主名一①子项、②子项…` / `主名（子项A、子项B）` →
+/// 显示用主名 + 可搜索子项。
+///
+/// 真实样例（用户 2026-09-18 原话）：`中国高校计算机大赛一①大数据挑战赛、
+/// ②团体程序设计天梯 赛、③移动应用创新赛、④网络技术挑战赛、⑤人工智能创意 赛`
+/// —— 材料名显示主名（`中国高校计算机大赛`）是对的，但**搜索**要能被
+/// 「大数据挑战赛」「团体程序设计天梯赛」这类子项命中。
+({String main, List<String> subs}) zcSplitCompositeContest(String raw) {
+  final s = zcCleanName(raw);
+  final markAt = s.split('').toList().indexWhere(_zcCompositeMarks.contains);
+  if (markAt > 0) {
+    final main = _zcTrimCompositeHead(s.substring(0, markAt));
+    final subs = <String>[];
+    final buf = StringBuffer();
+    for (final ch in s.substring(markAt).split('')) {
+      if (_zcCompositeMarks.contains(ch) || '、，,；;/'.contains(ch)) {
+        _zcFlushSub(subs, buf);
+      } else {
+        buf.write(ch);
+      }
+    }
+    _zcFlushSub(subs, buf);
+    if (main.isNotEmpty && subs.isNotEmpty) return (main: main, subs: subs);
+  }
+  final split = _zcSplitParenEnum(s);
+  if (split != null) return (main: split.$1, subs: split.$2);
+  return (main: s, subs: const []);
+}
+
+/// `主名（子项A、子项B）` 形态：取第一个内容含 ≥2 个枚举项的括号。
+///
+/// 与 `zc_activity.dart` 的 `zcSplitExample` 同口径，但**不 import 它**：
+/// zc_activity 依赖本文件，反向 import 会形成库循环。
+(String, List<String>)? _zcSplitParenEnum(String s) {
+  final open = s.indexOf('（');
+  final openEn = s.indexOf('(');
+  int at;
+  String close;
+  if (open == -1 && openEn == -1) return null;
+  if (openEn == -1 || (open != -1 && open < openEn)) {
+    at = open;
+    close = '）';
+  } else {
+    at = openEn;
+    close = ')';
+  }
+  final end = s.indexOf(close, at + 1);
+  if (end == -1) return null;
+  final subs = [
+    for (final part in s.substring(at + 1, end).split(RegExp(r'[、，,；;|/\\]')))
+      if (part.trim().isNotEmpty) part.trim(),
+  ];
+  if (subs.length < 2) return null;
+  final main = s.substring(0, at).trim();
+  if (main.isEmpty) return null;
+  return (main, subs);
+}
+
+String _zcTrimCompositeHead(String head) {
+  var h = head.trim();
+  const trailing = '一-—–－:：·、，,（(【[《<';
+  while (h.isNotEmpty && trailing.contains(h[h.length - 1])) {
+    h = h.substring(0, h.length - 1).trim();
+  }
+  return h;
+}
+
+void _zcFlushSub(List<String> out, StringBuffer buf) {
+  var t = buf.toString().trim();
+  buf.clear();
+  while (t.length > 1 && t.endsWith('等')) {
+    t = t.substring(0, t.length - 1).trim();
+  }
+  if (t.isNotEmpty) out.add(t);
+}
+
+/// 某竞赛名的**全部可搜索词**：复合名子项 + 指向它的别名
+/// （`大数据挑战赛 → 中国高校计算机大赛`，见 [zcContestAliases]）。
+List<String> zcContestKeywords(String name) {
+  final key = zcNameKey(name);
+  final comp = zcSplitCompositeContest(name);
+  final keys = <String>{key, for (final sub in comp.subs) zcNameKey(sub)};
+  final out = <String>{};
+  for (final sub in comp.subs) {
+    if (zcNameKey(sub) != key) out.add(sub);
+  }
+  zcContestAliases.forEach((alias, main) {
+    if (keys.contains(zcNameKey(main)) && zcNameKey(alias) != key) out.add(alias);
+  });
+  return out.toList();
 }
 
 const Map<String, int> _zcCatRank = {'c1': 1, 'c2': 2, 'c3': 3, 'c4': 4};
@@ -389,20 +528,43 @@ final List<ZcContestEntry> _zcContestIndex = _buildIndex();
 List<ZcContestEntry> _buildIndex() {
   final out = <ZcContestEntry>[];
   final catOf = <String, String>{};
+  final seenKeys = <String>{};
+  // 目录名先清洗（去原稿换行残留的空白），再按「主名 + 复合子项」建索引：
+  // 子项各自成一条（name 仍是主名）→ 用户输入「大数据挑战赛」「团体程序设计
+  // 天梯赛」也能识别出类别（用户 2026-09-18 要求）。
   for (final entry in zcContests.entries) {
-    for (final n in entry.value) {
-      final key = _zcNorm(n);
+    for (final raw in entry.value) {
+      final clean = zcCleanName(raw);
+      final key = zcNameKey(clean);
       catOf[key] = entry.key;
-      out.add(ZcContestEntry(entry.key, n, key));
+      if (seenKeys.add(key)) out.add(ZcContestEntry(entry.key, clean, key));
+      final comp = zcSplitCompositeContest(clean);
+      final mainKey = zcNameKey(comp.main);
+      if (mainKey.isNotEmpty && mainKey != key) {
+        catOf[mainKey] = entry.key;
+        if (seenKeys.add(mainKey)) {
+          out.add(ZcContestEntry(entry.key, comp.main, mainKey));
+        }
+      }
+      for (final sub in comp.subs) {
+        final subKey = zcNameKey(sub);
+        if (subKey.isEmpty || subKey == key || subKey == mainKey) continue;
+        catOf[subKey] = entry.key;
+        if (seenKeys.add(subKey)) {
+          out.add(ZcContestEntry(entry.key, comp.main, subKey));
+        }
+      }
     }
   }
   zcContestAliases.forEach((al, main) {
-    final c = catOf[_zcNorm(main)];
-    if (c != null) out.add(ZcContestEntry(c, main, _zcNorm(al)));
+    final c = catOf[zcNameKey(main)];
+    if (c != null) out.add(ZcContestEntry(c, main, zcNameKey(al)));
   });
   out.add(const ZcContestEntry('c4', '江西省大学生科技创新竞赛', '江西省大学生科技创新竞赛'));
   for (final s in zcJxContestSubs) {
-    out.add(ZcContestEntry('c4', '江西省大学生科技创新竞赛·$s', _zcNorm(s), true));
+    out.add(
+      ZcContestEntry('c4', '江西省大学生科技创新竞赛·$s', zcNameKey(s), true),
+    );
   }
   return out;
 }
@@ -432,7 +594,7 @@ ZcContestHit? _scanContest(String q) {
 
 /// 比赛名称自动识别：命中目录返回类别；未命中返回 null（UI 手动选类别兜底）。
 ZcContestHit? zcMatchContest(String raw) {
-  final q = _zcNorm(raw);
+  final q = zcNameKey(raw);
   if (q.isEmpty) return null;
   final hit = _scanContest(q);
   if (hit != null) return hit;
@@ -452,7 +614,7 @@ ZcContestHit? zcMatchContest(String raw) {
 
 /// 供筛选候选列表（自动识别失败时给出相近目录项）。
 List<ZcContestEntry> zcFilterContests(String raw) {
-  final nq = _zcNorm(raw);
+  final nq = zcNameKey(raw);
   if (nq.isEmpty) {
     return _zcContestIndex.length > 80
         ? _zcContestIndex.sublist(0, 80)
