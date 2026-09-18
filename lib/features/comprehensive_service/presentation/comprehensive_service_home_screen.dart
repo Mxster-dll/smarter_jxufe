@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/design/app_card.dart';
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/jh_read_screen.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/second_class_credit_screen.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/volunteer_hours_screen.dart';
@@ -51,7 +52,10 @@ class ComprehensiveServiceHomeScreen extends ConsumerWidget {
               const SizedBox(height: 8),
               Text(
                 '选择要使用的功能',
-                style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                style: TextStyle(
+                  color: AppColors.textMuted(context),
+                  fontSize: 14,
+                ),
               ),
               const SizedBox(height: 48),
               _buildFunctionButton(
@@ -59,7 +63,7 @@ class ComprehensiveServiceHomeScreen extends ConsumerWidget {
                 icon: Icons.volunteer_activism,
                 label: '志愿服务时长',
                 subtitle: '查看学生志愿活动时长统计',
-                color: const Color(0xFFE65100),
+                color: AppColors.tone(context, const Color(0xFFE65100)),
                 onTap: () {
                   Navigator.push(
                     context,
@@ -75,7 +79,7 @@ class ComprehensiveServiceHomeScreen extends ConsumerWidget {
                 icon: Icons.school_outlined,
                 label: '第二课堂学分',
                 subtitle: '成绩单与学分预警 · 毕业达标进度',
-                color: const Color(0xFF6A1B9A),
+                color: AppColors.tone(context, const Color(0xFF6A1B9A)),
                 onTap: () {
                   Navigator.push(
                     context,
@@ -91,7 +95,7 @@ class ComprehensiveServiceHomeScreen extends ConsumerWidget {
                 icon: Icons.auto_stories_outlined,
                 label: '蛟湖阅读',
                 subtitle: '蛟湖阅读考核记录 · 入馆学习与借阅达标',
-                color: const Color(0xFF1565C0),
+                color: AppColors.tone(context, const Color(0xFF1565C0)),
                 onTap: () {
                   Navigator.push(
                     context,
@@ -130,7 +134,7 @@ class ComprehensiveServiceHomeScreen extends ConsumerWidget {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.12),
+                    color: AppColors.tint(context, color, 0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(icon, size: 26, color: color),
@@ -151,12 +155,18 @@ class ComprehensiveServiceHomeScreen extends ConsumerWidget {
                       const SizedBox(height: 2),
                       Text(
                         subtitle,
-                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textMuted(context),
+                        ),
                       ),
                     ],
                   ),
                 ),
-                Icon(Icons.chevron_right, color: Colors.grey[400]),
+                Icon(
+                  Icons.chevron_right,
+                  color: AppColors.tone(context, Colors.grey[400]!),
+                ),
               ],
             ),
           ),

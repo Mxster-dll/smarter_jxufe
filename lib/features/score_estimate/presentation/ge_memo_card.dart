@@ -9,6 +9,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../../../design/app_theme.dart';
 import '../../../design/feature_palette.dart';
 import '../data/ge_memo_importer.dart';
 import '../domain/ge_memo.dart';
@@ -35,7 +36,7 @@ class GeMemoBadge extends StatelessWidget {
             ? Icons.photo_library_outlined
             : Icons.sticky_note_2_outlined,
         size: size,
-        color: FeaturePalette.cardAccent.withValues(alpha: 0.9),
+        color: fp(context).cardAccent.withValues(alpha: 0.9),
       ),
     );
   }
@@ -85,7 +86,7 @@ Future<GeMemoPickSource?> showGeMemoSourceSheet(
             ListTile(
               leading: Icon(
                 geMemoPickIcon(source),
-                color: FeaturePalette.cardAccent,
+                color: fp(context).cardAccent,
               ),
               title: Text(geMemoPickLabel(source, mobile: mobile)),
               subtitle: Text(
@@ -298,7 +299,7 @@ class _GeMemoCardState extends State<GeMemoCard> {
                       '已达 $geMemoMaxImages 张上限，删掉一些再加。',
                       style: TextStyle(
                         fontSize: 12,
-                        color: const Color(0xFFE65100),
+                        color: AppColors.caution(context),
                       ),
                     ),
                   ),
@@ -336,11 +337,11 @@ class _GeMemoCardState extends State<GeMemoCard> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: path == null
-                    ? _missingThumb()
+                    ? _missingThumb(context)
                     : Image.file(
                         File(path),
                         fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => _missingThumb(),
+                        errorBuilder: (_, _, _) => _missingThumb(context),
                       ),
               ),
             ),
@@ -366,13 +367,13 @@ class _GeMemoCardState extends State<GeMemoCard> {
     );
   }
 
-  Widget _missingThumb() => ColoredBox(
-    color: const Color(0xFFE0E0E0),
+  Widget _missingThumb(BuildContext context) => ColoredBox(
+    color: AppColors.fillStronger(context),
     child: Center(
       child: Icon(
         Icons.image_not_supported_outlined,
         size: 22,
-        color: Colors.grey.shade600,
+        color: AppColors.textMuted(context),
       ),
     ),
   );

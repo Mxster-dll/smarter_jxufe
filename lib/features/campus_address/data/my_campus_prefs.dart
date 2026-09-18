@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+import 'package:smarter_jxufe/core/storage/box_reload_watcher.dart';
 import 'package:smarter_jxufe/features/campus_address/domain/my_campus.dart';
 
 /// 存储 box 名（与 `electricityBinding`、`wxPlatform` 等分开）。
@@ -21,7 +22,8 @@ const _prefsKey = 'campus';
 /// 「我的校区」存储（内存缓存 + Hive 落盘）。
 ///
 /// 落盘是「尽力而为」：Hive 打开失败时仅本次会话生效，不抛异常、不影响界面。
-class MyCampusStore extends ChangeNotifier {
+/// 混入 [BoxReloadWatcher]：**外部写入**（云同步「从云端恢复」）也要反映到界面。
+class MyCampusStore extends ChangeNotifier with BoxReloadWatcher {
   MyCampus? _campus;
   Box<String>? _box;
   Future<void>? _loading;
@@ -38,13 +40,19 @@ class MyCampusStore extends ChangeNotifier {
     try {
       final box = await Hive.openBox<String>(myCampusPrefsBoxName);
       _box = box;
-      final parsed = MyCampus.fromName(box.get(_prefsKey));
-      if (parsed == null || parsed == _campus) return;
-      _campus = parsed;
-      notifyListeners();
+      bindBoxReload(box, _readFromBox);
+      _readFromBox(box);
     } catch (_) {
       // 存档不可用 / 损坏：保持「未设置」。
     }
+  }
+
+  /// 从 box 重读（首载与外部写入共用）；值没变就不通知。
+  void _readFromBox(Box<String> box) {
+    final parsed = MyCampus.fromName(box.get(_prefsKey));
+    if (parsed == null || parsed == _campus) return;
+    _campus = parsed;
+    notifyListeners();
   }
 
   /// 写入新校区（`null` = 清除设置）。绝不抛异常。

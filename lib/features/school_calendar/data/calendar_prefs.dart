@@ -10,6 +10,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+import 'package:smarter_jxufe/core/storage/box_reload_watcher.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/calendar_day_mark.dart';
 
 /// 存储 box 名（与 `wxPlatform`、`scheduleReschedules` 等分开）。
@@ -77,7 +78,8 @@ class CalendarDisplayPrefs {
 /// 由 `calendarPrefsStoreProvider` 持有与释放（**不是全局单例**：
 /// `ChangeNotifierProvider` 会在容器释放时 dispose 掉实例，单例会被误伤）。
 /// 落盘是「尽力而为」：Hive 打开失败时仅内存生效，不抛异常、不影响界面。
-class CalendarPrefsStore extends ChangeNotifier {
+/// 混入 [BoxReloadWatcher]：**外部写入**（云同步「从云端恢复」）也要反映到界面。
+class CalendarPrefsStore extends ChangeNotifier with BoxReloadWatcher {
   /// [initial] 用于测试或预览直接给定偏好（此时不再读 Hive，也不落盘）。
   CalendarPrefsStore({CalendarDisplayPrefs? initial})
     : _prefs = initial ?? const CalendarDisplayPrefs(),
@@ -98,17 +100,28 @@ class CalendarPrefsStore extends ChangeNotifier {
     try {
       final box = await Hive.openBox<String>(calendarPrefsBoxName);
       _box = box;
+      bindBoxReload(box, _readFromBox);
+      _readFromBox(box);
+    } catch (_) {
+      // 存档不可用 / 损坏：保留默认值。
+    }
+  }
+
+  /// 从 box 重读（首载与外部写入共用）；解析不出来 / 值没变就不通知。
+  void _readFromBox(Box<String> box) {
+    try {
       final raw = box.get(_prefsKey);
       if (raw == null || raw.isEmpty) return;
       final decoded = jsonDecode(raw);
-      if (decoded is Map) {
-        _prefs = CalendarDisplayPrefs.fromJson(
-          decoded.map((k, v) => MapEntry('$k', v)),
-        );
-        notifyListeners();
-      }
+      if (decoded is! Map) return;
+      final next = CalendarDisplayPrefs.fromJson(
+        decoded.map((k, v) => MapEntry('$k', v)),
+      );
+      if (next == _prefs) return;
+      _prefs = next;
+      notifyListeners();
     } catch (_) {
-      // 存档不可用 / 损坏：保留默认值。
+      // 脏数据：保留当前值。
     }
   }
 

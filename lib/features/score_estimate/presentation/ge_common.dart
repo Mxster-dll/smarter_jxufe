@@ -4,6 +4,8 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../../design/app_card.dart';
+import '../../../design/app_theme.dart';
+import '../../../design/feature_palette.dart';
 import '../domain/ge_models.dart';
 
 /// 数字展示：保留 [decimals] 位并去掉无意义尾零（100.0 → 100；0.5 → 0.5）。
@@ -44,7 +46,10 @@ Future<bool> geConfirmDelete(
 }
 
 /// 计分模型说明正文（详情页折叠卡与帮助弹层复用）。
-Widget geModelHintBody() {
+///
+/// 取 [BuildContext] 而非静态色：条目配色随亮度解析（深色下自动提亮档）。
+Widget geModelHintBody(BuildContext context) {
+  final f = fp(context);
   Widget row(IconData icon, Color color, String title, String desc) => Padding(
     padding: const EdgeInsets.only(bottom: 10),
     child: Row(
@@ -54,7 +59,7 @@ Widget geModelHintBody() {
           width: 30,
           height: 30,
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
+            color: AppColors.tint(context, color, 0.12),
             borderRadius: BorderRadius.circular(8),
           ),
           alignment: Alignment.center,
@@ -72,7 +77,7 @@ Widget geModelHintBody() {
                 style: TextStyle(
                   fontSize: 12.5,
                   height: 1.5,
-                  color: Colors.grey.shade600,
+                  color: AppColors.textMuted(context),
                 ),
               ),
             ],
@@ -87,28 +92,28 @@ Widget geModelHintBody() {
     children: [
       row(
         Icons.percent,
-        const Color(0xFF536DFE),
+        f.scoreEstimate,
         '构成占比',
         '平时分与期末成绩按比例计入总评（两档合计 100%，默认为平时 30% + 期末 70%）。'
             '总评 = 平时均分（百分制）× 平时占比 + 期末分 × 期末占比。',
       ),
       row(
         Icons.hub_outlined,
-        const Color(0xFF00897B),
+        f.campus,
         '平时分由分项组成',
         '每个分项设一个「分值上限」（占平时满分的分值），各分项分值之和即平时满分，'
             '如平时 30 分 = 考勤 5 + 作业 15 + 表现 10。',
       ),
       row(
         Icons.trending_up,
-        const Color(0xFF2E7D32),
+        AppColors.success(context),
         '正计数分项（从 0 累计）',
         '适合打卡、提交等「做了才算」的事件：目标 N 次，已做 k 次 → 得分率 k/N，'
             '如打卡 12/20 → 60%。超过目标仍按满分计。',
       ),
       row(
         Icons.trending_down,
-        const Color(0xFFC62828),
+        AppColors.critical(context),
         '负计数分项（从目标总数向下扣）',
         '适合考勤等「缺席才扣」的事件：目标 N 为总事件数（如全学期 16 次课），'
             '每缺勤一次计数 −1，得分率 = 剩余次数 / N（下限 0），如剩 13/16 → 81.25%。'
@@ -116,7 +121,7 @@ Widget geModelHintBody() {
       ),
       row(
         Icons.edit_note,
-        const Color(0xFF0277BD),
+        f.netFee,
         '直接分数分项（老师直接给分）',
         '适合期中测验、实验报告等老师直接打分的项：填该项满分与实际得分'
             '（如 85 / 100 → 得分率 85%），得分 = 得分率 × 分值上限；'
@@ -124,7 +129,7 @@ Widget geModelHintBody() {
       ),
       row(
         Icons.flag_outlined,
-        const Color(0xFFE65100),
+        AppColors.caution(context),
         '目标反推与预警',
         '反推：为达到目标总评，期末最低需要多少分；若期末满分也不够，会提示平时'
             '剩余分项能否补足（正计数还能再刷、直接分数项未拿满的部分还能再挣；'
@@ -142,16 +147,16 @@ void geShowModelSheet(BuildContext context) {
     showDragHandle: true,
     builder: (context) => Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-      child: SingleChildScrollView(child: geModelHintBody()),
+      child: SingleChildScrollView(child: geModelHintBody(context)),
     ),
   );
 }
 
 /// 计分方式配色：up = 绿、down = 红、score = 蓝（唯一出处，徽章与芯片共用）。
-Color geModeColor(GePartMode mode) => switch (mode) {
-  GePartMode.up => const Color(0xFF2E7D32),
-  GePartMode.down => const Color(0xFFC62828),
-  GePartMode.score => const Color(0xFF0277BD),
+Color geModeColor(BuildContext context, GePartMode mode) => switch (mode) {
+  GePartMode.up => AppColors.success(context),
+  GePartMode.down => AppColors.critical(context),
+  GePartMode.score => fp(context).netFee,
 };
 
 /// 计分方式图标。
@@ -170,12 +175,12 @@ class GeModeBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = geModeColor(mode);
+    final color = geModeColor(context, mode);
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: AppColors.tint(context, color, 0.12),
         borderRadius: BorderRadius.circular(size * 0.28),
       ),
       alignment: Alignment.center,
@@ -192,7 +197,7 @@ class GeModeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = geModeColor(mode);
+    final color = geModeColor(context, mode);
     final label = switch (mode) {
       GePartMode.up => '向上计数 +',
       GePartMode.down => '向下计数 −',

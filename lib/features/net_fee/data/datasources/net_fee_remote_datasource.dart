@@ -45,9 +45,7 @@ class NetFeeRemoteDataSource {
     final data = _body(resp);
     final code = data['code'];
     if (code != 200 && code != '200') {
-      throw NetFeeApiException(
-        '平台账号换取失败：${_message(data, 'code $code')}',
-      );
+      throw NetFeeApiException('平台账号换取失败：${_message(data, 'code $code')}');
     }
     final result = data['result'];
     if (result is! Map) {
@@ -69,14 +67,16 @@ class NetFeeRemoteDataSource {
     final data = _body(resp);
     final code = data['code'];
     if (code == 'E14') {
-      throw NetFeeApiException('该账号不支持网费账户（E14）');
+      throw NetFeeApiException('该账号不支持校园网账户（E14）');
     }
     if (code != 'E00') {
-      throw NetFeeApiException('网费余额查询失败：${_message(data, code?.toString() ?? 'E99')}');
+      throw NetFeeApiException(
+        '校园网余额查询失败：${_message(data, code?.toString() ?? 'E99')}',
+      );
     }
     final balance = double.tryParse(data['balance']?.toString() ?? '');
     if (balance == null) {
-      throw const NetFeeApiException('网费余额响应缺少数值');
+      throw const NetFeeApiException('校园网余额响应缺少数值');
     }
     return NetFeeAccount(
       balance: balance,
@@ -103,7 +103,9 @@ class NetFeeRemoteDataSource {
     );
     final data = _body(resp);
     if (data['code'] != 200 && data['code'] != '200') {
-      throw NetFeeApiException('充值记录查询失败：${_message(data, 'code ${data['code']}')}');
+      throw NetFeeApiException(
+        '充值记录查询失败：${_message(data, 'code ${data['code']}')}',
+      );
     }
     final list = data['list'];
     if (list is! List) return const [];
@@ -111,15 +113,21 @@ class NetFeeRemoteDataSource {
     for (final item in list) {
       if (item is Map) {
         records.add(
-          NetFeeRecord.fromJson(
-            item.map((k, v) => MapEntry(k.toString(), v)),
-          ),
+          NetFeeRecord.fromJson(item.map((k, v) => MapEntry(k.toString(), v))),
         );
       }
     }
     records.sort((a, b) => b.paidAt.compareTo(a.paidAt));
     return records;
   }
+
+  /// 「网络服务」平台应用 id（H5「用户自助服务系统」：上网记录 / 历史账单 /
+  /// 充值明细 / 业务办理记录）。
+  ///
+  /// 完整的网络服务实现（登录、会话、全部读写接口）在
+  /// `features/network_service/data/datasources/network_service_remote_datasource.dart`，
+  /// 本常量只作为该 appId 的登记处（网费与网络服务同属 wxcourse 平台域）。
+  static const String networkServiceAppId = '1575336885141';
 
   Map<String, dynamic> _body(Response<dynamic> resp) {
     final data = resp.data;

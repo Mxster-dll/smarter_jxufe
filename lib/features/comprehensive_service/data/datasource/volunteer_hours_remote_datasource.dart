@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:html/parser.dart' as html_parser;
 
+import 'package:smarter_jxufe/features/comprehensive_service/data/anti_corruption/volunteer_detail_parser.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/datasource/ssp_auth_remote_datasource.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/volunteer_activity.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/volunteer_export_file.dart';
@@ -11,6 +12,15 @@ class VolunteerHoursRemoteDataSource {
   final Dio _dio;
 
   VolunteerHoursRemoteDataSource(this._dio);
+
+  /// 详情页路径：按列表行 `detail(id,type)` 的 type 分派（取自服务端页面内联 JS
+  /// 的 `function detail(id,type)` switch 原文）。
+  static const Map<String, String> activityDetailPaths = {
+    '0': '/admin/tzz/DQXNVolWork/apply_one_detail.html',
+    '1': '/admin/tzz/DektVolActivitiesXw/apply_one_detail.html',
+    '2': '/admin/tzz/HSJVolWork/apply_one_detail.html',
+    '3': '/admin/tzz/DektVolActivitiesZyfw/apply_one_detail.html',
+  };
 
   /// 获取志愿服务时长列表。
   ///
@@ -49,6 +59,46 @@ class VolunteerHoursRemoteDataSource {
     }
 
     return _parseHtml(body);
+  }
+
+  /// 拉单个活动的申报详情，取活动起止时间。
+  ///
+  /// 列表页（`stu_list.html`）没有时间列，时间只在「详情」页里
+  /// （见 `anti_corruption/volunteer_detail_parser.dart`）。
+  /// [detailType] 取不到映射时按 `0`（当前学年志愿工作）处理。
+  Future<({String start, String end})> fetchActivityTime({
+    required String sessionId,
+    required String detailId,
+    required String detailType,
+  }) async {
+    final path = activityDetailPaths[detailType] ?? activityDetailPaths['0']!;
+    final response = await _dio.get<String>(
+      '$path?id=$detailId&type=$detailType',
+      options: Options(
+        headers: {
+          'Cookie': 'JSESSIONID=$sessionId',
+          'Referer':
+              'http://ssp.jxufe.edu.cn/admin/tzz/StuVolWork/stu_list.html',
+        },
+        followRedirects: false,
+        responseType: ResponseType.plain,
+      ),
+    );
+
+    final status = response.statusCode ?? 0;
+    if (status >= 300 && status < 400) {
+      throw SspSessionExpiredException();
+    }
+    if (status != 200) {
+      throw Exception('请求失败: $status');
+    }
+
+    final body = response.data ?? '';
+    if (_looksLikeLoginRedirect(body)) {
+      throw SspSessionExpiredException();
+    }
+
+    return parseVolunteerActivityTime(body);
   }
 
   /// 下载「志愿服务时长认定登记表」（学校平台导出的 Word 原件）。

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../design/feature_palette.dart';
 import '../domain/ge_models.dart';
 import 'ge_common.dart';
 
@@ -74,8 +75,9 @@ Future<GeCourseDraft?> showGeCourseDialog(
     context: context,
     builder: (context) => StatefulBuilder(
       builder: (context, setState) {
-        final dailyColor = const Color(0xFF536DFE);
-        final finalColor = const Color(0xFF90A4AE);
+        final f = fp(context);
+        final dailyColor = f.scoreEstimate;
+        final finalColor = f.scoreEstimateFinal;
         return AlertDialog(
           scrollable: true,
           title: Text(title),

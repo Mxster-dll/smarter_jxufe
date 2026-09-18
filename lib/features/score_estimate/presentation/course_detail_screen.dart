@@ -11,6 +11,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/current_account_provider.dart';
+import '../../../design/app_theme.dart';
 import '../../../design/feature_palette.dart';
 import '../data/ge_curriculum.dart';
 import '../data/ge_deadline_reminders.dart';
@@ -335,7 +336,7 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
                     width: 3,
                     height: 13,
                     decoration: BoxDecoration(
-                      color: FeaturePalette.cardAccent,
+                      color: fp(context).cardAccent,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -352,7 +353,7 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
               ),
               childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               expandedCrossAxisAlignment: CrossAxisAlignment.start,
-              children: [geModelHintBody()],
+              children: [geModelHintBody(context)],
             ),
           ),
         ],
@@ -590,11 +591,13 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
               const SizedBox(height: 2),
               Text(
                 _planCreditHint!,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11.5,
                   height: 1.35,
                   fontWeight: FontWeight.w600,
-                  color: FeaturePalette.cardAccent,
+                  // ⚠ 本方法内 `fp` 是「期末占比」的局部变量（line 560），
+                  // 会遮蔽顶层 `fp(context)` → 这里走 FeatureColors.of(context)。
+                  color: FeatureColors.of(context).cardAccent,
                 ),
               ),
             ],
@@ -738,7 +741,7 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
                         style: TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.w700,
-                          color: FeaturePalette.cardAccent,
+                          color: fp(context).cardAccent,
                         ),
                       ),
                       Text(
@@ -757,7 +760,7 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
                           height: 1.1,
                           color: total < 60
                               ? scheme.error
-                              : FeaturePalette.cardAccent,
+                              : fp(context).cardAccent,
                         ),
                       ),
                       Text(
@@ -774,9 +777,11 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
                       child: LinearProgressIndicator(
                         value: (total ?? calc.dailyContrib + 0) / 100,
                         minHeight: 7,
-                        color: FeaturePalette.cardAccent,
-                        backgroundColor: FeaturePalette.cardAccent.withValues(
-                          alpha: 0.12,
+                        color: fp(context).cardAccent,
+                        backgroundColor: AppColors.tint(
+                          context,
+                          fp(context).cardAccent,
+                          0.12,
                         ),
                       ),
                     ),
@@ -845,16 +850,14 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
                         vertical: 1,
                       ),
                       decoration: BoxDecoration(
-                        color: FeaturePalette.cardAccent.withValues(alpha: 0.1),
+                        color: fp(context).cardAccent.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
                         '满分 ${geFmt(calc.capSum, decimals: 2)}',
                         style: TextStyle(
                           fontSize: 11,
-                          color: FeaturePalette.cardAccent.withValues(
-                            alpha: 0.95,
-                          ),
+                          color: fp(context).cardAccent.withValues(alpha: 0.95),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -1001,7 +1004,7 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
                     style: TextStyle(
                       fontSize: 11.5,
                       color: ratio >= 1
-                          ? const Color(0xFF2E7D32)
+                          ? AppColors.success(context)
                           : scheme.onSurfaceVariant,
                     ),
                   ),
@@ -1128,14 +1131,19 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
                 style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
               )
             else
-              _goalResult(calc, goal, scheme),
+              _goalResult(context, calc, goal, scheme),
           ],
         ),
       ),
     );
   }
 
-  Widget _goalResult(GeCalc calc, double goal, ColorScheme scheme) {
+  Widget _goalResult(
+    BuildContext context,
+    GeCalc calc,
+    double goal,
+    ColorScheme scheme,
+  ) {
     final need = geRequiredFinal(calc, goal);
     final fw = calc.finalWeight;
     final hasFinal = fw > 0;
@@ -1146,7 +1154,7 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
 
     switch (need.status) {
       case GeGoalStatus.reached:
-        resultColor = const Color(0xFF2E7D32);
+        resultColor = AppColors.success(context);
         headline = '平时折算已达目标';
         detail =
             '即使期末 0 分，总评也有 '
@@ -1160,7 +1168,7 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
             '期末占比 ${geFmt((100 - _c.dailyPercent))}%，'
             '每考 1 分得 ${geFmt(fw * 100, decimals: 0)}%。';
       case GeGoalStatus.recoverByDaily:
-        resultColor = const Color(0xFFE65100);
+        resultColor = AppColors.caution(context);
         headline = hasFinal
             ? '期末满分也差 ${geFmt(need.dailyGap, decimals: 1)} 分'
             : '总分还差 ${geFmt(need.dailyGap, decimals: 1)} 分';
@@ -1187,7 +1195,7 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: resultColor.withValues(alpha: 0.07),
+        color: AppColors.tint(context, resultColor, 0.07),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: resultColor.withValues(alpha: 0.35)),
       ),

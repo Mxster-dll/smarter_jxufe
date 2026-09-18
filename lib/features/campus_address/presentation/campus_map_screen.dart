@@ -6,6 +6,8 @@ import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/features/campus_address/data/my_campus_prefs.dart';
 import 'package:smarter_jxufe/features/campus_address/domain/my_campus.dart';
 import 'package:smarter_jxufe/features/campus_address/presentation/my_campus_widgets.dart';
+import 'package:smarter_jxufe/design/pane_chrome.dart';
+import 'package:smarter_jxufe/features/settings/domain/settings_section.dart';
 
 /// 校区地图条目：内置压缩版资源(官网四校区地图,生成脚本 tools/_campus_maps_build.py)。
 class CampusMapEntry {
@@ -66,7 +68,12 @@ class CampusMapScreen extends ConsumerWidget {
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('校区地图'), centerTitle: true),
+      appBar: paneAppBar(
+        context,
+        title: const Text('校区地图'),
+        centerTitle: true,
+        settingsSections: const [SettingsSection.campus],
+      ),
       body: ListView.separated(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
         // 第 0 项是「我的校区」状态提示行，其后是地图卡片。
@@ -82,9 +89,9 @@ class CampusMapScreen extends ConsumerWidget {
           return Material(
             color: Theme.of(context).cardTheme.color,
             shape: pinned
-                ? appCardShape(
-                    context,
-                  ).copyWith(side: BorderSide(color: FeaturePalette.cardAccent))
+                ? appCardShape(context).copyWith(
+                    side: BorderSide(color: fp(context).cardAccent),
+                  )
                 : appCardShape(context),
             clipBehavior: Clip.antiAlias,
             child: InkWell(

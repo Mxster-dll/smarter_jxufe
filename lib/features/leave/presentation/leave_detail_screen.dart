@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/features/leave/data/providers/leave_providers.dart';
 import 'package:smarter_jxufe/features/leave/domain/leave_models.dart';
+import 'package:smarter_jxufe/design/app_theme.dart';
 
 /// 请假单详情（只读）：基本信息 + 审批时间线。
 class LeaveDetailScreen extends ConsumerWidget {
@@ -66,6 +67,7 @@ class LeaveDetailScreen extends ConsumerWidget {
               ],
               error: (e, _) => [
                 _errorCard(
+                  context,
                   scheme,
                   '加载失败：${e.toString().replaceAll('Exception: ', '')}',
                 ),
@@ -110,7 +112,7 @@ class LeaveDetailScreen extends ConsumerWidget {
                   width: 42,
                   height: 42,
                   decoration: BoxDecoration(
-                    color: scheme.primary.withValues(alpha: 0.10),
+                    color: AppColors.tint(context, scheme.primary, 0.10),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
@@ -142,7 +144,7 @@ class LeaveDetailScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-                _statusChip(scheme, statusOk, info.statusName),
+                _statusChip(context, scheme, statusOk, info.statusName),
               ],
             ),
           ),
@@ -331,7 +333,7 @@ class LeaveDetailScreen extends ConsumerWidget {
                   Expanded(
                     child: Container(
                       width: 2,
-                      color: scheme.outlineVariant.withValues(alpha: 0.6),
+                      color: AppColors.hairline(context, 0.6),
                     ),
                   ),
               ],
@@ -403,12 +405,17 @@ class LeaveDetailScreen extends ConsumerWidget {
     return '${info.leaveStart} 至 ${info.leaveEnd}';
   }
 
-  Widget _statusChip(ColorScheme scheme, bool ok, String status) {
+  Widget _statusChip(
+    BuildContext context,
+    ColorScheme scheme,
+    bool ok,
+    String status,
+  ) {
     final fg = ok ? scheme.primary : scheme.onSurfaceVariant;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: fg.withValues(alpha: 0.10),
+        color: AppColors.tint(context, fg, 0.10),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -453,13 +460,15 @@ class LeaveDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _errorCard(ColorScheme scheme, String message) {
+  Widget _errorCard(BuildContext context, ColorScheme scheme, String message) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: scheme.error.withValues(alpha: 0.06),
+        color: AppColors.tint(context, scheme.error, 0.06),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: scheme.error.withValues(alpha: 0.35)),
+        border: Border.all(
+          color: AppColors.tintBorder(context, scheme.error, 0.35),
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

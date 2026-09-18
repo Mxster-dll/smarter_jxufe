@@ -9,6 +9,8 @@ import 'package:smarter_jxufe/features/campus_address/domain/my_campus.dart';
 import 'package:smarter_jxufe/features/electricity/data/datasources/electricity_remote_datasource.dart';
 import 'package:smarter_jxufe/features/electricity/data/models/electricity_models.dart';
 import 'package:smarter_jxufe/features/electricity/data/providers/electricity_providers.dart';
+import 'package:smarter_jxufe/design/pane_chrome.dart';
+import 'package:smarter_jxufe/design/app_theme.dart';
 
 /// 宿舍电费页。
 ///
@@ -274,9 +276,9 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
       await _dataSource.bindRoom(username: username, roomId: targetRoomId);
       if (!mounted) return;
       setState(() => _busy = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('绑定成功，正在查询电量...')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('绑定成功，正在查询电量...')));
       await _autoQuery(roomId: targetRoomId);
     } catch (e) {
       if (!mounted) return;
@@ -533,8 +535,7 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
                           tooltip: '关闭',
                           visualDensity: VisualDensity.compact,
                           icon: const Icon(Icons.close, size: 20),
-                          onPressed: () =>
-                              Navigator.of(dialogContext).pop(),
+                          onPressed: () => Navigator.of(dialogContext).pop(),
                         ),
                       ],
                     ),
@@ -627,8 +628,9 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
   }
 
   List<Widget> _roomBlocks() {
-    final groups =
-        _floorGroups.where((g) => g.rooms.isNotEmpty).toList(growable: false);
+    final groups = _floorGroups
+        .where((g) => g.rooms.isNotEmpty)
+        .toList(growable: false);
     return [
       for (final group in groups) ...[
         _dialogGroupHeader(context, group.floorName),
@@ -655,7 +657,7 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('宿舍电费'), centerTitle: true),
+      appBar: paneAppBar(context, title: const Text('宿舍电费'), centerTitle: true),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
         children: [
@@ -738,9 +740,7 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
                   icon: Icons.door_sliding_outlined,
                   selected: _roomId != null,
                   loading: _loadingRooms,
-                  value: _roomId == null
-                      ? null
-                      : _selectedRoomLabel(),
+                  value: _roomId == null ? null : _selectedRoomLabel(),
                   placeholder: '点击选择房间',
                   onTap: _pickRoom,
                 ),
@@ -785,15 +785,15 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
         ),
         child: Row(
           children: [
-            Icon(Icons.receipt_long_outlined,
-                size: 16, color: scheme.onSurfaceVariant),
+            Icon(
+              Icons.receipt_long_outlined,
+              size: 16,
+              color: scheme.onSurfaceVariant,
+            ),
             const SizedBox(width: 8),
             Text(
               '暂无充值记录',
-              style: TextStyle(
-                fontSize: 13,
-                color: scheme.onSurfaceVariant,
-              ),
+              style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
             ),
           ],
         ),
@@ -823,9 +823,9 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
     final timeText = time == null
         ? ''
         : '${time.year}-${time.month.toString().padLeft(2, '0')}-'
-            '${time.day.toString().padLeft(2, '0')} '
-            '${time.hour.toString().padLeft(2, '0')}:'
-            '${time.minute.toString().padLeft(2, '0')}';
+              '${time.day.toString().padLeft(2, '0')} '
+              '${time.hour.toString().padLeft(2, '0')}:'
+              '${time.minute.toString().padLeft(2, '0')}';
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       child: Row(
@@ -834,11 +834,14 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              color: scheme.primary.withValues(alpha: 0.08),
+              color: AppColors.tint(context, scheme.primary, 0.08),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(Icons.add_card_outlined,
-                size: 17, color: scheme.primary),
+            child: Icon(
+              Icons.add_card_outlined,
+              size: 17,
+              color: scheme.primary,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -985,7 +988,7 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
       curve: Curves.easeOut,
       decoration: BoxDecoration(
         color: selected
-            ? scheme.primary.withValues(alpha: 0.05)
+            ? AppColors.tint(context, scheme.primary, 0.05)
             : scheme.surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
@@ -1006,7 +1009,7 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
                   width: 42,
                   height: 42,
                   decoration: BoxDecoration(
-                    color: scheme.primary.withValues(alpha: 0.10),
+                    color: AppColors.tint(context, scheme.primary, 0.10),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(icon, size: 20, color: scheme.primary),
@@ -1049,8 +1052,11 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
                 else if (selected)
                   Icon(Icons.edit_outlined, size: 18, color: scheme.primary)
                 else
-                  Icon(Icons.chevron_right,
-                      size: 20, color: scheme.onSurfaceVariant),
+                  Icon(
+                    Icons.chevron_right,
+                    size: 20,
+                    color: scheme.onSurfaceVariant,
+                  ),
               ],
             ),
           ),
@@ -1072,10 +1078,10 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: scheme.error.withValues(alpha: 0.05),
+              color: AppColors.tint(context, scheme.error, 0.05),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: scheme.error.withValues(alpha: 0.28),
+                color: AppColors.tintBorder(context, scheme.error, 0.28),
               ),
             ),
             child: Row(
@@ -1138,7 +1144,7 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
         return Container(
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
           decoration: BoxDecoration(
-            color: scheme.primary.withValues(alpha: 0.04),
+            color: AppColors.tint(context, scheme.primary, 0.04),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -1198,10 +1204,7 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
               const SizedBox(width: 8),
               Text(
                 balance.unit,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: scheme.onSurfaceVariant,
-                ),
+                style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
               ),
             ],
           ),
@@ -1211,8 +1214,11 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.location_on_outlined,
-                  size: 14, color: scheme.onSurfaceVariant),
+              Icon(
+                Icons.location_on_outlined,
+                size: 14,
+                color: scheme.onSurfaceVariant,
+              ),
               const SizedBox(width: 4),
               Flexible(
                 child: Text(

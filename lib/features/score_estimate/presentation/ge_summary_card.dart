@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../../design/app_theme.dart';
 import '../../../design/feature_palette.dart';
 import '../../ims/grades/domain/grades_exclusions.dart';
 import '../domain/ge_engine.dart';
@@ -14,7 +15,9 @@ class GeWeightedSummaryCard extends StatelessWidget {
 
   /// 未填期末（未计入合计）的课程数。
   final int pendingCount;
-  final Color accent;
+
+  /// 强调色；不传 = `fp(context).cardAccent`（随亮度的主题红）。
+  final Color? accent;
 
   /// 本专业培养方案名（用于说明学分来源）；空 = 未取到方案。
   final String planMajorName;
@@ -23,13 +26,14 @@ class GeWeightedSummaryCard extends StatelessWidget {
     super.key,
     required this.summary,
     required this.pendingCount,
-    this.accent = FeaturePalette.cardAccent,
+    this.accent,
     this.planMajorName = '',
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final accentColor = accent ?? fp(context).cardAccent;
     final avg = summary.average;
     final hintStyle = TextStyle(
       fontSize: 11.5,
@@ -68,7 +72,7 @@ class GeWeightedSummaryCard extends StatelessWidget {
                     fontSize: 30,
                     fontWeight: FontWeight.w700,
                     height: 1.05,
-                    color: avg == null ? scheme.onSurfaceVariant : accent,
+                    color: avg == null ? scheme.onSurfaceVariant : accentColor,
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -118,7 +122,7 @@ class GeWeightedSummaryCard extends StatelessWidget {
               Text(
                 '另有 $pendingCount 门未填期末，暂未计入合计。',
                 style: hintStyle.copyWith(
-                  color: const Color(0xFFE65100),
+                  color: AppColors.caution(context),
                   fontWeight: FontWeight.w600,
                 ),
               ),

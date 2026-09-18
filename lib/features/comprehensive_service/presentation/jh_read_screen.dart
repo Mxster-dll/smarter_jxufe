@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/core/navigation/page_auto_refresh.dart';
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/jh_read_record.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/providers/jh_read_providers.dart';
@@ -11,6 +12,8 @@ import 'package:smarter_jxufe/features/library_edu/presentation/tsgxs_home_scree
 import 'package:smarter_jxufe/features/read_credit/data/providers/read_credit_providers.dart';
 import 'package:smarter_jxufe/features/read_credit/presentation/read_credit_progress_section.dart';
 import 'package:smarter_jxufe/features/read_credit/presentation/read_credit_rules_card.dart';
+import 'package:smarter_jxufe/design/pane_chrome.dart';
+import 'package:smarter_jxufe/features/settings/domain/settings_section.dart';
 
 /// 蛟湖阅读页（阅读学分平台 + 入馆教育 + 学工平台记录的三源单一入口）。
 ///
@@ -71,7 +74,13 @@ class _JhReadScreenState extends ConsumerState<JhReadScreen> {
     final recordsAsync = ref.watch(jhReadRecordsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('蛟湖阅读'), centerTitle: true),
+      appBar: paneAppBar(
+        context,
+        title: const Text('蛟湖阅读'),
+        centerTitle: true,
+        // 本页相关的设置：入馆教育答题模式（蛟湖阅读「入馆教育」部分的入口就在本页）。
+        settingsSections: const [SettingsSection.libraryEdu],
+      ),
       body: RefreshIndicator(
         onRefresh: () async => _refreshAll(),
         child: ListView(
@@ -128,7 +137,7 @@ class _JhReadScreenState extends ConsumerState<JhReadScreen> {
               Icon(
                 Icons.info_outline,
                 size: 17,
-                color: FeaturePalette.cardAccent,
+                color: fp(context).cardAccent,
               ),
               const SizedBox(width: 8),
               const Text(
@@ -166,6 +175,7 @@ class _JhReadScreenState extends ConsumerState<JhReadScreen> {
   Widget _buildRecordCard(BuildContext context, JhReadRecord record) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final f = fp(context);
     return _card(
       context,
       child: Column(
@@ -176,7 +186,7 @@ class _JhReadScreenState extends ConsumerState<JhReadScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: FeaturePalette.cardAccent.withValues(alpha: 0.10),
+                  color: AppColors.tint(context, f.cardAccent, 0.10),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
@@ -184,7 +194,7 @@ class _JhReadScreenState extends ConsumerState<JhReadScreen> {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: FeaturePalette.cardAccent,
+                    color: f.cardAccent,
                   ),
                 ),
               ),
@@ -196,7 +206,7 @@ class _JhReadScreenState extends ConsumerState<JhReadScreen> {
                     vertical: 3,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.green.withValues(alpha: 0.12),
+                    color: AppColors.successFill(context),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -204,7 +214,7 @@ class _JhReadScreenState extends ConsumerState<JhReadScreen> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: Colors.green.shade800,
+                      color: AppColors.success(context),
                     ),
                   ),
                 ),
@@ -308,11 +318,11 @@ class _JhReadScreenState extends ConsumerState<JhReadScreen> {
     final Color bg;
     final Color fg;
     if (isOk) {
-      bg = Colors.green.withValues(alpha: 0.12);
-      fg = Colors.green.shade800;
+      bg = AppColors.successFill(context);
+      fg = AppColors.success(context);
     } else if (isNo) {
-      bg = Colors.red.withValues(alpha: 0.10);
-      fg = Colors.red.shade700;
+      bg = AppColors.criticalFill(context);
+      fg = AppColors.critical(context);
     } else {
       final scheme = Theme.of(context).colorScheme;
       bg = scheme.surfaceContainerHighest;
@@ -425,7 +435,7 @@ Widget _card(BuildContext context, {required Widget child}) {
     decoration: BoxDecoration(
       color: scheme.surface,
       borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+      border: Border.all(color: AppColors.hairline(context, 0.6)),
     ),
     padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
     child: child,

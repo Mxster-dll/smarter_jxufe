@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/design/app_card.dart';
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/second_class_credit.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/providers/second_class_credit_providers.dart';
+import 'package:smarter_jxufe/design/pane_chrome.dart';
 
 class SecondClassCreditScreen extends ConsumerWidget {
   const SecondClassCreditScreen({super.key});
@@ -13,7 +15,11 @@ class SecondClassCreditScreen extends ConsumerWidget {
     final overviewAsync = ref.watch(secondClassCreditOverviewProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('第二课堂学分'), centerTitle: true),
+      appBar: paneAppBar(
+        context,
+        title: const Text('第二课堂学分'),
+        centerTitle: true,
+      ),
       body: overviewAsync.when(
         loading: () => const Center(
           child: Column(
@@ -31,14 +37,18 @@ class SecondClassCreditScreen extends ConsumerWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                Icon(
+                  Icons.error_outline,
+                  size: 48,
+                  color: AppColors.critical(context),
+                ),
                 const SizedBox(height: 16),
                 Text('加载失败', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
                 Text(
                   error.toString(),
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey[600]),
+                  style: TextStyle(color: AppColors.textMuted(context)),
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton.icon(
@@ -83,6 +93,9 @@ class SecondClassCreditScreen extends ConsumerWidget {
     SecondClassCreditReport report,
   ) {
     final s = report.student;
+    // 头像的青色点缀：浅色 = 原 `Colors.teal[800]` / `teal[100]` 逐值不变，
+    // 深色下由 `AppColors.tone` 提亮、淡底走 `statusFill`（深底上 12% 会看不见，故提高不透明度）。
+    final avatarAccent = AppColors.tone(context, Colors.teal[800]!);
     return Card(
       shape: appCardShape(context),
       child: Padding(
@@ -91,13 +104,13 @@ class SecondClassCreditScreen extends ConsumerWidget {
           children: [
             CircleAvatar(
               radius: 26,
-              backgroundColor: Colors.teal[100],
+              backgroundColor: AppColors.statusFill(context, avatarAccent),
               child: Text(
                 s.name.isEmpty ? '?' : s.name.characters.first,
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  color: Colors.teal[800],
+                  color: avatarAccent,
                 ),
               ),
             ),
@@ -116,11 +129,17 @@ class SecondClassCreditScreen extends ConsumerWidget {
                   const SizedBox(height: 2),
                   Text(
                     '${s.studentId} · ${s.className}',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textMuted(context),
+                    ),
                   ),
                   Text(
                     '${s.major} · ${s.college}',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textMuted(context),
+                    ),
                   ),
                 ],
               ),
@@ -148,24 +167,24 @@ class SecondClassCreditScreen extends ConsumerWidget {
               context,
               label: '总学分',
               value: _fmt(report.totalCredit),
-              color: Colors.deepPurple[600]!,
+              color: AppColors.tone(context, Colors.deepPurple[600]!),
             ),
-            _scoreDivider(),
+            _scoreDivider(context),
             _scoreCell(
               context,
               label: '有效学分',
               value: _fmt(report.validCredit),
-              color: Colors.teal[600]!,
+              color: AppColors.tone(context, Colors.teal[600]!),
             ),
-            _scoreDivider(),
+            _scoreDivider(context),
             _scoreCell(
               context,
               label: '达标进度',
               value:
                   '${_fmt(report.totalCredit)}/${_fmt(overview.totalRequired)}',
               color: overview.totalPassed
-                  ? Colors.green[600]!
-                  : Colors.orange[700]!,
+                  ? AppColors.success(context)
+                  : AppColors.caution(context),
             ),
           ],
         ),
@@ -182,7 +201,10 @@ class SecondClassCreditScreen extends ConsumerWidget {
     return Expanded(
       child: Column(
         children: [
-          Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+          Text(
+            label,
+            style: TextStyle(fontSize: 11, color: AppColors.textMuted(context)),
+          ),
           const SizedBox(height: 4),
           Text(
             value,
@@ -197,8 +219,8 @@ class SecondClassCreditScreen extends ConsumerWidget {
     );
   }
 
-  Widget _scoreDivider() {
-    return Container(width: 1, height: 36, color: Colors.grey[200]);
+  Widget _scoreDivider(BuildContext context) {
+    return Container(width: 1, height: 36, color: AppColors.stroke(context));
   }
 
   // ---- 阶段要求 ----
@@ -222,7 +244,11 @@ class SecondClassCreditScreen extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.timeline, size: 18, color: Colors.deepPurple[400]),
+                Icon(
+                  Icons.timeline,
+                  size: 18,
+                  color: AppColors.tone(context, Colors.deepPurple[400]!),
+                ),
                 const SizedBox(width: 6),
                 Text(
                   '毕业前应获 ${_fmt(overview.totalRequired)} 学分',
@@ -239,13 +265,13 @@ class SecondClassCreditScreen extends ConsumerWidget {
                   ),
                   decoration: BoxDecoration(
                     color: overview.totalPassed
-                        ? Colors.green[50]
-                        : Colors.red[50],
+                        ? AppColors.successFill(context)
+                        : AppColors.criticalFill(context),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                       color: overview.totalPassed
-                          ? Colors.green[200]!
-                          : Colors.red[200]!,
+                          ? AppColors.tone(context, Colors.green[200]!)
+                          : AppColors.tone(context, Colors.red[200]!),
                     ),
                   ),
                   child: Text(
@@ -254,8 +280,8 @@ class SecondClassCreditScreen extends ConsumerWidget {
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
                       color: overview.totalPassed
-                          ? Colors.green[700]
-                          : Colors.red[700],
+                          ? AppColors.success(context)
+                          : AppColors.critical(context),
                     ),
                   ),
                 ),
@@ -267,11 +293,11 @@ class SecondClassCreditScreen extends ConsumerWidget {
               child: LinearProgressIndicator(
                 value: progress,
                 minHeight: 8,
-                backgroundColor: Colors.grey[200],
+                backgroundColor: AppColors.fillStrong(context),
                 valueColor: AlwaysStoppedAnimation(
                   overview.totalPassed
-                      ? Colors.green[400]
-                      : Colors.deepPurple[400],
+                      ? AppColors.tone(context, Colors.green[400]!)
+                      : AppColors.tone(context, Colors.deepPurple[400]!),
                 ),
               ),
             ),
@@ -279,7 +305,10 @@ class SecondClassCreditScreen extends ConsumerWidget {
             Text(
               '累计 ${_fmt(report.totalCredit)} / ${_fmt(overview.totalRequired)} 学分'
               '（${(progress * 100).toStringAsFixed(0)}%）',
-              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+              style: TextStyle(
+                fontSize: 11,
+                color: AppColors.textMuted(context),
+              ),
             ),
             const SizedBox(height: 8),
             // 阶段明细
@@ -289,14 +318,18 @@ class SecondClassCreditScreen extends ConsumerWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.arrow_right, size: 15, color: Colors.grey[400]),
+                    Icon(
+                      Icons.arrow_right,
+                      size: 15,
+                      color: AppColors.tone(context, Colors.grey[400]!),
+                    ),
                     const SizedBox(width: 2),
                     Expanded(
                       child: Text(
                         m,
                         style: TextStyle(
                           fontSize: 11.5,
-                          color: Colors.grey[700],
+                          color: AppColors.textMuted(context),
                           height: 1.4,
                         ),
                       ),
@@ -326,7 +359,7 @@ class SecondClassCreditScreen extends ConsumerWidget {
                 Icon(
                   Icons.verified_outlined,
                   size: 18,
-                  color: Colors.orange[700],
+                  color: AppColors.caution(context),
                 ),
                 const SizedBox(width: 6),
                 const Text(
@@ -338,7 +371,10 @@ class SecondClassCreditScreen extends ConsumerWidget {
             const SizedBox(height: 4),
             Text(
               '未达标板块以红色标记',
-              style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+              style: TextStyle(
+                fontSize: 11,
+                color: AppColors.textMuted(context),
+              ),
             ),
             const SizedBox(height: 8),
             ...overview.boardRows.map((r) => _buildBoardRow(context, r)),
@@ -363,8 +399,10 @@ class SecondClassCreditScreen extends ConsumerWidget {
                 fontSize: 13,
                 fontWeight: hasReq ? FontWeight.w600 : FontWeight.normal,
                 color: !hasReq
-                    ? Colors.grey[500]
-                    : (met ? Colors.grey[800] : Colors.red[700]),
+                    ? AppColors.textMuted(context)
+                    : (met
+                          ? AppColors.textMuted(context)
+                          : AppColors.critical(context)),
               ),
             ),
           ),
@@ -381,9 +419,11 @@ class SecondClassCreditScreen extends ConsumerWidget {
                               ? 0
                               : (row.earned / row.required!).clamp(0.0, 1.0),
                           minHeight: 6,
-                          backgroundColor: Colors.grey[200],
+                          backgroundColor: AppColors.fillStrong(context),
                           valueColor: AlwaysStoppedAnimation(
-                            met ? Colors.green[400] : Colors.red[400],
+                            met
+                                ? AppColors.tone(context, Colors.green[400]!)
+                                : AppColors.tone(context, Colors.red[400]!),
                           ),
                         ),
                       ),
@@ -397,39 +437,50 @@ class SecondClassCreditScreen extends ConsumerWidget {
                         ].join(' · '),
                         style: TextStyle(
                           fontSize: 10.5,
-                          color: met ? Colors.green[700] : Colors.red[600],
+                          color: met
+                              ? AppColors.success(context)
+                              : AppColors.critical(context),
                         ),
                       ),
                     ],
                   )
                 : Text(
                     '已获 ${_fmt(row.earned)} 学分',
-                    style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textMuted(context),
+                    ),
                   ),
           ),
           if (hasReq) ...[
             const SizedBox(width: 6),
-            _chip(met ? '达标' : '未达标', met),
+            _chip(context, met ? '达标' : '未达标', met),
           ],
         ],
       ),
     );
   }
 
-  Widget _chip(String text, bool ok) {
+  Widget _chip(BuildContext context, String text, bool ok) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
-        color: ok ? Colors.green[50] : Colors.red[50],
+        color: ok
+            ? AppColors.successFill(context)
+            : AppColors.criticalFill(context),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: ok ? Colors.green[300]! : Colors.red[300]!),
+        border: Border.all(
+          color: ok
+              ? AppColors.tone(context, Colors.green[300]!)
+              : AppColors.tone(context, Colors.red[300]!),
+        ),
       ),
       child: Text(
         text,
         style: TextStyle(
           fontSize: 10,
           fontWeight: FontWeight.bold,
-          color: ok ? Colors.green[700] : Colors.red[700],
+          color: ok ? AppColors.success(context) : AppColors.critical(context),
         ),
       ),
     );
@@ -442,6 +493,7 @@ class SecondClassCreditScreen extends ConsumerWidget {
     SecondClassCreditReport report,
   ) {
     if (report.platformCredits.isEmpty) return const SizedBox.shrink();
+    final tealAccent = AppColors.tone(context, Colors.teal[700]!);
     return Card(
       shape: appCardShape(context),
       child: Padding(
@@ -454,7 +506,7 @@ class SecondClassCreditScreen extends ConsumerWidget {
                 Icon(
                   Icons.donut_large_outlined,
                   size: 18,
-                  color: Colors.teal[600],
+                  color: AppColors.tone(context, Colors.teal[600]!),
                 ),
                 const SizedBox(width: 6),
                 const Text(
@@ -477,10 +529,14 @@ class SecondClassCreditScreen extends ConsumerWidget {
                 final nonZero = e.value > 0;
                 return Container(
                   decoration: BoxDecoration(
-                    color: nonZero ? Colors.teal[50] : Colors.grey[100],
+                    color: nonZero
+                        ? AppColors.statusFill(context, tealAccent)
+                        : AppColors.fill(context),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: nonZero ? Colors.teal[200]! : Colors.grey[200]!,
+                      color: nonZero
+                          ? AppColors.tone(context, Colors.teal[200]!)
+                          : AppColors.fillStrong(context),
                     ),
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -493,7 +549,9 @@ class SecondClassCreditScreen extends ConsumerWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 10,
-                          color: nonZero ? Colors.teal[800] : Colors.grey[500],
+                          color: nonZero
+                              ? AppColors.tone(context, Colors.teal[800]!)
+                              : AppColors.textMuted(context),
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -502,7 +560,9 @@ class SecondClassCreditScreen extends ConsumerWidget {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
-                          color: nonZero ? Colors.teal[700] : Colors.grey[400],
+                          color: nonZero
+                              ? tealAccent
+                              : AppColors.tone(context, Colors.grey[400]!),
                         ),
                       ),
                     ],
@@ -535,7 +595,7 @@ class SecondClassCreditScreen extends ConsumerWidget {
                 Icon(
                   Icons.receipt_long_outlined,
                   size: 18,
-                  color: Colors.blueGrey[600],
+                  color: AppColors.textMuted(context),
                 ),
                 const SizedBox(width: 6),
                 Text(
@@ -552,7 +612,10 @@ class SecondClassCreditScreen extends ConsumerWidget {
               report.volunteerHours > 0
                   ? '含志愿服务累计 ${_fmt(report.volunteerHours)} 小时'
                   : '按获奖年份排序',
-              style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+              style: TextStyle(
+                fontSize: 11,
+                color: AppColors.textMuted(context),
+              ),
             ),
             const SizedBox(height: 8),
             ...report.records.map((r) => _buildRecordTile(context, r)),
@@ -568,9 +631,9 @@ class SecondClassCreditScreen extends ConsumerWidget {
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: AppColors.fillSoft(context),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[200]!),
+        border: Border.all(color: AppColors.fillStrong(context)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -583,8 +646,8 @@ class SecondClassCreditScreen extends ConsumerWidget {
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
                 color: isVolunteerSummary
-                    ? Colors.orange[700]
-                    : Colors.blueGrey[600],
+                    ? AppColors.caution(context)
+                    : AppColors.textMuted(context),
               ),
             ),
           ),
@@ -600,7 +663,10 @@ class SecondClassCreditScreen extends ConsumerWidget {
                 const SizedBox(height: 2),
                 Text(
                   record.platform,
-                  style: TextStyle(fontSize: 10.5, color: Colors.grey[500]),
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    color: AppColors.textMuted(context),
+                  ),
                 ),
               ],
             ),
@@ -611,7 +677,9 @@ class SecondClassCreditScreen extends ConsumerWidget {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
-              color: record.credit > 0 ? Colors.teal[700] : Colors.grey,
+              color: record.credit > 0
+                  ? AppColors.tone(context, Colors.teal[700]!)
+                  : AppColors.textMuted(context),
             ),
           ),
         ],

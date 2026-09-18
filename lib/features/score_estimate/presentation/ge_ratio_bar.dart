@@ -18,6 +18,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../design/app_theme.dart';
 import '../../../design/feature_palette.dart';
 import '../domain/ge_models.dart';
 import 'ge_common.dart';
@@ -317,11 +318,16 @@ GeCallout? _fit({
 // ---- 组件 ----
 
 /// 段颜色：平时分 = 模块靛蓝（未配置时浅色），期末 = 中性蓝灰。
-Color geRatioSegmentColor(GeRatioSegment seg) {
-  if (!seg.isPart) return FeaturePalette.scoreEstimateFinal;
-  return seg.pending
-      ? FeaturePalette.scoreEstimatePending
-      : FeaturePalette.scoreEstimate;
+///
+/// 取 `BuildContext` 而非静态 [FeaturePalette]：三段色都要随亮度解析
+/// （深色下自动提亮档），否则深底上整条读不出。
+Color geRatioSegmentColor(BuildContext context, GeRatioSegment seg) =>
+    geRatioSegmentColorOf(FeatureColors.of(context), seg);
+
+/// [geRatioSegmentColor] 的无 context 版本（`CustomPainter` 里只能拿到色表）。
+Color geRatioSegmentColorOf(FeatureColors f, GeRatioSegment seg) {
+  if (!seg.isPart) return f.scoreEstimateFinal;
+  return seg.pending ? f.scoreEstimatePending : f.scoreEstimate;
 }
 
 /// 纯分段条（列表页细条 / 详情页条体，不含引出线与标注）。
@@ -362,7 +368,9 @@ class GeRatioBar extends StatelessWidget {
               if (i > 0 && gap > 0) SizedBox(width: gap),
               Expanded(
                 flex: math.max(1, (segments[i].fraction * 10000).round()),
-                child: ColoredBox(color: geRatioSegmentColor(segments[i])),
+                child: ColoredBox(
+                  color: geRatioSegmentColor(context, segments[i]),
+                ),
               ),
             ],
           ],
@@ -438,6 +446,8 @@ class GeRatioChart extends StatelessWidget {
                   painter: _LeaderPainter(
                     callouts: callouts,
                     barBottom: barHeight,
+                    // 色表在 build 里解析好带进 painter（CustomPainter 拿不到 context）。
+                    colors: FeatureColors.of(context),
                   ),
                 ),
               ),
@@ -485,13 +495,18 @@ class GeRatioChart extends StatelessWidget {
 class _LeaderPainter extends CustomPainter {
   final List<GeCallout> callouts;
   final double barBottom;
+  final FeatureColors colors;
 
-  _LeaderPainter({required this.callouts, required this.barBottom});
+  _LeaderPainter({
+    required this.callouts,
+    required this.barBottom,
+    required this.colors,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
     for (final c in callouts) {
-      final color = geRatioSegmentColor(c.segment);
+      final color = geRatioSegmentColorOf(colors, c.segment);
       canvas.drawLine(
         Offset(c.anchorX, barBottom),
         Offset(c.elbowX, c.labelTop),
@@ -512,7 +527,8 @@ class _LeaderPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _LeaderPainter oldDelegate) =>
       !identical(oldDelegate.callouts, callouts) ||
-      oldDelegate.barBottom != barBottom;
+      oldDelegate.barBottom != barBottom ||
+      oldDelegate.colors != colors;
 }
 
 // ---- 比例设置弹层 ----
@@ -595,6 +611,9 @@ class _GeRatioSheetState extends State<GeRatioSheet> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    // ⚠ 本方法内 `fp` 是「期末占比」的局部变量（见下），会遮蔽顶层 `fp(context)`，
+    // 故这里用 `FeatureColors.of(context)` 取色。
+    final colors = FeatureColors.of(context);
     final fp = 100 - _dp;
 
     return Padding(
@@ -627,11 +646,13 @@ class _GeRatioSheetState extends State<GeRatioSheet> {
               const SizedBox(height: 12),
               SliderTheme(
                 data: SliderTheme.of(context).copyWith(
-                  activeTrackColor: FeaturePalette.scoreEstimate,
+                  activeTrackColor: colors.scoreEstimate,
                   inactiveTrackColor: scheme.surfaceContainerHighest,
-                  thumbColor: FeaturePalette.scoreEstimate,
-                  overlayColor: FeaturePalette.scoreEstimate.withValues(
-                    alpha: 0.12,
+                  thumbColor: colors.scoreEstimate,
+                  overlayColor: AppColors.tint(
+                    context,
+                    colors.scoreEstimate,
+                    0.12,
                   ),
                   activeTickMarkColor: Colors.transparent,
                   inactiveTickMarkColor: Colors.transparent,
