@@ -558,9 +558,9 @@ void main() {
       }
     });
 
-    test('数据一览的口径与首页面板同源（电费 / 网费 / 加权 / 志愿 / 今日）', () {
+    test('数据一览的口径与首页面板同源（电费 / 校园网 / 加权 / 志愿 / 今日）', () {
       final sync = read('lib/features/home_widget/data/home_widget_sync.dart');
-      for (final label in ["'电费'", "'网费'", "'加权'", "'志愿'", "'今日'"]) {
+      for (final label in ["'电费'", "'校园网'", "'加权'", "'志愿'", "'今日'"]) {
         expect(sync.contains('add($label'), isTrue, reason: '仪表盘缺少 $label 格');
       }
       for (final provider in [

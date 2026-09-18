@@ -1,0 +1,704 @@
+<!-- 真实抓取自 ssp.jxufe.edu.cn（已裁掉 script/style/head，仅保留结构） -->
+
+
+<div class="content-mini bg-gray-lighter adminHeadBox hidden-xs">
+
+    <div class="row items-push">
+
+        <div class="col-sm-7">
+
+            <h1 class="page-heading">
+
+            选取比赛
+
+                <a class="content-header-btn" href="javascript:window.location.reload()"><i class="fa fa-refresh"></i>
+
+                    刷新</a>
+
+            </h1>
+
+        </div>
+
+        <div class="col-sm-5 text-right hidden-xs">
+
+            <ol class="breadcrumb push-10-t">
+
+                <li>学科竞赛管理</li>
+
+                <li><a class="link-effect">选取比赛</a></li>
+
+            </ol>
+
+        </div>
+
+    </div>
+
+</div>
+
+    <div class="block">
+
+        <form id="listForm" action="find_game.html" method="post">
+
+            <input type="hidden" id="type" name="type" value="">
+
+            <input type="hidden" id="isSearch" name="isSearch" value="" />
+
+             <div class="block-header form-inline">
+
+<div class="pull-left">
+
+    <a class="selectDataBtn btn btn-sm btn-primary" style="width: 100px; display: none"><i class="si si-plus"></i>
+
+        选择</a>
+
+                        <button type="button" class="btn btn-primary" onclick="setGame()">确 定</button>
+
+</div>
+
+<div class="pull-right">
+
+    <div class="form-inline">
+
+                        <div class="input-group date">
+
+                            <input id="search_eq_year" type="text" class="form-control input-sm"
+
+                                   name="search_eq_year"
+
+                                   value="" placeholder="比赛年份   ">
+
+                        </div>
+
+						<input id="searchUsername" type="text" class="form-control input-sm" style="width: 250px" name="search_like_gameName" value="" placeholder="比赛名称">
+
+                        <button class="btn btn-success btn-sm" type="button" onclick="doSubmit()"><i class="fa fa-search"></i></button>
+
+                        <button style="float: right; margin-left: 4px;" class="btn btn-success btn-sm" type="button" onclick="clean()"><i class="fa fa-refresh"></i></button>
+
+    </div>
+
+</div>
+
+<div class="clearfix"></div>
+
+             </div>
+
+            <div class="block-content table-responsive remove-padding-t">
+
+                <table class="table table-bordered" id="listTable">
+
+                    <thead>
+
+                    <tr>
+
+                        <th>操作</th>
+
+                        <th>比赛年份</th>
+
+						<th>比赛名称【类别】</th>
+
+						<th>校内对接单位</th>
+
+                        <th>比赛时间</th>
+
+                        <th>比赛网址</th>
+
+                    </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="7584" data-level="国赛" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>2026</td>
+
+								<td>香港会计师公会 QP 个案分析比赛【国赛】</td>
+
+								<td>会计学院</td>
+
+                                <td>2026</td>
+
+                                <td></td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="7619" data-level="省赛" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>2026</td>
+
+								<td>香港会计师公会 QP 个案分析比赛【省赛】</td>
+
+								<td>会计学院</td>
+
+                                <td>2026</td>
+
+                                <td></td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="7746" data-level="校赛" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>2026</td>
+
+								<td>香港会计师公会 QP 个案分析比赛【校赛】</td>
+
+								<td>会计学院</td>
+
+                                <td>2026</td>
+
+                                <td></td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="7763" data-level="省赛" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>2026</td>
+
+								<td>首届“燕兴杯”江西省大学生省英语应用能力竞赛【省赛】</td>
+
+								<td>外国语学院</td>
+
+                                <td>2026</td>
+
+                                <td></td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="7780" data-level="校赛" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>2026</td>
+
+								<td>首届“燕兴杯”江西省大学生省英语应用能力竞赛【校赛】</td>
+
+								<td>外国语学院</td>
+
+                                <td>2026</td>
+
+                                <td></td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="7384" data-level="国赛" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>2026</td>
+
+								<td>蓝桥杯全国软件和信息技术专业人才大赛【国赛】</td>
+
+								<td>无</td>
+
+                                <td>2026</td>
+
+                                <td></td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="7461" data-level="省赛" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>2026</td>
+
+								<td>蓝桥杯全国软件和信息技术专业人才大赛【省赛】</td>
+
+								<td>无</td>
+
+                                <td>2026</td>
+
+                                <td></td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="7535" data-level="校赛" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>2026</td>
+
+								<td>蓝桥杯全国软件和信息技术专业人才大赛【校赛】</td>
+
+								<td>无</td>
+
+                                <td>2026</td>
+
+                                <td></td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="7608" data-level="国赛" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>2026</td>
+
+								<td>美国大学生数学建模竞赛【国赛】</td>
+
+								<td>信息管理与数学学院</td>
+
+                                <td>2026</td>
+
+                                <td></td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="7642" data-level="省赛" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>2026</td>
+
+								<td>美国大学生数学建模竞赛【省赛】</td>
+
+								<td>信息管理与数学学院</td>
+
+                                <td>2026</td>
+
+                                <td></td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="7699" data-level="校赛" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>2026</td>
+
+								<td>美国大学生数学建模竞赛【校赛】</td>
+
+								<td>信息管理与数学学院</td>
+
+                                <td>2026</td>
+
+                                <td></td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="7383" data-level="国赛" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>2026</td>
+
+								<td>米兰设计周——中国高校设计学科师生优秀作品展【国赛】</td>
+
+								<td>无</td>
+
+                                <td>2026</td>
+
+                                <td></td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="7460" data-level="省赛" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>2026</td>
+
+								<td>米兰设计周——中国高校设计学科师生优秀作品展【省赛】</td>
+
+								<td>无</td>
+
+                                <td>2026</td>
+
+                                <td></td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="7534" data-level="校赛" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>2026</td>
+
+								<td>米兰设计周——中国高校设计学科师生优秀作品展【校赛】</td>
+
+								<td>无</td>
+
+                                <td>2026</td>
+
+                                <td></td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="8302" data-level="国赛" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>2026</td>
+
+								<td>第八届“搜知杯”全国财经高校大学生信息素养大赛【国赛】</td>
+
+								<td>图书馆</td>
+
+                                <td>2026</td>
+
+                                <td></td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="8303" data-level="省赛" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>2026</td>
+
+								<td>第八届“搜知杯”全国财经高校大学生信息素养大赛【省赛】</td>
+
+								<td>图书馆</td>
+
+                                <td>2026</td>
+
+                                <td></td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="8304" data-level="校赛" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>2026</td>
+
+								<td>第八届“搜知杯”全国财经高校大学生信息素养大赛【校赛】</td>
+
+								<td>图书馆</td>
+
+                                <td>2026</td>
+
+                                <td></td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="7371" data-level="国赛" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>2026</td>
+
+								<td>睿抗机器人开发者大赛（RAICOM）【国赛】</td>
+
+								<td>无</td>
+
+                                <td>2026</td>
+
+                                <td></td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="7447" data-level="省赛" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>2026</td>
+
+								<td>睿抗机器人开发者大赛（RAICOM）【省赛】</td>
+
+								<td>无</td>
+
+                                <td>2026</td>
+
+                                <td></td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="7522" data-level="校赛" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>2026</td>
+
+								<td>睿抗机器人开发者大赛（RAICOM）【校赛】</td>
+
+								<td>无</td>
+
+                                <td>2026</td>
+
+                                <td></td>
+
+                            </tr>
+
+                    </tbody>
+
+                </table>
+
+                <div class="row">    <input type="hidden" id="pageNumber" name="pageNumber" value="1"/>
+
+    <input type="hidden" id="pageSize" name="pageSize" value="20"/>
+
+    <input type="hidden" id="searchProperty" name="searchProperty" value=""/>
+
+    <input type="hidden" id="orderProperty" name="orderProperty" value=""/>
+
+    <input type="hidden" id="orderDirection" name="orderDirection" value=""/>
+
+    <div class="col-sm-6">
+
+        <div style="padding-top: 18px;white-space: nowrap;">
+
+            每页显示
+
+            <span class="dropup hidden-xs">
+
+			  <button class="btn btn-sm btn-default dropdown-toggle" type="button" id="pageSizeSelect"
+
+                      data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+
+			  20
+
+                  <span class="caret"></span>
+
+			  </button>
+
+			  <ul class="dropdown-menu" aria-labelledby="pageSizeSelect" id="pageSizeOption">
+
+				  <li >
+
+					  <a href="javascript:;" val="10">10</a>
+
+				  </li>
+
+				  <li  class="active">
+
+					  <a href="javascript:;" val="20">20</a>
+
+				  </li>
+
+				  <li >
+
+					  <a href="javascript:;" val="50">50</a>
+
+				  </li>
+
+				  <li >
+
+					  <a href="javascript:;" val="100">100</a>
+
+				  </li>
+
+			  </ul>
+
+		</span>条,
+
+            共 <strong>4152</strong>条记录
+
+        </div>
+
+    </div>
+
+    <div class="col-sm-6">
+
+        <div style="margin:0;white-space:nowrap;text-align: right">
+
+                <ul class="pagination" style="margin:12px 0px;white-space: nowrap">
+
+                                                                 <li class="disabled"><a href="javascript:void(0)"><i class="fa fa-angle-left"></i></a></li>
+
+                            <li class="active"><a href="javascript:void(0)">1</a></li>
+
+                            <li><a href="javascript: $.pageSkip(2)">2</a></li>
+
+                            <li><a href="javascript: $.pageSkip(3)">3</a></li>
+
+                            <li><a href="javascript: $.pageSkip(4)">4</a></li>
+
+                            <li><a href="javascript: $.pageSkip(5)">5</a></li>
+
+                        <li><a>...</a></li>
+
+<li><a href="javascript: $.pageSkip(208)">208</a></li>
+
+                        <li>
+
+                            <a href="javascript: $.pageSkip(2)"><i class="fa fa-angle-right"></i></a>
+
+                        </li>
+
+                </ul>
+
+        </div>
+
+    </div>
+
+</div>
+
+            </div>
+
+        </form>
+
+    </div>
+
+<link rel="stylesheet" href="/assets/js/plugins/bootstrap-datetimepicker/bootstrap-datetimepicker.min.css">
+
+    

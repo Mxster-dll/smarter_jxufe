@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -177,6 +179,39 @@ void main() {
       await pumpHorizontal(tester);
       expect(find.text('08:00'), findsNothing);
       expect(find.text('08:45'), findsNothing);
+    });
+  });
+
+  group('12 行底色一致（用户 2026-09-16：「课表第五行的颜色和其他行不一样」）', () {
+    /// 取节次格的底色（`Container.decoration` 的 `color`）。
+    Color? periodCellColor(WidgetTester tester, int period) {
+      final container = tester.widget<Container>(
+        find.byKey(Key('schedulePeriodCell-$period')),
+      );
+      return (container.decoration as BoxDecoration?)?.color;
+    }
+
+    testWidgets('节次列第 5 节不再有专属底色', (tester) async {
+      await pumpGrid(tester, periods: table);
+
+      final first = periodCellColor(tester, 1);
+      for (final period in [2, 3, 4, 5, 6, 11, 12]) {
+        expect(
+          periodCellColor(tester, period),
+          first,
+          reason: '第 $period 节格子的底色应与第 1 节一致（从前第 5 节被涂成 grey.shade100）',
+        );
+      }
+      expect(first, isNull, reason: '节次列不带任何底色');
+      expect(tester.takeException(), isNull);
+    });
+
+    test('源码里不再有第 5 节专属底色（含空格子那一层）', () {
+      final src = File(
+        'lib/features/ims/schedule/presentation/schedule_grid_view.dart',
+      ).readAsStringSync();
+      expect(src.contains('period == 5 ? Colors.grey'), isFalse);
+      expect(src.contains('isBeforeNoon'), isFalse);
     });
   });
 }

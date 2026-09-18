@@ -1,0 +1,947 @@
+<!-- 真实抓取自 ssp.jxufe.edu.cn（已裁掉 script/style/head，仅保留结构） -->
+
+
+<div class="content-mini bg-gray-lighter adminHeadBox hidden-xs">
+
+    <div class="row items-push">
+
+        <div class="col-sm-7">
+
+            <h1 class="page-heading">
+
+            学科竞赛公示
+
+                <a class="content-header-btn" href="javascript:window.location.reload()"><i class="fa fa-refresh"></i>
+
+                    刷新</a>
+
+            </h1>
+
+        </div>
+
+        <div class="col-sm-5 text-right hidden-xs">
+
+            <ol class="breadcrumb push-10-t">
+
+                <li>第二课堂</li>
+
+                <li><a class="link-effect">学科竞赛公示</a></li>
+
+            </ol>
+
+        </div>
+
+    </div>
+
+</div>
+
+<div class="block">
+
+    <form id="listForm" action="gs_list.html" method="get">
+
+        <input type="hidden" name="pageInit" id="pageInit" value="no">
+
+        <div class="block-header form-inline">
+
+<div class="pull-left">
+
+    <a class="selectDataBtn btn btn-sm btn-primary" style="width: 100px; display: none"><i class="si si-plus"></i>
+
+        选择</a>
+
+</div>
+
+<div class="pull-right">
+
+    <div class="form-inline">
+
+                <input class="form-control input-sm" name="search_like_applyStudent.studentId" id="studentId"
+
+                       type="text" value="" placeholder="学号">
+
+                <input class="form-control input-sm" name="search_like_applyStudent.name" id="name"
+
+                       type="text" value="" placeholder="学生姓名">
+
+                <input class="form-control input-sm" name="search_like_applyStudent.adminClassInformation.className" id="className"
+
+                       type="text" value="" placeholder="班级">
+
+            <button class="btn btn-success btn-sm" type="button" onclick="initSubmit();"><i class="fa fa-search"></i></button>
+
+            <button class="btn btn-success btn-sm" type="button" id="cleanBtn" onclick="clearCondition()"><i class="fa fa-refresh"></i></button>
+
+    </div>
+
+</div>
+
+<div class="clearfix"></div>
+
+        </div>
+
+        <div class="block-content table-responsive remove-padding-t">
+
+            <table class="table table-bordered" id="listTable">
+
+                <thead>
+
+                <tr>
+
+                    <th>序号</th>
+
+                    <th>学号</th>
+
+                    <th>申请人姓名</th>
+
+                    <th>学院</th>
+
+                    <th>班级</th>
+
+                    <th>比赛名称</th>
+
+                    <th>类型</th>
+
+                    <th>时间</th>
+
+                    <th>操作</th>
+
+                </tr>
+
+                </thead>
+
+                <tbody>
+
+                    <tr>
+
+                        <td>1</td>
+
+                        <td>0254173</td>
+
+                        <td>张艺馨</td>
+
+                        <td>计算机与人工智能学院</td>
+
+                        <td>25计算机4班</td>
+
+                        <td>全国大学生数学建模竞赛</td>
+
+                        <td>团队</td>
+
+                        <td>2026-08-26</td>
+
+                        <td>
+
+                            <div class="btn-group">
+
+                                <a href="javascript:;" onclick="showDetail(202354,'look','团队')"
+
+                                   class="btn btn-xs btn-default" type="button"
+
+                                   data-toggle="tooltip" data-original-title="查看">查看</a>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                    <tr>
+
+                        <td>2</td>
+
+                        <td>0252940</td>
+
+                        <td>叶奕亨</td>
+
+                        <td>计算机与人工智能学院</td>
+
+                        <td>25信管中外1班</td>
+
+                        <td>中国国际大学生创新大赛</td>
+
+                        <td>团队</td>
+
+                        <td>2026-08-29</td>
+
+                        <td>
+
+                            <div class="btn-group">
+
+                                <a href="javascript:;" onclick="showDetail(202827,'look','团队')"
+
+                                   class="btn btn-xs btn-default" type="button"
+
+                                   data-toggle="tooltip" data-original-title="查看">查看</a>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                    <tr>
+
+                        <td>3</td>
+
+                        <td>0246533</td>
+
+                        <td>刘凡浩</td>
+
+                        <td>计算机与人工智能学院</td>
+
+                        <td>24计算机(3)班</td>
+
+                        <td>全国大学生创新创业训练计划年会展示</td>
+
+                        <td>个人
+
+                            </td>
+
+                        <td>2026-09-16</td>
+
+                        <td>
+
+                            <div class="btn-group">
+
+                                <a href="javascript:;" onclick="showDetail(207446,'look','个人')"
+
+                                   class="btn btn-xs btn-default" type="button"
+
+                                   data-toggle="tooltip" data-original-title="查看">查看</a>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                    <tr>
+
+                        <td>4</td>
+
+                        <td>0246533</td>
+
+                        <td>刘凡浩</td>
+
+                        <td>计算机与人工智能学院</td>
+
+                        <td>24计算机(3)班</td>
+
+                        <td>中国国际大学生创新大赛</td>
+
+                        <td>个人
+
+                            </td>
+
+                        <td>2026-09-16</td>
+
+                        <td>
+
+                            <div class="btn-group">
+
+                                <a href="javascript:;" onclick="showDetail(207445,'look','个人')"
+
+                                   class="btn btn-xs btn-default" type="button"
+
+                                   data-toggle="tooltip" data-original-title="查看">查看</a>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                    <tr>
+
+                        <td>5</td>
+
+                        <td>0234971</td>
+
+                        <td>黄佳颖</td>
+
+                        <td>计算机与人工智能学院</td>
+
+                        <td>23计算机（1）班</td>
+
+                        <td>中国机器人及人工智能大赛</td>
+
+                        <td>个人
+
+                            </td>
+
+                        <td>2026-09-15</td>
+
+                        <td>
+
+                            <div class="btn-group">
+
+                                <a href="javascript:;" onclick="showDetail(207340,'look','个人')"
+
+                                   class="btn btn-xs btn-default" type="button"
+
+                                   data-toggle="tooltip" data-original-title="查看">查看</a>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                    <tr>
+
+                        <td>6</td>
+
+                        <td>0251752</td>
+
+                        <td>朱晨阳</td>
+
+                        <td>计算机与人工智能学院</td>
+
+                        <td>25计算机4班</td>
+
+                        <td>中国国际大学生创新大赛</td>
+
+                        <td>个人
+
+                            </td>
+
+                        <td>2026-09-14</td>
+
+                        <td>
+
+                            <div class="btn-group">
+
+                                <a href="javascript:;" onclick="showDetail(207065,'look','个人')"
+
+                                   class="btn btn-xs btn-default" type="button"
+
+                                   data-toggle="tooltip" data-original-title="查看">查看</a>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                    <tr>
+
+                        <td>7</td>
+
+                        <td>0243872</td>
+
+                        <td>谢雨欣</td>
+
+                        <td>计算机与人工智能学院</td>
+
+                        <td>24计算机(1)班</td>
+
+                        <td>中国国际大学生创新大赛</td>
+
+                        <td>个人
+
+                            </td>
+
+                        <td>2026-09-14</td>
+
+                        <td>
+
+                            <div class="btn-group">
+
+                                <a href="javascript:;" onclick="showDetail(207041,'look','个人')"
+
+                                   class="btn btn-xs btn-default" type="button"
+
+                                   data-toggle="tooltip" data-original-title="查看">查看</a>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                    <tr>
+
+                        <td>8</td>
+
+                        <td>0234997</td>
+
+                        <td>易靖涵</td>
+
+                        <td>计算机与人工智能学院</td>
+
+                        <td>23计算机（2）班</td>
+
+                        <td>中国国际大学生创新大赛</td>
+
+                        <td>个人
+
+                            </td>
+
+                        <td>2026-09-14</td>
+
+                        <td>
+
+                            <div class="btn-group">
+
+                                <a href="javascript:;" onclick="showDetail(206946,'look','个人')"
+
+                                   class="btn btn-xs btn-default" type="button"
+
+                                   data-toggle="tooltip" data-original-title="查看">查看</a>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                    <tr>
+
+                        <td>9</td>
+
+                        <td>0254322</td>
+
+                        <td>张翰林</td>
+
+                        <td>计算机与人工智能学院</td>
+
+                        <td>25计算机4班</td>
+
+                        <td>全国大学生职业规划大赛</td>
+
+                        <td>个人
+
+                            </td>
+
+                        <td>2026-09-13</td>
+
+                        <td>
+
+                            <div class="btn-group">
+
+                                <a href="javascript:;" onclick="showDetail(206789,'look','个人')"
+
+                                   class="btn btn-xs btn-default" type="button"
+
+                                   data-toggle="tooltip" data-original-title="查看">查看</a>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                    <tr>
+
+                        <td>10</td>
+
+                        <td>0254322</td>
+
+                        <td>张翰林</td>
+
+                        <td>计算机与人工智能学院</td>
+
+                        <td>25计算机4班</td>
+
+                        <td>蓝桥杯全国软件和信息技术专业人才大赛</td>
+
+                        <td>个人
+
+                            </td>
+
+                        <td>2026-09-13</td>
+
+                        <td>
+
+                            <div class="btn-group">
+
+                                <a href="javascript:;" onclick="showDetail(206788,'look','个人')"
+
+                                   class="btn btn-xs btn-default" type="button"
+
+                                   data-toggle="tooltip" data-original-title="查看">查看</a>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                    <tr>
+
+                        <td>11</td>
+
+                        <td>0254322</td>
+
+                        <td>张翰林</td>
+
+                        <td>计算机与人工智能学院</td>
+
+                        <td>25计算机4班</td>
+
+                        <td>“传智杯”全国 IT 技能大赛</td>
+
+                        <td>个人
+
+                            </td>
+
+                        <td>2026-09-13</td>
+
+                        <td>
+
+                            <div class="btn-group">
+
+                                <a href="javascript:;" onclick="showDetail(206787,'look','个人')"
+
+                                   class="btn btn-xs btn-default" type="button"
+
+                                   data-toggle="tooltip" data-original-title="查看">查看</a>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                    <tr>
+
+                        <td>12</td>
+
+                        <td>0254322</td>
+
+                        <td>张翰林</td>
+
+                        <td>计算机与人工智能学院</td>
+
+                        <td>25计算机4班</td>
+
+                        <td>中国国际大学生创新大赛</td>
+
+                        <td>个人
+
+                            </td>
+
+                        <td>2026-09-13</td>
+
+                        <td>
+
+                            <div class="btn-group">
+
+                                <a href="javascript:;" onclick="showDetail(206786,'look','个人')"
+
+                                   class="btn btn-xs btn-default" type="button"
+
+                                   data-toggle="tooltip" data-original-title="查看">查看</a>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                    <tr>
+
+                        <td>13</td>
+
+                        <td>0252651</td>
+
+                        <td>冷江坤</td>
+
+                        <td>计算机与人工智能学院</td>
+
+                        <td>25人工智能1班</td>
+
+                        <td>中国国际大学生创新大赛</td>
+
+                        <td>个人
+
+                            </td>
+
+                        <td>2026-09-13</td>
+
+                        <td>
+
+                            <div class="btn-group">
+
+                                <a href="javascript:;" onclick="showDetail(206704,'look','个人')"
+
+                                   class="btn btn-xs btn-default" type="button"
+
+                                   data-toggle="tooltip" data-original-title="查看">查看</a>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                    <tr>
+
+                        <td>14</td>
+
+                        <td>0253942</td>
+
+                        <td>肖望</td>
+
+                        <td>计算机与人工智能学院</td>
+
+                        <td>25网安班</td>
+
+                        <td>“东方财富杯”全国大学生金融精英挑战赛</td>
+
+                        <td>个人
+
+                            </td>
+
+                        <td>2026-09-13</td>
+
+                        <td>
+
+                            <div class="btn-group">
+
+                                <a href="javascript:;" onclick="showDetail(206681,'look','个人')"
+
+                                   class="btn btn-xs btn-default" type="button"
+
+                                   data-toggle="tooltip" data-original-title="查看">查看</a>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                    <tr>
+
+                        <td>15</td>
+
+                        <td>0254764</td>
+
+                        <td>吴思慧</td>
+
+                        <td>计算机与人工智能学院</td>
+
+                        <td>25计算机4班</td>
+
+                        <td>中国国际大学生创新大赛</td>
+
+                        <td>团队</td>
+
+                        <td>2026-09-13</td>
+
+                        <td>
+
+                            <div class="btn-group">
+
+                                <a href="javascript:;" onclick="showDetail(206589,'look','团队')"
+
+                                   class="btn btn-xs btn-default" type="button"
+
+                                   data-toggle="tooltip" data-original-title="查看">查看</a>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                    <tr>
+
+                        <td>16</td>
+
+                        <td>0234994</td>
+
+                        <td>沈运杰</td>
+
+                        <td>计算机与人工智能学院</td>
+
+                        <td>23计算机（2）班</td>
+
+                        <td>全国大学生职业规划大赛</td>
+
+                        <td>个人
+
+                            </td>
+
+                        <td>2026-09-11</td>
+
+                        <td>
+
+                            <div class="btn-group">
+
+                                <a href="javascript:;" onclick="showDetail(206329,'look','个人')"
+
+                                   class="btn btn-xs btn-default" type="button"
+
+                                   data-toggle="tooltip" data-original-title="查看">查看</a>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                    <tr>
+
+                        <td>17</td>
+
+                        <td>0253072</td>
+
+                        <td>华雨菲</td>
+
+                        <td>计算机与人工智能学院</td>
+
+                        <td>25虚拟现实中外2班</td>
+
+                        <td>中国机器人及人工智能大赛</td>
+
+                        <td>团队</td>
+
+                        <td>2026-09-10</td>
+
+                        <td>
+
+                            <div class="btn-group">
+
+                                <a href="javascript:;" onclick="showDetail(206123,'look','团队')"
+
+                                   class="btn btn-xs btn-default" type="button"
+
+                                   data-toggle="tooltip" data-original-title="查看">查看</a>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                    <tr>
+
+                        <td>18</td>
+
+                        <td>0252633</td>
+
+                        <td>肖雅</td>
+
+                        <td>计算机与人工智能学院</td>
+
+                        <td>25人工智能1班</td>
+
+                        <td>中国国际大学生创新大赛</td>
+
+                        <td>个人
+
+                            </td>
+
+                        <td>2026-09-10</td>
+
+                        <td>
+
+                            <div class="btn-group">
+
+                                <a href="javascript:;" onclick="showDetail(206002,'look','个人')"
+
+                                   class="btn btn-xs btn-default" type="button"
+
+                                   data-toggle="tooltip" data-original-title="查看">查看</a>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                    <tr>
+
+                        <td>19</td>
+
+                        <td>0252633</td>
+
+                        <td>肖雅</td>
+
+                        <td>计算机与人工智能学院</td>
+
+                        <td>25人工智能1班</td>
+
+                        <td>全国大学生职业规划大赛</td>
+
+                        <td>个人
+
+                            </td>
+
+                        <td>2026-09-10</td>
+
+                        <td>
+
+                            <div class="btn-group">
+
+                                <a href="javascript:;" onclick="showDetail(206001,'look','个人')"
+
+                                   class="btn btn-xs btn-default" type="button"
+
+                                   data-toggle="tooltip" data-original-title="查看">查看</a>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                    <tr>
+
+                        <td>20</td>
+
+                        <td>0252563</td>
+
+                        <td>陈弈昊</td>
+
+                        <td>计算机与人工智能学院</td>
+
+                        <td>25计算机3班</td>
+
+                        <td>全国高校经济决策虚仿实验大赛（暨经济学、智慧银行、财政与公共管理虚拟仿真实验竞赛）</td>
+
+                        <td>个人
+
+                            </td>
+
+                        <td>2026-09-09</td>
+
+                        <td>
+
+                            <div class="btn-group">
+
+                                <a href="javascript:;" onclick="showDetail(205918,'look','个人')"
+
+                                   class="btn btn-xs btn-default" type="button"
+
+                                   data-toggle="tooltip" data-original-title="查看">查看</a>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+            <div class="row">    <input type="hidden" id="pageNumber" name="pageNumber" value="1"/>
+
+    <input type="hidden" id="pageSize" name="pageSize" value="20"/>
+
+    <input type="hidden" id="searchProperty" name="searchProperty" value=""/>
+
+    <input type="hidden" id="orderProperty" name="orderProperty" value=""/>
+
+    <input type="hidden" id="orderDirection" name="orderDirection" value=""/>
+
+    <div class="col-sm-6">
+
+        <div style="padding-top: 18px;white-space: nowrap;">
+
+            每页显示
+
+            <span class="dropup hidden-xs">
+
+			  <button class="btn btn-sm btn-default dropdown-toggle" type="button" id="pageSizeSelect"
+
+                      data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+
+			  20
+
+                  <span class="caret"></span>
+
+			  </button>
+
+			  <ul class="dropdown-menu" aria-labelledby="pageSizeSelect" id="pageSizeOption">
+
+				  <li >
+
+					  <a href="javascript:;" val="10">10</a>
+
+				  </li>
+
+				  <li  class="active">
+
+					  <a href="javascript:;" val="20">20</a>
+
+				  </li>
+
+				  <li >
+
+					  <a href="javascript:;" val="50">50</a>
+
+				  </li>
+
+				  <li >
+
+					  <a href="javascript:;" val="100">100</a>
+
+				  </li>
+
+                   <li >
+
+					  <a href="javascript:;" val="500">500</a>
+
+				  </li>
+
+                   <li >
+
+					  <a href="javascript:;" val="2000">2000</a>
+
+				  </li>
+
+			  </ul>
+
+		</span>条,
+
+            共 <strong>244</strong>条记录
+
+        </div>
+
+    </div>
+
+    <div class="col-sm-6">
+
+        <div style="margin:0;white-space:nowrap;text-align: right">
+
+                <ul class="pagination" style="margin:12px 0px;white-space: nowrap">
+
+                                                                 <li class="disabled"><a href="javascript:void(0)"><i class="fa fa-angle-left"></i></a></li>
+
+                            <li class="active"><a href="javascript:void(0)">1</a></li>
+
+                            <li><a href="javascript: $.pageSkip(2)">2</a></li>
+
+                            <li><a href="javascript: $.pageSkip(3)">3</a></li>
+
+                            <li><a href="javascript: $.pageSkip(4)">4</a></li>
+
+                            <li><a href="javascript: $.pageSkip(5)">5</a></li>
+
+                        <li><a>...</a></li>
+
+<li><a href="javascript: $.pageSkip(13)">13</a></li>
+
+                        <li>
+
+                            <a href="javascript: $.pageSkip(2)"><i class="fa fa-angle-right"></i></a>
+
+                        </li>
+
+                </ul>
+
+        </div>
+
+    </div>
+
+</div>
+
+        </div>
+
+    </form>
+
+</div>
+

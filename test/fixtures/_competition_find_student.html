@@ -1,0 +1,652 @@
+<!-- 真实抓取自 ssp.jxufe.edu.cn（已裁掉 script/style/head，仅保留结构） -->
+
+
+<div class="content-mini bg-gray-lighter adminHeadBox hidden-xs">
+
+    <div class="row items-push">
+
+        <div class="col-sm-7">
+
+            <h1 class="page-heading">
+
+            选取成员
+
+                <a class="content-header-btn" href="javascript:window.location.reload()"><i class="fa fa-refresh"></i>
+
+                    刷新</a>
+
+            </h1>
+
+        </div>
+
+        <div class="col-sm-5 text-right hidden-xs">
+
+            <ol class="breadcrumb push-10-t">
+
+                <li>学科竞赛管理</li>
+
+                <li><a class="link-effect">选取成员</a></li>
+
+            </ol>
+
+        </div>
+
+    </div>
+
+</div>
+
+    <div class="block">
+
+        <form id="listForm" action="find_student.html" method="post">
+
+            <input type="hidden" id="type" name="type" value="">
+
+            <input type="hidden" id="isSearch" name="isSearch" value="" />
+
+             <div class="block-header form-inline">
+
+<div class="pull-left">
+
+    <a class="selectDataBtn btn btn-sm btn-primary" style="width: 100px; display: none"><i class="si si-plus"></i>
+
+        选择</a>
+
+                        <button type="button" class="btn btn-primary" onclick="setGame()">确 定</button>
+
+</div>
+
+<div class="pull-right">
+
+    <div class="form-inline">
+
+                        <input id="searchStudentId" type="text" class="form-control input-sm" name="search_like_studentId" value="" placeholder="学号">
+
+                        <input id="searchUsername" type="text" class="form-control input-sm" name="search_like_name" value="" placeholder="姓名">
+
+                        <button class="btn btn-success btn-sm" type="button" onclick="doSubmit()"><i class="fa fa-search"></i></button>
+
+                        <button style="float: right; margin-left: 4px;" class="btn btn-success btn-sm" type="button" onclick="clean()"><i class="fa fa-refresh"></i></button>
+
+    </div>
+
+</div>
+
+<div class="clearfix"></div>
+
+             </div>
+
+            <div class="block-content table-responsive remove-padding-t">
+
+                <table class="table table-bordered" id="listTable">
+
+                    <thead>
+
+                    <tr>
+
+                        <th>操作</th>
+
+                        <th>学号</th>
+
+                        <th>姓名</th>
+
+                        <th>学院</th>
+
+                        <th>班级</th>
+
+                    </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="350377" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>826200545</td>
+
+                                <td>黄天乐</td>
+
+                                <td>虚拟现实（VR）现代产业学院</td>
+
+                                <td>2026级虚拟现实技术与应用学硕班</td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="349265" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>826211303</td>
+
+                                <td>蔡联淇</td>
+
+                                <td>虚拟现实（VR）现代产业学院</td>
+
+                                <td>2026级计算机技术（VR）专硕班</td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="350082" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>826211305</td>
+
+                                <td>陈煜玮</td>
+
+                                <td>虚拟现实（VR）现代产业学院</td>
+
+                                <td>2026级计算机技术（VR）专硕班</td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="350016" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>826211307</td>
+
+                                <td>何东</td>
+
+                                <td>虚拟现实（VR）现代产业学院</td>
+
+                                <td>2026级计算机技术（VR）专硕班</td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="350744" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>826211308</td>
+
+                                <td>黄家杰</td>
+
+                                <td>虚拟现实（VR）现代产业学院</td>
+
+                                <td>2026级计算机技术（VR）专硕班</td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="350598" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>826211309</td>
+
+                                <td>郦俊华</td>
+
+                                <td>虚拟现实（VR）现代产业学院</td>
+
+                                <td>2026级计算机技术（VR）专硕班</td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="351294" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>826211316</td>
+
+                                <td>张文婷</td>
+
+                                <td>虚拟现实（VR）现代产业学院</td>
+
+                                <td>2026级计算机技术（VR）专硕班</td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="351287" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>826211311</td>
+
+                                <td>邱桂会</td>
+
+                                <td>虚拟现实（VR）现代产业学院</td>
+
+                                <td>2026级计算机技术（VR）专硕班</td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="350455" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>826211304</td>
+
+                                <td>陈朝阳</td>
+
+                                <td>虚拟现实（VR）现代产业学院</td>
+
+                                <td>2026级计算机技术（VR）专硕班</td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="349654" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>826211315</td>
+
+                                <td>杨楚</td>
+
+                                <td>虚拟现实（VR）现代产业学院</td>
+
+                                <td>2026级计算机技术（VR）专硕班</td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="351190" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>826211312</td>
+
+                                <td>邱倩倩</td>
+
+                                <td>虚拟现实（VR）现代产业学院</td>
+
+                                <td>2026级计算机技术（VR）专硕班</td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="350291" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>826211313</td>
+
+                                <td>伍小丫</td>
+
+                                <td>虚拟现实（VR）现代产业学院</td>
+
+                                <td>2026级计算机技术（VR）专硕班</td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="350265" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>826211317</td>
+
+                                <td>赵敏</td>
+
+                                <td>虚拟现实（VR）现代产业学院</td>
+
+                                <td>2026级计算机技术（VR）专硕班</td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="351065" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>826211314</td>
+
+                                <td>徐晓燕</td>
+
+                                <td>虚拟现实（VR）现代产业学院</td>
+
+                                <td>2026级计算机技术（VR）专硕班</td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="350959" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>826211310</td>
+
+                                <td>罗新梦</td>
+
+                                <td>虚拟现实（VR）现代产业学院</td>
+
+                                <td>2026级计算机技术（VR）专硕班</td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="349348" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>826211306</td>
+
+                                <td>郭艺</td>
+
+                                <td>虚拟现实（VR）现代产业学院</td>
+
+                                <td>2026级计算机技术（VR）专硕班</td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="348502" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>0266932</td>
+
+                                <td>卢宸乐</td>
+
+                                <td>虚拟现实（VR）现代产业学院</td>
+
+                                <td>26虚拟现实(3)班</td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="348505" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>0266935</td>
+
+                                <td>徐诗意</td>
+
+                                <td>虚拟现实（VR）现代产业学院</td>
+
+                                <td>26虚拟现实(3)班</td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="348504" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>0266934</td>
+
+                                <td>廖志刚</td>
+
+                                <td>虚拟现实（VR）现代产业学院</td>
+
+                                <td>26虚拟现实(3)班</td>
+
+                            </tr>
+
+                            <tr>
+
+                                <td>
+
+                                    <label class="css-input css-checkbox css-checkbox-primary remove-padding remove-margin">
+
+                                        <input type="radio" name="ids" value="348503" /><span></span>
+
+                                    </label>
+
+                                </td>
+
+                                <td>0266933</td>
+
+                                <td>江梓强</td>
+
+                                <td>虚拟现实（VR）现代产业学院</td>
+
+                                <td>26虚拟现实(3)班</td>
+
+                            </tr>
+
+                    </tbody>
+
+                </table>
+
+                <div class="row">    <input type="hidden" id="pageNumber" name="pageNumber" value="1"/>
+
+    <input type="hidden" id="pageSize" name="pageSize" value="20"/>
+
+    <input type="hidden" id="searchProperty" name="searchProperty" value=""/>
+
+    <input type="hidden" id="orderProperty" name="orderProperty" value=""/>
+
+    <input type="hidden" id="orderDirection" name="orderDirection" value=""/>
+
+    <div class="col-sm-6">
+
+        <div style="padding-top: 18px;white-space: nowrap;">
+
+            每页显示
+
+            <span class="dropup hidden-xs">
+
+			  <button class="btn btn-sm btn-default dropdown-toggle" type="button" id="pageSizeSelect"
+
+                      data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+
+			  20
+
+                  <span class="caret"></span>
+
+			  </button>
+
+			  <ul class="dropdown-menu" aria-labelledby="pageSizeSelect" id="pageSizeOption">
+
+				  <li >
+
+					  <a href="javascript:;" val="10">10</a>
+
+				  </li>
+
+				  <li  class="active">
+
+					  <a href="javascript:;" val="20">20</a>
+
+				  </li>
+
+				  <li >
+
+					  <a href="javascript:;" val="50">50</a>
+
+				  </li>
+
+				  <li >
+
+					  <a href="javascript:;" val="100">100</a>
+
+				  </li>
+
+			  </ul>
+
+		</span>条,
+
+            共 <strong>41545</strong>条记录
+
+        </div>
+
+    </div>
+
+    <div class="col-sm-6">
+
+        <div style="margin:0;white-space:nowrap;text-align: right">
+
+                <ul class="pagination" style="margin:12px 0px;white-space: nowrap">
+
+                                                                 <li class="disabled"><a href="javascript:void(0)"><i class="fa fa-angle-left"></i></a></li>
+
+                            <li class="active"><a href="javascript:void(0)">1</a></li>
+
+                            <li><a href="javascript: $.pageSkip(2)">2</a></li>
+
+                            <li><a href="javascript: $.pageSkip(3)">3</a></li>
+
+                            <li><a href="javascript: $.pageSkip(4)">4</a></li>
+
+                            <li><a href="javascript: $.pageSkip(5)">5</a></li>
+
+                        <li><a>...</a></li>
+
+<li><a href="javascript: $.pageSkip(2078)">2078</a></li>
+
+                        <li>
+
+                            <a href="javascript: $.pageSkip(2)"><i class="fa fa-angle-right"></i></a>
+
+                        </li>
+
+                </ul>
+
+        </div>
+
+    </div>
+
+</div>
+
+            </div>
+
+        </form>
+
+    </div>
+
+    

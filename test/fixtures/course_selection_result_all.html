@@ -1,1108 +1,1108 @@
-
-
-
-
-
-
-
-
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
-<html>
-  <head>
-    <title></title>
-	<meta http-equiv="Content-Language" content="zh-cn" />
-	<meta http-equiv="Content-Type" content="text/html; charset=GBK" />
-	<link rel="stylesheet" href="/css/Form.css" type="text/css" />
-	<link rel="stylesheet" href="/student/css/Report.css" type="text/css" />
-	<link rel="stylesheet" href="../themes/classical/css/gray/gray_DataTable.css" type="text/css" />
-	<style type="text/css">	
-		#reportArea tbody td{text-align:left;height:20px;vertical-align: middle;}
-	</style>
-
-	<script language="JavaScript" type="text/javascript" src='/js/Form.js'></script>
-	<script type="text/javascript" src='/js/Common.js'></script>
-	<script type="text/javascript" src='/js/Validate.js'></script>
-	<script type="text/javascript" src='/js/Window.js'></script>
-	<script type="text/javascript" src='/js/AjaxBase.js'></script>
-	<script type="text/javascript" src='/js/Ref_DropList.js'></script>
-	<script type="text/javascript" src='/student/js/loadClassPath.js'></script>
-	
-	<script type="text/javascript" src="../custom/js/SetRootPath.jsp"></script>
-	<script type="text/javascript" src="../custom/js/jquery.js"></script>
-	<script type="text/javascript" src="../custom/js/jkingo.noprint.js"></script>
-	<script type="text/javascript" src="../custom/js/jwutil.js"></script>
-	<script type="text/javascript" src="../custom/js/watermark.js"></script>
-	
-	<script type="text/javascript">
-
-		function MyWinOnLoad(){
-			initData();
-		}
-
-		function initData() {
-            watermark({"watermark_txt":"[2000000000]某同学"});
-		}
-
-		// 显示课程明细				
-		function showCourseInfo(kcdm){
-			var title = "课程信息";
-			var width=window.document.body.offsetWidth;
-			var json = {"_title":title,"_width":"80%","_height":"550px","_left":(width*0.2)/2,"_isStop":true,"_isMove":true,"_imgsrc":"../images/"};
-			var xh = $id("xh").val();
-			var url = _webRootPath + "student/report/wsxk.courseinfo.jsp?kcdm="+kcdm+"&xh="+xh;
-			cKWindow = new CKWindow(json);
-			cKWindow.setSrc(url,"100%","100%");
-			cKWindow.openWindow();
-		}		
-
-		// 显示教师明细				
-		function showTeacherInfo(gh) {
-			var title = "教师信息";
-			var json = {"_title":title,"_width":"510px","_height":"370px","_isStop":true,"_isMove":true,"_imgsrc":"../images/"};
-			var url = _webRootPath + "wjstgdfw/grxx.grjbxx_ck.jsp?gh="+gh;
-			var cKWindow = new CKWindow(json);
-			cKWindow.setSrc(url,"100%","100%");
-			cKWindow.openWindow();
-		}
-	</script>	
-  </head>
-
- <body onload="KAF_WinOnLoad(this)" style="padding:0px; margin:0px;background-color: white;width:100%;height:100%;">
- 	<div style="width:100%;height:100%;padding:0px; margin:0px;padding-left: 5px;">
-	 	<table width="98%" height="100%" align="center" cellpadding="0" cellspacing="0" style="padding:0px; margin:0px;border:none;">
-			<tbody>
-				<tr>
-					<td id="theRptArea" align="center" style="padding:0px;margin:0px;border:none;" valign="top">
-						<div style="width:100%;height:100%;overflow-y:auto;">
-							
-									
-									<div style="width:100%;height:20px;;text-align:left;"></div>
-									<div style="width:100%;text-align:left;">学年学期：2025-2026学年第一学期&ensp;&ensp;学号：2000000000&ensp;&ensp;姓名：某同学</div>
-									<table id="reportArea" style="width:100%;margin:0 auto;float:auto;">
-										<thead>
-										</thead>
-										<tbody>
-											<tr>
-												<td rowspan="2" style="width:2%;display: none;text-align:center;">选定</td>
-												<td rowspan="2" style="text-align:center;">课程</td>
-												<td rowspan="2" style="width:3%;text-align:center;">学分</td>
-												<td rowspan="2" style="width:14%;text-align:center;">课程类别</td>
-												<td rowspan="2" style="width:5%;text-align:center;">任课教师</td>
-												<td rowspan="2" style="width:7%;text-align:center;">上课班级</td>
-												<td rowspan="2" style="width:13%;text-align:center;">上课班级名称</td>
-												<td rowspan="2" style="width:6%;text-align:center;">选课方式</td>
-												
-												<td rowspan="2" style="width:8%;text-align:center;">外年级/专业<br>选课</td>
-												
-												<td rowspan="2" style="width:4%;text-align:center;">选课<br>状态</td>
-												<td colspan="3" style="width:12%;text-align:center;">人数</td>
-												<td rowspan="2" style="width:15%;text-align:center;">上课时间/上课地点</td>
-											</tr>
-											<tr>
-												<td style="text-align:center">已选/免听</td>
-												<td style="text-align:center">限选</td>
-												<td style="text-align:center">可选</td>
-											</tr>
-												
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("100230001")'>
-												[1002300011]当代大学生国家安全教育
-											</a>
-										</td>
-										<td style="text-align:right;">1.0</td>
-										<td>理论课&ensp;&ensp;2024公共课/国家安全教育/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2j7tq73iwi601l7o86003ayq&param2=6cff10eee90b74d8afe26d26f02f6be7")'>
-												网课老师
-											</a>
-										</td>
-										<td style="text-align:center;">100230001-001</td>
-										<td>本科新生+</td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">6784/0</td>
-										<td style="text-align:right;">9999</td>
-										<td style="text-align:right;">3215</td>
-										<td>6-13周 [] </td>
-										<td style="display:none;">100230001-001</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("1002600032")'>
-												[1002600032]大学生心理健康教育
-											</a>
-										</td>
-										<td style="text-align:right;">2.0</td>
-										<td>理论课&ensp;&ensp;2024公共课/心理健康教育/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2j7tq73iwi601l7o850038n9&param2=3d741c86fb76fd579f14cbb42901f7ac")'>
-												谭弘
-											</a>
-										</td>
-										<td style="text-align:center;">1002600032-029</td>
-										<td>本科新生+</td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">133/0</td>
-										<td style="text-align:right;">144</td>
-										<td style="text-align:right;">11</td>
-										<td>6-16周 四[10-12] 麦二教2101(144)</td>
-										<td style="display:none;">1002600032-029</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("000018")'>
-												[1003000011]大学生安全教育
-											</a>
-										</td>
-										<td style="text-align:right;">1.0</td>
-										<td>理论课&ensp;&ensp;公共课/任选课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64n1pzf3p&param2=b9e8099a551693cc3bdf4d7cde0c86e6")'>
-												万新
-											</a>
-										</td>
-										<td style="text-align:center;">000018-001</td>
-										<td></td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">6807/0</td>
-										<td style="text-align:right;">8000</td>
-										<td style="text-align:right;">1193</td>
-										<td>6-17周 [] </td>
-										<td style="display:none;">000018-001</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("001562")'>
-												[1004600232]大学英语I
-											</a>
-										</td>
-										<td style="text-align:right;">2.0</td>
-										<td>理论课&ensp;&ensp;2024公共课/公共外语课/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64o1r6b36&param2=91b8c516b2d77f67130002d8403d6f0a")'>
-												曾文君
-											</a>
-										</td>
-										<td style="text-align:center;">001562-036</td>
-										<td>主干+本科新生+</td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">45/0</td>
-										<td style="text-align:right;">53</td>
-										<td style="text-align:right;">8</td>
-										<td>6-16周 一[3-5] 麦三教3507(70)</td>
-										<td style="display:none;">001562-036</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("002000")'>
-												[1004701034]高等数学I
-											</a>
-										</td>
-										<td style="text-align:right;">4.0</td>
-										<td>理论课&ensp;&ensp;2024公共课/公共数学课/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64o1qkvh7&param2=7d545c871b7db8a6751c4eb6e5f56edc")'>
-												俞丽兰
-											</a>
-										</td>
-										<td style="text-align:center;">002000-021</td>
-										<td>主干+本科新生+</td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">95/0</td>
-										<td style="text-align:right;">106</td>
-										<td style="text-align:right;">11</td>
-										<td>6-16周 三[3-5] 麦二教2305(106),6-16周 五[6-8] 麦二教2305(106)</td>
-										<td style="display:none;">002000-021</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("003381")'>
-												[1005000422]军事理论
-											</a>
-										</td>
-										<td style="text-align:right;">2.0</td>
-										<td>理论课&ensp;&ensp;2024公共课/军事理论/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64n1pzc0p&param2=e93009590b82e0012bd348287bda5650")'>
-												李昌卫
-											</a>
-										</td>
-										<td style="text-align:center;">003381-014</td>
-										<td>本科新生+军事理论</td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">91/0</td>
-										<td style="text-align:right;">94</td>
-										<td style="text-align:right;">3</td>
-										<td>6-16周 二[3-5] 麦二教2307(106)</td>
-										<td style="display:none;">003381-014</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("003398")'>
-												[1005000641]体育1
-											</a>
-										</td>
-										<td style="text-align:right;">1.0</td>
-										<td>理论课&ensp;&ensp;2024公共课/体育/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64m1rrlad&param2=919d0e23442e948247d634e3f30bc5c9")'>
-												彭永善
-											</a>
-										</td>
-										<td style="text-align:center;">003398-126</td>
-										<td>本科新生+乒乓球</td>
-										<td style="text-align:center;">学生网上选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">34/0</td>
-										<td style="text-align:right;">34</td>
-										<td style="text-align:right;">0</td>
-										<td>6-17周 五[3-4] 麦乒乓球场T021(40)</td>
-										<td style="display:none;">003398-126</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("2020881")'>
-												[1005202771]劳育I
-											</a>
-										</td>
-										<td style="text-align:right;">1.0</td>
-										<td>2024实践教育课/劳动教育/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64m1tjzyo&param2=b1269355bfc34083dbf6482ed8652d14")'>
-												张仲芳
-											</a>
-										</td>
-										<td style="text-align:center;">2020881-001</td>
-										<td>本科新生+</td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">6774/0</td>
-										<td style="text-align:right;">7000</td>
-										<td style="text-align:right;">226</td>
-										<td>6-13周 [] </td>
-										<td style="display:none;">2020881-001</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("2020772")'>
-												[1012100340]形势与政策I
-											</a>
-										</td>
-										<td style="text-align:right;">0.5</td>
-										<td>理论课&ensp;&ensp;2024公共课/思想政治理论课/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2j7tq73iwi601l7o850036bv&param2=88df2a70b920f3eb4312121ed0d282ec")'>
-												田凯华
-											</a>
-										</td>
-										<td style="text-align:center;">2020772-062</td>
-										<td>思政+本科新生+</td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">91/0</td>
-										<td style="text-align:right;">94</td>
-										<td style="text-align:right;">3</td>
-										<td>13-16周 三[6-7] 麦二教2206(106)</td>
-										<td style="display:none;">2020772-062</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("1012100523")'>
-												[1012100523]思想道德与法治
-											</a>
-										</td>
-										<td style="text-align:right;">3.0</td>
-										<td>理论课&ensp;&ensp;2024公共课/思想政治理论课/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64o1osko1&param2=3439f1ef1189ac0da1f443462ecfd0a4")'>
-												杨正德
-											</a>
-										</td>
-										<td style="text-align:center;">1012100523-033</td>
-										<td>本科新生+</td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">92/0</td>
-										<td style="text-align:right;">94</td>
-										<td style="text-align:right;">2</td>
-										<td>6-17周 二[8-9] 麦三教3301(101),6-17周 四[1-2] 麦三教3301(101)</td>
-										<td style="display:none;">1012100523-033</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("1012200080")'>
-												[1012200080]职业生涯规划
-											</a>
-										</td>
-										<td style="text-align:right;">0.5</td>
-										<td>理论课&ensp;&ensp;2024实践教育课/职业生涯规划/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64o1pzc0h&param2=31e78e63422cee25dfe65b85b8765ea9")'>
-												廖波
-											</a>
-										</td>
-										<td style="text-align:center;">1012200080-053</td>
-										<td>本科新生+</td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">45/0</td>
-										<td style="text-align:right;">47</td>
-										<td style="text-align:right;">2</td>
-										<td>8-11周 [] </td>
-										<td style="display:none;">1012200080-053</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("1014300154")'>
-												[1014300154]程序设计基础
-											</a>
-										</td>
-										<td style="text-align:right;">4.0</td>
-										<td>理论课&ensp;&ensp;2024专业教育课/学科基础课/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2j7tq73iwi601l7o860038na&param2=2a5d31330653bd44391bc101737a4eef")'>
-												万齐智
-											</a>
-										</td>
-										<td style="text-align:center;">1014300154-002</td>
-										<td>主干+本科新生+</td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">48/0</td>
-										<td style="text-align:right;">55</td>
-										<td style="text-align:right;">7</td>
-										<td>6-16周 一[10-11] 麦一教1503(60),6-16周 二[6-7] 麦一教1503(60),6-16周 三[10-11] 麦图文楼M104(52)</td>
-										<td style="display:none;">1014300154-002</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("1014300262")'>
-												[1014300262]计算机科学导论
-											</a>
-										</td>
-										<td style="text-align:right;">2.0</td>
-										<td>理论课&ensp;&ensp;2024专业教育课/学科基础课/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64o1pe09s&param2=bd4040ba4fafb952962d21557b40b837")'>
-												蔡超
-											</a>
-										</td>
-										<td style="text-align:center;">1014300262-002</td>
-										<td>本科新生+</td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">46/0</td>
-										<td style="text-align:right;">50</td>
-										<td style="text-align:right;">4</td>
-										<td>6-16周 一[6-8] 麦二教2207(106)</td>
-										<td style="display:none;">1014300262-002</td>
-									</tr>
-									
-										</tbody>
-									</table>
-												
-									<div style="width:100%;height:20px;;text-align:left;"></div>
-									<div style="width:100%;text-align:left;">学年学期：2025-2026学年第二学期&ensp;&ensp;学号：2000000000&ensp;&ensp;姓名：某同学</div>
-									<table id="reportArea" style="width:100%;margin:0 auto;float:auto;">
-										<thead>
-										</thead>
-										<tbody>
-											<tr>
-												<td rowspan="2" style="width:2%;display: none;text-align:center;">选定</td>
-												<td rowspan="2" style="text-align:center;">课程</td>
-												<td rowspan="2" style="width:3%;text-align:center;">学分</td>
-												<td rowspan="2" style="width:14%;text-align:center;">课程类别</td>
-												<td rowspan="2" style="width:5%;text-align:center;">任课教师</td>
-												<td rowspan="2" style="width:7%;text-align:center;">上课班级</td>
-												<td rowspan="2" style="width:13%;text-align:center;">上课班级名称</td>
-												<td rowspan="2" style="width:6%;text-align:center;">选课方式</td>
-												
-												<td rowspan="2" style="width:8%;text-align:center;">外年级/专业<br>选课</td>
-												
-												<td rowspan="2" style="width:4%;text-align:center;">选课<br>状态</td>
-												<td colspan="3" style="width:12%;text-align:center;">人数</td>
-												<td rowspan="2" style="width:15%;text-align:center;">上课时间/上课地点</td>
-											</tr>
-											<tr>
-												<td style="text-align:center">已选/免听</td>
-												<td style="text-align:center">限选</td>
-												<td style="text-align:center">可选</td>
-											</tr>
-												
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("001567")'>
-												[1004600282]大学英语II
-											</a>
-										</td>
-										<td style="text-align:right;">2.0</td>
-										<td>理论课&ensp;&ensp;2024公共课/公共外语课/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64n1syl4m&param2=75105006160cd6d7977a67bd6bf9c932")'>
-												史希平
-											</a>
-										</td>
-										<td style="text-align:center;">001567-056</td>
-										<td>主干+</td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">44/0</td>
-										<td style="text-align:right;">47</td>
-										<td style="text-align:right;">3</td>
-										<td>1-16周 四[3-4] 麦三教3207(70)</td>
-										<td style="display:none;">001567-056</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("002005")'>
-												[1004701096]高等数学II
-											</a>
-										</td>
-										<td style="text-align:right;">6.0</td>
-										<td>理论课&ensp;&ensp;2024公共课/公共数学课/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64o1qkvh7&param2=7d545c871b7db8a6751c4eb6e5f56edc")'>
-												俞丽兰
-											</a>
-										</td>
-										<td style="text-align:center;">002005-023</td>
-										<td>主干+</td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">99/0</td>
-										<td style="text-align:right;">100</td>
-										<td style="text-align:right;">1</td>
-										<td>1-16周 一[10-12] 麦三教3303(101),1-16周 三[3-5] 麦三教3304(140)</td>
-										<td style="display:none;">002005-023</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("2020880")'>
-												[1004907141]写作与沟通I
-											</a>
-										</td>
-										<td style="text-align:right;">1.5</td>
-										<td>2024通识教育课/哲学、思维与语言/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2j7tq73iwi601l7o860036bx&param2=e4131744dbee09ef4423ead2daa3259a")'>
-												王柳芳
-											</a>
-										</td>
-										<td style="text-align:center;">2020880-023</td>
-										<td></td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">47/0</td>
-										<td style="text-align:right;">47</td>
-										<td style="text-align:right;">0</td>
-										<td>1-12周 一[3-4] 麦三教3310(70)</td>
-										<td style="display:none;">2020880-023</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("003399")'>
-												[1005000651]体育2
-											</a>
-										</td>
-										<td style="text-align:right;">1.0</td>
-										<td>理论课&ensp;&ensp;2024公共课/体育/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64m1rrlad&param2=919d0e23442e948247d634e3f30bc5c9")'>
-												彭永善
-											</a>
-										</td>
-										<td style="text-align:center;">003399-124</td>
-										<td>本科新生+乒乓球</td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">34/0</td>
-										<td style="text-align:right;">34</td>
-										<td style="text-align:right;">0</td>
-										<td>1-16周 五[3-4] 麦乒乓球场T021(40)</td>
-										<td style="display:none;">003399-124</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("2020342")'>
-												[1005401103]大学物理
-											</a>
-										</td>
-										<td style="text-align:right;">3.0</td>
-										<td>理论课&ensp;&ensp;2024专业教育课/学科基础课/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64m1sd3z8&param2=508f818bd5c640d8ad2f2ecacfe3ef2f")'>
-												余泉茂
-											</a>
-										</td>
-										<td style="text-align:center;">2020342-008</td>
-										<td></td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">47/0</td>
-										<td style="text-align:right;">47</td>
-										<td style="text-align:right;">0</td>
-										<td>1-16周 四[6-8] 麦二教2103(108)</td>
-										<td style="display:none;">2020342-008</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("004699")'>
-												[1012100193]中国近现代史纲要
-											</a>
-										</td>
-										<td style="text-align:right;">3.0</td>
-										<td>理论课&ensp;&ensp;2024公共课/思想政治理论课/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64m1rrnlq&param2=74186ac99bc3defe8e7ac4e825f51afc")'>
-												吴通福
-											</a>
-										</td>
-										<td style="text-align:center;">004699-022</td>
-										<td>思政+</td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">93/0</td>
-										<td style="text-align:right;">94</td>
-										<td style="text-align:right;">1</td>
-										<td>1-16周 二[3-5] 麦三教3203(101)</td>
-										<td style="display:none;">004699-022</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("2020773")'>
-												[1012100350]形势与政策II
-											</a>
-										</td>
-										<td style="text-align:right;">0.5</td>
-										<td>理论课&ensp;&ensp;2024公共课/思想政治理论课/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64p1u5fka&param2=d449c3d8beefa97b1585ab9ce6ad9135")'>
-												谢尔艾力.库尔班
-											</a>
-										</td>
-										<td style="text-align:center;">2020773-044</td>
-										<td>思政+</td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">92/0</td>
-										<td style="text-align:right;">94</td>
-										<td style="text-align:right;">2</td>
-										<td>13-16周 三[6-7] 麦三教3403(101)</td>
-										<td style="display:none;">2020773-044</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("1012100483")'>
-												[1012100483]毛泽东思想和中国特色社会主义理论体系概论
-											</a>
-										</td>
-										<td style="text-align:right;">3.0</td>
-										<td>理论课&ensp;&ensp;2024公共课/思想政治理论课/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2j7tq73iwi601l7o83003bqi&param2=5bf26068387e689d3dcf4fdf4cd36b83")'>
-												康立芳
-											</a>
-										</td>
-										<td style="text-align:center;">1012100483-047</td>
-										<td>思政+</td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">91/0</td>
-										<td style="text-align:right;">94</td>
-										<td style="text-align:right;">3</td>
-										<td>1-16周 二[6-8] 麦三教3303(101)</td>
-										<td style="display:none;">1012100483-047</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("1012100493")'>
-												[1012100493]习近平新时代中国特色社会主义思想概论
-											</a>
-										</td>
-										<td style="text-align:right;">3.0</td>
-										<td>理论课&ensp;&ensp;2024公共课/思想政治理论课/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64o1osjw8&param2=34ec6ae294137c5c4c7110d1a4b2656e")'>
-												徐腊梅
-											</a>
-										</td>
-										<td style="text-align:center;">1012100493-034</td>
-										<td>思政+</td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">91/0</td>
-										<td style="text-align:right;">94</td>
-										<td style="text-align:right;">3</td>
-										<td>1-16周 五[6-8] 麦三教3202(101)</td>
-										<td style="display:none;">1012100493-034</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("1014300272")'>
-												[1014300272]程序设计实践
-											</a>
-										</td>
-										<td style="text-align:right;">2.0</td>
-										<td>理论课&ensp;&ensp;2024专业教育课/学科基础课/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64o1qkse4&param2=5cdeca5b4d29e5c232ca93e6402acd8f")'>
-												焦贤沛
-											</a>
-										</td>
-										<td style="text-align:center;">1014300272-003</td>
-										<td></td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">51/0</td>
-										<td style="text-align:right;">51</td>
-										<td style="text-align:right;">0</td>
-										<td>1-16周 三[1-2] 麦图文楼M103(60)</td>
-										<td style="display:none;">1014300272-003</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("1014300283")'>
-												[1014300283]面向对象程序设计(双语)
-											</a>
-										</td>
-										<td style="text-align:right;">3.0</td>
-										<td>理论课&ensp;&ensp;2024专业教育课/学科基础课/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64o1rrp59&param2=cc8a8190c921683f7e6c10a6c78e4907")'>
-												夏雪
-											</a>
-										</td>
-										<td style="text-align:center;">1014300283-004</td>
-										<td>主干+</td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">48/0</td>
-										<td style="text-align:right;">48</td>
-										<td style="text-align:right;">0</td>
-										<td>1-16周(单) 一[6-8] 麦三教3407(70),1-16周(双) 一[6-8] 麦图文楼M106(78)</td>
-										<td style="display:none;">1014300283-004</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("1014300293")'>
-												[1014300293]数字逻辑与数字系统
-											</a>
-										</td>
-										<td style="text-align:right;">3.0</td>
-										<td>理论课&ensp;&ensp;2024专业教育课/学科基础课/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2j7tq73iwixs1lt8gj2g7stg1q0dv9000046&param2=60f70699d157e3707e75fb8fee8c891c")'>
-												某老师
-											</a>
-										</td>
-										<td style="text-align:center;">1014300293-004</td>
-										<td></td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">48/0</td>
-										<td style="text-align:right;">48</td>
-										<td style="text-align:right;">0</td>
-										<td>1-16周 二[10-11] 麦三教3313(70),1-16周(双) 四[10-11] 麦图文楼M102(52)</td>
-										<td style="display:none;">1014300293-004</td>
-									</tr>
-									
-										</tbody>
-									</table>
-												
-									<div style="width:100%;height:20px;;text-align:left;"></div>
-									<div style="width:100%;text-align:left;">学年学期：2025-2026学年第二阶段&ensp;&ensp;学号：2000000000&ensp;&ensp;姓名：某同学</div>
-									<table id="reportArea" style="width:100%;margin:0 auto;float:auto;">
-										<thead>
-										</thead>
-										<tbody>
-											<tr>
-												<td rowspan="2" style="width:2%;display: none;text-align:center;">选定</td>
-												<td rowspan="2" style="text-align:center;">课程</td>
-												<td rowspan="2" style="width:3%;text-align:center;">学分</td>
-												<td rowspan="2" style="width:14%;text-align:center;">课程类别</td>
-												<td rowspan="2" style="width:5%;text-align:center;">任课教师</td>
-												<td rowspan="2" style="width:7%;text-align:center;">上课班级</td>
-												<td rowspan="2" style="width:13%;text-align:center;">上课班级名称</td>
-												<td rowspan="2" style="width:6%;text-align:center;">选课方式</td>
-												
-												<td rowspan="2" style="width:8%;text-align:center;">外年级/专业<br>选课</td>
-												
-												<td rowspan="2" style="width:4%;text-align:center;">选课<br>状态</td>
-												<td colspan="3" style="width:12%;text-align:center;">人数</td>
-												<td rowspan="2" style="width:15%;text-align:center;">上课时间/上课地点</td>
-											</tr>
-											<tr>
-												<td style="text-align:center">已选/免听</td>
-												<td style="text-align:center">限选</td>
-												<td style="text-align:center">可选</td>
-											</tr>
-												
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("1214300022")'>
-												[1214300022]程序设计实训
-											</a>
-										</td>
-										<td style="text-align:right;">2.0</td>
-										<td>理论课&ensp;&ensp;2024专业教育课/专业必修课/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64o1pe09s&param2=bd4040ba4fafb952962d21557b40b837")'>
-												蔡超
-											</a>
-										</td>
-										<td style="text-align:center;">1214300022-005</td>
-										<td></td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">45/0</td>
-										<td style="text-align:right;">55</td>
-										<td style="text-align:right;">10</td>
-										<td>1-16周 [] </td>
-										<td style="display:none;">1214300022-005</td>
-									</tr>
-									
-										</tbody>
-									</table>
-												
-									<div style="width:100%;height:20px;;text-align:left;"></div>
-									<div style="width:100%;text-align:left;">学年学期：2026-2027学年第一学期&ensp;&ensp;学号：2000000000&ensp;&ensp;姓名：某同学</div>
-									<table id="reportArea" style="width:100%;margin:0 auto;float:auto;">
-										<thead>
-										</thead>
-										<tbody>
-											<tr>
-												<td rowspan="2" style="width:2%;display: none;text-align:center;">选定</td>
-												<td rowspan="2" style="text-align:center;">课程</td>
-												<td rowspan="2" style="width:3%;text-align:center;">学分</td>
-												<td rowspan="2" style="width:14%;text-align:center;">课程类别</td>
-												<td rowspan="2" style="width:5%;text-align:center;">任课教师</td>
-												<td rowspan="2" style="width:7%;text-align:center;">上课班级</td>
-												<td rowspan="2" style="width:13%;text-align:center;">上课班级名称</td>
-												<td rowspan="2" style="width:6%;text-align:center;">选课方式</td>
-												
-												<td rowspan="2" style="width:8%;text-align:center;">外年级/专业<br>选课</td>
-												
-												<td rowspan="2" style="width:4%;text-align:center;">选课<br>状态</td>
-												<td colspan="3" style="width:12%;text-align:center;">人数</td>
-												<td rowspan="2" style="width:15%;text-align:center;">上课时间/上课地点</td>
-											</tr>
-											<tr>
-												<td style="text-align:center">已选/免听</td>
-												<td style="text-align:center">限选</td>
-												<td style="text-align:center">可选</td>
-											</tr>
-												
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("1004606732")'>
-												[1004606732]英语视听说
-											</a>
-										</td>
-										<td style="text-align:right;">2.0</td>
-										<td>理论课&ensp;&ensp;2024公共课/公共外语课/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64n1rrrgq&param2=e3b9a1f1dca6403362aa2c22ede4044c")'>
-												陈润平
-											</a>
-										</td>
-										<td style="text-align:center;">1004606732-066</td>
-										<td></td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">45/0</td>
-										<td style="text-align:right;"></td>
-										<td style="text-align:right;"></td>
-										<td>2-17周 四[3-4] 麦三教3111(70)</td>
-										<td style="display:none;">1004606732-066</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("002211")'>
-												[1004703634]线性代数(工)
-											</a>
-										</td>
-										<td style="text-align:right;">4.0</td>
-										<td>理论课&ensp;&ensp;2024公共课/公共数学课/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64o1r69ji&param2=988439f3e29dd5911cdba6dcf3aca787")'>
-												韩加林
-											</a>
-										</td>
-										<td style="text-align:center;">002211-004</td>
-										<td>主干+</td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">97/0</td>
-										<td style="text-align:right;"></td>
-										<td style="text-align:right;"></td>
-										<td>2-17周 一[6-7] 麦三教3202(101),2-17周 三[1-2] 麦三教3202(101)</td>
-										<td style="display:none;">002211-004</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("003400")'>
-												[1005000661]体育3
-											</a>
-										</td>
-										<td style="text-align:right;">1.0</td>
-										<td>理论课&ensp;&ensp;2024公共课/体育/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2j6lqf1sd0492jskmm1qly3y&param2=13d899e68d3eb4c992ceb31d96dce98b")'>
-												赵翔
-											</a>
-										</td>
-										<td style="text-align:center;">003400-123</td>
-										<td>篮球</td>
-										<td style="text-align:center;">学生网上选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">31/0</td>
-										<td style="text-align:right;"></td>
-										<td style="text-align:right;"></td>
-										<td>2-17周 二[3-4] 麦篮球场T005(40)</td>
-										<td style="display:none;">003400-123</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("2020774")'>
-												[1012100360]形势与政策III
-											</a>
-										</td>
-										<td style="text-align:right;">0.5</td>
-										<td>理论课&ensp;&ensp;2024公共课/思想政治理论课/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64p1u5fka&param2=d449c3d8beefa97b1585ab9ce6ad9135")'>
-												谢尔艾力.库尔班
-											</a>
-										</td>
-										<td style="text-align:center;">2020774-041</td>
-										<td>思政+</td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">92/0</td>
-										<td style="text-align:right;"></td>
-										<td style="text-align:right;"></td>
-										<td>9-12周 三[8-9] 麦三教3401(101)</td>
-										<td style="display:none;">2020774-041</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("1213501533")'>
-												[1012100533]马克思主义基本原理
-											</a>
-										</td>
-										<td style="text-align:right;">3.0</td>
-										<td>理论课&ensp;&ensp;2024公共课/思想政治理论课/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2j7tq73iwi601l7o86003a6q&param2=d6373e57cbdb02acedbb29fd826c39cf")'>
-												李冰潇
-											</a>
-										</td>
-										<td style="text-align:center;">1213501533-029</td>
-										<td></td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">92/0</td>
-										<td style="text-align:right;"></td>
-										<td style="text-align:right;"></td>
-										<td>2-17周 三[3-5] 麦三教3201(101)</td>
-										<td style="display:none;">1213501533-029</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("1014300174")'>
-												[1014300174]计算机网络
-											</a>
-										</td>
-										<td style="text-align:right;">4.0</td>
-										<td>理论课&ensp;&ensp;2024专业教育课/专业必修课/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2j7tq73iwi601l7o84003a6r&param2=3b5c8dc8ba11da24aec0285f1c580b39")'>
-												陈强
-											</a>
-										</td>
-										<td style="text-align:center;">1014300174-004</td>
-										<td>主干+</td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">71/0</td>
-										<td style="text-align:right;"></td>
-										<td style="text-align:right;"></td>
-										<td>2-17周 三[10-12] 麦三教3108(70),2-17周(双) 五[1-2] 麦工商楼G203(80)</td>
-										<td style="display:none;">1014300174-004</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("1014300184")'>
-												[1014300184]计算机组成原理
-											</a>
-										</td>
-										<td style="text-align:right;">4.0</td>
-										<td>理论课&ensp;&ensp;2024专业教育课/学科基础课/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2j7tq73iwixs1lt8gj2g7stg1q0dv9000046&param2=60f70699d157e3707e75fb8fee8c891c")'>
-												某老师
-											</a>
-										</td>
-										<td style="text-align:center;">1014300184-004</td>
-										<td>主干+</td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">60/0</td>
-										<td style="text-align:right;"></td>
-										<td style="text-align:right;"></td>
-										<td>2-17周 一[10-11] 麦三教3306(70),2-17周 四[10-11] 麦三教3306(70)</td>
-										<td style="display:none;">1014300184-004</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("1014300314")'>
-												[1014300314]数据结构与算法
-											</a>
-										</td>
-										<td style="text-align:right;">4.0</td>
-										<td>理论课&ensp;&ensp;2024专业教育课/学科基础课/必修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64o1qkse4&param2=5cdeca5b4d29e5c232ca93e6402acd8f")'>
-												焦贤沛
-											</a>
-										</td>
-										<td style="text-align:center;">1014300314-002</td>
-										<td>主干+</td>
-										<td style="text-align:center;">管理人员选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">55/0</td>
-										<td style="text-align:right;"></td>
-										<td style="text-align:right;"></td>
-										<td>2-17周 一[3-4] 麦三教3209(70),2-17周 四[8-9] 数字经济实训大楼S307(66)</td>
-										<td style="display:none;">1014300314-002</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("1014300422")'>
-												[1014300422]Linux操作系统
-											</a>
-										</td>
-										<td style="text-align:right;">2.0</td>
-										<td>理论课&ensp;&ensp;2024专业教育课/专业方向课/选修课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2j7tq73iwi601l7o860038nd&param2=1f03a19e2ad0e74f75a4c2f6fe7f09b0")'>
-												陶小结
-											</a>
-										</td>
-										<td style="text-align:center;">1014300422-001</td>
-										<td></td>
-										<td style="text-align:center;">学生网上选</td>
-										<td style="text-align:center;">否</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">78/0</td>
-										<td style="text-align:right;"></td>
-										<td style="text-align:right;"></td>
-										<td>2-17周 五[6-7] 数字经济实训大楼S313(66)</td>
-										<td style="display:none;">1014300422-001</td>
-									</tr>
-									
-									<tr>
-										<td>
-											<a href='javascript:void(0)' onclick='showCourseInfo("2021590")'>
-												[1505002221]体育保健学（MOOC）
-											</a>
-										</td>
-										<td style="text-align:right;">1.0</td>
-										<td>理论课&ensp;&ensp;公共课/任选课</td>
-										<td>
-											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64o1pdwer&param2=2d4367e54c0277333f173ebbaa014d04")'>
-												严伟
-											</a>
-										</td>
-										<td style="text-align:center;">2021590-001</td>
-										<td>体育保健学（MOOC）</td>
-										<td style="text-align:center;">学生网上选</td>
-										<td style="text-align:center;">是</td>
-										<td style="text-align:center;">选中</td>
-										<td style="text-align:right;">450/0</td>
-										<td style="text-align:right;"></td>
-										<td style="text-align:right;"></td>
-										<td>2-9周 [] </td>
-										<td style="display:none;">2021590-001</td>
-									</tr>
-									
-						</div>
-						<iframe id="hidFrm" name="hidFrm" style="display:none;"></iframe>
-					</td>
-				</tr>
-			</tbody>
-		</table>
-	</div>
- </body>
-</html>
+
+
+
+
+
+
+
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <title></title>
+	<meta http-equiv="Content-Language" content="zh-cn" />
+	<meta http-equiv="Content-Type" content="text/html; charset=GBK" />
+	<link rel="stylesheet" href="/css/Form.css" type="text/css" />
+	<link rel="stylesheet" href="/student/css/Report.css" type="text/css" />
+	<link rel="stylesheet" href="../themes/classical/css/gray/gray_DataTable.css" type="text/css" />
+	<style type="text/css">	
+		#reportArea tbody td{text-align:left;height:20px;vertical-align: middle;}
+	</style>
+
+	<script language="JavaScript" type="text/javascript" src='/js/Form.js'></script>
+	<script type="text/javascript" src='/js/Common.js'></script>
+	<script type="text/javascript" src='/js/Validate.js'></script>
+	<script type="text/javascript" src='/js/Window.js'></script>
+	<script type="text/javascript" src='/js/AjaxBase.js'></script>
+	<script type="text/javascript" src='/js/Ref_DropList.js'></script>
+	<script type="text/javascript" src='/student/js/loadClassPath.js'></script>
+	
+	<script type="text/javascript" src="../custom/js/SetRootPath.jsp"></script>
+	<script type="text/javascript" src="../custom/js/jquery.js"></script>
+	<script type="text/javascript" src="../custom/js/jkingo.noprint.js"></script>
+	<script type="text/javascript" src="../custom/js/jwutil.js"></script>
+	<script type="text/javascript" src="../custom/js/watermark.js"></script>
+	
+	<script type="text/javascript">
+
+		function MyWinOnLoad(){
+			initData();
+		}
+
+		function initData() {
+            watermark({"watermark_txt":"[2000000000]某同学"});
+		}
+
+		// 显示课程明细				
+		function showCourseInfo(kcdm){
+			var title = "课程信息";
+			var width=window.document.body.offsetWidth;
+			var json = {"_title":title,"_width":"80%","_height":"550px","_left":(width*0.2)/2,"_isStop":true,"_isMove":true,"_imgsrc":"../images/"};
+			var xh = $id("xh").val();
+			var url = _webRootPath + "student/report/wsxk.courseinfo.jsp?kcdm="+kcdm+"&xh="+xh;
+			cKWindow = new CKWindow(json);
+			cKWindow.setSrc(url,"100%","100%");
+			cKWindow.openWindow();
+		}		
+
+		// 显示教师明细				
+		function showTeacherInfo(gh) {
+			var title = "教师信息";
+			var json = {"_title":title,"_width":"510px","_height":"370px","_isStop":true,"_isMove":true,"_imgsrc":"../images/"};
+			var url = _webRootPath + "wjstgdfw/grxx.grjbxx_ck.jsp?gh="+gh;
+			var cKWindow = new CKWindow(json);
+			cKWindow.setSrc(url,"100%","100%");
+			cKWindow.openWindow();
+		}
+	</script>	
+  </head>
+
+ <body onload="KAF_WinOnLoad(this)" style="padding:0px; margin:0px;background-color: white;width:100%;height:100%;">
+ 	<div style="width:100%;height:100%;padding:0px; margin:0px;padding-left: 5px;">
+	 	<table width="98%" height="100%" align="center" cellpadding="0" cellspacing="0" style="padding:0px; margin:0px;border:none;">
+			<tbody>
+				<tr>
+					<td id="theRptArea" align="center" style="padding:0px;margin:0px;border:none;" valign="top">
+						<div style="width:100%;height:100%;overflow-y:auto;">
+							
+									
+									<div style="width:100%;height:20px;;text-align:left;"></div>
+									<div style="width:100%;text-align:left;">学年学期：2025-2026学年第一学期&ensp;&ensp;学号：2000000000&ensp;&ensp;姓名：某同学</div>
+									<table id="reportArea" style="width:100%;margin:0 auto;float:auto;">
+										<thead>
+										</thead>
+										<tbody>
+											<tr>
+												<td rowspan="2" style="width:2%;display: none;text-align:center;">选定</td>
+												<td rowspan="2" style="text-align:center;">课程</td>
+												<td rowspan="2" style="width:3%;text-align:center;">学分</td>
+												<td rowspan="2" style="width:14%;text-align:center;">课程类别</td>
+												<td rowspan="2" style="width:5%;text-align:center;">任课教师</td>
+												<td rowspan="2" style="width:7%;text-align:center;">上课班级</td>
+												<td rowspan="2" style="width:13%;text-align:center;">上课班级名称</td>
+												<td rowspan="2" style="width:6%;text-align:center;">选课方式</td>
+												
+												<td rowspan="2" style="width:8%;text-align:center;">外年级/专业<br>选课</td>
+												
+												<td rowspan="2" style="width:4%;text-align:center;">选课<br>状态</td>
+												<td colspan="3" style="width:12%;text-align:center;">人数</td>
+												<td rowspan="2" style="width:15%;text-align:center;">上课时间/上课地点</td>
+											</tr>
+											<tr>
+												<td style="text-align:center">已选/免听</td>
+												<td style="text-align:center">限选</td>
+												<td style="text-align:center">可选</td>
+											</tr>
+												
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("100230001")'>
+												[1002300011]当代大学生国家安全教育
+											</a>
+										</td>
+										<td style="text-align:right;">1.0</td>
+										<td>理论课&ensp;&ensp;2024公共课/国家安全教育/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2j7tq73iwi601l7o86003ayq&param2=6cff10eee90b74d8afe26d26f02f6be7")'>
+												网课老师
+											</a>
+										</td>
+										<td style="text-align:center;">100230001-001</td>
+										<td>本科新生+</td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">6784/0</td>
+										<td style="text-align:right;">9999</td>
+										<td style="text-align:right;">3215</td>
+										<td>6-13周 [] </td>
+										<td style="display:none;">100230001-001</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("1002600032")'>
+												[1002600032]大学生心理健康教育
+											</a>
+										</td>
+										<td style="text-align:right;">2.0</td>
+										<td>理论课&ensp;&ensp;2024公共课/心理健康教育/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2j7tq73iwi601l7o850038n9&param2=3d741c86fb76fd579f14cbb42901f7ac")'>
+												谭弘
+											</a>
+										</td>
+										<td style="text-align:center;">1002600032-029</td>
+										<td>本科新生+</td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">133/0</td>
+										<td style="text-align:right;">144</td>
+										<td style="text-align:right;">11</td>
+										<td>6-16周 四[10-12] 麦二教2101(144)</td>
+										<td style="display:none;">1002600032-029</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("000018")'>
+												[1003000011]大学生安全教育
+											</a>
+										</td>
+										<td style="text-align:right;">1.0</td>
+										<td>理论课&ensp;&ensp;公共课/任选课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64n1pzf3p&param2=b9e8099a551693cc3bdf4d7cde0c86e6")'>
+												万新
+											</a>
+										</td>
+										<td style="text-align:center;">000018-001</td>
+										<td></td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">6807/0</td>
+										<td style="text-align:right;">8000</td>
+										<td style="text-align:right;">1193</td>
+										<td>6-17周 [] </td>
+										<td style="display:none;">000018-001</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("001562")'>
+												[1004600232]大学英语I
+											</a>
+										</td>
+										<td style="text-align:right;">2.0</td>
+										<td>理论课&ensp;&ensp;2024公共课/公共外语课/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64o1r6b36&param2=91b8c516b2d77f67130002d8403d6f0a")'>
+												曾文君
+											</a>
+										</td>
+										<td style="text-align:center;">001562-036</td>
+										<td>主干+本科新生+</td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">45/0</td>
+										<td style="text-align:right;">53</td>
+										<td style="text-align:right;">8</td>
+										<td>6-16周 一[3-5] 麦三教3507(70)</td>
+										<td style="display:none;">001562-036</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("002000")'>
+												[1004701034]高等数学I
+											</a>
+										</td>
+										<td style="text-align:right;">4.0</td>
+										<td>理论课&ensp;&ensp;2024公共课/公共数学课/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64o1qkvh7&param2=7d545c871b7db8a6751c4eb6e5f56edc")'>
+												俞丽兰
+											</a>
+										</td>
+										<td style="text-align:center;">002000-021</td>
+										<td>主干+本科新生+</td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">95/0</td>
+										<td style="text-align:right;">106</td>
+										<td style="text-align:right;">11</td>
+										<td>6-16周 三[3-5] 麦二教2305(106),6-16周 五[6-8] 麦二教2305(106)</td>
+										<td style="display:none;">002000-021</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("003381")'>
+												[1005000422]军事理论
+											</a>
+										</td>
+										<td style="text-align:right;">2.0</td>
+										<td>理论课&ensp;&ensp;2024公共课/军事理论/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64n1pzc0p&param2=e93009590b82e0012bd348287bda5650")'>
+												李昌卫
+											</a>
+										</td>
+										<td style="text-align:center;">003381-014</td>
+										<td>本科新生+军事理论</td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">91/0</td>
+										<td style="text-align:right;">94</td>
+										<td style="text-align:right;">3</td>
+										<td>6-16周 二[3-5] 麦二教2307(106)</td>
+										<td style="display:none;">003381-014</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("003398")'>
+												[1005000641]体育1
+											</a>
+										</td>
+										<td style="text-align:right;">1.0</td>
+										<td>理论课&ensp;&ensp;2024公共课/体育/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64m1rrlad&param2=919d0e23442e948247d634e3f30bc5c9")'>
+												彭永善
+											</a>
+										</td>
+										<td style="text-align:center;">003398-126</td>
+										<td>本科新生+乒乓球</td>
+										<td style="text-align:center;">学生网上选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">34/0</td>
+										<td style="text-align:right;">34</td>
+										<td style="text-align:right;">0</td>
+										<td>6-17周 五[3-4] 麦乒乓球场T021(40)</td>
+										<td style="display:none;">003398-126</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("2020881")'>
+												[1005202771]劳育I
+											</a>
+										</td>
+										<td style="text-align:right;">1.0</td>
+										<td>2024实践教育课/劳动教育/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64m1tjzyo&param2=b1269355bfc34083dbf6482ed8652d14")'>
+												张仲芳
+											</a>
+										</td>
+										<td style="text-align:center;">2020881-001</td>
+										<td>本科新生+</td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">6774/0</td>
+										<td style="text-align:right;">7000</td>
+										<td style="text-align:right;">226</td>
+										<td>6-13周 [] </td>
+										<td style="display:none;">2020881-001</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("2020772")'>
+												[1012100340]形势与政策I
+											</a>
+										</td>
+										<td style="text-align:right;">0.5</td>
+										<td>理论课&ensp;&ensp;2024公共课/思想政治理论课/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2j7tq73iwi601l7o850036bv&param2=88df2a70b920f3eb4312121ed0d282ec")'>
+												田凯华
+											</a>
+										</td>
+										<td style="text-align:center;">2020772-062</td>
+										<td>思政+本科新生+</td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">91/0</td>
+										<td style="text-align:right;">94</td>
+										<td style="text-align:right;">3</td>
+										<td>13-16周 三[6-7] 麦二教2206(106)</td>
+										<td style="display:none;">2020772-062</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("1012100523")'>
+												[1012100523]思想道德与法治
+											</a>
+										</td>
+										<td style="text-align:right;">3.0</td>
+										<td>理论课&ensp;&ensp;2024公共课/思想政治理论课/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64o1osko1&param2=3439f1ef1189ac0da1f443462ecfd0a4")'>
+												杨正德
+											</a>
+										</td>
+										<td style="text-align:center;">1012100523-033</td>
+										<td>本科新生+</td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">92/0</td>
+										<td style="text-align:right;">94</td>
+										<td style="text-align:right;">2</td>
+										<td>6-17周 二[8-9] 麦三教3301(101),6-17周 四[1-2] 麦三教3301(101)</td>
+										<td style="display:none;">1012100523-033</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("1012200080")'>
+												[1012200080]职业生涯规划
+											</a>
+										</td>
+										<td style="text-align:right;">0.5</td>
+										<td>理论课&ensp;&ensp;2024实践教育课/职业生涯规划/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64o1pzc0h&param2=31e78e63422cee25dfe65b85b8765ea9")'>
+												廖波
+											</a>
+										</td>
+										<td style="text-align:center;">1012200080-053</td>
+										<td>本科新生+</td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">45/0</td>
+										<td style="text-align:right;">47</td>
+										<td style="text-align:right;">2</td>
+										<td>8-11周 [] </td>
+										<td style="display:none;">1012200080-053</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("1014300154")'>
+												[1014300154]程序设计基础
+											</a>
+										</td>
+										<td style="text-align:right;">4.0</td>
+										<td>理论课&ensp;&ensp;2024专业教育课/学科基础课/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2j7tq73iwi601l7o860038na&param2=2a5d31330653bd44391bc101737a4eef")'>
+												万齐智
+											</a>
+										</td>
+										<td style="text-align:center;">1014300154-002</td>
+										<td>主干+本科新生+</td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">48/0</td>
+										<td style="text-align:right;">55</td>
+										<td style="text-align:right;">7</td>
+										<td>6-16周 一[10-11] 麦一教1503(60),6-16周 二[6-7] 麦一教1503(60),6-16周 三[10-11] 麦图文楼M104(52)</td>
+										<td style="display:none;">1014300154-002</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("1014300262")'>
+												[1014300262]计算机科学导论
+											</a>
+										</td>
+										<td style="text-align:right;">2.0</td>
+										<td>理论课&ensp;&ensp;2024专业教育课/学科基础课/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64o1pe09s&param2=bd4040ba4fafb952962d21557b40b837")'>
+												蔡超
+											</a>
+										</td>
+										<td style="text-align:center;">1014300262-002</td>
+										<td>本科新生+</td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">46/0</td>
+										<td style="text-align:right;">50</td>
+										<td style="text-align:right;">4</td>
+										<td>6-16周 一[6-8] 麦二教2207(106)</td>
+										<td style="display:none;">1014300262-002</td>
+									</tr>
+									
+										</tbody>
+									</table>
+												
+									<div style="width:100%;height:20px;;text-align:left;"></div>
+									<div style="width:100%;text-align:left;">学年学期：2025-2026学年第二学期&ensp;&ensp;学号：2000000000&ensp;&ensp;姓名：某同学</div>
+									<table id="reportArea" style="width:100%;margin:0 auto;float:auto;">
+										<thead>
+										</thead>
+										<tbody>
+											<tr>
+												<td rowspan="2" style="width:2%;display: none;text-align:center;">选定</td>
+												<td rowspan="2" style="text-align:center;">课程</td>
+												<td rowspan="2" style="width:3%;text-align:center;">学分</td>
+												<td rowspan="2" style="width:14%;text-align:center;">课程类别</td>
+												<td rowspan="2" style="width:5%;text-align:center;">任课教师</td>
+												<td rowspan="2" style="width:7%;text-align:center;">上课班级</td>
+												<td rowspan="2" style="width:13%;text-align:center;">上课班级名称</td>
+												<td rowspan="2" style="width:6%;text-align:center;">选课方式</td>
+												
+												<td rowspan="2" style="width:8%;text-align:center;">外年级/专业<br>选课</td>
+												
+												<td rowspan="2" style="width:4%;text-align:center;">选课<br>状态</td>
+												<td colspan="3" style="width:12%;text-align:center;">人数</td>
+												<td rowspan="2" style="width:15%;text-align:center;">上课时间/上课地点</td>
+											</tr>
+											<tr>
+												<td style="text-align:center">已选/免听</td>
+												<td style="text-align:center">限选</td>
+												<td style="text-align:center">可选</td>
+											</tr>
+												
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("001567")'>
+												[1004600282]大学英语II
+											</a>
+										</td>
+										<td style="text-align:right;">2.0</td>
+										<td>理论课&ensp;&ensp;2024公共课/公共外语课/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64n1syl4m&param2=75105006160cd6d7977a67bd6bf9c932")'>
+												史希平
+											</a>
+										</td>
+										<td style="text-align:center;">001567-056</td>
+										<td>主干+</td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">44/0</td>
+										<td style="text-align:right;">47</td>
+										<td style="text-align:right;">3</td>
+										<td>1-16周 四[3-4] 麦三教3207(70)</td>
+										<td style="display:none;">001567-056</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("002005")'>
+												[1004701096]高等数学II
+											</a>
+										</td>
+										<td style="text-align:right;">6.0</td>
+										<td>理论课&ensp;&ensp;2024公共课/公共数学课/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64o1qkvh7&param2=7d545c871b7db8a6751c4eb6e5f56edc")'>
+												俞丽兰
+											</a>
+										</td>
+										<td style="text-align:center;">002005-023</td>
+										<td>主干+</td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">99/0</td>
+										<td style="text-align:right;">100</td>
+										<td style="text-align:right;">1</td>
+										<td>1-16周 一[10-12] 麦三教3303(101),1-16周 三[3-5] 麦三教3304(140)</td>
+										<td style="display:none;">002005-023</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("2020880")'>
+												[1004907141]写作与沟通I
+											</a>
+										</td>
+										<td style="text-align:right;">1.5</td>
+										<td>2024通识教育课/哲学、思维与语言/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2j7tq73iwi601l7o860036bx&param2=e4131744dbee09ef4423ead2daa3259a")'>
+												王柳芳
+											</a>
+										</td>
+										<td style="text-align:center;">2020880-023</td>
+										<td></td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">47/0</td>
+										<td style="text-align:right;">47</td>
+										<td style="text-align:right;">0</td>
+										<td>1-12周 一[3-4] 麦三教3310(70)</td>
+										<td style="display:none;">2020880-023</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("003399")'>
+												[1005000651]体育2
+											</a>
+										</td>
+										<td style="text-align:right;">1.0</td>
+										<td>理论课&ensp;&ensp;2024公共课/体育/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64m1rrlad&param2=919d0e23442e948247d634e3f30bc5c9")'>
+												彭永善
+											</a>
+										</td>
+										<td style="text-align:center;">003399-124</td>
+										<td>本科新生+乒乓球</td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">34/0</td>
+										<td style="text-align:right;">34</td>
+										<td style="text-align:right;">0</td>
+										<td>1-16周 五[3-4] 麦乒乓球场T021(40)</td>
+										<td style="display:none;">003399-124</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("2020342")'>
+												[1005401103]大学物理
+											</a>
+										</td>
+										<td style="text-align:right;">3.0</td>
+										<td>理论课&ensp;&ensp;2024专业教育课/学科基础课/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64m1sd3z8&param2=508f818bd5c640d8ad2f2ecacfe3ef2f")'>
+												余泉茂
+											</a>
+										</td>
+										<td style="text-align:center;">2020342-008</td>
+										<td></td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">47/0</td>
+										<td style="text-align:right;">47</td>
+										<td style="text-align:right;">0</td>
+										<td>1-16周 四[6-8] 麦二教2103(108)</td>
+										<td style="display:none;">2020342-008</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("004699")'>
+												[1012100193]中国近现代史纲要
+											</a>
+										</td>
+										<td style="text-align:right;">3.0</td>
+										<td>理论课&ensp;&ensp;2024公共课/思想政治理论课/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64m1rrnlq&param2=74186ac99bc3defe8e7ac4e825f51afc")'>
+												吴通福
+											</a>
+										</td>
+										<td style="text-align:center;">004699-022</td>
+										<td>思政+</td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">93/0</td>
+										<td style="text-align:right;">94</td>
+										<td style="text-align:right;">1</td>
+										<td>1-16周 二[3-5] 麦三教3203(101)</td>
+										<td style="display:none;">004699-022</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("2020773")'>
+												[1012100350]形势与政策II
+											</a>
+										</td>
+										<td style="text-align:right;">0.5</td>
+										<td>理论课&ensp;&ensp;2024公共课/思想政治理论课/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64p1u5fka&param2=d449c3d8beefa97b1585ab9ce6ad9135")'>
+												谢尔艾力.库尔班
+											</a>
+										</td>
+										<td style="text-align:center;">2020773-044</td>
+										<td>思政+</td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">92/0</td>
+										<td style="text-align:right;">94</td>
+										<td style="text-align:right;">2</td>
+										<td>13-16周 三[6-7] 麦三教3403(101)</td>
+										<td style="display:none;">2020773-044</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("1012100483")'>
+												[1012100483]毛泽东思想和中国特色社会主义理论体系概论
+											</a>
+										</td>
+										<td style="text-align:right;">3.0</td>
+										<td>理论课&ensp;&ensp;2024公共课/思想政治理论课/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2j7tq73iwi601l7o83003bqi&param2=5bf26068387e689d3dcf4fdf4cd36b83")'>
+												康立芳
+											</a>
+										</td>
+										<td style="text-align:center;">1012100483-047</td>
+										<td>思政+</td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">91/0</td>
+										<td style="text-align:right;">94</td>
+										<td style="text-align:right;">3</td>
+										<td>1-16周 二[6-8] 麦三教3303(101)</td>
+										<td style="display:none;">1012100483-047</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("1012100493")'>
+												[1012100493]习近平新时代中国特色社会主义思想概论
+											</a>
+										</td>
+										<td style="text-align:right;">3.0</td>
+										<td>理论课&ensp;&ensp;2024公共课/思想政治理论课/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64o1osjw8&param2=34ec6ae294137c5c4c7110d1a4b2656e")'>
+												徐腊梅
+											</a>
+										</td>
+										<td style="text-align:center;">1012100493-034</td>
+										<td>思政+</td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">91/0</td>
+										<td style="text-align:right;">94</td>
+										<td style="text-align:right;">3</td>
+										<td>1-16周 五[6-8] 麦三教3202(101)</td>
+										<td style="display:none;">1012100493-034</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("1014300272")'>
+												[1014300272]程序设计实践
+											</a>
+										</td>
+										<td style="text-align:right;">2.0</td>
+										<td>理论课&ensp;&ensp;2024专业教育课/学科基础课/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64o1qkse4&param2=5cdeca5b4d29e5c232ca93e6402acd8f")'>
+												焦贤沛
+											</a>
+										</td>
+										<td style="text-align:center;">1014300272-003</td>
+										<td></td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">51/0</td>
+										<td style="text-align:right;">51</td>
+										<td style="text-align:right;">0</td>
+										<td>1-16周 三[1-2] 麦图文楼M103(60)</td>
+										<td style="display:none;">1014300272-003</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("1014300283")'>
+												[1014300283]面向对象程序设计(双语)
+											</a>
+										</td>
+										<td style="text-align:right;">3.0</td>
+										<td>理论课&ensp;&ensp;2024专业教育课/学科基础课/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64o1rrp59&param2=cc8a8190c921683f7e6c10a6c78e4907")'>
+												夏雪
+											</a>
+										</td>
+										<td style="text-align:center;">1014300283-004</td>
+										<td>主干+</td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">48/0</td>
+										<td style="text-align:right;">48</td>
+										<td style="text-align:right;">0</td>
+										<td>1-16周(单) 一[6-8] 麦三教3407(70),1-16周(双) 一[6-8] 麦图文楼M106(78)</td>
+										<td style="display:none;">1014300283-004</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("1014300293")'>
+												[1014300293]数字逻辑与数字系统
+											</a>
+										</td>
+										<td style="text-align:right;">3.0</td>
+										<td>理论课&ensp;&ensp;2024专业教育课/学科基础课/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2j7tq73iwixs1lt8gj2g7stg1q0dv9000046&param2=60f70699d157e3707e75fb8fee8c891c")'>
+												某老师
+											</a>
+										</td>
+										<td style="text-align:center;">1014300293-004</td>
+										<td></td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">48/0</td>
+										<td style="text-align:right;">48</td>
+										<td style="text-align:right;">0</td>
+										<td>1-16周 二[10-11] 麦三教3313(70),1-16周(双) 四[10-11] 麦图文楼M102(52)</td>
+										<td style="display:none;">1014300293-004</td>
+									</tr>
+									
+										</tbody>
+									</table>
+												
+									<div style="width:100%;height:20px;;text-align:left;"></div>
+									<div style="width:100%;text-align:left;">学年学期：2025-2026学年第二阶段&ensp;&ensp;学号：2000000000&ensp;&ensp;姓名：某同学</div>
+									<table id="reportArea" style="width:100%;margin:0 auto;float:auto;">
+										<thead>
+										</thead>
+										<tbody>
+											<tr>
+												<td rowspan="2" style="width:2%;display: none;text-align:center;">选定</td>
+												<td rowspan="2" style="text-align:center;">课程</td>
+												<td rowspan="2" style="width:3%;text-align:center;">学分</td>
+												<td rowspan="2" style="width:14%;text-align:center;">课程类别</td>
+												<td rowspan="2" style="width:5%;text-align:center;">任课教师</td>
+												<td rowspan="2" style="width:7%;text-align:center;">上课班级</td>
+												<td rowspan="2" style="width:13%;text-align:center;">上课班级名称</td>
+												<td rowspan="2" style="width:6%;text-align:center;">选课方式</td>
+												
+												<td rowspan="2" style="width:8%;text-align:center;">外年级/专业<br>选课</td>
+												
+												<td rowspan="2" style="width:4%;text-align:center;">选课<br>状态</td>
+												<td colspan="3" style="width:12%;text-align:center;">人数</td>
+												<td rowspan="2" style="width:15%;text-align:center;">上课时间/上课地点</td>
+											</tr>
+											<tr>
+												<td style="text-align:center">已选/免听</td>
+												<td style="text-align:center">限选</td>
+												<td style="text-align:center">可选</td>
+											</tr>
+												
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("1214300022")'>
+												[1214300022]程序设计实训
+											</a>
+										</td>
+										<td style="text-align:right;">2.0</td>
+										<td>理论课&ensp;&ensp;2024专业教育课/专业必修课/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64o1pe09s&param2=bd4040ba4fafb952962d21557b40b837")'>
+												蔡超
+											</a>
+										</td>
+										<td style="text-align:center;">1214300022-005</td>
+										<td></td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">45/0</td>
+										<td style="text-align:right;">55</td>
+										<td style="text-align:right;">10</td>
+										<td>1-16周 [] </td>
+										<td style="display:none;">1214300022-005</td>
+									</tr>
+									
+										</tbody>
+									</table>
+												
+									<div style="width:100%;height:20px;;text-align:left;"></div>
+									<div style="width:100%;text-align:left;">学年学期：2026-2027学年第一学期&ensp;&ensp;学号：2000000000&ensp;&ensp;姓名：某同学</div>
+									<table id="reportArea" style="width:100%;margin:0 auto;float:auto;">
+										<thead>
+										</thead>
+										<tbody>
+											<tr>
+												<td rowspan="2" style="width:2%;display: none;text-align:center;">选定</td>
+												<td rowspan="2" style="text-align:center;">课程</td>
+												<td rowspan="2" style="width:3%;text-align:center;">学分</td>
+												<td rowspan="2" style="width:14%;text-align:center;">课程类别</td>
+												<td rowspan="2" style="width:5%;text-align:center;">任课教师</td>
+												<td rowspan="2" style="width:7%;text-align:center;">上课班级</td>
+												<td rowspan="2" style="width:13%;text-align:center;">上课班级名称</td>
+												<td rowspan="2" style="width:6%;text-align:center;">选课方式</td>
+												
+												<td rowspan="2" style="width:8%;text-align:center;">外年级/专业<br>选课</td>
+												
+												<td rowspan="2" style="width:4%;text-align:center;">选课<br>状态</td>
+												<td colspan="3" style="width:12%;text-align:center;">人数</td>
+												<td rowspan="2" style="width:15%;text-align:center;">上课时间/上课地点</td>
+											</tr>
+											<tr>
+												<td style="text-align:center">已选/免听</td>
+												<td style="text-align:center">限选</td>
+												<td style="text-align:center">可选</td>
+											</tr>
+												
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("1004606732")'>
+												[1004606732]英语视听说
+											</a>
+										</td>
+										<td style="text-align:right;">2.0</td>
+										<td>理论课&ensp;&ensp;2024公共课/公共外语课/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64n1rrrgq&param2=e3b9a1f1dca6403362aa2c22ede4044c")'>
+												陈润平
+											</a>
+										</td>
+										<td style="text-align:center;">1004606732-066</td>
+										<td></td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">45/0</td>
+										<td style="text-align:right;"></td>
+										<td style="text-align:right;"></td>
+										<td>2-17周 四[3-4] 麦三教3111(70)</td>
+										<td style="display:none;">1004606732-066</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("002211")'>
+												[1004703634]线性代数(工)
+											</a>
+										</td>
+										<td style="text-align:right;">4.0</td>
+										<td>理论课&ensp;&ensp;2024公共课/公共数学课/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64o1r69ji&param2=988439f3e29dd5911cdba6dcf3aca787")'>
+												韩加林
+											</a>
+										</td>
+										<td style="text-align:center;">002211-004</td>
+										<td>主干+</td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">97/0</td>
+										<td style="text-align:right;"></td>
+										<td style="text-align:right;"></td>
+										<td>2-17周 一[6-7] 麦三教3202(101),2-17周 三[1-2] 麦三教3202(101)</td>
+										<td style="display:none;">002211-004</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("003400")'>
+												[1005000661]体育3
+											</a>
+										</td>
+										<td style="text-align:right;">1.0</td>
+										<td>理论课&ensp;&ensp;2024公共课/体育/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2j6lqf1sd0492jskmm1qly3y&param2=13d899e68d3eb4c992ceb31d96dce98b")'>
+												赵翔
+											</a>
+										</td>
+										<td style="text-align:center;">003400-123</td>
+										<td>篮球</td>
+										<td style="text-align:center;">学生网上选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">31/0</td>
+										<td style="text-align:right;"></td>
+										<td style="text-align:right;"></td>
+										<td>2-17周 二[3-4] 麦篮球场T005(40)</td>
+										<td style="display:none;">003400-123</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("2020774")'>
+												[1012100360]形势与政策III
+											</a>
+										</td>
+										<td style="text-align:right;">0.5</td>
+										<td>理论课&ensp;&ensp;2024公共课/思想政治理论课/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64p1u5fka&param2=d449c3d8beefa97b1585ab9ce6ad9135")'>
+												谢尔艾力.库尔班
+											</a>
+										</td>
+										<td style="text-align:center;">2020774-041</td>
+										<td>思政+</td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">92/0</td>
+										<td style="text-align:right;"></td>
+										<td style="text-align:right;"></td>
+										<td>9-12周 三[8-9] 麦三教3401(101)</td>
+										<td style="display:none;">2020774-041</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("1213501533")'>
+												[1012100533]马克思主义基本原理
+											</a>
+										</td>
+										<td style="text-align:right;">3.0</td>
+										<td>理论课&ensp;&ensp;2024公共课/思想政治理论课/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2j7tq73iwi601l7o86003a6q&param2=d6373e57cbdb02acedbb29fd826c39cf")'>
+												李冰潇
+											</a>
+										</td>
+										<td style="text-align:center;">1213501533-029</td>
+										<td></td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">92/0</td>
+										<td style="text-align:right;"></td>
+										<td style="text-align:right;"></td>
+										<td>2-17周 三[3-5] 麦三教3201(101)</td>
+										<td style="display:none;">1213501533-029</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("1014300174")'>
+												[1014300174]计算机网络
+											</a>
+										</td>
+										<td style="text-align:right;">4.0</td>
+										<td>理论课&ensp;&ensp;2024专业教育课/专业必修课/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2j7tq73iwi601l7o84003a6r&param2=3b5c8dc8ba11da24aec0285f1c580b39")'>
+												陈强
+											</a>
+										</td>
+										<td style="text-align:center;">1014300174-004</td>
+										<td>主干+</td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">71/0</td>
+										<td style="text-align:right;"></td>
+										<td style="text-align:right;"></td>
+										<td>2-17周 三[10-12] 麦三教3108(70),2-17周(双) 五[1-2] 麦工商楼G203(80)</td>
+										<td style="display:none;">1014300174-004</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("1014300184")'>
+												[1014300184]计算机组成原理
+											</a>
+										</td>
+										<td style="text-align:right;">4.0</td>
+										<td>理论课&ensp;&ensp;2024专业教育课/学科基础课/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2j7tq73iwixs1lt8gj2g7stg1q0dv9000046&param2=60f70699d157e3707e75fb8fee8c891c")'>
+												某老师
+											</a>
+										</td>
+										<td style="text-align:center;">1014300184-004</td>
+										<td>主干+</td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">60/0</td>
+										<td style="text-align:right;"></td>
+										<td style="text-align:right;"></td>
+										<td>2-17周 一[10-11] 麦三教3306(70),2-17周 四[10-11] 麦三教3306(70)</td>
+										<td style="display:none;">1014300184-004</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("1014300314")'>
+												[1014300314]数据结构与算法
+											</a>
+										</td>
+										<td style="text-align:right;">4.0</td>
+										<td>理论课&ensp;&ensp;2024专业教育课/学科基础课/必修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64o1qkse4&param2=5cdeca5b4d29e5c232ca93e6402acd8f")'>
+												焦贤沛
+											</a>
+										</td>
+										<td style="text-align:center;">1014300314-002</td>
+										<td>主干+</td>
+										<td style="text-align:center;">管理人员选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">55/0</td>
+										<td style="text-align:right;"></td>
+										<td style="text-align:right;"></td>
+										<td>2-17周 一[3-4] 麦三教3209(70),2-17周 四[8-9] 数字经济实训大楼S307(66)</td>
+										<td style="display:none;">1014300314-002</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("1014300422")'>
+												[1014300422]Linux操作系统
+											</a>
+										</td>
+										<td style="text-align:right;">2.0</td>
+										<td>理论课&ensp;&ensp;2024专业教育课/专业方向课/选修课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2j7tq73iwi601l7o860038nd&param2=1f03a19e2ad0e74f75a4c2f6fe7f09b0")'>
+												陶小结
+											</a>
+										</td>
+										<td style="text-align:center;">1014300422-001</td>
+										<td></td>
+										<td style="text-align:center;">学生网上选</td>
+										<td style="text-align:center;">否</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">78/0</td>
+										<td style="text-align:right;"></td>
+										<td style="text-align:right;"></td>
+										<td>2-17周 五[6-7] 数字经济实训大楼S313(66)</td>
+										<td style="display:none;">1014300422-001</td>
+									</tr>
+									
+									<tr>
+										<td>
+											<a href='javascript:void(0)' onclick='showCourseInfo("2021590")'>
+												[1505002221]体育保健学（MOOC）
+											</a>
+										</td>
+										<td style="text-align:right;">1.0</td>
+										<td>理论课&ensp;&ensp;公共课/任选课</td>
+										<td>
+											<a href='javascript:void(0)' onclick='showTeacherInfo("2msjzp2il64o1pdwer&param2=2d4367e54c0277333f173ebbaa014d04")'>
+												严伟
+											</a>
+										</td>
+										<td style="text-align:center;">2021590-001</td>
+										<td>体育保健学（MOOC）</td>
+										<td style="text-align:center;">学生网上选</td>
+										<td style="text-align:center;">是</td>
+										<td style="text-align:center;">选中</td>
+										<td style="text-align:right;">450/0</td>
+										<td style="text-align:right;"></td>
+										<td style="text-align:right;"></td>
+										<td>2-9周 [] </td>
+										<td style="display:none;">2021590-001</td>
+									</tr>
+									
+						</div>
+						<iframe id="hidFrm" name="hidFrm" style="display:none;"></iframe>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+ </body>
+</html>

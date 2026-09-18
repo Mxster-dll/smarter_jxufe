@@ -16,8 +16,23 @@ void main() {
   final entries = homeServiceEntries(push: (_) {});
   final titles = entries.map((e) => e.title).toList();
 
-  test('目录条目齐全（21 条）', () {
-    expect(entries.length, 21, reason: '增删服务入口请同步本测试与 AGENTS.md §3');
+  test('目录条目齐全（26 条）', () {
+    // 25 = 并行工作流新增两项后的 23 + 2026-09-17 新增「推免成绩 / 竞赛奖励」两项；
+    // 26 = 2026-09-19 新增「AI 助手」（内置对话式问答，排在第一格）。
+    expect(entries.length, 26, reason: '增删服务入口请同步本测试与 AGENTS.md §3');
+  });
+
+  test('AI 助手排在第一位，且它的页面是 AiChatScreen', () {
+    expect(entries.first.title, 'AI 助手');
+    expect(entries.first.builder().runtimeType.toString(), contains('AiChatScreen'));
+  });
+
+  test('两个新功能入口都在「学习与测评」组里', () {
+    final study = homeServiceEntriesInGroup(entries, HomeServiceGroup.study)
+        .map((e) => e.title)
+        .toList();
+    expect(study, contains('推免成绩'));
+    expect(study, contains('竞赛奖励'));
   });
 
   test('标题唯一（同一入口不会出现两次）', () {
@@ -33,11 +48,7 @@ void main() {
       for (final group in HomeServiceGroup.values)
         ...homeServiceEntriesInGroup(entries, group),
     ];
-    expect(
-      grouped.length,
-      entries.length,
-      reason: '有条目没归入任何分组 → 侧栏视图会漏掉它',
-    );
+    expect(grouped.length, entries.length, reason: '有条目没归入任何分组 → 侧栏视图会漏掉它');
     expect(grouped.map((e) => e.title).toSet(), titles.toSet());
   });
 
