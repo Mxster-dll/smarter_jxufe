@@ -16,6 +16,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/features/read_credit/domain/read_credit_models.dart';
 
@@ -68,7 +69,11 @@ class ReadCreditDetailView extends StatelessWidget {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: FeaturePalette.cardAccent.withValues(alpha: 0.10),
+                    color: AppColors.tint(
+                      context,
+                      fp(context).cardAccent,
+                      0.10,
+                    ),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
@@ -76,7 +81,7 @@ class ReadCreditDetailView extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: FeaturePalette.cardAccent,
+                      color: fp(context).cardAccent,
                     ),
                   ),
                 ),
@@ -155,7 +160,7 @@ class ReadCreditDetailView extends StatelessWidget {
               Icon(
                 Icons.bookmark_outline,
                 size: 16,
-                color: FeaturePalette.cardAccent,
+                color: fp(context).cardAccent,
               ),
               const SizedBox(width: 6),
               Expanded(
@@ -266,7 +271,7 @@ Widget _card(BuildContext context, {required Widget child}) {
     decoration: BoxDecoration(
       color: scheme.surface,
       borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+      border: Border.all(color: AppColors.hairline(context, 0.6)),
     ),
     padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
     child: child,

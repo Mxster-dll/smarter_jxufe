@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/core/network/dio_providers.dart';
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/library_edu/data/providers/tsgxs_providers.dart';
 import 'package:smarter_jxufe/features/library_edu/data/tsgxs_api_remote_datasource.dart';
 import 'package:smarter_jxufe/features/library_edu/data/tsgxs_prefs.dart';
@@ -166,9 +167,9 @@ class TsgxsChapterScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: scheme.primary.withValues(alpha: 0.05),
+        color: AppColors.tint(context, scheme.primary, 0.05),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: scheme.primary.withValues(alpha: 0.16)),
+        border: Border.all(color: AppColors.tintBorder(context, scheme.primary, 0.16)),
       ),
       child: Row(
         children: [
@@ -206,9 +207,9 @@ class TsgxsChapterScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: scheme.primary.withValues(alpha: 0.05),
+        color: AppColors.tint(context, scheme.primary, 0.05),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: scheme.primary.withValues(alpha: 0.16)),
+        border: Border.all(color: AppColors.tintBorder(context, scheme.primary, 0.16)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -301,7 +302,7 @@ class TsgxsChapterScreen extends ConsumerWidget {
       decoration: BoxDecoration(
         color: scheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+        border: Border.all(color: AppColors.hairline(context, 0.6)),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -365,7 +366,7 @@ class TsgxsChapterScreen extends ConsumerWidget {
       decoration: BoxDecoration(
         color: scheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+        border: Border.all(color: AppColors.hairline(context, 0.6)),
       ),
       child: examAsync.when(
         loading: () => const SizedBox(

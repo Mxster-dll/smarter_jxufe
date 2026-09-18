@@ -15,6 +15,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+import 'package:smarter_jxufe/core/storage/box_reload_watcher.dart';
 import 'package:smarter_jxufe/features/library_edu/domain/tsgxs_exam.dart';
 
 /// 偏好 box 名。
@@ -24,7 +25,9 @@ const String tsgxsPrefsBoxName = 'tsgxsPrefs';
 const String tsgxsAnswerModeKey = 'answerMode';
 
 /// 入馆教育偏好存储（落盘尽力而为：Hive 打不开也不影响本次会话）。
-class TsgxsExamPrefsStore extends ChangeNotifier {
+///
+/// 混入 [BoxReloadWatcher]：**外部写入**（云同步「从云端恢复」）也要反映到界面。
+class TsgxsExamPrefsStore extends ChangeNotifier with BoxReloadWatcher {
   TsgxsAnswerMode _mode = TsgxsAnswerMode.normal;
   Box<String>? _box;
   Future<void>? _loading;
@@ -41,12 +44,25 @@ class TsgxsExamPrefsStore extends ChangeNotifier {
   Future<void> _load() async {
     final box = await _openBoxQuietly();
     if (box == null) return;
+    _attach(box);
+    _readFromBox(box);
+  }
+
+  /// 记住 box 并（仅一次）订阅它的写入事件。
+  ///
+  /// `save()` 也可能先拿到 box（`_load` 还没跑完），两条路都走这里 → 不会重复订阅。
+  void _attach(Box<String> box) {
+    if (identical(_box, box)) return;
     _box = box;
+    bindBoxReload(box, _readFromBox);
+  }
+
+  /// 从 box 重读（首载与外部写入共用）；值没变就不通知。
+  void _readFromBox(Box<String> box) {
     final parsed = TsgxsAnswerMode.fromName(box.get(tsgxsAnswerModeKey));
-    if (parsed != null && parsed != _mode) {
-      _mode = parsed;
-      notifyListeners();
-    }
+    if (parsed == null || parsed == _mode) return;
+    _mode = parsed;
+    notifyListeners();
   }
 
   /// 切换并落盘。
@@ -56,7 +72,7 @@ class TsgxsExamPrefsStore extends ChangeNotifier {
     notifyListeners();
     final box = _box ?? await _openBoxQuietly();
     if (box == null) return;
-    _box = box;
+    _attach(box);
     try {
       await box.put(tsgxsAnswerModeKey, next.name);
     } catch (_) {

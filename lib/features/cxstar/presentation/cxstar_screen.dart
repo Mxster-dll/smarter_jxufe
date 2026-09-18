@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/core/navigation/page_auto_refresh.dart';
 import 'package:smarter_jxufe/core/network/dio_providers.dart';
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/features/cxstar/data/datasources/cxstar_auth_remote_datasource.dart';
 import 'package:smarter_jxufe/features/cxstar/data/providers/cxstar_providers.dart';
@@ -334,7 +335,7 @@ class _SessionPanel extends ConsumerWidget {
           children: [
             _IconBox(
               icon: Icons.auto_stories_outlined,
-              color: FeaturePalette.cardAccent,
+              color: fp(context).cardAccent,
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -361,7 +362,7 @@ class _SessionPanel extends ConsumerWidget {
             ),
             _Chip(
               text: shared ? '公用账号' : '个人账号',
-              color: shared ? scheme.error : FeaturePalette.cxstar,
+              color: shared ? scheme.error : fp(context).cxstar,
             ),
           ],
         ),
@@ -570,11 +571,11 @@ class _SummaryCard extends StatelessWidget {
               Text(
                 '${summary.readCount}',
                 key: const Key('cxstar_read_count'),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 42,
                   fontWeight: FontWeight.w600,
-                  color: FeaturePalette.cardAccent,
-                  fontFeatures: [FontFeature.tabularFigures()],
+                  color: fp(context).cardAccent,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
               const SizedBox(width: 6),
@@ -746,7 +747,7 @@ class _RecordRow extends ConsumerWidget {
           children: [
             _IconBox(
               icon: Icons.menu_book_outlined,
-              color: FeaturePalette.cardAccent,
+              color: fp(context).cardAccent,
               size: 34,
             ),
             const SizedBox(width: 10),
@@ -788,7 +789,7 @@ class _RecordRow extends ConsumerWidget {
                       style: TextStyle(
                         fontSize: 11.5,
                         color: report.finished
-                            ? FeaturePalette.cxstar
+                            ? fp(context).cxstar
                             : scheme.onSurfaceVariant,
                         fontFeatures: const [FontFeature.tabularFigures()],
                       ),
@@ -800,7 +801,7 @@ class _RecordRow extends ConsumerWidget {
             const SizedBox(width: 8),
             _Chip(
               text: finished ? '已读完' : '阅读中',
-              color: finished ? FeaturePalette.cxstar : scheme.outline,
+              color: finished ? fp(context).cxstar : scheme.outline,
             ),
             if (record.bookId.isNotEmpty) ...[
               const SizedBox(width: 4),
@@ -847,7 +848,7 @@ void _showReportDialog(
             style: TextStyle(
               fontSize: 12.5,
               fontWeight: highlight ? FontWeight.w600 : FontWeight.w400,
-              color: highlight ? FeaturePalette.cxstar : scheme.onSurface,
+              color: highlight ? fp(context).cxstar : scheme.onSurface,
               fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
@@ -934,9 +935,9 @@ class _ShelfEntryCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 10),
           child: Row(
             children: [
-              const _IconBox(
+              _IconBox(
                 icon: Icons.grid_view_rounded,
-                color: FeaturePalette.cardAccent,
+                color: fp(context).cardAccent,
                 size: 34,
               ),
               const SizedBox(width: 10),
@@ -1143,7 +1144,7 @@ class _Card extends StatelessWidget {
       decoration: BoxDecoration(
         color: scheme.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+        border: Border.all(color: AppColors.hairline(context, 0.6)),
       ),
       child: child,
     );
@@ -1163,7 +1164,7 @@ class _IconBox extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
+        color: AppColors.tint(context, color, 0.10),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Icon(icon, size: size * 0.5, color: color),
@@ -1182,7 +1183,7 @@ class _Chip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
+        color: AppColors.tint(context, color, 0.10),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: color.withValues(alpha: 0.35)),
       ),

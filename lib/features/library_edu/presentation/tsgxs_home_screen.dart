@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/library_edu/data/providers/tsgxs_providers.dart';
 import 'package:smarter_jxufe/features/library_edu/data/tsgxs_prefs.dart';
 import 'package:smarter_jxufe/features/library_edu/domain/tsgxs_models.dart';
@@ -138,7 +139,7 @@ class TsgxsHomeScreen extends ConsumerWidget {
                 width: 46,
                 height: 46,
                 decoration: BoxDecoration(
-                  color: scheme.primary.withValues(alpha: 0.10),
+                  color: AppColors.tint(context, scheme.primary, 0.10),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
@@ -228,7 +229,7 @@ class TsgxsHomeScreen extends ConsumerWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: scheme.primary.withValues(alpha: 0.10),
+                  color: AppColors.tint(context, scheme.primary, 0.10),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
@@ -333,7 +334,7 @@ class TsgxsHomeScreen extends ConsumerWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.08),
+                  color: AppColors.tint(context, accent, 0.08),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
@@ -371,7 +372,7 @@ class TsgxsHomeScreen extends ConsumerWidget {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.10),
+                  color: AppColors.tint(context, statusColor, 0.10),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
@@ -440,7 +441,7 @@ class TsgxsHomeScreen extends ConsumerWidget {
           width: 38,
           height: 38,
           decoration: BoxDecoration(
-            color: scheme.primary.withValues(alpha: 0.08),
+            color: AppColors.tint(context, scheme.primary, 0.08),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(icon, size: 19, color: scheme.primary),
@@ -484,7 +485,7 @@ class TsgxsHomeScreen extends ConsumerWidget {
       decoration: BoxDecoration(
         color: scheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+        border: Border.all(color: AppColors.hairline(context, 0.6)),
       ),
       child: child,
     );

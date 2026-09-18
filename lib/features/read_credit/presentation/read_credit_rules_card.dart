@@ -6,6 +6,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/read_credit/domain/read_credit_models.dart';
 import 'package:smarter_jxufe/features/read_credit/presentation/widgets/read_credit_ui.dart';
 
@@ -23,7 +24,11 @@ class ReadCreditRulesCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              readCreditIconBox(Icons.menu_book_outlined, readCreditAccent),
+              readCreditIconBox(
+                context,
+                Icons.menu_book_outlined,
+                readCreditAccent(context),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -69,6 +74,7 @@ class ReadCreditRulesCard extends StatelessWidget {
 
   Widget _ruleRow(BuildContext context, int index, ReadCreditRule rule) {
     final scheme = Theme.of(context).colorScheme;
+    final accent = readCreditAccent(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -77,7 +83,7 @@ class ReadCreditRulesCard extends StatelessWidget {
           height: 22,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: readCreditAccent.withValues(alpha: 0.12),
+            color: AppColors.tint(context, accent, 0.12),
             borderRadius: BorderRadius.circular(6),
           ),
           child: Text(
@@ -85,7 +91,7 @@ class ReadCreditRulesCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: readCreditAccent,
+              color: accent,
             ),
           ),
         ),

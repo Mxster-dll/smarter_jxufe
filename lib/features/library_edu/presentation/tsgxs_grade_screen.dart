@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/library_edu/data/providers/tsgxs_providers.dart';
 import 'package:smarter_jxufe/features/library_edu/domain/tsgxs_models.dart';
 
@@ -78,7 +79,7 @@ class TsgxsGradeScreen extends ConsumerWidget {
       decoration: BoxDecoration(
         color: scheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+        border: Border.all(color: AppColors.hairline(context, 0.6)),
       ),
       child: Column(
         children: [
@@ -86,7 +87,7 @@ class TsgxsGradeScreen extends ConsumerWidget {
           for (final g in grades) ...[
             Divider(
               height: 1,
-              color: scheme.outlineVariant.withValues(alpha: 0.5),
+              color: AppColors.hairline(context, 0.5),
             ),
             _row(context, [g.examTime, g.elapsed, g.score]),
           ],

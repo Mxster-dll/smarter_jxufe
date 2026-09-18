@@ -18,6 +18,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/read_credit/data/providers/read_credit_providers.dart';
 import 'package:smarter_jxufe/features/read_credit/domain/read_credit_models.dart';
 import 'package:smarter_jxufe/features/read_credit/domain/read_credit_progress.dart';
@@ -138,8 +139,8 @@ class ReadCreditProgressSection extends ConsumerWidget {
                           ),
                           decoration: BoxDecoration(
                             color: granted
-                                ? Colors.green.withValues(alpha: 0.12)
-                                : Colors.orange.withValues(alpha: 0.14),
+                                ? AppColors.successFill(context)
+                                : AppColors.cautionFill(context),
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
@@ -148,8 +149,8 @@ class ReadCreditProgressSection extends ConsumerWidget {
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
                               color: granted
-                                  ? Colors.green.shade800
-                                  : Colors.orange.shade900,
+                                  ? AppColors.success(context)
+                                  : AppColors.caution(context),
                             ),
                           ),
                         ),
@@ -276,7 +277,7 @@ class ReadCreditProgressSection extends ConsumerWidget {
           style: TextStyle(
             fontSize: 11.5,
             fontWeight: FontWeight.w600,
-            color: done ? Colors.green.shade800 : scheme.onSurfaceVariant,
+            color: done ? AppColors.success(context) : scheme.onSurfaceVariant,
           ),
         ),
       ],
@@ -469,8 +470,9 @@ class ReadCreditPartCard extends StatelessWidget {
           Row(
             children: [
               readCreditIconBox(
+                context,
                 readCreditKindIcon(part.kind),
-                readCreditPartColor(part.kind),
+                readCreditPartColor(context, part.kind),
                 size: 38,
               ),
               const SizedBox(width: 12),
@@ -558,7 +560,7 @@ class ReadCreditPartCard extends StatelessWidget {
               _footnote(
                 context,
                 Icons.bolt_outlined,
-                readCreditAccent,
+                readCreditAccent(context),
                 part.actualSourceNote!,
               ),
             ],
