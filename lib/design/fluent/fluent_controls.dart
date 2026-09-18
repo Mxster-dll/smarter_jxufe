@@ -51,9 +51,10 @@ class _FluentListRowState extends State<FluentListRow> {
 
   @override
   Widget build(BuildContext context) {
+    final p = fluent(context);
     final fill = _pressed
-        ? FluentColors.controlTertiary
-        : (_hovered ? FluentColors.controlSecondary : Colors.transparent);
+        ? p.controlTertiary
+        : (_hovered ? p.controlSecondary : Colors.transparent);
 
     final row = AnimatedContainer(
       duration: FluentMotion.fast,
@@ -81,17 +82,13 @@ class _FluentListRowState extends State<FluentListRow> {
               children: [
                 Text(
                   widget.title,
-                  style: FluentType.body.copyWith(
-                    color: FluentColors.textPrimary,
-                  ),
+                  style: FluentType.body.copyWith(color: p.textPrimary),
                 ),
                 if (widget.description != null) ...[
                   const SizedBox(height: FluentSpacing.xs),
                   Text(
                     widget.description!,
-                    style: FluentType.caption.copyWith(
-                      color: FluentColors.textTertiary,
-                    ),
+                    style: FluentType.caption.copyWith(color: p.textTertiary),
                   ),
                 ],
               ],
@@ -131,17 +128,18 @@ class FluentIndexBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = fluent(context);
     return Container(
       width: size,
       height: size,
       alignment: Alignment.center,
-      decoration: const BoxDecoration(
-        color: FluentColors.accentSubtle,
+      decoration: BoxDecoration(
+        color: p.accentSubtle,
         borderRadius: FluentRadius.controlAll,
       ),
       child: Text(
         '$index',
-        style: FluentType.bodyStrong.copyWith(color: FluentColors.accent),
+        style: FluentType.bodyStrong.copyWith(color: p.accent),
       ),
     );
   }
@@ -182,12 +180,13 @@ class _FluentIconButtonState extends State<FluentIconButton> {
 
   @override
   Widget build(BuildContext context) {
+    final p = fluent(context);
     final enabled = widget.onPressed != null;
     final fill = !enabled
         ? Colors.transparent
         : _pressed
-        ? FluentColors.controlTertiary
-        : (_hovered ? FluentColors.controlSecondary : Colors.transparent);
+        ? p.controlTertiary
+        : (_hovered ? p.controlSecondary : Colors.transparent);
 
     return Tooltip(
       message: widget.tooltip,
@@ -214,9 +213,7 @@ class _FluentIconButtonState extends State<FluentIconButton> {
             child: Icon(
               widget.icon,
               size: widget.iconSize,
-              color: enabled
-                  ? FluentColors.textPrimary
-                  : FluentColors.textDisabled,
+              color: enabled ? p.textPrimary : p.textDisabled,
             ),
           ),
         ),
@@ -265,6 +262,7 @@ class _FluentButtonState extends State<FluentButton> {
 
   @override
   Widget build(BuildContext context) {
+    final p = fluent(context);
     final enabled = widget.onPressed != null;
     final height = widget.dense ? 32.0 : 36.0;
 
@@ -272,23 +270,21 @@ class _FluentButtonState extends State<FluentButton> {
     final Color stroke;
     final Color label;
     if (!enabled) {
-      fill = widget.accent ? FluentColors.accentDisabled : FluentColors.controlDisabled;
-      stroke = widget.accent ? Colors.transparent : FluentColors.strokeControlDefault;
-      label = widget.accent
-          ? FluentColors.textOnAccentSecondary
-          : FluentColors.textDisabled;
+      fill = widget.accent ? p.accentDisabled : p.controlDisabled;
+      stroke = widget.accent ? Colors.transparent : p.strokeControlDefault;
+      label = widget.accent ? p.textOnAccentSecondary : p.textDisabled;
     } else if (widget.accent) {
       fill = _pressed
-          ? FluentColors.accentTertiary
-          : (_hovered ? FluentColors.accentSecondary : FluentColors.accent);
+          ? p.accentTertiary
+          : (_hovered ? p.accentSecondary : p.accent);
       stroke = Colors.transparent;
-      label = FluentColors.textOnAccentPrimary;
+      label = p.textOnAccentPrimary;
     } else {
       fill = _pressed
-          ? FluentColors.controlTertiary
-          : (_hovered ? FluentColors.controlSecondary : FluentColors.controlDefault);
-      stroke = FluentColors.strokeControlDefault;
-      label = FluentColors.textPrimary;
+          ? p.controlTertiary
+          : (_hovered ? p.controlSecondary : p.controlDefault);
+      stroke = p.strokeControlDefault;
+      label = p.textPrimary;
     }
 
     final textStyle = widget.accent
@@ -363,6 +359,7 @@ class FluentShareBar extends StatelessWidget {
   Widget build(BuildContext context) {
     if (segments.isEmpty) return const SizedBox.shrink();
 
+    final accent = fluent(context).accent;
     final n = segments.length;
     final children = <Widget>[];
     for (var i = 0; i < n; i++) {
@@ -378,7 +375,7 @@ class FluentShareBar extends StatelessWidget {
             child: Container(
               height: height,
               decoration: BoxDecoration(
-                color: FluentColors.accent.withValues(alpha: alpha),
+                color: accent.withValues(alpha: alpha),
                 borderRadius: BorderRadius.circular(height / 2),
               ),
             ),
