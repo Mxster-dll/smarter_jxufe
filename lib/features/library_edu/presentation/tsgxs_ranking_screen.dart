@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/library_edu/data/providers/tsgxs_providers.dart';
 import 'package:smarter_jxufe/features/library_edu/domain/tsgxs_models.dart';
 
@@ -46,7 +47,7 @@ class TsgxsRankingScreen extends ConsumerWidget {
                 color: scheme.surface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: scheme.outlineVariant.withValues(alpha: 0.6),
+                  color: AppColors.hairline(context, 0.6),
                 ),
               ),
               child: Column(
@@ -55,7 +56,7 @@ class TsgxsRankingScreen extends ConsumerWidget {
                   for (final r in ranking.rows.take(60)) ...[
                     Divider(
                       height: 1,
-                      color: scheme.outlineVariant.withValues(alpha: 0.5),
+                      color: AppColors.hairline(context, 0.5),
                     ),
                     _row(context, '${r.rank}', r.name, r.score, r.elapsed),
                   ],
@@ -85,9 +86,9 @@ class TsgxsRankingScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: scheme.primary.withValues(alpha: 0.05),
+        color: AppColors.tint(context, scheme.primary, 0.05),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: scheme.primary.withValues(alpha: 0.16)),
+        border: Border.all(color: AppColors.tintBorder(context, scheme.primary, 0.16)),
       ),
       child: Row(
         children: [

@@ -13,6 +13,7 @@ import 'package:smarter_jxufe/features/library_edu/domain/tsgxs_exam.dart';
 import 'package:smarter_jxufe/features/library_edu/presentation/tsgxs_chapter_screen.dart';
 import 'package:smarter_jxufe/features/library_edu/presentation/tsgxs_clue_sweep_action.dart';
 import 'package:smarter_jxufe/features/library_edu/presentation/tsgxs_grade_screen.dart';
+import 'package:smarter_jxufe/design/app_theme.dart';
 
 /// 入馆教育「闯关答题」页。
 ///
@@ -757,7 +758,7 @@ class _TsgxsExamScreenState extends ConsumerState<TsgxsExamScreen> {
               padding: const EdgeInsets.fromLTRB(20, 14, 20, 40),
               children: [
                 if (_error != null) ...[
-                  _errorCard(scheme, _error!),
+                  _errorCard(context, scheme, _error!),
                   const SizedBox(height: 12),
                 ],
                 if (_page?.passed == true && _session == null)
@@ -794,7 +795,7 @@ class _TsgxsExamScreenState extends ConsumerState<TsgxsExamScreen> {
     decoration: BoxDecoration(
       color: scheme.surface,
       borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+      border: Border.all(color: AppColors.hairline(context, 0.6)),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -811,7 +812,7 @@ class _TsgxsExamScreenState extends ConsumerState<TsgxsExamScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: scheme.primary.withValues(alpha: 0.10),
+              color: AppColors.tint(context, scheme.primary, 0.10),
               borderRadius: BorderRadius.circular(999),
             ),
             child: Text(
@@ -909,12 +910,12 @@ class _TsgxsExamScreenState extends ConsumerState<TsgxsExamScreen> {
     final multi = question.kind == TsgxsQuestionKind.multi;
     return Container(
       decoration: BoxDecoration(
-        color: selected ? scheme.primary.withValues(alpha: 0.06) : null,
+        color: selected ? AppColors.tint(context, scheme.primary, 0.06) : null,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: selected
               ? scheme.primary.withValues(alpha: 0.45)
-              : scheme.outlineVariant.withValues(alpha: 0.7),
+              : AppColors.hairline(context, 0.7),
         ),
       ),
       child: InkWell(
@@ -1251,7 +1252,7 @@ class _TsgxsExamScreenState extends ConsumerState<TsgxsExamScreen> {
         ),
       ),
       const SizedBox(height: 12),
-      Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.6)),
+      Divider(height: 1, color: AppColors.hairline(context, 0.6)),
       const SizedBox(height: 12),
       _clueSweepProgress(scheme),
       const SizedBox(height: 14),
@@ -1439,12 +1440,18 @@ class _TsgxsExamScreenState extends ConsumerState<TsgxsExamScreen> {
         ),
       ]);
 
-  Widget _errorCard(ColorScheme scheme, String message) => Container(
+  Widget _errorCard(
+    BuildContext context,
+    ColorScheme scheme,
+    String message,
+  ) => Container(
     padding: const EdgeInsets.all(14),
     decoration: BoxDecoration(
-      color: scheme.error.withValues(alpha: 0.06),
+      color: AppColors.tint(context, scheme.error, 0.06),
       borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: scheme.error.withValues(alpha: 0.3)),
+      border: Border.all(
+        color: AppColors.tintBorder(context, scheme.error, 0.3),
+      ),
     ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,

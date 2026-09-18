@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/library_edu/data/providers/tsgxs_providers.dart';
 import 'package:smarter_jxufe/features/library_edu/domain/tsgxs_models.dart';
 
@@ -153,7 +154,7 @@ class _TsgxsContentScreenState extends ConsumerState<TsgxsContentScreen> {
           color: scheme.surface,
           border: Border(
             top: BorderSide(
-              color: scheme.outlineVariant.withValues(alpha: 0.6),
+              color: AppColors.hairline(context, 0.6),
             ),
           ),
         ),

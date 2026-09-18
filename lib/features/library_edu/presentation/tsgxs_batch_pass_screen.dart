@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/library_edu/data/providers/tsgxs_providers.dart';
 import 'package:smarter_jxufe/features/library_edu/data/tsgxs_prefs.dart';
 import 'package:smarter_jxufe/features/library_edu/domain/tsgxs_models.dart';
@@ -269,7 +270,7 @@ class _TsgxsBatchPassScreenState extends ConsumerState<TsgxsBatchPassScreen> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: scheme.primary.withValues(alpha: 0.10),
+                  color: AppColors.tint(context, scheme.primary, 0.10),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
@@ -405,9 +406,9 @@ class _TsgxsBatchPassScreenState extends ConsumerState<TsgxsBatchPassScreen> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: scheme.primary.withValues(alpha: 0.05),
+        color: AppColors.tint(context, scheme.primary, 0.05),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: scheme.primary.withValues(alpha: 0.16)),
+        border: Border.all(color: AppColors.tintBorder(context, scheme.primary, 0.16)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -454,7 +455,7 @@ class _TsgxsBatchPassScreenState extends ConsumerState<TsgxsBatchPassScreen> {
       decoration: BoxDecoration(
         color: scheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+        border: Border.all(color: AppColors.hairline(context, 0.6)),
       ),
       child: child,
     );

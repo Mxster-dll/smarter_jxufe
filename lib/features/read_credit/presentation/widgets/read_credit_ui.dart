@@ -6,6 +6,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/features/read_credit/domain/read_credit_models.dart';
 
@@ -20,7 +21,7 @@ Widget readCreditCard(
     decoration: BoxDecoration(
       color: scheme.surface,
       borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+      border: Border.all(color: AppColors.hairline(context, 0.6)),
     ),
     padding: padding,
     child: child,
@@ -28,16 +29,20 @@ Widget readCreditCard(
 }
 
 /// 圆角图标盒（≤34 用 8 圆角 / 18 图标，>34 用 10 圆角 / 21 图标）。
-Widget readCreditIconBox(IconData icon, Color color, {double size = 42}) =>
-    Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(size <= 34 ? 8 : 10),
-      ),
-      child: Icon(icon, size: size <= 34 ? 18 : 21, color: color),
-    );
+Widget readCreditIconBox(
+  BuildContext context,
+  IconData icon,
+  Color color, {
+  double size = 42,
+}) => Container(
+  width: size,
+  height: size,
+  decoration: BoxDecoration(
+    color: AppColors.tint(context, color, 0.10),
+    borderRadius: BorderRadius.circular(size <= 34 ? 8 : 10),
+  ),
+  child: Icon(icon, size: size <= 34 ? 18 : 21, color: color),
+);
 
 /// 小胶囊（状态徽标）。
 Widget readCreditChip(String text, Color bg, Color fg) => Container(
@@ -60,22 +65,13 @@ Widget readCreditChip(String text, Color bg, Color fg) => Container(
 }) {
   final scheme = Theme.of(context).colorScheme;
   if (met == true) {
-    return (
-      bg: Colors.green.withValues(alpha: 0.12),
-      fg: Colors.green.shade800,
-    );
+    return (bg: AppColors.successFill(context), fg: AppColors.success(context));
   }
   if (met == false) {
-    return (
-      bg: Colors.orange.withValues(alpha: 0.14),
-      fg: Colors.orange.shade900,
-    );
+    return (bg: AppColors.cautionFill(context), fg: AppColors.caution(context));
   }
   if (!unknownIsGrey) {
-    return (
-      bg: Colors.green.withValues(alpha: 0.12),
-      fg: Colors.green.shade800,
-    );
+    return (bg: AppColors.successFill(context), fg: AppColors.success(context));
   }
   return (bg: scheme.surfaceContainerHighest, fg: scheme.onSurfaceVariant);
 }
@@ -90,13 +86,22 @@ IconData readCreditKindIcon(ReadCreditKind kind) => switch (kind) {
 };
 
 /// 各部分的点缀色（圆环分段与图例用；四部分各不相同便于辨认）。
-Color readCreditPartColor(ReadCreditKind kind) => switch (kind) {
-  ReadCreditKind.classic => const Color(0xFF2E7D32),
-  ReadCreditKind.ordinary => const Color(0xFF1565C0),
-  ReadCreditKind.libraryEdu => const Color(0xFF00B8D4),
-  ReadCreditKind.infoLiteracy => const Color(0xFFEF6C00),
-  ReadCreditKind.culture => const Color(0xFF795548),
-};
+///
+/// 深色下由 [AppColors.tone] 自动提亮；浅色逐值 = 原来的深色调（一个像素都不变）。
+Color readCreditPartColor(BuildContext context, ReadCreditKind kind) =>
+    switch (kind) {
+      ReadCreditKind.classic => AppColors.tone(context, const Color(0xFF2E7D32)),
+      ReadCreditKind.ordinary => AppColors.tone(context, const Color(0xFF1565C0)),
+      ReadCreditKind.libraryEdu => AppColors.tone(
+        context,
+        const Color(0xFF00B8D4),
+      ),
+      ReadCreditKind.infoLiteracy => AppColors.tone(
+        context,
+        const Color(0xFFEF6C00),
+      ),
+      ReadCreditKind.culture => AppColors.tone(context, const Color(0xFF795548)),
+    };
 
 /// 进度条上「实际」那一档的颜色（浅红）——用户裁定：浅红 = 实际数据。
 ///
@@ -109,4 +114,7 @@ Color readCreditServerBarColor(BuildContext context) =>
     Theme.of(context).colorScheme.primary;
 
 /// 该 feature 的统一点缀色（2026-09-15 起 = 全应用卡片强调色）。
-const Color readCreditAccent = FeaturePalette.cardAccent;
+///
+/// 顶层 `const` 拿不到 `BuildContext`（规则书 §4）→ 改成取 `context` 的函数，
+/// 深色下自动切到亮红档；**不新建全局变量**。
+Color readCreditAccent(BuildContext context) => fp(context).cardAccent;

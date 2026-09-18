@@ -14,6 +14,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/features/cxstar/data/providers/cxstar_providers.dart';
 import 'package:smarter_jxufe/features/cxstar/data/providers/cxstar_reader_providers.dart';
@@ -257,7 +258,7 @@ class _CxstarShelfScreenState extends ConsumerState<CxstarShelfScreen> {
         children: [
           if (!_searchMode && _categories != null) _categoryBar(scheme),
           if (!(_searchMode && _keyword.isEmpty)) _resultBar(scheme),
-          Expanded(child: _booksArea(scheme)),
+          Expanded(child: _booksArea(context, scheme)),
         ],
       ),
     );
@@ -287,6 +288,7 @@ class _CxstarShelfScreenState extends ConsumerState<CxstarShelfScreen> {
               itemBuilder: (context, i) {
                 final g = _categories!.groups[i];
                 return _chip(
+                  context,
                   scheme,
                   label: '${g.label}（${g.roots.length}）',
                   selected: g.key == _groupKey,
@@ -302,6 +304,7 @@ class _CxstarShelfScreenState extends ConsumerState<CxstarShelfScreen> {
               itemCount: roots.length,
               separatorBuilder: (_, _) => const SizedBox(width: 8),
               itemBuilder: (context, i) => _chip(
+                context,
                 scheme,
                 label: roots[i].name,
                 selected: _root?.id == roots[i].id,
@@ -319,6 +322,7 @@ class _CxstarShelfScreenState extends ConsumerState<CxstarShelfScreen> {
                 itemBuilder: (context, i) {
                   if (i == 0) {
                     return _chip(
+                      context,
                       scheme,
                       label: '全部',
                       selected: _child == null,
@@ -327,6 +331,7 @@ class _CxstarShelfScreenState extends ConsumerState<CxstarShelfScreen> {
                   }
                   final node = children[i - 1];
                   return _chip(
+                    context,
                     scheme,
                     label: node.name,
                     selected: _child?.id == node.id,
@@ -341,16 +346,18 @@ class _CxstarShelfScreenState extends ConsumerState<CxstarShelfScreen> {
   }
 
   Widget _chip(
+    BuildContext context,
     ColorScheme scheme, {
     required String label,
     required bool selected,
     required VoidCallback onTap,
   }) {
+    final f = FeatureColors.forBrightness(scheme.brightness);
     return Align(
       alignment: Alignment.centerLeft,
       child: Material(
         color: selected
-            ? FeaturePalette.cardAccent.withValues(alpha: 0.12)
+            ? AppColors.tint(context, f.cardAccent, 0.12)
             : scheme.surfaceContainerHighest.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(999),
         child: InkWell(
@@ -363,7 +370,7 @@ class _CxstarShelfScreenState extends ConsumerState<CxstarShelfScreen> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                color: selected ? FeaturePalette.cardAccent : scheme.onSurface,
+                color: selected ? f.cardAccent : scheme.onSurface,
               ),
             ),
           ),
@@ -401,8 +408,10 @@ class _CxstarShelfScreenState extends ConsumerState<CxstarShelfScreen> {
     );
   }
 
-  Widget _booksArea(ColorScheme scheme) {
-    if (_searchMode && _keyword.isEmpty) return _hotSearchPanel(scheme);
+  Widget _booksArea(BuildContext context, ColorScheme scheme) {
+    if (_searchMode && _keyword.isEmpty) {
+      return _hotSearchPanel(context, scheme);
+    }
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_error != null && _books.isEmpty) return _errorView(scheme, _error!);
     if (_books.isEmpty) {
@@ -528,7 +537,7 @@ class _CxstarShelfScreenState extends ConsumerState<CxstarShelfScreen> {
     );
   }
 
-  Widget _hotSearchPanel(ColorScheme scheme) {
+  Widget _hotSearchPanel(BuildContext context, ColorScheme scheme) {
     final hotAsync = ref.watch(cxstarHotSearchProvider);
     return ListView(
       padding: const EdgeInsets.fromLTRB(_pad, 14, _pad, 40),
@@ -565,6 +574,7 @@ class _CxstarShelfScreenState extends ConsumerState<CxstarShelfScreen> {
                   children: [
                     for (final word in words)
                       _chip(
+                        context,
                         scheme,
                         label: word,
                         selected: false,

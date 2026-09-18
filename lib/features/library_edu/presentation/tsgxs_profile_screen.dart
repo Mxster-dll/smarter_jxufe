@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/library_edu/data/providers/tsgxs_providers.dart';
 
 /// 个人资料:账号 / 姓名 / 学院。
@@ -44,7 +45,7 @@ class TsgxsProfileScreen extends ConsumerWidget {
                 color: scheme.surface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: scheme.outlineVariant.withValues(alpha: 0.6),
+                  color: AppColors.hairline(context, 0.6),
                 ),
               ),
               child: Row(
@@ -53,7 +54,7 @@ class TsgxsProfileScreen extends ConsumerWidget {
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      color: scheme.primary.withValues(alpha: 0.10),
+                      color: AppColors.tint(context, scheme.primary, 0.10),
                       borderRadius: BorderRadius.circular(26),
                     ),
                     child: Icon(
@@ -115,7 +116,7 @@ class TsgxsProfileScreen extends ConsumerWidget {
       decoration: BoxDecoration(
         color: scheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+        border: Border.all(color: AppColors.hairline(context, 0.6)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
