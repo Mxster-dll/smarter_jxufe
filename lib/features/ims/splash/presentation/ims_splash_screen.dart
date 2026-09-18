@@ -5,6 +5,7 @@ import 'package:smarter_jxufe/features/ims/auth/data/providers/ims_session_provi
 import 'package:smarter_jxufe/features/ims/menu/domain/ims_tab.dart';
 import 'package:smarter_jxufe/features/ims/menu/presentation/ims_menu_screen.dart';
 import 'package:smarter_jxufe/features/ims/menu/presentation/ims_tab_container.dart';
+import 'package:smarter_jxufe/design/pane_chrome.dart';
 
 /// IMS 功能入口闸门（培养方案 / 课表 / 成绩 / 毕业学分 / 我的 都经这里）。
 ///
@@ -114,7 +115,7 @@ class _ImsSplashScreenState extends ConsumerState<ImsSplashScreen> {
   Widget _buildFailure(BuildContext context, String error) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('教务会话')),
+      appBar: paneAppBar(context, title: const Text('教务会话')),
       body: Padding(
         padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
         child: Column(

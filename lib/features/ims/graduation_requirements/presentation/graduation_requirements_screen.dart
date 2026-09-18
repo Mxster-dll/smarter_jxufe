@@ -33,6 +33,7 @@ class GraduationRequirementsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final p = fluent(context);
     final asyncRequirements = ref.watch(graduationRequirementsProvider);
 
     final body = FluentPageBackground(
@@ -53,17 +54,17 @@ class GraduationRequirementsScreen extends ConsumerWidget {
     if (!showAppBar) return body;
 
     return Scaffold(
-      backgroundColor: FluentColors.bgBase,
+      backgroundColor: p.bgBase,
       appBar: AppBar(
-        backgroundColor: FluentColors.bgBase,
+        backgroundColor: p.bgBase,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        iconTheme: const IconThemeData(color: FluentColors.textPrimary),
+        iconTheme: IconThemeData(color: p.textPrimary),
         title: Text(
           '毕业学分要求',
-          style: FluentType.subtitle.copyWith(color: FluentColors.textPrimary),
+          style: FluentType.subtitle.copyWith(color: p.textPrimary),
         ),
       ),
       body: body,
@@ -87,6 +88,7 @@ class _CreditValue extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = fluent(context);
     final style = valueStyle ?? FluentType.bodyStrong;
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -95,13 +97,13 @@ class _CreditValue extends StatelessWidget {
       children: [
         Text(
           _creditText(credit),
-          style: style.copyWith(color: valueColor ?? FluentColors.textPrimary),
+          style: style.copyWith(color: valueColor ?? p.textPrimary),
         ),
         const SizedBox(width: FluentSpacing.xs),
         Text(
           '学分',
           style: FluentType.caption.copyWith(
-            color: unitColor ?? FluentColors.textSecondary,
+            color: unitColor ?? p.textSecondary,
           ),
         ),
       ],
@@ -158,6 +160,7 @@ class _RequirementsView extends StatelessWidget {
       );
     }
 
+    final p = fluent(context);
     final items =
         requirements.where((r) => !r.isTotal).toList()
           ..sort((a, b) => a.index.compareTo(b.index));
@@ -213,9 +216,7 @@ class _RequirementsView extends StatelessWidget {
                   const SizedBox(height: FluentSpacing.sm),
                   Text(
                     '按学分占比（顺序与下表一致）',
-                    style: FluentType.caption.copyWith(
-                      color: FluentColors.textTertiary,
-                    ),
+                    style: FluentType.caption.copyWith(color: p.textTertiary),
                   ),
                 ],
               ),
@@ -248,9 +249,7 @@ class _RequirementsView extends StatelessWidget {
             const SizedBox(height: FluentSpacing.lg),
             Text(
               '数据来自教务系统「毕业学分要求」· 该表为选修学分要求（年级 / 专业列为空时返回通用要求）',
-              style: FluentType.caption.copyWith(
-                color: FluentColors.textTertiary,
-              ),
+              style: FluentType.caption.copyWith(color: p.textTertiary),
             ),
           ],
         );
@@ -268,31 +267,30 @@ class _TotalRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = fluent(context);
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: FluentSpacing.lg,
         vertical: FluentSpacing.md,
       ),
-      decoration: const BoxDecoration(color: FluentColors.accentSubtle),
+      decoration: BoxDecoration(color: p.accentSubtle),
       child: Row(
         children: [
           Text(
             '合计',
-            style: FluentType.bodyStrong.copyWith(color: FluentColors.accent),
+            style: FluentType.bodyStrong.copyWith(color: p.accent),
           ),
           const Spacer(),
           Text(
             '$count 项',
-            style: FluentType.caption.copyWith(
-              color: FluentColors.textSecondary,
-            ),
+            style: FluentType.caption.copyWith(color: p.textSecondary),
           ),
           const SizedBox(width: FluentSpacing.md),
           _CreditValue(
             credit: total,
             valueStyle: FluentType.subtitle,
-            valueColor: FluentColors.accent,
-            unitColor: FluentColors.accent,
+            valueColor: p.accent,
+            unitColor: p.accent,
           ),
         ],
       ),

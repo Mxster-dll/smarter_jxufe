@@ -9,6 +9,12 @@
 /// 因此这里内置 [PeriodTable.builtin] 作兜底，实时值按学期拉取并缓存。
 library;
 
+/// 一天里的节次总数（1..12）。
+///
+/// 课表网格的行数、作息表的完整性判定（[PeriodTable.isUsable]）、大间隔矮行的
+/// 扫描范围都以它为准 —— 从前这几个 12 是各自写死的字面量。
+const int schedulePeriodCount = 12;
+
 /// 单个节次的作息时刻。
 class ClassPeriod {
   /// 节次序号（1–12）。

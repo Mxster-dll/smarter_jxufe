@@ -75,7 +75,7 @@ class _CourseSectionSheetState extends ConsumerState<_CourseSectionSheet> {
               geCardTitle(
                 context,
                 text: '选课 · ${widget.course.name}',
-                accent: FeaturePalette.cardAccent,
+                accent: fp(context).cardAccent,
                 trailing: Text(
                   [
                     if (widget.course.credits != null)

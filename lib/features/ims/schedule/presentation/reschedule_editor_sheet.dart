@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/features/ims/schedule/data/providers/reschedule_providers.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/class_time.dart';
@@ -403,7 +404,7 @@ class _RescheduleEditorSheetState extends State<_RescheduleEditorSheet> {
                         ? Icons.edit_calendar
                         : (_isExtra ? Icons.add_task : Icons.event_repeat),
                     size: 20,
-                    color: kRescheduleColor,
+                    color: kRescheduleColor(context),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -566,24 +567,24 @@ class _RescheduleEditorSheetState extends State<_RescheduleEditorSheet> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFF8E1),
+                    color: AppColors.cautionFill(context),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.warning_amber_rounded,
                         size: 16,
-                        color: Color(0xFFE65100),
+                        color: AppColors.caution(context),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           conflict,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: Color(0xFFE65100),
+                            color: AppColors.caution(context),
                           ),
                         ),
                       ),
@@ -781,5 +782,5 @@ class _RescheduleEditorSheetState extends State<_RescheduleEditorSheet> {
   );
 }
 
-/// 调课功能主色（登记在 [FeaturePalette.reschedule]）。
-const kRescheduleColor = FeaturePalette.reschedule;
+/// 调课功能主色（登记在 [FeaturePalette.reschedule]；深色下由 `fp` 自动提亮）。
+Color kRescheduleColor(BuildContext context) => fp(context).reschedule;

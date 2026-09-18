@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/features/ims/schedule/data/providers/live_class_providers.dart';
 import 'package:smarter_jxufe/features/ims/schedule/data/providers/reschedule_providers.dart';
@@ -328,7 +329,7 @@ class _LiveClassScreenState extends ConsumerState<LiveClassScreen> {
             geCardTitle(
               context,
               text: '实况窗预览',
-              accent: FeaturePalette.cardAccent,
+              accent: fp(context).cardAccent,
             ),
             const SizedBox(height: 14),
             _capsule(context, content, state),
@@ -345,12 +346,12 @@ class _LiveClassScreenState extends ConsumerState<LiveClassScreen> {
   ) {
     final scheme = Theme.of(context).colorScheme;
     final inClass = state is LiveInClass;
-    final accent = content == null ? scheme.outline : FeaturePalette.cardAccent;
+    final accent = content == null ? scheme.outline : fp(context).cardAccent;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.08),
+        color: AppColors.tint(context, accent, 0.08),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: accent.withValues(alpha: 0.35)),
       ),
@@ -446,7 +447,7 @@ class _LiveClassScreenState extends ConsumerState<LiveClassScreen> {
             geCardTitle(
               context,
               text: '当前教学周',
-              accent: FeaturePalette.cardAccent,
+              accent: fp(context).cardAccent,
             ),
             const SizedBox(height: 12),
             Row(
@@ -544,7 +545,7 @@ class _LiveClassScreenState extends ConsumerState<LiveClassScreen> {
             geCardTitle(
               context,
               text: '今日课程',
-              accent: FeaturePalette.cardAccent,
+              accent: fp(context).cardAccent,
               trailing: Text(
                 '${sessions.length} 节',
                 style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
@@ -588,7 +589,7 @@ class _LiveClassScreenState extends ConsumerState<LiveClassScreen> {
     final scheme = Theme.of(context).colorScheme;
     final ongoing = s.isInClassAt(_now);
     final done = !ongoing && !s.startAt.isAfter(_now);
-    final markBadge = rescheduleBadge(s.mark);
+    final markBadge = rescheduleBadge(context, s.mark);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),
@@ -602,7 +603,7 @@ class _LiveClassScreenState extends ConsumerState<LiveClassScreen> {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: ongoing ? FontWeight.w700 : FontWeight.w500,
-                color: ongoing ? FeaturePalette.cardAccent : null,
+                color: ongoing ? fp(context).cardAccent : null,
               ),
             ),
           ),
@@ -643,16 +644,18 @@ class _LiveClassScreenState extends ConsumerState<LiveClassScreen> {
                           vertical: 1,
                         ),
                         decoration: BoxDecoration(
-                          color: FeaturePalette.cardAccent.withValues(
-                            alpha: 0.14,
+                          color: AppColors.tint(
+                            context,
+                            fp(context).cardAccent,
+                            0.14,
                           ),
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: const Text(
+                        child: Text(
                           '上课中',
                           style: TextStyle(
                             fontSize: 11,
-                            color: FeaturePalette.cardAccent,
+                            color: fp(context).cardAccent,
                             fontWeight: FontWeight.w600,
                           ),
                         ),

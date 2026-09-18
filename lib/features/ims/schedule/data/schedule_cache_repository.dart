@@ -103,6 +103,34 @@ class ScheduleCacheRepository {
     return _readCache(box, _key(year, semester, studentId));
   }
 
+  /// 读「任意学号」下该学期的缓存（不联网）。
+  ///
+  /// 场景：设置页的「显示周六 / 周日」开关要提示「这一学期周六有 N 门课」，
+  /// 但设置页拿不到课表页的学籍上下文（`serialNo`）→ 按 key 前缀取已存在的
+  /// 那一份缓存即可。[preferStudentId] 命中时优先，保证多账号设备上先用本人的。
+  /// 没有任何缓存时返回 null（调用方按「判不出有没有课」处理）。
+  Future<CachedSchedule?> readCacheAnyStudent({
+    required String year,
+    required String semester,
+    String? preferStudentId,
+  }) async {
+    final box = await Hive.openBox<String>(scheduleCacheBoxName);
+    final prefix = 'schedule|$year|$semester|';
+    final preferred = preferStudentId == null || preferStudentId.isEmpty
+        ? null
+        : '$prefix$preferStudentId';
+    final keys = box.keys
+        .whereType<String>()
+        .where((k) => k.startsWith(prefix))
+        .toList();
+    if (keys.isEmpty) return null;
+    if (preferred != null && keys.contains(preferred)) {
+      return _readCache(box, preferred);
+    }
+    keys.sort();
+    return _readCache(box, keys.first);
+  }
+
   CachedSchedule? _readCache(Box<String> box, String key) {
     final raw = box.get(key);
     if (raw == null || raw.isEmpty) return null;

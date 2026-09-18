@@ -7,6 +7,7 @@ import 'package:smarter_jxufe/features/ims/schedule/domain/reschedule.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/schedule_entry.dart';
 import 'package:smarter_jxufe/features/ims/schedule/presentation/reschedule_editor_sheet.dart';
 import 'package:smarter_jxufe/features/score_estimate/presentation/ge_common.dart';
+import 'package:smarter_jxufe/design/app_theme.dart';
 
 /// 调课管理页：集中查看/编辑/删除本学期的全部调课记录。
 ///
@@ -178,7 +179,7 @@ class _RescheduleListScreenState extends ConsumerState<RescheduleListScreen> {
               geCardTitle(
                 context,
                 text: '生效中 / 将来',
-                accent: FeaturePalette.cardAccent,
+                accent: fp(context).cardAccent,
                 trailing: Text(
                   '${active.length} 条',
                   style: TextStyle(
@@ -195,7 +196,7 @@ class _RescheduleListScreenState extends ConsumerState<RescheduleListScreen> {
               geCardTitle(
                 context,
                 text: '已过期',
-                accent: FeaturePalette.classCancelled,
+                accent: fp(context).classCancelled,
                 trailing: Text(
                   '${expired.length} 条',
                   style: TextStyle(
@@ -222,10 +223,10 @@ class _RescheduleListScreenState extends ConsumerState<RescheduleListScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
+          Icon(
             Icons.info_outline,
             size: 18,
-            color: FeaturePalette.cardAccent,
+            color: fp(context).cardAccent,
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -281,7 +282,7 @@ class _RescheduleListScreenState extends ConsumerState<RescheduleListScreen> {
     bool expired = false,
   }) {
     final scheme = Theme.of(context).colorScheme;
-    final color = _markColor(r.kind);
+    final color = _markColor(context, r.kind);
 
     return Card(
       elevation: 0,
@@ -300,7 +301,7 @@ class _RescheduleListScreenState extends ConsumerState<RescheduleListScreen> {
                 height: 26,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: color.withAlpha(expired ? 28 : 40),
+                  color: AppColors.tint(context, color, (expired ? 28 : 40) / 255),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -338,7 +339,7 @@ class _RescheduleListScreenState extends ConsumerState<RescheduleListScreen> {
                             fontSize: 11,
                             color: expired
                                 ? scheme.onSurfaceVariant
-                                : FeaturePalette.reschedule,
+                                : fp(context).reschedule,
                           ),
                         ),
                       ],
@@ -377,9 +378,10 @@ class _RescheduleListScreenState extends ConsumerState<RescheduleListScreen> {
     );
   }
 
-  static Color _markColor(RescheduleKind kind) => switch (kind) {
-    RescheduleKind.move => FeaturePalette.reschedule,
-    RescheduleKind.cancel => FeaturePalette.classCancelled,
-    RescheduleKind.extra => FeaturePalette.makeUpClass,
-  };
+  static Color _markColor(BuildContext context, RescheduleKind kind) =>
+      switch (kind) {
+        RescheduleKind.move => fp(context).reschedule,
+        RescheduleKind.cancel => fp(context).classCancelled,
+        RescheduleKind.extra => fp(context).makeUpClass,
+      };
 }

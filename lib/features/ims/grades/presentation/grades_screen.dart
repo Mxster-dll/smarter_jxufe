@@ -1,84 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:smarter_jxufe/features/college/data/providers/college_repository_provider.dart';
-import 'package:smarter_jxufe/features/college/domain/college.dart';
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/data_center/data/providers/data_center_providers.dart';
 import 'package:smarter_jxufe/features/ims/course/data/models/course_importance.dart';
-import 'package:smarter_jxufe/features/ims/curriculum/data/providers/curriculum_repository_provider.dart';
+import 'package:smarter_jxufe/features/ims/grades/data/providers/curriculum_importance_provider.dart';
 import 'package:smarter_jxufe/features/ims/grades/data/providers/grades_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/grades/data/providers/weighted_grade_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grade.dart';
+import 'package:smarter_jxufe/features/ims/grades/domain/recommendation_weighted.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grades_exclusions.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grades_query_params.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grades_result.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/time_limit.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/weighted_grade.dart';
 import 'package:smarter_jxufe/features/ims/grades/presentation/grades_viewmodel.dart';
-import 'package:smarter_jxufe/features/ims/student_info/data/providers/student_info_repository_provider.dart';
-import 'package:smarter_jxufe/features/ims/student_info/domain/student_info.dart';
-import 'package:smarter_jxufe/features/major/data/providers/major_repository_provider.dart';
-import 'package:smarter_jxufe/features/major/domain/major.dart';
+import 'package:smarter_jxufe/features/ims/grades/presentation/transcript_sheet.dart';
+
+
+
+
 import 'package:smarter_jxufe/shared/widgets/academic_year_picker.dart';
-
-/// 从学籍信息和培养方案中提取每门课程的「课程地位」（主干/非主干）。
-final _curriculumImportanceMapProvider =
-    FutureProvider<Map<String, CourseImportance>?>((ref) async {
-      final studentInfoRepo = await ref.watch(
-        studentInfoRepositoryProvider.future,
-      );
-      StudentInfo? info;
-      studentInfoRepo.getCachedStudentInfo().fold((_) {}, (i) => info = i);
-      if (info == null) return null;
-      final si = info!;
-
-      final year = int.tryParse(si.enrollYear);
-      if (year == null) return null;
-
-      final collegeRepo = await ref.watch(collegeRepositoryProvider.future);
-      College? matchedCollege;
-      final collegesResult = await collegeRepo.getAllCollege();
-      collegesResult.fold((_) {}, (colleges) {
-        for (final c in colleges) {
-          if (c.name == si.college) {
-            matchedCollege = c;
-            break;
-          }
-        }
-      });
-      if (matchedCollege == null) return null;
-      final mc = matchedCollege!;
-
-      final majorRepo = await ref.watch(majorRepositoryProvider.future);
-      Major? matchedMajor;
-      final majorsResult = await majorRepo.getAllMajorIn(mc, year: year);
-      majorsResult.fold((_) {}, (majors) {
-        for (final m in majors) {
-          if (m.name == si.major) {
-            matchedMajor = m;
-            break;
-          }
-        }
-      });
-      if (matchedMajor == null) return null;
-      final mm = matchedMajor!;
-
-      final curriculumRepo = await ref.watch(
-        curriculumRepositoryProvider.future,
-      );
-      final curriculumResult = await curriculumRepo.getCurriculumIn(
-        year,
-        mc,
-        mm,
-      );
-      final map = <String, CourseImportance>{};
-      curriculumResult.fold((_) {}, (curriculum) {
-        for (final course in curriculum.courses) {
-          map[course.code] = course.importance;
-        }
-      });
-      return map;
-    });
 
 class GradesScreen extends ConsumerStatefulWidget {
   final bool showAppBar;
@@ -204,7 +146,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(gradesViewModelProvider);
     final gradesAsync = ref.watch(gradesProvider(state.params));
-    final importanceMapAsync = ref.watch(_curriculumImportanceMapProvider);
+    final importanceMapAsync = ref.watch(curriculumImportanceMapProvider);
     final importanceMap = importanceMapAsync.valueOrNull;
     final rankingAsync = ref.watch(weightedGradeRankingProvider(1));
 
@@ -271,10 +213,18 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     gradesAsync.whenData((result) {
       avgScore = _calcAvgScore(result.grades);
       if (importanceMap != null) {
-        recommendationScore = _calcRecommendationScore(
-          result.grades,
-          importanceMap,
-        );
+        recommendationScore = recommendationWeightedOf(
+          courses: [
+            for (final g in result.grades)
+              RecommendationCourse(
+                courseCode: g.courseCode,
+                courseName: g.courseName,
+                score: double.tryParse(g.score) ?? 0,
+                credits: double.tryParse(g.credit) ?? 0,
+              ),
+          ],
+          importance: importanceMap,
+        ).score;
       }
       final filtered = result.grades
           .where((g) => !_excludedCourses.contains(g.courseName))
@@ -335,6 +285,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildFilters(context),
+        _buildTranscriptRow(context),
         gradesAsync.when(
           data: (result) => _buildSummary(
             context,
@@ -410,34 +361,6 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     return totalCredit > 0 ? totalScoreCredit / totalCredit : 0;
   }
 
-  double _calcRecommendationScore(
-    List<Grade> grades,
-    Map<String, CourseImportance> importanceMap,
-  ) {
-    final filtered = grades
-        .where((g) => !_excludedCourses.contains(g.courseName))
-        .toList();
-    double coreCredit = 0, coreScoreCredit = 0;
-    double nonCoreCredit = 0, nonCoreScoreCredit = 0;
-    for (final g in filtered) {
-      final c = double.tryParse(g.credit) ?? 0;
-      final s = double.tryParse(g.score) ?? 0;
-      final importance = importanceMap[g.courseCode];
-      if (importance == CourseImportance.core) {
-        coreCredit += c;
-        coreScoreCredit += s * c;
-      } else {
-        nonCoreCredit += c;
-        nonCoreScoreCredit += s * c;
-      }
-    }
-    final coreAvg = coreCredit > 0 ? coreScoreCredit / coreCredit : 0;
-    final nonCoreAvg = nonCoreCredit > 0
-        ? nonCoreScoreCredit / nonCoreCredit
-        : 0;
-    return coreAvg * 0.7 + nonCoreAvg * 0.3;
-  }
-
   /// 弹出重修成绩输入框
   Future<void> _onRetakeTap(Grade g) async {
     final controller = TextEditingController(
@@ -489,10 +412,10 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
                         );
                       });
                     },
-                    child: const Icon(
+                    child: Icon(
                       Icons.keyboard_arrow_up,
                       size: 20,
-                      color: Colors.grey,
+                      color: AppColors.textMuted(ctx),
                     ),
                   ),
                   GestureDetector(
@@ -510,10 +433,10 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
                         );
                       });
                     },
-                    child: const Icon(
+                    child: Icon(
                       Icons.keyboard_arrow_down,
                       size: 20,
-                      color: Colors.grey,
+                      color: AppColors.textMuted(ctx),
                     ),
                   ),
                 ],
@@ -524,7 +447,10 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
             if (hasExisting)
               TextButton(
                 onPressed: () => Navigator.pop(ctx, ''),
-                child: const Text('恢复', style: TextStyle(color: Colors.red)),
+                child: Text(
+                  '恢复',
+                  style: TextStyle(color: AppColors.critical(ctx)),
+                ),
               ),
             TextButton(
               onPressed: () => Navigator.pop(ctx),
@@ -600,15 +526,13 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     };
 
     Widget _statCard(String label, String value, {bool dashed = false}) {
-      final borderColor = Theme.of(
-        context,
-      ).colorScheme.error.withValues(alpha: 0.7);
+      final borderColor = AppColors.errorBorder(context);
       final dotIndex = value.indexOf('.');
       final delta = deltas[label];
       return Container(
         margin: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.card(context),
           borderRadius: BorderRadius.circular(12),
           border: dashed ? null : Border.all(color: borderColor),
         ),
@@ -672,8 +596,8 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                           color: delta > 0
-                              ? Colors.green.shade700
-                              : Colors.red.shade700,
+                              ? AppColors.success(context)
+                              : AppColors.critical(context),
                         )
                       : TextStyle(
                           fontSize: 11,
@@ -737,13 +661,11 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
             final narrowExtra = (narrowWidth - intrinsicSum) / cardData.length;
             final epc = narrowExtra > 0 ? narrowExtra : 0.0;
             return Card(
-              color: Colors.white,
+              color: AppColors.card(context),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
                 side: BorderSide(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.error.withValues(alpha: 0.7),
+                  color: AppColors.errorBorder(context),
                 ),
               ),
               child: Padding(
@@ -830,8 +752,8 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
                                           fontSize: 11,
                                           fontWeight: FontWeight.bold,
                                           color: deltas[cardData[i].$1]! > 0
-                                              ? Colors.green.shade700
-                                              : Colors.red.shade700,
+                                              ? AppColors.success(context)
+                                              : AppColors.critical(context),
                                         )
                                       : TextStyle(
                                           fontSize: 11,
@@ -889,11 +811,11 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
       final ratio = rank / total;
       return Expanded(
         child: Card(
-          color: Colors.white,
+          color: AppColors.card(context),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
             side: BorderSide(
-              color: Theme.of(context).colorScheme.error.withValues(alpha: 0.7),
+              color: AppColors.errorBorder(context),
             ),
           ),
           child: Padding(
@@ -1076,13 +998,11 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
             maxPctW += 8;
 
             return Card(
-              color: Colors.white,
+              color: AppColors.card(context),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
                 side: BorderSide(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.error.withValues(alpha: 0.7),
+                  color: AppColors.errorBorder(context),
                 ),
               ),
               child: Padding(
@@ -1108,6 +1028,30 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+
+  /// 本科生成绩单入口（2026-09-16 加）。
+  ///
+  /// 小程序「本科生成绩单」= 门户 H5：选报表类型 + 填邮箱 → 教务处把**盖章 PDF 发到
+  /// 该邮箱**（没有下载接口，故本页只做申请，文件由用户在邮箱里取）。
+  /// 放在筛选栏下方一行：内嵌（侧栏模式）时成绩页不画导航栏，入口必须落在内容里。
+  Widget _buildTranscriptRow(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 2),
+        child: TextButton.icon(
+          key: const Key('grades_transcript_entry'),
+          onPressed: () => showTranscriptSheet(context),
+          style: TextButton.styleFrom(
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+          ),
+          icon: const Icon(Icons.description_outlined, size: 17),
+          label: const Text('本科生成绩单'),
+        ),
       ),
     );
   }
@@ -1312,10 +1256,10 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     Color? activeColor,
   }) {
     final color = active
-        ? (activeColor ?? Theme.of(context).colorScheme.error)
+        ? (activeColor ?? AppColors.errorFill(context))
         : Theme.of(context).colorScheme.surface;
     final fg = active
-        ? Theme.of(context).colorScheme.onError
+        ? AppColors.onErrorFill(context)
         : Theme.of(context).colorScheme.onSurface;
     return ActionChip(
       label: Text(label, style: TextStyle(fontSize: 12, color: fg)),
@@ -1383,8 +1327,6 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     required bool sortAsc,
     required ValueChanged<String> onSort,
   }) {
-    final theme = Theme.of(context);
-
     List<String> buildHeaders(bool isNarrow) {
       final h = isNarrow
           ? <String>['课程名称', '学分', '分数', '贡献']
@@ -1508,7 +1450,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: theme.colorScheme.onError,
+                    color: AppColors.onErrorFill(context),
                     fontWeight: FontWeight.bold,
                     fontSize: active ? 11 : 13,
                   ),
@@ -1520,7 +1462,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
                   child: Icon(
                     sortAsc ? Icons.arrow_upward : Icons.arrow_downward,
                     size: 12,
-                    color: theme.colorScheme.onError,
+                    color: AppColors.onErrorFill(context),
                   ),
                 ),
             ],
@@ -1542,7 +1484,9 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 12,
-            color: !isExcluded && contrib < 0 ? Colors.red : null,
+            color: !isExcluded && contrib < 0
+                ? AppColors.critical(context)
+                : null,
           ),
         );
 
@@ -1553,9 +1497,12 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
               text: displayScore,
               children: [
                 if (hasRetake)
-                  const TextSpan(
+                  TextSpan(
                     text: '*',
-                    style: TextStyle(color: Color(0xFF800000)),
+                    style: TextStyle(
+                      // 深红「重修」标记：浅色原值不变，深色按 `AppColors.tone` 提亮。
+                      color: AppColors.tone(context, const Color(0xFF800000)),
+                    ),
                   ),
               ],
             ),
@@ -1579,7 +1526,9 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
                   hasRetake ? '重修' : g.nature,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: hasRetake ? const Color(0xFF800000) : null,
+                    color: hasRetake
+                        ? AppColors.tone(context, const Color(0xFF800000))
+                        : null,
                   ),
                 ),
                 Text(g.examType, textAlign: TextAlign.center),
@@ -1599,7 +1548,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
         ? grades
               .map(
                 (g) => importanceMap[g.courseCode] == CourseImportance.core
-                    ? Colors.red.shade50
+                    ? AppColors.criticalFill(context)
                     : null,
               )
               .toList()
@@ -1632,7 +1581,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
             return _StickyHeaderTable(
               headerCells: buildHeaderCells(isNarrow),
               dataRows: buildDataRows(isNarrow),
-              headerBgColor: theme.colorScheme.error,
+              headerBgColor: AppColors.errorFill(context),
               columnWidths: colWidths,
               rowBackgrounds: rowBackgrounds,
               availableWidth: constraints.maxWidth,
