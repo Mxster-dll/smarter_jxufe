@@ -13,6 +13,7 @@ library;
 import 'package:flutter/material.dart';
 
 import 'package:smarter_jxufe/design/app_card.dart';
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/home/presentation/home_service_catalog.dart';
 
 /// 服务宫格。
@@ -116,7 +117,7 @@ class _HomeTile extends StatelessWidget {
                         width: 42,
                         height: 42,
                         decoration: BoxDecoration(
-                          color: accent.withValues(alpha: 0.10),
+                          color: AppColors.tint(context, accent, 0.10),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(item.icon, color: accent, size: 22),
@@ -144,7 +145,7 @@ class _HomeTile extends StatelessWidget {
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
-                          color: accent.withValues(alpha: 0.10),
+                          color: AppColors.tint(context, accent, 0.10),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(item.icon, color: accent, size: 22),

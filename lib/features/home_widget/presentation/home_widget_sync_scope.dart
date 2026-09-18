@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/features/home_widget/data/home_widget_sync.dart';
 import 'package:smarter_jxufe/features/home_widget/presentation/home_widget_launcher.dart';
+import 'package:smarter_jxufe/features/library_sync/data/providers/libsp_providers.dart';
 import 'package:smarter_jxufe/features/score_estimate/data/ge_deadline_reminders.dart';
 import 'package:smarter_jxufe/features/score_estimate/data/ge_providers.dart';
 
@@ -57,9 +58,21 @@ class _HomeWidgetSyncScopeState extends ConsumerState<HomeWidgetSyncScope>
     // 课程截止提醒与小组件同一时机重排（首帧 + 回前台）：重复条目要往后滚动，
     // 否则「每周作业」的提醒只覆盖到下一个月就断了。幂等，数据没变时不做任何事。
     unawaited(_syncDeadlineReminders());
+    // 图书馆订阅词云同步：首帧 + 回前台各对账一次（Q12）。
+    // 是否真的上传由控制器判（未开启 / 未登录 / 60s 窗口内 / 今日超额都会直接返回）。
+    unawaited(_syncLibraryCloud());
     final sync = ref.read(homeWidgetSyncProvider);
     await sync.pushAuthSnapshot();
     await sync.syncAll(force: initial);
+  }
+
+  /// 云同步的自动触发点；失败只打日志（同步坏了不该影响首页任何功能）。
+  Future<void> _syncLibraryCloud() async {
+    try {
+      await ref.read(libspSyncControllerProvider).syncNow(auto: true);
+    } catch (e) {
+      debugPrint('[libsp] 自动同步失败：$e');
+    }
   }
 
   /// 按当前账号的课程重排截止提醒；失败只打日志（提醒不该影响首页任何功能）。
