@@ -1,0 +1,437 @@
+<!-- 真实抓取自 ssp.jxufe.edu.cn（已裁掉 script/style/head，仅保留结构） -->
+
+
+<div class="content-mini bg-gray-lighter adminHeadBox hidden-xs">
+
+    <div class="row items-push">
+
+        <div class="col-sm-7">
+
+            <h1 class="page-heading">
+
+            学科竞赛申请列表
+
+                <a class="content-header-btn" href="javascript:window.location.reload()"><i class="fa fa-refresh"></i>
+
+                    刷新</a>
+
+            </h1>
+
+        </div>
+
+        <div class="col-sm-5 text-right hidden-xs">
+
+            <ol class="breadcrumb push-10-t">
+
+                <li>第二课堂</li>
+
+                <li><a class="link-effect">学科竞赛申请列表</a></li>
+
+            </ol>
+
+        </div>
+
+    </div>
+
+</div>
+
+<div class="block">
+
+    <form id="listForm" action="apply_list.html" method="get">
+
+        <input type="hidden" name="pageInit" id="pageInit" value="no">
+
+        <div class="block-header form-inline">
+
+<div class="pull-left">
+
+    <a class="selectDataBtn btn btn-sm btn-primary" style="width: 100px; display: none"><i class="si si-plus"></i>
+
+        选择</a>
+
+            <a href="javascript:toAdd();" class="btn btn-sm btn-success hidden-xs">
+
+                <i class="fa fa-plus"></i> 添加申请</a>
+
+            <a href="javascript:toShowHis();" class="btn btn-sm btn-warning hidden-xs">
+
+                查看获奖记录</a>
+
+</div>
+
+<div class="pull-right">
+
+    <div class="form-inline">
+
+            <div class="input-group date">
+
+                <input id="year" type="text" class="form-control input-sm"
+
+                       name="search_eq_parent.year"
+
+                       value="" placeholder="比赛年份   ">
+
+            </div>
+
+            <input id="searchUsername" type="text" class="form-control input-sm"
+
+                   name="search_like_parent.gameName"
+
+                   value="" placeholder="比赛名称   ">
+
+            <button class="btn btn-success btn-sm" type="button" onclick="initSubmit();"><i class="fa fa-search"></i></button>
+
+            <button class="btn btn-success btn-sm" type="button" id="cleanBtn" onclick="clearCondition()"><i class="fa fa-refresh"></i></button>
+
+    </div>
+
+</div>
+
+<div class="clearfix"></div>
+
+        </div>
+
+        <div class="block-content table-responsive remove-padding-t">
+
+            <table class="table table-bordered" id="listTable">
+
+                <thead>
+
+                <tr>
+
+                    <th>序号</th>
+
+                    <th>比赛年份</th>
+
+                    <th>学号</th>
+
+                    <th>申请人姓名</th>
+
+                    <th>比赛名称</th>
+
+                    <th>类型</th>
+
+                    <th>申请时间</th>
+
+                    <th>附件</th>
+
+                    <th>审批状态</th>
+
+                    <th>操作</th>
+
+                </tr>
+
+                </thead>
+
+                <tbody>
+
+                <tr>
+
+                    <td>1</td>
+
+                    <td>2026</td>
+
+                    <td>0000000</td>
+
+                    <td>某同学</td>
+
+                    <td>中国高校计算机大赛一①大数据挑战赛、②团体程序设计天梯赛、③移动应用创新赛、④网络技术挑战赛、⑤人工智能创意赛</td>
+
+                    <td>个人
+
+                        </td>
+
+                    <td>2026-07-06</td>
+
+                    <td>
+
+            <button type="button" onclick="openImg_lx('/upload/base/indexdownload/33d88d62-fa0a-4a5a-b916-00dfa0ccc792.jpg','jpg','[{suf=jpg, url=/upload/base/indexdownload/33d88d62-fa0a-4a5a-b916-00dfa0ccc792.jpg}]')"
+
+                    class="btn btn-xs btn-default"  data-toggle="tooltip" data-placement="top" title="jpg附件">
+
+                <i class="fa fa-file" style="color: #5c90d2;"></i></button>
+
+    
+
+                    </td>
+
+                    <td>
+
+                            <label>未审批</label>
+
+                    </td>
+
+                    <td>
+
+                        <div class="btn-group">
+
+                            <a href="javascript:;" onclick="showDetail(199963,'look','个人')"
+
+                               class="btn btn-xs btn-default" type="button"
+
+                               data-toggle="tooltip" data-original-title="查看">查看</a>
+
+                        </div>
+
+                        
+
+                            <div class="btn-group">
+
+                                <a href="javascript:;" onclick="showDelete(199963)"
+
+                                   class="btn btn-xs btn-default" type="button"
+
+                                   data-toggle="tooltip" data-original-title="删除">删除</a>
+
+                            </div>
+
+                        
+
+                    </td>
+
+                </tr>
+
+                <tr>
+
+                    <td>2</td>
+
+                    <td>2026</td>
+
+                    <td>0000000</td>
+
+                    <td>某同学</td>
+
+                    <td>蓝桥杯全国软件和信息技术专业人才大赛</td>
+
+                    <td>个人
+
+                        </td>
+
+                    <td>2026-07-06</td>
+
+                    <td>
+
+            <button type="button" onclick="openImg_lx('/upload/base/indexdownload/f35815f3-44ad-46d9-97b7-577c159dcf49.jpg','jpg','[{suf=jpg, url=/upload/base/indexdownload/f35815f3-44ad-46d9-97b7-577c159dcf49.jpg}]')"
+
+                    class="btn btn-xs btn-default"  data-toggle="tooltip" data-placement="top" title="jpg附件">
+
+                <i class="fa fa-file" style="color: #5c90d2;"></i></button>
+
+    
+
+                    </td>
+
+                    <td>
+
+                            <label>未审批</label>
+
+                    </td>
+
+                    <td>
+
+                        <div class="btn-group">
+
+                            <a href="javascript:;" onclick="showDetail(199962,'look','个人')"
+
+                               class="btn btn-xs btn-default" type="button"
+
+                               data-toggle="tooltip" data-original-title="查看">查看</a>
+
+                        </div>
+
+                        
+
+                            <div class="btn-group">
+
+                                <a href="javascript:;" onclick="showDelete(199962)"
+
+                                   class="btn btn-xs btn-default" type="button"
+
+                                   data-toggle="tooltip" data-original-title="删除">删除</a>
+
+                            </div>
+
+                        
+
+                    </td>
+
+                </tr>
+
+                <tr>
+
+                    <td>3</td>
+
+                    <td>2026</td>
+
+                    <td>0000000</td>
+
+                    <td>某同学</td>
+
+                    <td>蓝桥杯全国软件和信息技术专业人才大赛</td>
+
+                    <td>个人
+
+                        </td>
+
+                    <td>2026-07-06</td>
+
+                    <td>
+
+            <button type="button" onclick="openImg_lx('/upload/base/indexdownload/31704423-be8d-4fdc-9b41-b42a4fa70ef4.jpg','jpg','[{suf=jpg, url=/upload/base/indexdownload/31704423-be8d-4fdc-9b41-b42a4fa70ef4.jpg}]')"
+
+                    class="btn btn-xs btn-default"  data-toggle="tooltip" data-placement="top" title="jpg附件">
+
+                <i class="fa fa-file" style="color: #5c90d2;"></i></button>
+
+    
+
+                    </td>
+
+                    <td>
+
+                            <label>未审批</label>
+
+                    </td>
+
+                    <td>
+
+                        <div class="btn-group">
+
+                            <a href="javascript:;" onclick="showDetail(199960,'look','个人')"
+
+                               class="btn btn-xs btn-default" type="button"
+
+                               data-toggle="tooltip" data-original-title="查看">查看</a>
+
+                        </div>
+
+                        
+
+                            <div class="btn-group">
+
+                                <a href="javascript:;" onclick="showDelete(199960)"
+
+                                   class="btn btn-xs btn-default" type="button"
+
+                                   data-toggle="tooltip" data-original-title="删除">删除</a>
+
+                            </div>
+
+                        
+
+                    </td>
+
+                </tr>
+
+                </tbody>
+
+            </table>
+
+            <div class="row">    <input type="hidden" id="pageNumber" name="pageNumber" value="1"/>
+
+    <input type="hidden" id="pageSize" name="pageSize" value="20"/>
+
+    <input type="hidden" id="searchProperty" name="searchProperty" value=""/>
+
+    <input type="hidden" id="orderProperty" name="orderProperty" value=""/>
+
+    <input type="hidden" id="orderDirection" name="orderDirection" value=""/>
+
+    <div class="col-sm-6">
+
+        <div style="padding-top: 18px;white-space: nowrap;">
+
+            每页显示
+
+            <span class="dropup hidden-xs">
+
+			  <button class="btn btn-sm btn-default dropdown-toggle" type="button" id="pageSizeSelect"
+
+                      data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+
+			  20
+
+                  <span class="caret"></span>
+
+			  </button>
+
+			  <ul class="dropdown-menu" aria-labelledby="pageSizeSelect" id="pageSizeOption">
+
+				  <li >
+
+					  <a href="javascript:;" val="10">10</a>
+
+				  </li>
+
+				  <li  class="active">
+
+					  <a href="javascript:;" val="20">20</a>
+
+				  </li>
+
+				  <li >
+
+					  <a href="javascript:;" val="50">50</a>
+
+				  </li>
+
+				  <li >
+
+					  <a href="javascript:;" val="100">100</a>
+
+				  </li>
+
+                   <li >
+
+					  <a href="javascript:;" val="500">500</a>
+
+				  </li>
+
+                   <li >
+
+					  <a href="javascript:;" val="2000">2000</a>
+
+				  </li>
+
+			  </ul>
+
+		</span>条,
+
+            共 <strong>3</strong>条记录
+
+        </div>
+
+    </div>
+
+    <div class="col-sm-6">
+
+        <div style="margin:0;white-space:nowrap;text-align: right">
+
+                <ul class="pagination" style="margin:12px 0px;white-space: nowrap">
+
+                                                                 <li class="disabled"><a href="javascript:void(0)"><i class="fa fa-angle-left"></i></a></li>
+
+                            <li class="active"><a href="javascript:void(0)">1</a></li>
+
+                        <li class="disabled">
+
+                            <a href="javascript:void(0)"><i class="fa fa-angle-right"></i></a>
+
+                        </li>
+
+                </ul>
+
+        </div>
+
+    </div>
+
+</div>
+
+        </div>
+
+    </form>
+
+</div>
+
+<link rel="stylesheet" href="/assets/js/plugins/bootstrap-datetimepicker/bootstrap-datetimepicker.min.css">
+

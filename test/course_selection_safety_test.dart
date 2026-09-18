@@ -248,7 +248,11 @@ void main() {
       expect(code, contains('Checkbox('));
       expect(code, contains('acknowledged'));
       expect(code, contains('FilledButton.styleFrom'));
-      expect(code, contains('backgroundColor: scheme.error'));
+      // 2026-09-16：深色下「红」分两个角色 —— 实心件用深红档，不再直接吃亮红
+      // colorScheme.error（亮红压在 #121212 上只能偏浅，见 AGENTS.md §22）。
+      expect(code, contains('backgroundColor: AppColors.errorFill(context)'));
+      expect(code, contains('foregroundColor: AppColors.onErrorFill(context)'));
+      expect(code.contains('backgroundColor: scheme.error'), isFalse);
       expect(code, contains('退选码（提交给教务）'));
       expect(code, contains('_reportCancelOutcome'));
       // 2026-09-15 二轮：确认弹窗改为「先重读核对（prepareCancel）→ 再提交（cancelChecked）」。

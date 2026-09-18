@@ -20,6 +20,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:smarter_jxufe/features/ims/schedule/presentation/schedule_title_bar.dart';
+import 'package:smarter_jxufe/features/ims/schedule/presentation/schedule_week_picker.dart';
 import 'package:smarter_jxufe/shared/widgets/academic_year_picker.dart';
 import 'package:smarter_jxufe/shared/widgets/school_term_grid.dart';
 
@@ -78,6 +79,9 @@ Future<({double need, bool oneRow, double real})> _pumpProduction(
             isCurrentTerm: true,
             currentWeek: currentWeek,
             week: week,
+            // 与下面的 AppBar 里真实渲染的按钮数一致（返回键 56 + 2×48）。
+            actionCount: withChrome ? 2 : 0,
+            hasLeading: withChrome,
           );
           return Scaffold(
             appBar: AppBar(
@@ -86,12 +90,15 @@ Future<({double need, bool oneRow, double real})> _pumpProduction(
               leading: withChrome ? const BackButton() : null,
               actions: withChrome
                   ? [
-                      IconButton(
-                        icon: const Icon(Icons.event_repeat),
+                      // 与生产同款（紧凑款 action：宽 = ScheduleTitleBar.actionWidth）。
+                      scheduleBarAction(
+                        icon: Icons.event_repeat,
+                        tooltip: '调课管理',
                         onPressed: () {},
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.refresh),
+                      scheduleBarAction(
+                        icon: Icons.refresh,
+                        tooltip: '刷新',
                         onPressed: () {},
                       ),
                     ]
@@ -113,7 +120,7 @@ Future<({double need, bool oneRow, double real})> _pumpProduction(
                 onSemesterChanged: (_) {},
                 onTermPicked: (_) {},
                 onGoToWeek: (_) {},
-                onToggleView: () {},
+                actionCount: withChrome ? 2 : 0,
               ),
             ),
           );
@@ -142,7 +149,8 @@ Future<void> _pumpBar(
   bool isCurrentTerm = true,
   double? toolbarHeight,
   ValueChanged<int>? onGoToWeek,
-  VoidCallback? onToggleView,
+  ValueChanged<int>? onReturnToCurrentWeek,
+  int actionCount = 2,
   ValueChanged<({int xn, int xq})>? onTermPicked,
   int pickerStartYear = 2025,
   int pickerEndYear = 2026,
@@ -176,7 +184,8 @@ Future<void> _pumpBar(
             onSemesterChanged: (_) {},
             onTermPicked: onTermPicked ?? (_) {},
             onGoToWeek: onGoToWeek ?? (_) {},
-            onToggleView: onToggleView ?? () {},
+            onReturnToCurrentWeek: onReturnToCurrentWeek,
+            actionCount: actionCount,
           ),
         ),
       ),
@@ -219,14 +228,29 @@ void main() {
       expect((tops[0] - tops[1]).abs(), lessThan(2));
     });
 
-    testWidgets('手机竖屏（360）：仍分两行（放不下）', (tester) async {
+    testWidgets('手机竖屏（360）：现在也排得进一行（用户 2026-09-16 裁定）', (tester) async {
+      // 视图切换按钮移进 `actions`、「本周」按钮删除后，标题栏只剩「学期码 +
+      // 第 N 周」两段 → 360 宽（可用 208dp）也放得下。用户 2026-09-16 原话：
+      // 「感觉不知道哪个组件的边距特别大，导致标题栏总是换行，但是标题栏其实是
+      // 可以装下那么多内容的」——从前这里确实会换行。
       await _pumpBar(tester, width: 360);
+      final tops = _rowCenters(tester, compact: true);
+      expect(
+        (tops[0] - tops[1]).abs(),
+        lessThan(2),
+        reason: '360 宽（可用 208dp）足以把学期码与周次排成一行',
+      );
+    });
+
+    testWidgets('极窄（320）：放不下才换行', (tester) async {
+      await _pumpBar(tester, width: 250);
       final tops = _rowCenters(tester, compact: true);
       expect(
         tops[1] - tops[0],
         greaterThan(12),
-        reason: '360 宽只有约 208dp 可用，学期码 + 周次仍放不下',
+        reason: '更窄时才允许换行（可用宽度 < 内容宽）',
       );
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('手机较宽（460）：单行 —— 学期码按钮比「学年+学段」省宽度', (tester) async {
@@ -283,22 +307,175 @@ void main() {
       expect(tops[1] - tops[0], greaterThan(12));
     });
 
-    testWidgets('周次切换：上一周 / 下一周 / 「本周」/ 视图切换仍可用', (tester) async {
+    testWidgets('周次入口：点周数开选择器；长按周数回本周（用户 2026-09-16 裁定）', (tester) async {
       final jumps = <int>[];
-      var toggled = false;
       await _pumpBar(
         tester,
         width: 1400,
         week: 5,
         currentWeek: 3,
         onGoToWeek: jumps.add,
-        onToggleView: () => toggled = true,
       );
-      await tester.tap(find.byTooltip('上一周'));
-      await tester.tap(find.byTooltip('下一周'));
-      await tester.tap(find.byTooltip('切换到整学期视图'));
-      expect(jumps, [4, 6]);
-      expect(toggled, isTrue);
+      // 用户 2026-09-16：「取消周数的左右按钮，但是点击周数，显示一个周数选择器」
+      expect(find.byTooltip('上一周'), findsNothing);
+      expect(find.byTooltip('下一周'), findsNothing);
+      // 用户 2026-09-16：「标题栏中不显示本周按钮」
+      expect(find.text('本周'), findsNothing);
+
+      await tester.tap(find.byKey(scheduleWeekButtonKey));
+      await tester.pumpAndSettle();
+      expect(find.text('选择周数'), findsOneWidget);
+      await tester.tap(find.byKey(scheduleWeekCellKey(7)));
+      await tester.pumpAndSettle();
+      expect(jumps, [7]);
+
+      // 用户 2026-09-16：「长按周数可以回到本周」
+      await tester.longPress(find.byKey(scheduleWeekButtonKey));
+      await tester.pumpAndSettle();
+      expect(jumps, [7, 3]);
+    });
+
+    testWidgets('长按回本周走 onReturnToCurrentWeek（用户 2026-09-17：要横划动画）', (
+      tester,
+    ) async {
+      // 「回本周」与「弹窗选周」都落在同一个控件上，而课表页只对前者要求
+      // 横划过去（后者仍是直接跳）→ 必须能分辨：长按走专用回调。
+      final jumps = <int>[];
+      final returns = <int>[];
+      await _pumpBar(
+        tester,
+        width: 1400,
+        week: 9,
+        currentWeek: 3,
+        onGoToWeek: jumps.add,
+        onReturnToCurrentWeek: returns.add,
+      );
+
+      // 弹窗选周 → 普通改周
+      await tester.tap(find.byKey(scheduleWeekButtonKey));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(scheduleWeekCellKey(7)));
+      await tester.pumpAndSettle();
+      expect(jumps, [7], reason: '弹窗选周走 onGoToWeek');
+      expect(returns, isEmpty);
+
+      // 长按 → 专用回调（课表页据此请求分页器横划）
+      await tester.longPress(find.byKey(scheduleWeekButtonKey));
+      await tester.pumpAndSettle();
+      expect(returns, [3], reason: '长按回本周走 onReturnToCurrentWeek');
+      expect(jumps, [7], reason: '长按不该再落到 onGoToWeek');
+    });
+
+    testWidgets('未传 onReturnToCurrentWeek 时长按仍回本周（向后兼容）', (tester) async {
+      final jumps = <int>[];
+      await _pumpBar(
+        tester,
+        width: 1400,
+        week: 9,
+        currentWeek: 3,
+        onGoToWeek: jumps.add,
+      );
+      await tester.longPress(find.byKey(scheduleWeekButtonKey));
+      await tester.pumpAndSettle();
+      expect(jumps, [3]);
+    });
+
+    testWidgets('本周高亮：当前周就是本周时周数用主色标记（用户 2026-09-16 裁定）', (tester) async {
+      await _pumpBar(tester, width: 1400, week: 3, currentWeek: 3);
+      final scheme = Theme.of(
+        tester.element(find.byKey(scheduleWeekButtonKey)),
+      ).colorScheme;
+      final text = tester.widget<Text>(find.text('第 3 周'));
+      expect(text.style?.color, scheme.primary, reason: '本周要高亮');
+      expect(text.style?.fontWeight, FontWeight.w700);
+
+      // 非本周则用普通文字色。
+      await _pumpBar(tester, width: 1400, week: 5, currentWeek: 3);
+      final other = tester.widget<Text>(find.text('第 5 周'));
+      expect(other.style?.color, isNot(scheme.primary));
+    });
+
+    testWidgets('整学期视图不显示「整学期」字样（用户 2026-09-16 裁定）', (tester) async {
+      await _pumpBar(tester, width: 1400, week: null, currentWeek: 3);
+      expect(find.text('整学期'), findsNothing);
+      expect(
+        find.byKey(scheduleWeekButtonKey),
+        findsNothing,
+        reason: '整学期视图下周次控件整个不渲染（回周视图靠 actions 里的切换按钮）',
+      );
+      expect(find.byType(ScheduleWeekSwitcher), findsNothing);
+    });
+
+    testWidgets('切换视图按钮与调课按钮在 actions 里（用户 2026-09-16 裁定）', (tester) async {
+      final src = File(
+        'lib/features/ims/schedule/presentation/schedule_screen.dart',
+      ).readAsStringSync();
+      expect(
+        src.contains('icon: _week == null ? Icons.view_week : Icons.grid_view'),
+        isTrue,
+        reason: '视图切换按钮要在 actions 列表里（与调课按钮并排），不再居中',
+      );
+      expect(
+        src.contains('final barActionCount = actions.length + 1;'),
+        isTrue,
+        reason:
+            'chrome 宽度必须跟着真实按钮数走（手机 2 个、桌面 3 个）+ 全局设置按钮 1 个'
+            '（2026-09-16 由 paneAppBar 自动追加，见 settings_entry.dart）',
+      );
+      expect(
+        src.contains('actionCount: barActionCount'),
+        isTrue,
+        reason: '标题栏与内嵌面板两处都要用同一个 barActionCount',
+      );
+      expect(
+        src.contains('ScheduleTitleBar.chromeWidthFor'),
+        isTrue,
+        reason: '内嵌面板的标题栏行宽修正要用同一个 chrome 口径',
+      );
+      // 标题栏构造里不该再有 onToggleView（那个按钮已移走）。
+      final barCall = RegExp(
+        r'ScheduleTitleBar\(\s*selectedYear:',
+      ).firstMatch(src);
+      expect(barCall, isNotNull);
+      final segment = src.substring(barCall!.start, barCall.start + 900);
+      expect(
+        segment.contains('onToggleView'),
+        isFalse,
+        reason: '标题栏不再接收视图切换回调',
+      );
+    });
+  });
+
+  group('移动端刷新方式（用户 2026-09-16 裁定）', () {
+    testWidgets('手机端课表页不再有刷新按钮，改为下拉刷新', (tester) async {
+      final src = File(
+        'lib/features/ims/schedule/presentation/schedule_screen.dart',
+      ).readAsStringSync();
+      expect(
+        src.contains('_wrapRefresh'),
+        isTrue,
+        reason: '下拉刷新必须走 _wrapRefresh(compact, body)',
+      );
+      expect(
+        src.contains('return RefreshIndicator(') &&
+            src.contains('onRefresh: _loadData'),
+        isTrue,
+        reason: '手机端的刷新入口就是 RefreshIndicator(onRefresh: _loadData)',
+      );
+      expect(
+        src.contains('child: _refreshable(child)'),
+        isTrue,
+        reason: '下拉容器必须包在最外层（内层加 always-scrollable 会把翻页阈值放大到 1 页）',
+      );
+      // 刷新按钮必须被 `if (!compact)` 门控（桌面端保留、手机端不渲染）。
+      final gate = RegExp(
+        r'if \(!compact\)\s*\n\s*scheduleBarAction\(\s*\n\s*icon: Icons\.refresh',
+      );
+      expect(
+        gate.hasMatch(src),
+        isTrue,
+        reason: 'IconButton(Icons.refresh) 必须写在 if (!compact) 里',
+      );
     });
   });
 
@@ -416,7 +593,12 @@ void main() {
         // 若用 1600 量到的桌面内容宽去算手机档宽度，算出来的宽度会落回手机档
         // （592 < 620），断言就没意义了。
         // 手机档：600 宽视口（仍单行）下量真实内容宽。
-        final phone = await _pumpProduction(tester, width: 600, week: week);
+        final phone = await _pumpProduction(
+          tester,
+          width: 600,
+          week: week,
+          withChrome: true,
+        );
         expect(phone.oneRow, isTrue, reason: '600 宽在手机档里必然单行');
         final phoneContent = phone.real;
 
@@ -424,6 +606,7 @@ void main() {
           tester,
           width: phoneContent + ScheduleTitleBar.chromeWidth + 24,
           week: week,
+          withChrome: true,
         );
         expect(tester.takeException(), isNull);
         expect(
@@ -436,6 +619,7 @@ void main() {
           tester,
           width: phoneContent + ScheduleTitleBar.chromeWidth - 12,
           week: week,
+          withChrome: true,
         );
         expect(narrow.oneRow, isFalse, reason: 'week=$week 手机档：放不下却仍宣称单行');
         expect(tester.takeException(), isNull, reason: '两行布局不该溢出');
@@ -446,6 +630,7 @@ void main() {
           tester,
           width: 620,
           week: week,
+          withChrome: true,
         );
         expect(tester.takeException(), isNull);
         expect(
@@ -456,13 +641,24 @@ void main() {
       }
     });
 
-    testWidgets('手机端（360/400/460）与桌面端都按上述口径落地', (tester) async {
-      // 360：compact 内容约 210 → 放不下 → 两行
-      final narrow = await _pumpProduction(tester, width: 360, week: 3);
-      expect(narrow.oneRow, isFalse);
+    testWidgets('手机端（360/460）与桌面端都按上述口径落地', (tester) async {
+      // 360：可用 208dp，内容约 130 → **单行**（2026-09-16 视图切换按钮移进
+      // actions 之后的新事实；从前它占 40 宽 + 「本周」按钮占 ~35，才被迫换行）。
+      final narrow = await _pumpProduction(
+        tester,
+        width: 360,
+        week: 3,
+        withChrome: true,
+      );
+      expect(narrow.oneRow, isTrue);
       expect(tester.takeException(), isNull);
       // 460：可用 308 > 内容 + 24 → 单行
-      final wide = await _pumpProduction(tester, width: 460, week: 3);
+      final wide = await _pumpProduction(
+        tester,
+        width: 460,
+        week: 3,
+        withChrome: true,
+      );
       expect(wide.oneRow, isTrue);
       expect(tester.takeException(), isNull);
     });
@@ -481,9 +677,9 @@ void main() {
             withChrome: true,
           );
           final content = tester.getRect(find.byKey(scheduleTitleContentKey));
-          // 生产 chrome：返回键 56 + 两个 action 各 48 → 标题槽 = [56, width-96]
+          // 生产 chrome：返回键 56 + 两个紧凑 action 各 ScheduleTitleBar.actionWidth
           const leadingWidth = 56.0;
-          const trailingWidth = 96.0;
+          final trailingWidth = ScheduleTitleBar.actionWidth * 2;
           final expectedCenter =
               leadingWidth + (width - leadingWidth - trailingWidth) / 2;
           expect(
@@ -503,7 +699,7 @@ void main() {
         await _pumpProduction(tester, width: width, week: 3, withChrome: true);
         final content = tester.getRect(find.byKey(scheduleTitleContentKey));
         const leadingWidth = 56.0;
-        const trailingWidth = 96.0;
+        final trailingWidth = ScheduleTitleBar.actionWidth * 2;
         final expectedCenter =
             leadingWidth + (width - leadingWidth - trailingWidth) / 2;
         expect(
@@ -515,6 +711,76 @@ void main() {
         );
         expect(tester.takeException(), isNull);
       }
+    });
+  });
+
+  group('action 按钮量宽契约（用户 2026-09-16「标题栏右侧按钮过大」）', () {
+    testWidgets('紧凑款 action 实测宽与图标尺寸 == 量宽契约', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            appBar: AppBar(
+              leading: const BackButton(),
+              title: const Text('t'),
+              actions: [
+                scheduleBarAction(
+                  icon: Icons.event_repeat,
+                  tooltip: '调课管理',
+                  onPressed: () {},
+                ),
+                scheduleBarAction(
+                  icon: Icons.refresh,
+                  tooltip: '刷新',
+                  compact: false,
+                  onPressed: () {},
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      expect(
+        // ⚠ 量 `IconButton` 而不是 `Tooltip`：tooltip 只包图标（22/26 宽），
+        //   按钮本身的点击区才是 chrome 占宽（实测 40）。
+        tester
+            .getSize(
+              find.ancestor(
+                of: find.byTooltip('调课管理'),
+                matching: find.byType(IconButton),
+              ),
+            )
+            .width,
+        ScheduleTitleBar.actionWidth,
+        reason: '实测宽必须等于 chrome 口径用的常量，否则 fitsOneRow 会算错',
+      );
+      expect(
+        tester
+            .getSize(
+              find.ancestor(
+                of: find.byTooltip('刷新'),
+                matching: find.byType(IconButton),
+              ),
+            )
+            .width,
+        ScheduleTitleBar.actionWidth,
+      );
+      // 图标也要比 M3 默认的 24 小（用户说的「过大」主要是图标观感）。
+      // `Icon.size` 为 null（尺寸来自 IconButton 注入的 IconTheme）→ 读 IconTheme。
+      expect(
+        IconTheme.of(tester.element(find.byIcon(Icons.event_repeat))).size,
+        18,
+        reason: '紧凑档图标 18（桌面档 20），都不是默认 24',
+      );
+      expect(
+        IconTheme.of(tester.element(find.byIcon(Icons.refresh))).size,
+        20,
+      );
+      expect(
+        ScheduleTitleBar.chromeWidthFor(actionCount: 2),
+        56.0 + 2 * ScheduleTitleBar.actionWidth,
+      );
+      expect(ScheduleTitleBar.actionWidth, lessThan(48.0), reason: '必须小于默认 48');
     });
   });
 }

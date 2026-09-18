@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smarter_jxufe/features/zongce/domain/zc_activity.dart';
 import 'package:smarter_jxufe/features/zongce/domain/zc_catalog.dart';
+import 'package:smarter_jxufe/features/zongce/domain/zc_foreign.dart';
 import 'package:smarter_jxufe/features/zongce/domain/zc_rules.dart';
 
 void main() {
@@ -89,14 +90,28 @@ void main() {
       expect(last.title, '其他比赛（手动录入）');
     });
 
-    test('外语：候选与证书目录一一对应且回填证书名', () {
+    test('外语：候选 = 目录里的证书名目（得分按表 10 档位识别）', () {
       final spec = zcTypeSpecOf[ZcTypeId.foreign]!;
       final items = zcActivityItems(spec);
-      expect(items.length, zcForeignLevels.length);
-      for (var i = 0; i < items.length; i++) {
-        expect(items[i].levelIdx, i);
-        expect(items[i].namePrefill, zcForeignLevels[i].$1);
-      }
+      expect(items.length, zcForeignCertNames.length);
+      expect(items.map((e) => e.title), zcForeignCertNames);
+      expect(items.first.title, '雅思');
+      expect(items.first.namePrefill, '雅思');
+      expect(
+        items.map((e) => e.namePrefill),
+        everyElement(isNotNull),
+        reason: '点选即回填证书名',
+      );
+      expect(
+        items.every((e) => e.levelIdx == null),
+        isTrue,
+        reason: '档位不参与（分值由原始成绩查表 10 得出）',
+      );
+      expect(
+        zcForeignCertNames.length,
+        lessThan(zcForeignLevels.length),
+        reason: '相邻档合并成一个名目',
+      );
     });
 
     test('优秀事迹：国家级档枚举扁平化 + 其他兜底 + 余档保留', () {

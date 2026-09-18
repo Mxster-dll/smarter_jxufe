@@ -228,13 +228,29 @@ void main() {
       );
     });
 
-    test('main.dart 真的把转场表挂进了 ThemeData', () {
-      final code = _code('lib/main.dart');
+    test('主题里真的挂进了转场表（2026-09-16 起 ThemeData 在 app_theme.dart）', () {
+      // 主题（含转场表）唯一出处 = lib/design/app_theme.dart；
+      // main.dart 只负责把它挂到 MaterialApp 上。
+      final theme = _code('lib/design/app_theme.dart');
       expect(
-        code.contains('pageTransitionsTheme: appPageTransitionsTheme'),
+        theme.contains('pageTransitionsTheme: appPageTransitionsTheme'),
         isTrue,
+        reason: '转场表必须在 ThemeData 里，否则会退回系统默认的中心放大 zoom',
       );
-      expect(code.contains('design/app_page_transitions.dart'), isTrue);
+      expect(theme.contains('app_page_transitions.dart'), isTrue);
+
+      final main = _code('lib/main.dart');
+      expect(
+        main.contains('theme: appLightTheme') &&
+            main.contains('darkTheme: appDarkTheme'),
+        isTrue,
+        reason: 'main.dart 必须挂上 app_theme.dart 那两套 ThemeData（别自己再拼一套）',
+      );
+      expect(
+        main.contains('ColorScheme.fromSeed'),
+        isFalse,
+        reason: '主题口径已搬进 app_theme.dart，main.dart 不许再自带 ColorScheme',
+      );
     });
 
     test('首页侧栏右栏换内容也有转场（且自备撑满的 layoutBuilder）', () {

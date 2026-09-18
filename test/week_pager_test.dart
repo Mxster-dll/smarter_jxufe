@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -24,6 +26,7 @@ void main() {
     int week = 3,
     int weekCount = 10,
     bool enabled = true,
+    int smoothRequest = 0,
     required List<int> changed,
     double width = 400,
   }) async {
@@ -37,6 +40,7 @@ void main() {
             weekCount: weekCount,
             week: week,
             enabled: enabled,
+            smoothRequest: smoothRequest,
             onWeekChanged: changed.add,
             pageBuilder: fakePage,
           ),
@@ -49,8 +53,29 @@ void main() {
   /// 某一周页面的左边界横坐标（静止时 = 0；跟手拖动时 = 手指位移）。
   ///
   /// 量**页面**而不是页里的文字：文字在页内居中，用它会把「居中留白」当成位移。
+  /// ⚠ 只对**已构建**的页面有效 —— `PageView` 的 `cacheExtent` 是 0，正在补间
+  /// 时远处的目标页还没进视口、`find` 找不到（量「翻到哪了」要用 [pageOffset]）。
   double pageLeft(WidgetTester tester, int week) =>
       tester.getTopLeft(find.byKey(ValueKey('page-$week'))).dx;
+
+  /// 滚动偏移，单位 = 页（0 = 第 1 周那一页在最左）。
+  ///
+  /// 用它断言「翻到一半」：补间途中目标页可能尚未构建，`find.byKey` 会落空。
+  /// ⚠ 页宽取**真实视口**（`viewportDimension`），别猜参数 —— 测试视口默认是
+  /// 800×600 逻辑像素（physical 2400×1800 / dpr 3），写死 400 会把结果算成两倍。
+  double pageOffset(WidgetTester tester) {
+    final position = tester
+        .state<ScrollableState>(
+          find
+              .descendant(
+                of: find.byType(PageView),
+                matching: find.byType(Scrollable),
+              )
+              .first,
+        )
+        .position;
+    return position.pixels / position.viewportDimension;
+  }
 
   testWidgets('静止时只显示当前周，相邻周在屏幕外待命', (tester) async {
     final changed = <int>[];
@@ -236,4 +261,212 @@ void main() {
     expect(WeekPager.pageTransition, const Duration(milliseconds: 280));
     expect(WeekPager.jumpThreshold, 1);
   });
+
+  // ─── 长按回本周的横划动画（用户 2026-09-17）────────────────────────
+  //
+  // 「长按周数返回本周要显示横划动画」——回本周常常跨十几周，从前一律
+  // `jumpToPage` 瞬移；`smoothRequest` 序号变化时改为**跨多少周都补间**，
+  // 且补间途中的逐页上报不许把自己拽回去。
+
+  group('平滑跳转（长按回本周）', () {
+    test('跨页时长：一页 = 单页时长，每多一页 +45ms，封顶 700ms', () {
+      expect(WeekPager.smoothTransitionFor(1), WeekPager.pageTransition);
+      expect(
+        WeekPager.smoothTransitionFor(2),
+        const Duration(milliseconds: 325),
+      );
+      expect(
+        WeekPager.smoothTransitionFor(19),
+        WeekPager.smoothMaxTransition,
+        reason: '再远也不拖过 700ms',
+      );
+      expect(WeekPager.smoothTransitionFor(0), WeekPager.pageTransition);
+      expect(WeekPager.smoothTransitionFor(-5), WeekPager.pageTransition);
+      // 单调不减：跨得越多给得越久（直到封顶）
+      var last = Duration.zero;
+      for (var pages = 1; pages <= 19; pages++) {
+        final d = WeekPager.smoothTransitionFor(pages);
+        expect(d >= last, isTrue, reason: '$pages 页的时长不应短于上一档');
+        last = d;
+      }
+    });
+
+    testWidgets('请求平滑 + 跨多周 → 补间（不是瞬移）', (tester) async {
+      final changed = <int>[];
+      await pumpPager(tester, week: 3, weekCount: 20, changed: changed);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: WeekPager(
+              weekCount: 20,
+              week: 13,
+              // 序号 0 → 1 = 外部请求这次横划过去
+              smoothRequest: 1,
+              onWeekChanged: changed.add,
+              pageBuilder: fakePage,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 120));
+      final mid = pageOffset(tester);
+      expect(
+        mid,
+        greaterThan(2.0 + 0.01),
+        reason: '补间途中已经离开第 3 周页（实测偏移 $mid 页）—— 瞬移的话仍会是 2.0',
+      );
+      expect(
+        mid,
+        lessThan(12.0 - 0.01),
+        reason: '补间途中还没到第 13 周页（实测偏移 $mid 页）',
+      );
+      await tester.pumpAndSettle();
+      expect(
+        pageOffset(tester),
+        moreOrLessEquals(12.0, epsilon: 0.01),
+        reason: '最终停在目标周（第 13 周 = 下标 12）',
+      );
+    });
+
+    testWidgets('不请求平滑的跨多周仍然是瞬移（弹窗选周 / 切学期）', (tester) async {
+      final changed = <int>[];
+      await pumpPager(tester, week: 3, weekCount: 20, changed: changed);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: WeekPager(
+              weekCount: 20,
+              week: 13,
+              onWeekChanged: changed.add,
+              pageBuilder: fakePage,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(
+        pageOffset(tester),
+        moreOrLessEquals(12.0, epsilon: 0.01),
+        reason: '没有平滑请求 → 直接到位（第 13 周 = 下标 12），不逐页刷',
+      );
+    });
+
+    testWidgets('补间途中的逐页上报不会被当成外部改周把自己拽回去', (tester) async {
+      // 宿主镜像课表页：`onWeekChanged` → `setState(_week = week)`（周数回灌）。
+      tester.view.physicalSize = const Size(400, 700);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final key = GlobalKey<_HostState>();
+      final changed = <int>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: _Host(key: key, changed: changed),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // 长按回本周：第 9 周 → 第 3 周（跨 6 周），走平滑
+      key.currentState!.goToWeek(3, smooth: true);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 150));
+      final mid = pageOffset(tester);
+      expect(
+        mid,
+        lessThan(8.0 - 0.01),
+        reason: '补间应已经在移动（实测 $mid 页，起点 8.0）',
+      );
+      expect(mid, greaterThan(2.0 + 0.01), reason: '补间应还在途中');
+      // 该档时长 = 280 + 5×45 = 505ms：再给 700ms 必须已经到位，
+      // 被逐页回声拽回的话会一直回不到目标。
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(
+        pageOffset(tester),
+        moreOrLessEquals(2.0, epsilon: 0.01),
+        reason: '补间必须按时到位；被逐页回声拽回会停在别处',
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('第 3 周'), findsOneWidget);
+      expect(
+        changed.where((w) => w > 3 && w < 9),
+        isNotEmpty,
+        reason: '跨周补间应逐页上报（标题栏周数跟着数上去）',
+      );
+      expect(changed.last, 3);
+    });
+
+    test('源码守卫：长按回本周走平滑请求、两个视图都收到它', () {
+      final src = File(
+        'lib/features/ims/schedule/presentation/schedule_screen.dart',
+      ).readAsStringSync();
+      expect(
+        'onReturnToCurrentWeek: (week) => _goToWeek(week, smooth: true)'
+            .allMatches(src)
+            .length,
+        2,
+        reason: '两个周次入口（AppBar 标题栏 + 内嵌工具条）都要走平滑那条路',
+      );
+      expect(
+        src.contains('pagerSmoothRequest: _smoothWeekRequest'),
+        isTrue,
+        reason: '竖版（网格）要把平滑请求透传给 SchedulePagedBoard',
+      );
+      expect(
+        src.contains('smoothRequest: _smoothWeekRequest'),
+        isTrue,
+        reason: '横版直接建 WeekPager，也要传',
+      );
+      // 弹窗选周 / 切学期是定位语义，不许变成横划
+      expect(
+        'smooth: true'.allMatches(src).length,
+        2,
+        reason: '只有长按回本周那一处允许 smooth: true（另一处是 _goToWeek 自身的参数默认值调用点）',
+      );
+    });
+  });
+}
+
+/// 受控宿主：把分页器上报的周**同步回** `week`（镜像课表页 `_onPagerWeekChanged`
+/// → `setState(() => _week = week)`），并可发起「外部改周」（普通 / 平滑）。
+class _Host extends StatefulWidget {
+  const _Host({super.key, required this.changed});
+
+  final List<int> changed;
+
+  @override
+  State<_Host> createState() => _HostState();
+}
+
+class _HostState extends State<_Host> {
+  int _week = 9;
+  int _smooth = 0;
+
+  /// 外部改周；[smooth] = true 表示要求横划过去（长按回本周）。
+  void goToWeek(int week, {bool smooth = false}) {
+    setState(() {
+      _week = week;
+      if (smooth) _smooth++;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return WeekPager(
+      weekCount: 20,
+      week: _week,
+      smoothRequest: _smooth,
+      onWeekChanged: (week) {
+        widget.changed.add(week);
+        setState(() => _week = week);
+      },
+      pageBuilder: (context, week) => SizedBox.expand(
+        key: ValueKey('page-$week'),
+        child: Center(child: Text('第 $week 周')),
+      ),
+    );
+  }
 }
