@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/account_avatar_provider.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/account_display_name_provider.dart';
 import 'package:smarter_jxufe/features/auth/domain/account_avatar.dart';
@@ -37,7 +38,6 @@ class AccountAvatar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
     final avatar = ref.watch(accountAvatarProvider);
     // 「??」短路：调用方给了名字就不再订阅本地显示名
     final displayName =
@@ -53,21 +53,21 @@ class AccountAvatar extends ConsumerWidget {
       content = SizedBox(
         width: radius,
         height: radius,
-        child: CircularProgressIndicator(strokeWidth: 2, color: scheme.onError),
+        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.onErrorFill(context)),
       );
     } else if (resolved.initial.isEmpty) {
-      content = Icon(Icons.person, size: radius * 1.2, color: scheme.onError);
+      content = Icon(Icons.person, size: radius * 1.2, color: AppColors.onErrorFill(context));
     } else {
       // 图片形态下这层仍会画在 foregroundImage 之下 —— 图片坏了不至于空白
       content = Text(
         resolved.initial,
-        style: TextStyle(fontSize: radius * 0.9, color: scheme.onError),
+        style: TextStyle(fontSize: radius * 0.9, color: AppColors.onErrorFill(context)),
       );
     }
 
     final circle = CircleAvatar(
       radius: radius,
-      backgroundColor: scheme.error,
+      backgroundColor: AppColors.errorFill(context),
       foregroundImage: path == null || avatar.busy
           ? null
           : FileImage(File(path)),
