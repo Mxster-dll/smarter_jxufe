@@ -1,0 +1,65 @@
+# ---- 本地敏感与临时（绝不入库）----
+tmp.txt
+sensitive.txt
+app_data/
+tools/
+lib/old/
+.vscode
+*.g.dart
+*.freezed.dart
+
+# 发布签名（绝不入库；见 D:\Keys\smarter_jxufe-release.jks）
+android/key.properties
+*.jks
+*.keystore
+
+# 逆向抓包产物（含登录态，绝不入库）
+reverse_engineering/saikang_tice/captures/
+captures/
+*.mitm
+*.flows
+
+# MITM 证书私钥（本地生成，构建时仍会打包进 APK）
+assets/capture_certs/*.key
+
+# 本地发布产物（走 GitHub Release 分发）
+/dist/
+/logos/
+/design_preview/
+
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+app.*.symbols
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release

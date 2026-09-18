@@ -5,8 +5,12 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
+import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.example.smarter_jxufe.share.FileShareBridge
 import com.example.smarter_jxufe.widget.HomeWidgetBridge
 import com.example.smarter_jxufe.widget.HomeWidgetStore
@@ -22,6 +26,36 @@ class MainActivity : FlutterActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // 「铺满整屏」（edge-to-edge）：Flutter 视图一直画到状态栏 / 导航栏底下。
+        //
+        // 为什么需要：默认装饰视图只占「两条系统栏之间」的区域，底部导航栏那一条
+        // 露出的是窗口背景色（`NormalTheme.windowBackground`，浅色主题下是灰色），
+        // 于是手机启动后底部出现一条**通屏宽、不显示内容**的灰带
+        // （用户 2026-09-16 报「其他应用中没有这个问题」）。开启后 App 内容
+        // （白色 Scaffold / 课表课格）会铺到屏幕最底边，灰带消失；同时把系统栏
+        // 做成透明、关掉系统默认的对比度遮罩（那条遮罩本身也是灰的）。
+        //
+        // 系统栏内边距由 Flutter 侧按 MediaQuery 处理：AppBar 自动避开状态栏，
+        // 课表则**刻意**用满全高（用户要求「竖排课表高度与屏幕同高」）。
+        runCatching {
+            WindowCompat.setDecorFitsSystemWindows(window, false)
+            @Suppress("DEPRECATION")
+            window.statusBarColor = Color.TRANSPARENT
+            @Suppress("DEPRECATION")
+            window.navigationBarColor = Color.TRANSPARENT
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                window.isStatusBarContrastEnforced = false
+                window.isNavigationBarContrastEnforced = false
+            }
+            // 全应用浅色（纯白底）→ 系统栏图标用深色。
+            WindowInsetsControllerCompat(window, window.decorView).apply {
+                isAppearanceLightStatusBars = true
+                isAppearanceLightNavigationBars = true
+            }
+        }.onFailure {
+            Log.w("MainActivity", "edge-to-edge 设置失败（已忽略，不影响 App）", it)
+        }
 
         // ⚠️ 小组件是锦上添花的能力，任何一环失败都不允许带崩 App：
         // 曾因 dex 缺类（NoClassDefFoundError）在这里崩成「屡次停止运行」，
