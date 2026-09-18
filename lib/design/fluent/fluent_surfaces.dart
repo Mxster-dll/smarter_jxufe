@@ -5,8 +5,8 @@ import 'fluent_tokens.dart';
 /// Fluent 页面底：Mica 等效实色 + 内容宽度上限。
 ///
 /// Win11 真正的 Mica 需要桌面端透明窗口（Flutter 侧要 `flutter_acrylic` 之类的原生能力），
-/// 本项目不引额外依赖，因此用 Fluent 浅色 Mica 的**等效实色** [FluentColors.bgBase]
-/// 打底 —— 视觉结果一致，不涉及平台 API。
+/// 本项目不引额外依赖，因此用 Fluent 的**等效实色** `fluent(context).bgBase`
+/// （浅色 `#F3F3F3` / 深色 `#121212`）打底 —— 视觉结果一致，不涉及平台 API。
 class FluentPageBackground extends StatelessWidget {
   const FluentPageBackground({
     super.key,
@@ -22,7 +22,7 @@ class FluentPageBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: FluentColors.bgBase,
+      color: fluent(context).bgBase,
       child: Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
@@ -57,12 +57,13 @@ class FluentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = fluent(context);
     return Container(
       padding: padding,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: fill ?? FluentColors.cardDefault,
-        border: Border.all(color: stroke ?? FluentColors.strokeCard),
+        color: fill ?? p.cardDefault,
+        border: Border.all(color: stroke ?? p.strokeCard),
         borderRadius: BorderRadius.circular(radius),
         boxShadow: elevated ? FluentShadows.card : null,
       ),
@@ -71,7 +72,7 @@ class FluentCard extends StatelessWidget {
   }
 }
 
-/// Fluent 分隔线：1px [FluentColors.strokeDivider]，可缩进对齐文字起点。
+/// Fluent 分隔线：1px `fluent(context).strokeDivider`，可缩进对齐文字起点。
 class FluentDivider extends StatelessWidget {
   const FluentDivider({super.key, this.indent = 0, this.endIndent = 0});
 
@@ -83,7 +84,7 @@ class FluentDivider extends StatelessWidget {
     return Container(
       height: 1,
       margin: EdgeInsets.only(left: indent, right: endIndent),
-      color: FluentColors.strokeDivider,
+      color: fluent(context).strokeDivider,
     );
   }
 }
@@ -109,6 +110,7 @@ class FluentSectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = fluent(context);
     return Padding(
       padding: padding,
       child: Row(
@@ -120,17 +122,13 @@ class FluentSectionHeader extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: FluentType.subtitle.copyWith(
-                    color: FluentColors.textPrimary,
-                  ),
+                  style: FluentType.subtitle.copyWith(color: p.textPrimary),
                 ),
                 if (description != null) ...[
                   const SizedBox(height: FluentSpacing.xs),
                   Text(
                     description!,
-                    style: FluentType.caption.copyWith(
-                      color: FluentColors.textSecondary,
-                    ),
+                    style: FluentType.caption.copyWith(color: p.textSecondary),
                   ),
                 ],
               ],
@@ -166,29 +164,30 @@ class FluentInfoBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = fluent(context);
     final (Color bg, Color stroke, Color tint, IconData icon) = switch (severity) {
       FluentInfoSeverity.informational => (
-        FluentColors.neutralBg,
-        FluentColors.strokeControlDefault,
-        FluentColors.neutral,
+        p.neutralBg,
+        p.strokeControlDefault,
+        p.neutral,
         Icons.info_outline,
       ),
       FluentInfoSeverity.success => (
-        FluentColors.successBg,
-        FluentColors.success,
-        FluentColors.success,
+        p.successBg,
+        p.success,
+        p.success,
         Icons.check_circle_outline,
       ),
       FluentInfoSeverity.warning => (
-        FluentColors.cautionBg,
-        FluentColors.strokeControlDefault,
-        FluentColors.cautionDeep,
+        p.cautionBg,
+        p.strokeControlDefault,
+        p.cautionDeep,
         Icons.warning_amber_outlined,
       ),
       FluentInfoSeverity.error => (
-        FluentColors.criticalBg,
-        FluentColors.critical,
-        FluentColors.critical,
+        p.criticalBg,
+        p.critical,
+        p.critical,
         Icons.error_outline,
       ),
     };
@@ -212,17 +211,13 @@ class FluentInfoBar extends StatelessWidget {
                 if (title != null) ...[
                   Text(
                     title!,
-                    style: FluentType.bodyStrong.copyWith(
-                      color: FluentColors.textPrimary,
-                    ),
+                    style: FluentType.bodyStrong.copyWith(color: p.textPrimary),
                   ),
                   const SizedBox(height: FluentSpacing.xs),
                 ],
                 Text(
                   message,
-                  style: FluentType.body.copyWith(
-                    color: FluentColors.textSecondary,
-                  ),
+                  style: FluentType.body.copyWith(color: p.textSecondary),
                 ),
               ],
             ),
@@ -245,26 +240,22 @@ class FluentLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = fluent(context);
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(
+          SizedBox(
             width: 28,
             height: 28,
-            child: CircularProgressIndicator(
-              strokeWidth: 2.5,
-              color: FluentColors.accent,
-            ),
+            child: CircularProgressIndicator(strokeWidth: 2.5, color: p.accent),
           ),
           if (message != null) ...[
             const SizedBox(height: FluentSpacing.lg),
             Text(
               message!,
               textAlign: TextAlign.center,
-              style: FluentType.caption.copyWith(
-                color: FluentColors.textSecondary,
-              ),
+              style: FluentType.caption.copyWith(color: p.textSecondary),
             ),
           ],
         ],
@@ -300,6 +291,7 @@ class FluentMetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = fluent(context);
     return FluentCard(
       padding: const EdgeInsets.all(FluentSpacing.xl),
       child: Column(
@@ -311,9 +303,7 @@ class FluentMetricCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   label,
-                  style: FluentType.caption.copyWith(
-                    color: FluentColors.textSecondary,
-                  ),
+                  style: FluentType.caption.copyWith(color: p.textSecondary),
                 ),
               ),
               ?trailing,
@@ -326,17 +316,13 @@ class FluentMetricCard extends StatelessWidget {
             children: [
               Text(
                 value,
-                style: FluentType.titleLarge.copyWith(
-                  color: FluentColors.textPrimary,
-                ),
+                style: FluentType.titleLarge.copyWith(color: p.textPrimary),
               ),
               if (unit != null) ...[
                 const SizedBox(width: FluentSpacing.xs),
                 Text(
                   unit!,
-                  style: FluentType.body.copyWith(
-                    color: FluentColors.textSecondary,
-                  ),
+                  style: FluentType.body.copyWith(color: p.textSecondary),
                 ),
               ],
             ],
@@ -345,9 +331,7 @@ class FluentMetricCard extends StatelessWidget {
             const SizedBox(height: FluentSpacing.xs),
             Text(
               description!,
-              style: FluentType.caption.copyWith(
-                color: FluentColors.textSecondary,
-              ),
+              style: FluentType.caption.copyWith(color: p.textSecondary),
             ),
           ],
           if (footer != null) ...[
