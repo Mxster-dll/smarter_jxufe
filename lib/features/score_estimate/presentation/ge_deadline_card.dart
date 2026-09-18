@@ -9,17 +9,21 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../design/app_theme.dart';
 import '../../../design/feature_palette.dart';
 import '../domain/ge_deadline.dart';
 import 'ge_common.dart';
 
-/// 类型配色。
-Color geDeadlineKindColor(GeDeadlineKind kind) => switch (kind) {
-  GeDeadlineKind.onlineCourse => FeaturePalette.deadlineOnline,
-  GeDeadlineKind.homework => FeaturePalette.deadlineHomework,
-  GeDeadlineKind.exam => FeaturePalette.deadlineExam,
-  GeDeadlineKind.other => FeaturePalette.deadlineOther,
-};
+/// 类型配色（随亮度解析：深色下自动提亮档）。
+Color geDeadlineKindColor(BuildContext context, GeDeadlineKind kind) {
+  final f = fp(context);
+  return switch (kind) {
+    GeDeadlineKind.onlineCourse => f.deadlineOnline,
+    GeDeadlineKind.homework => f.deadlineHomework,
+    GeDeadlineKind.exam => f.deadlineExam,
+    GeDeadlineKind.other => f.deadlineOther,
+  };
+}
 
 /// 类型图标。
 IconData geDeadlineKindIcon(GeDeadlineKind kind) => switch (kind) {
@@ -30,13 +34,16 @@ IconData geDeadlineKindIcon(GeDeadlineKind kind) => switch (kind) {
 };
 
 /// 状态配色：已完成灰、已过期红、今天/3 天内橙、更远蓝灰。
-Color geDeadlineStatusColor(GeDeadlineStatus status) => switch (status) {
-  GeDeadlineStatus.done => FeaturePalette.deadlineDone,
-  GeDeadlineStatus.overdue => FeaturePalette.deadlineOverdue,
-  GeDeadlineStatus.today => FeaturePalette.deadlineSoon,
-  GeDeadlineStatus.soon => FeaturePalette.deadlineSoon,
-  GeDeadlineStatus.upcoming => FeaturePalette.scoreEstimateFinal,
-};
+Color geDeadlineStatusColor(BuildContext context, GeDeadlineStatus status) {
+  final f = fp(context);
+  return switch (status) {
+    GeDeadlineStatus.done => f.deadlineDone,
+    GeDeadlineStatus.overdue => f.deadlineOverdue,
+    GeDeadlineStatus.today => f.deadlineSoon,
+    GeDeadlineStatus.soon => f.deadlineSoon,
+    GeDeadlineStatus.upcoming => f.scoreEstimateFinal,
+  };
+}
 
 /// 一门课的截止日期卡。
 ///
@@ -135,7 +142,10 @@ class _GeDeadlineCardState extends State<GeDeadlineCard> {
               sorted.isEmpty
                   ? '记下网课、作业、考试的截止时间，到期前会收到系统通知。'
                   : '共 ${sorted.length} 条 · 还有 $pending 条未完成',
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.textMuted(context),
+              ),
             ),
             const SizedBox(height: 6),
             if (sorted.isEmpty)
@@ -149,7 +159,11 @@ class _GeDeadlineCardState extends State<GeDeadlineCard> {
             Text(
               '提醒：提前 1 天 + 提前 1 小时（系统通知，可逐条关闭）。'
               '每周 / 每两周的条目按规则自动滚到下一次，不会堆积成过期。',
-              style: TextStyle(fontSize: 11.5, height: 1.5, color: Colors.grey.shade600),
+              style: TextStyle(
+                fontSize: 11.5,
+                height: 1.5,
+                color: AppColors.textMuted(context),
+              ),
             ),
           ],
         ),
@@ -161,9 +175,9 @@ class _GeDeadlineCardState extends State<GeDeadlineCard> {
     final scheme = Theme.of(context).colorScheme;
     final status = geDeadlineStatus(d, now);
     final done = status == GeDeadlineStatus.done;
-    final statusColor = geDeadlineStatusColor(status);
+    final statusColor = geDeadlineStatusColor(context, status);
     final due = geDeadlineEffectiveDue(d, now);
-    final kindColor = geDeadlineKindColor(d.kind);
+    final kindColor = geDeadlineKindColor(context, d.kind);
 
     return InkWell(
       onTap: () => widget.onEdit(d),
@@ -182,7 +196,7 @@ class _GeDeadlineCardState extends State<GeDeadlineCard> {
                 icon: Icon(
                   done ? Icons.check_circle : Icons.radio_button_unchecked,
                   size: 22,
-                  color: done ? FeaturePalette.deadlineDone : scheme.outline,
+                  color: done ? fp(context).deadlineDone : scheme.outline,
                 ),
                 onPressed: () => widget.onToggleDone(d),
               ),
@@ -203,7 +217,7 @@ class _GeDeadlineCardState extends State<GeDeadlineCard> {
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             decoration: done ? TextDecoration.lineThrough : null,
-                            color: done ? Colors.grey.shade600 : null,
+                            color: done ? AppColors.textMuted(context) : null,
                           ),
                         ),
                       ),
@@ -211,7 +225,7 @@ class _GeDeadlineCardState extends State<GeDeadlineCard> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                         decoration: BoxDecoration(
-                          color: kindColor.withValues(alpha: 0.12),
+                          color: AppColors.tint(context, kindColor, 0.12),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
@@ -229,7 +243,7 @@ class _GeDeadlineCardState extends State<GeDeadlineCard> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                           decoration: BoxDecoration(
-                            color: statusColor.withValues(alpha: 0.12),
+                            color: AppColors.tint(context, statusColor, 0.12),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -245,7 +259,10 @@ class _GeDeadlineCardState extends State<GeDeadlineCard> {
                           '${d.isRepeating ? ' · ${d.repeat.label}' : ''}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600),
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: AppColors.textMuted(context),
+                          ),
                         ),
                       ),
                       if (d.remind) ...[
@@ -253,7 +270,7 @@ class _GeDeadlineCardState extends State<GeDeadlineCard> {
                         Icon(
                           Icons.notifications_active_outlined,
                           size: 12,
-                          color: Colors.grey.shade500,
+                          color: AppColors.textMuted(context),
                         ),
                       ],
                     ],
@@ -264,7 +281,10 @@ class _GeDeadlineCardState extends State<GeDeadlineCard> {
                       d.note.trim(),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted(context),
+                      ),
                     ),
                   ],
                 ],
@@ -444,7 +464,7 @@ class _GeDeadlineEditorState extends State<_GeDeadlineEditor> {
 
   @override
   Widget build(BuildContext context) {
-    final color = geDeadlineKindColor(_kind);
+    final color = geDeadlineKindColor(context, _kind);
     return Padding(
       padding: EdgeInsets.fromLTRB(
         20,
@@ -489,13 +509,19 @@ class _GeDeadlineEditorState extends State<_GeDeadlineEditor> {
                     avatar: Icon(
                       geDeadlineKindIcon(k),
                       size: 16,
-                      color: _kind == k ? Colors.white : geDeadlineKindColor(k),
+                      // 选中态：前景画在类型强调色实心底上。深色下该色被提亮成亮底，
+                      // 写死白字会掉到 2.7–3.7:1 → 按底的亮度择字（浅色仍是白）。
+                      color: _kind == k
+                          ? AppColors.onAccent(context, geDeadlineKindColor(context, k))
+                          : geDeadlineKindColor(context, k),
                     ),
                     label: Text(k.label),
                     selected: _kind == k,
-                    selectedColor: geDeadlineKindColor(k),
+                    selectedColor: geDeadlineKindColor(context, k),
                     labelStyle: TextStyle(
-                      color: _kind == k ? Colors.white : null,
+                      color: _kind == k
+                          ? AppColors.onAccent(context, geDeadlineKindColor(context, k))
+                          : null,
                     ),
                     onSelected: (_) => setState(() => _kind = k),
                   ),
@@ -541,7 +567,10 @@ class _GeDeadlineEditorState extends State<_GeDeadlineEditor> {
                 child: Text(
                   '以 ${geDeadlineDueText(_due, widget.now)} 为起点，${_repeat.label}'
                   '自动滚到下一个未到期的时刻；过期不会堆积。',
-                  style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600),
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: AppColors.textMuted(context),
+                  ),
                 ),
               ),
             const SizedBox(height: 6),
@@ -604,7 +633,7 @@ class _FieldLabel extends StatelessWidget {
       style: TextStyle(
         fontSize: 12,
         fontWeight: FontWeight.w600,
-        color: Colors.grey.shade700,
+        color: AppColors.textMuted(context),
       ),
     ),
   );

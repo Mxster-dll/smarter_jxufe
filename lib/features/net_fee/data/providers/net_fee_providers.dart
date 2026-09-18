@@ -60,7 +60,7 @@ final netFeeRemoteDataSourceProvider = Provider<NetFeeRemoteDataSource>(
 final netFeeSummaryProvider = FutureProvider<NetFeeSummary>((ref) async {
   final account = ref.watch(currentAccountProvider);
   if (account.isEmpty) {
-    throw const NetFeeApiException('请先登录后再查看网费');
+    throw const NetFeeApiException('请先登录后再查看校园网');
   }
   final guid = await ref.watch(netFeeGuidProvider.future);
   if (guid == null) {

@@ -4,11 +4,17 @@
 /// 点入详情页实时估算、反推与预警。
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
+import 'package:smarter_jxufe/design/pane_chrome.dart';
+import 'package:smarter_jxufe/features/settings/domain/settings_section.dart';
 
 import '../../../core/network/dio_providers.dart';
+import '../../../core/storage/local_data_revision.dart';
+import '../../../design/app_theme.dart';
 import '../../../design/feature_palette.dart';
 import '../../ims/schedule/data/providers/schedule_repository_provider.dart';
 import '../../ims/schedule/domain/schedule_entry.dart';
@@ -82,8 +88,6 @@ class ScoreEstimateScreen extends ConsumerStatefulWidget {
 }
 
 class _ScoreEstimateScreenState extends ConsumerState<ScoreEstimateScreen> {
-  static const _accent = FeaturePalette.cardAccent;
-
   GeStore? _store;
   List<GeCourse> _courses = const [];
 
@@ -507,58 +511,74 @@ class _ScoreEstimateScreenState extends ConsumerState<ScoreEstimateScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 云同步「从云端恢复」整体改写了本机落盘：偏好 store 自己订阅了 box 会跟上，
+    // 但本页的课程列表是**读进 State** 的 → 靠这个版本号重读一次。
+    ref.listen(localDataRevisionProvider, (_, _) => unawaited(_reload()));
     return Scaffold(
-      appBar: AppBar(
+      appBar: paneAppBar(
+        context,
         title: const Text('分数估计'),
         centerTitle: false,
-        actions: [
-          IconButton(
-            tooltip: _creditsSyncing ? '正在读取培养方案…' : '按培养方案补齐学分',
-            icon: _creditsSyncing
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2.4),
-                  )
-                : const Icon(Icons.school_outlined),
-            onPressed: _creditsSyncing ? null : _syncCreditsFromPlan,
-          ),
-          IconButton(
-            tooltip: _importing ? '正在读取课表…' : '从课表导入',
-            icon: _importing
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2.4),
-                  )
-                : const Icon(Icons.playlist_add),
-            onPressed: _importing ? null : _importFromSchedule,
-          ),
-          IconButton(
-            tooltip: '计分模型说明',
-            icon: const Icon(Icons.help_outline),
-            onPressed: () => geShowModelSheet(context),
-          ),
-        ],
+        actions: _headerActions(context),
+        // 本页读的是教务成绩缓存 → 相关设置是教务会话。
+        settingsSections: const [SettingsSection.imsSession],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _addCourse,
         icon: const Icon(Icons.add),
         label: const Text('添加课程'),
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? _ErrorRetry(message: _error!, onRetry: _init)
-          : _courses.isEmpty
-          ? _EmptyHint(
-              accent: _accent,
-              onAdd: _addCourse,
-              onImport: _importFromSchedule,
-            )
-          : _buildList(context),
+      body: PaneBody(
+        actions: _headerActions(context),
+        padding: const EdgeInsets.only(right: 12),
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+            ? _ErrorRetry(message: _error!, onRetry: _init)
+            : _courses.isEmpty
+            ? _EmptyHint(
+                accent: fp(context).cardAccent,
+                onAdd: _addCourse,
+                onImport: _importFromSchedule,
+              )
+            : _buildList(context),
+      ),
     );
   }
+
+  /// 原导航栏的三个按钮（补齐学分 / 从课表导入 / 计分模型说明）。
+  ///
+  /// 整页模式进 `AppBar.actions`；侧栏内嵌模式（面板首路由）由 `PaneBody` 下沉到
+  /// 内容首行 —— 用户 2026-09-16 裁定：面板顶部不留 chrome（见 AGENTS.md §19）。
+  List<Widget> _headerActions(BuildContext context) => [
+    IconButton(
+      tooltip: _creditsSyncing ? '正在读取培养方案…' : '按培养方案补齐学分',
+      icon: _creditsSyncing
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2.4),
+            )
+          : const Icon(Icons.school_outlined),
+      onPressed: _creditsSyncing ? null : _syncCreditsFromPlan,
+    ),
+    IconButton(
+      tooltip: _importing ? '正在读取课表…' : '从课表导入',
+      icon: _importing
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2.4),
+            )
+          : const Icon(Icons.playlist_add),
+      onPressed: _importing ? null : _importFromSchedule,
+    ),
+    IconButton(
+      tooltip: '计分模型说明',
+      icon: const Icon(Icons.help_outline),
+      onPressed: () => geShowModelSheet(context),
+    ),
+  ];
 }
 
 /// 课程卡片：名称 / 占比 / 分项数 / 当前分数与对总平均的贡献。
@@ -605,14 +625,14 @@ class _CourseCard extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: FeaturePalette.cardAccent.withValues(alpha: 0.1),
+                  color: fp(context).cardAccent.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 alignment: Alignment.center,
-                child: const Icon(
+                child: Icon(
                   Icons.calculate_outlined,
                   size: 22,
-                  color: FeaturePalette.cardAccent,
+                  color: fp(context).cardAccent,
                 ),
               ),
               const SizedBox(width: 12),
@@ -674,7 +694,7 @@ class _CourseCard extends StatelessWidget {
                         height: 1.3,
                         fontWeight: FontWeight.w600,
                         color: pending
-                            ? const Color(0xFFE65100)
+                            ? AppColors.caution(context)
                             : scheme.onSurfaceVariant,
                       ),
                       maxLines: 1,
@@ -702,8 +722,8 @@ class _CourseCard extends StatelessWidget {
   Widget _pill(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final (label, color) = switch (score.kind) {
-      _ScoreKind.pending => ('暂不计入', const Color(0xFFE65100)),
-      _ScoreKind.grades => ('教务成绩', const Color(0xFF2E7D32)),
+      _ScoreKind.pending => ('暂不计入', AppColors.caution(context)),
+      _ScoreKind.grades => ('教务成绩', AppColors.success(context)),
       _ScoreKind.estimate => ('', scheme.onSurfaceVariant),
     };
     if (label.isEmpty) return const SizedBox.shrink();
@@ -730,8 +750,8 @@ class _CourseCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final pending = score.kind == _ScoreKind.pending;
     final color = switch (score.kind) {
-      _ScoreKind.grades => const Color(0xFF2E7D32),
-      _ScoreKind.estimate => FeaturePalette.cardAccent,
+      _ScoreKind.grades => AppColors.success(context),
+      _ScoreKind.estimate => fp(context).cardAccent,
       _ScoreKind.pending => scheme.onSurfaceVariant,
     };
     final label = switch (score.kind) {
@@ -766,7 +786,7 @@ class _CourseCard extends StatelessWidget {
               fontWeight: FontWeight.w600,
               color: pending
                   ? scheme.onSurfaceVariant
-                  : FeaturePalette.cardAccent.withValues(alpha: 0.9),
+                  : fp(context).cardAccent.withValues(alpha: 0.9),
             ),
           ),
         ],
@@ -975,7 +995,7 @@ class _CreditSyncDialog extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
-                  color: FeaturePalette.cardAccent,
+                  color: fp(context).cardAccent,
                 ),
               ),
             ),

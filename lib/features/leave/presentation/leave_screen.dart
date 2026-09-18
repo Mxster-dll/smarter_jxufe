@@ -7,6 +7,9 @@ import 'package:smarter_jxufe/features/leave/domain/leave_models.dart';
 import 'package:smarter_jxufe/features/leave/presentation/leave_detail_screen.dart';
 import 'package:smarter_jxufe/features/platform_guid/presentation/guid_guide_screen.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/wxcal_providers.dart';
+import 'package:smarter_jxufe/design/pane_chrome.dart';
+import 'package:smarter_jxufe/features/settings/domain/settings_section.dart';
+import 'package:smarter_jxufe/design/app_theme.dart';
 
 /// 「我的请假」：学生请假申请记录列表（只读，用户拍板本轮范围）。
 ///
@@ -32,8 +35,11 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen> {
     final guid = ref.watch(wxGuidProvider).valueOrNull;
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: paneAppBar(
+        context,
         title: const Text('请假'),
+        // 请假记录依赖平台标识（GUID）。
+        settingsSections: const [SettingsSection.platformGuid],
         centerTitle: false,
         backgroundColor: Theme.of(context).cardTheme.color,
         surfaceTintColor: Colors.transparent,
@@ -64,6 +70,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen> {
                   _buildGuidHint(context, scheme)
                 else
                   _errorCard(
+                    context,
                     scheme,
                     Icons.error_outline,
                     '加载失败：${e.toString().replaceAll('Exception: ', '')}',
@@ -129,9 +136,10 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen> {
 
   Widget _buildGuidHint(BuildContext context, ColorScheme scheme) {
     return _errorCard(
+      context,
       scheme,
       Icons.link_off_outlined,
-      '未配置微信平台标识（GUID），无法读取请假记录。点击右上「启用实时源」填写后即可查看（与网费/校历共用同一配置）。',
+      '未配置微信平台标识（GUID），无法读取请假记录。点击右上「启用实时源」填写后即可查看（与校园网/校历共用同一配置）。',
     );
   }
 
@@ -151,7 +159,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen> {
           Expanded(
             child: Text(
               'GUID 是智慧江财平台在微信授权后下发的用户标识，App 内无法自动获取；'
-              '请参考网费 / 校历页的配置说明填写一次，各处即共用生效。',
+              '请参考校园网 / 校历页的配置说明填写一次，各处即共用生效。',
               style: TextStyle(
                 fontSize: 12.5,
                 height: 1.5,
@@ -216,7 +224,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen> {
                 height: 38,
                 decoration: BoxDecoration(
                   color: record.inProgress
-                      ? scheme.primary.withValues(alpha: 0.10)
+                      ? AppColors.tint(context, scheme.primary, 0.10)
                       : scheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -251,7 +259,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        _statusChip(scheme, record),
+                        _statusChip(context, scheme, record),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -286,12 +294,16 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen> {
     );
   }
 
-  Widget _statusChip(ColorScheme scheme, LeaveListRecord record) {
+  Widget _statusChip(
+    BuildContext context,
+    ColorScheme scheme,
+    LeaveListRecord record,
+  ) {
     final Color bg;
     final Color fg;
     final String label;
     if (record.inProgress) {
-      bg = scheme.primary.withValues(alpha: 0.10);
+      bg = AppColors.tint(context, scheme.primary, 0.10);
       fg = scheme.primary;
       label = '审批中';
     } else {
@@ -351,7 +363,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen> {
             children: [
               Text(
                 '填写微信智慧江财平台的用户标识（GUID），即读取请假流程所需的访问凭证。'
-                '它与网费、校历页共用同一配置，填写一次各处均生效。',
+                '它与校园网、校历页共用同一配置，填写一次各处均生效。',
                 style: TextStyle(
                   fontSize: 12.5,
                   height: 1.5,
@@ -466,6 +478,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen> {
   }
 
   Widget _errorCard(
+    BuildContext context,
     ColorScheme scheme,
     IconData icon,
     String message, {
@@ -476,12 +489,12 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen> {
       decoration: BoxDecoration(
         color: light
             ? scheme.surfaceContainerHighest.withValues(alpha: 0.5)
-            : scheme.error.withValues(alpha: 0.06),
+            : AppColors.tint(context, scheme.error, 0.06),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: light
               ? scheme.outlineVariant
-              : scheme.error.withValues(alpha: 0.35),
+              : AppColors.tintBorder(context, scheme.error, 0.35),
         ),
       ),
       child: Row(

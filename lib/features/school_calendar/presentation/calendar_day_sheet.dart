@@ -3,30 +3,41 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/calendar_day_mark.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/school_calendar.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/wxcal_semester.dart';
 
 /// 角标配色：假 = 红，班 = 绿，其它事件 = 蓝灰。
-Color calendarMarkColor(CalendarMarkKind? kind) => switch (kind) {
-  CalendarMarkKind.holiday => FeaturePalette.calendarHoliday,
-  CalendarMarkKind.makeup => FeaturePalette.calendarMakeup,
-  CalendarMarkKind.event => FeaturePalette.calendarEvent,
-  null => FeaturePalette.classCancelled,
-};
+///
+/// 取 `BuildContext` 而非静态 [FeaturePalette]：深色下这些强调色要提亮档
+/// （`fp(context)`），否则深底上读不出。
+Color calendarMarkColor(BuildContext context, CalendarMarkKind? kind) {
+  final f = fp(context);
+  return switch (kind) {
+    CalendarMarkKind.holiday => f.calendarHoliday,
+    CalendarMarkKind.makeup => f.calendarMakeup,
+    CalendarMarkKind.event => f.calendarEvent,
+    null => f.classCancelled,
+  };
+}
 
 /// 日期格角标（三种风格由 [CalendarBadgeStyle] 决定，行高由调用方保证）。
-Widget calendarBadge(CalendarDayMark mark, CalendarBadgeStyle style) {
+Widget calendarBadge(
+  BuildContext context,
+  CalendarDayMark mark,
+  CalendarBadgeStyle style,
+) {
   if (!mark.hasBadge) return const SizedBox.shrink();
-  final color = calendarMarkColor(mark.kind);
+  final color = calendarMarkColor(context, mark.kind);
   final corner = style == CalendarBadgeStyle.cornerTag;
   return Container(
     padding: corner
         ? const EdgeInsets.symmetric(horizontal: 3, vertical: 1)
         : const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
     decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.12),
+      color: AppColors.tint(context, color, 0.12),
       borderRadius: BorderRadius.circular(corner ? 3 : 4),
     ),
     child: Text(
@@ -85,11 +96,17 @@ class _CalendarDaySheet extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 weekdays[day.weekday - 1],
-                style: textTheme.bodySmall?.copyWith(color: Colors.black54),
+                style: textTheme.bodySmall?.copyWith(
+                  color: AppColors.textMuted(context),
+                ),
               ),
               if (mark.hasBadge) ...[
                 const Spacer(),
-                calendarBadge(mark, CalendarBadgeStyle.underNumber),
+                calendarBadge(
+                  context,
+                  mark,
+                  CalendarBadgeStyle.underNumber,
+                ),
               ],
             ],
           ),
@@ -98,8 +115,8 @@ class _CalendarDaySheet extends StatelessWidget {
             mark.hasBadge ? '${mark.badge} · ${mark.reason}' : mark.reason,
             style: textTheme.bodySmall?.copyWith(
               color: mark.hasBadge
-                  ? calendarMarkColor(mark.kind)
-                  : Colors.black54,
+                  ? calendarMarkColor(context, mark.kind)
+                  : AppColors.textMuted(context),
               fontWeight: mark.hasBadge ? FontWeight.w600 : FontWeight.w400,
             ),
           ),
@@ -114,7 +131,9 @@ class _CalendarDaySheet extends StatelessWidget {
               ),
               child: Text(
                 '该日无官方安排',
-                style: textTheme.bodyMedium?.copyWith(color: Colors.black45),
+                style: textTheme.bodyMedium?.copyWith(
+                  color: AppColors.textMuted(context),
+                ),
               ),
             )
           else
@@ -127,13 +146,17 @@ class _CalendarDaySheet extends StatelessWidget {
               CalendarDayKind.nonday => 'nonday（认为不上课）',
               null => '（老学期页面无此标注）',
             }}',
-            style: textTheme.bodySmall?.copyWith(color: Colors.black54),
+            style: textTheme.bodySmall?.copyWith(
+              color: AppColors.textMuted(context),
+            ),
           ),
           if (termTitle != null && termTitle!.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(
               '校历：$termTitle',
-              style: textTheme.bodySmall?.copyWith(color: Colors.black54),
+              style: textTheme.bodySmall?.copyWith(
+                color: AppColors.textMuted(context),
+              ),
             ),
           ],
         ],
@@ -157,7 +180,7 @@ class _EventTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card(context),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: scheme.outlineVariant),
       ),
@@ -171,7 +194,9 @@ class _EventTile extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             event.rangeText,
-            style: textTheme.bodySmall?.copyWith(color: Colors.black54),
+            style: textTheme.bodySmall?.copyWith(
+              color: AppColors.textMuted(context),
+            ),
           ),
           if (category != null && category.isNotEmpty) ...[
             const SizedBox(height: 6),

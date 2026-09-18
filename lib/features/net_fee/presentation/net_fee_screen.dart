@@ -1,15 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/core/navigation/page_auto_refresh.dart';
 import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/features/net_fee/data/providers/net_fee_providers.dart';
 import 'package:smarter_jxufe/features/net_fee/domain/net_fee_models.dart';
+import 'package:smarter_jxufe/features/network_service/data/providers/network_service_providers.dart';
+import 'package:smarter_jxufe/features/network_service/presentation/network_service_section.dart';
 import 'package:smarter_jxufe/features/platform_guid/presentation/guid_guide_screen.dart';
+import 'package:smarter_jxufe/design/pane_chrome.dart';
+import 'package:smarter_jxufe/features/settings/domain/settings_section.dart';
+import 'package:smarter_jxufe/design/app_theme.dart';
 
-/// 网费：校园网余额 + 充值记录。
+/// 校园网（原「网费」）：账户余额充值 + 网络服务。
 ///
-/// 双源兜底（用户拍板）：已配置平台 GUID → 小程序实时计费源
+/// 计费段双源兜底（用户拍板）：已配置平台 GUID → 小程序实时计费源
 /// （余额 + 近一年充值记录）；未配置 → 门户个人数据中心概览源（仅余额）。
+///
+/// 第二段「网络服务」= 学校自助服务系统的真实数据（账号概览 / 在线设备 /
+/// 近期上网记录 / 账单与服务入口），实现见 `features/network_service/`。
 class NetFeeScreen extends ConsumerStatefulWidget {
   const NetFeeScreen({super.key});
 
@@ -18,6 +27,35 @@ class NetFeeScreen extends ConsumerStatefulWidget {
 }
 
 class _NetFeeScreenState extends ConsumerState<NetFeeScreen> {
+  late final PageAutoRefresher _autoRefresh = PageAutoRefresher(
+    onRefresh: _refreshAll,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _autoRefresh.start();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _autoRefresh.subscribeRoute(context);
+  }
+
+  @override
+  void dispose() {
+    _autoRefresh.dispose();
+    super.dispose();
+  }
+
+  /// 首次进入 / 从子页面返回 / 回前台：两段一起刷新。
+  void _refreshAll() {
+    if (!mounted) return;
+    invalidateIfLoaded(ref, netFeeSummaryProvider);
+    invalidateNetworkService(ref);
+  }
+
   Future<void> _refresh() async {
     ref.invalidate(netFeeSummaryProvider);
     await ref.read(netFeeSummaryProvider.future);
@@ -29,8 +67,11 @@ class _NetFeeScreenState extends ConsumerState<NetFeeScreen> {
     final summaryAsync = ref.watch(netFeeSummaryProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('网费'),
+      appBar: paneAppBar(
+        context,
+        title: const Text('校园网'),
+        // 实时计费源依赖平台标识（GUID）。
+        settingsSections: const [SettingsSection.platformGuid],
         centerTitle: false,
         backgroundColor: Theme.of(context).cardTheme.color,
         surfaceTintColor: Colors.transparent,
@@ -56,6 +97,7 @@ class _NetFeeScreenState extends ConsumerState<NetFeeScreen> {
               ],
               error: (e, _) => [
                 _errorCard(
+                  context,
                   scheme,
                   Icons.error_outline,
                   '加载失败：${e.toString().replaceAll('Exception: ', '')}',
@@ -68,6 +110,7 @@ class _NetFeeScreenState extends ConsumerState<NetFeeScreen> {
                 if (summary.hasGuid && summary.liveError != null) ...[
                   const SizedBox(height: 12),
                   _errorCard(
+                    context,
                     scheme,
                     Icons.cloud_off_outlined,
                     '实时计费源不可用（${summary.liveError}），已自动回退门户概览余额。',
@@ -86,6 +129,10 @@ class _NetFeeScreenState extends ConsumerState<NetFeeScreen> {
                 ],
               ],
             ),
+            const SizedBox(height: 24),
+            _sectionTitle(context, '网络服务'),
+            const SizedBox(height: 10),
+            NetworkServiceSection(onConfigureGuid: _showGuidDialog),
           ],
         ),
       ),
@@ -151,7 +198,7 @@ class _NetFeeScreenState extends ConsumerState<NetFeeScreen> {
                   width: 42,
                   height: 42,
                   decoration: BoxDecoration(
-                    color: scheme.primary.withValues(alpha: 0.10),
+                    color: AppColors.tint(context, scheme.primary, 0.10),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
@@ -254,7 +301,7 @@ class _NetFeeScreenState extends ConsumerState<NetFeeScreen> {
   Widget _buildGuidHint(BuildContext context, ColorScheme scheme) {
     return _whiteCard(
       context,
-      color: scheme.primary.withValues(alpha: 0.04),
+      color: AppColors.tint(context, scheme.primary, 0.04),
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Row(
@@ -313,7 +360,7 @@ class _NetFeeScreenState extends ConsumerState<NetFeeScreen> {
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              color: scheme.primary.withValues(alpha: 0.08),
+              color: AppColors.tint(context, scheme.primary, 0.08),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
@@ -361,8 +408,8 @@ class _NetFeeScreenState extends ConsumerState<NetFeeScreen> {
     final type = record.feeType.isNotEmpty
         ? record.feeType
         : record.businessType;
-    if (type.contains('储值') || type.contains('充值')) return '网费充值';
-    return type.isEmpty ? '网费记录' : type;
+    if (type.contains('储值') || type.contains('充值')) return '校园网充值';
+    return type.isEmpty ? '校园网记录' : type;
   }
 
   String _fmtTime(DateTime t) {
@@ -524,6 +571,7 @@ class _NetFeeScreenState extends ConsumerState<NetFeeScreen> {
   }
 
   Widget _errorCard(
+    BuildContext context,
     ColorScheme scheme,
     IconData icon,
     String message, {
@@ -534,12 +582,12 @@ class _NetFeeScreenState extends ConsumerState<NetFeeScreen> {
       decoration: BoxDecoration(
         color: light
             ? scheme.surfaceContainerHighest.withValues(alpha: 0.5)
-            : scheme.error.withValues(alpha: 0.06),
+            : AppColors.tint(context, scheme.error, 0.06),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: light
               ? scheme.outlineVariant
-              : scheme.error.withValues(alpha: 0.35),
+              : AppColors.tintBorder(context, scheme.error, 0.35),
         ),
       ),
       child: Row(

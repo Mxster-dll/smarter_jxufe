@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/design/app_card.dart';
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/data_center/data/models/data_center_models.dart';
 import 'package:smarter_jxufe/features/data_center/data/providers/data_center_providers.dart';
+import 'package:smarter_jxufe/design/pane_chrome.dart';
+import 'package:smarter_jxufe/features/settings/domain/settings_section.dart';
 
 /// 学生个人数据中心（dzj.jxufe.edu.cn）原生聚合页。
 ///
@@ -18,8 +21,9 @@ class DataCenterScreen extends ConsumerWidget {
     final overviewAsync = ref.watch(dataCenterOverviewProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        // 内嵌进主页右侧面板时（该面板路由栈的首页）不画返回按钮，见 §17.7。
+      appBar: paneAppBar(
+        context,
+        // 内嵌进主页右侧面板时（该面板路由栈的首页）整条导航栏都不画，见 §17.7 / §19。
         leading: Navigator.of(context).canPop()
             ? IconButton(
                 icon: const Icon(Icons.arrow_back),
@@ -27,6 +31,8 @@ class DataCenterScreen extends ConsumerWidget {
               )
             : null,
         title: const Text('学生个人数据中心'),
+        // 本页数据（校园网余额等）依赖平台标识（GUID）。
+        settingsSections: const [SettingsSection.platformGuid],
         centerTitle: true,
       ),
       body: overviewAsync.when(
@@ -46,14 +52,18 @@ class DataCenterScreen extends ConsumerWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                Icon(
+                  Icons.error_outline,
+                  size: 48,
+                  color: AppColors.critical(context),
+                ),
                 const SizedBox(height: 16),
                 Text('加载失败', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
                 Text(
                   error.toString(),
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey[600]),
+                  style: TextStyle(color: AppColors.textMuted(context)),
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton.icon(
@@ -109,13 +119,13 @@ class DataCenterScreen extends ConsumerWidget {
           children: [
             CircleAvatar(
               radius: 26,
-              backgroundColor: Colors.indigo[100],
+              backgroundColor: AppColors.infoFill(context),
               child: Text(
                 name.characters.first,
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  color: Colors.indigo[800],
+                  color: AppColors.info(context),
                 ),
               ),
             ),
@@ -134,11 +144,11 @@ class DataCenterScreen extends ConsumerWidget {
                   const SizedBox(height: 2),
                   Text(
                     '校园卡号 ${o.userid}',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    style: TextStyle(fontSize: 12, color: AppColors.textMuted(context)),
                   ),
                   Text(
                     o.college,
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    style: TextStyle(fontSize: 12, color: AppColors.textMuted(context)),
                   ),
                   if (o.advisorName.isNotEmpty) ...[
                     const SizedBox(height: 4),
@@ -147,14 +157,14 @@ class DataCenterScreen extends ConsumerWidget {
                         Icon(
                           Icons.person_outline,
                           size: 13,
-                          color: Colors.grey[500],
+                          color: AppColors.textMuted(context),
                         ),
                         const SizedBox(width: 4),
                         Text(
                           '班主任 ${o.advisorName}${o.advisorPhone.isNotEmpty ? ' · ${o.advisorPhone}' : ''}',
                           style: TextStyle(
                             fontSize: 11.5,
-                            color: Colors.blueGrey[600],
+                            color: AppColors.textMuted(context),
                           ),
                         ),
                       ],
@@ -181,7 +191,7 @@ class DataCenterScreen extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.event_note, size: 18, color: Colors.blue[700]),
+                Icon(Icons.event_note, size: 18, color: AppColors.info(context)),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
@@ -195,7 +205,7 @@ class DataCenterScreen extends ConsumerWidget {
                 if (o.weekDays.isNotEmpty)
                   Text(
                     '今日 ${o.todayClassCount} 节',
-                    style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                    style: TextStyle(fontSize: 11, color: AppColors.textMuted(context)),
                   ),
               ],
             ),
@@ -204,7 +214,7 @@ class DataCenterScreen extends ConsumerWidget {
                 padding: const EdgeInsets.only(top: 6),
                 child: Text(
                   '暂无课程安排',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                  style: TextStyle(fontSize: 12, color: AppColors.textMuted(context)),
                 ),
               )
             else
@@ -220,15 +230,19 @@ class DataCenterScreen extends ConsumerWidget {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.blue[50],
+                        color: AppColors.infoFill(context),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.blue[100]!),
+                        border: Border.all(
+                          color: AppColors.info(
+                            context,
+                          ).withValues(alpha: 0.30),
+                        ),
                       ),
                       child: Text(
                         d.weekday,
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.blueGrey[800],
+                          color: AppColors.textMuted(context),
                         ),
                       ),
                     );
@@ -252,7 +266,11 @@ class DataCenterScreen extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.menu_book, size: 18, color: Colors.deepPurple[500]),
+                Icon(
+                  Icons.menu_book,
+                  size: 18,
+                  color: AppColors.tone(context, Colors.deepPurple[500]!),
+                ),
                 const SizedBox(width: 6),
                 const Text(
                   '学业情况',
@@ -268,31 +286,31 @@ class DataCenterScreen extends ConsumerWidget {
                   label: '加权平均',
                   value: _fmt(o.weightedScore),
                   unit: '分',
-                  color: Colors.deepPurple[600]!,
+                  color: AppColors.tone(context, Colors.deepPurple[600]!),
                 ),
-                _scoreDivider(),
+                _scoreDivider(context),
                 _scoreCell(
                   context,
                   label: '平均绩点',
                   value: _fmt(o.gpa),
                   unit: '',
-                  color: Colors.indigo[600]!,
+                  color: AppColors.tone(context, Colors.indigo[600]!),
                 ),
-                _scoreDivider(),
+                _scoreDivider(context),
                 _scoreCell(
                   context,
                   label: '修读学分',
                   value: _fmt(o.semesterCredit),
                   unit: '本学年',
-                  color: Colors.teal[600]!,
+                  color: AppColors.tone(context, Colors.teal[600]!),
                 ),
-                _scoreDivider(),
+                _scoreDivider(context),
                 _scoreCell(
                   context,
                   label: '已获学分',
                   value: _fmt(o.earnedCredit),
                   unit: '初修',
-                  color: Colors.orange[700]!,
+                  color: AppColors.caution(context),
                 ),
               ],
             ),
@@ -327,7 +345,11 @@ class DataCenterScreen extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.people_outline, size: 18, color: Colors.pink[400]),
+                Icon(
+                  Icons.people_outline,
+                  size: 18,
+                  color: AppColors.tone(context, Colors.pink[400]!),
+                ),
                 const SizedBox(width: 6),
                 const Text(
                   '校内关系',
@@ -339,7 +361,7 @@ class DataCenterScreen extends ConsumerWidget {
             if (!hasData)
               Text(
                 '暂无关系数据',
-                style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                style: TextStyle(fontSize: 12, color: AppColors.textMuted(context)),
               )
             else
               Wrap(
@@ -353,9 +375,17 @@ class DataCenterScreen extends ConsumerWidget {
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.pink[50],
+                      color: AppColors.statusFill(
+                        context,
+                        AppColors.tone(context, Colors.pink[700]!),
+                      ),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.pink[100]!),
+                      border: Border.all(
+                        color: AppColors.tone(
+                          context,
+                          Colors.pink[400]!,
+                        ).withValues(alpha: 0.30),
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -366,8 +396,8 @@ class DataCenterScreen extends ConsumerWidget {
                             fontSize: 15,
                             fontWeight: FontWeight.bold,
                             color: value > 0
-                                ? Colors.pink[700]
-                                : Colors.grey[400],
+                                ? AppColors.tone(context, Colors.pink[700]!)
+                                : AppColors.textMuted(context),
                           ),
                         ),
                         const SizedBox(height: 1),
@@ -375,7 +405,7 @@ class DataCenterScreen extends ConsumerWidget {
                           e.$2,
                           style: TextStyle(
                             fontSize: 11,
-                            color: Colors.blueGrey[700],
+                            color: AppColors.textMuted(context),
                           ),
                         ),
                       ],
@@ -400,7 +430,7 @@ class DataCenterScreen extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.speed, size: 18, color: Colors.blueGrey[600]),
+                Icon(Icons.speed, size: 18, color: AppColors.textMuted(context)),
                 const SizedBox(width: 6),
                 const Text(
                   '基础指标',
@@ -416,31 +446,31 @@ class DataCenterScreen extends ConsumerWidget {
                   label: '校园卡余额',
                   value: _fmt(o.cardBalance),
                   unit: '元',
-                  color: Colors.green[700]!,
+                  color: AppColors.success(context),
                 ),
-                _scoreDivider(),
+                _scoreDivider(context),
                 _scoreCell(
                   context,
                   label: '今日进出校门',
                   value: _fmt(o.gateToday),
                   unit: '次',
-                  color: Colors.blue[700]!,
+                  color: AppColors.info(context),
                 ),
-                _scoreDivider(),
+                _scoreDivider(context),
                 _scoreCell(
                   context,
                   label: '今日登录门户',
                   value: _fmt(o.todayLoginCount),
                   unit: '次',
-                  color: Colors.orange[700]!,
+                  color: AppColors.caution(context),
                 ),
-                _scoreDivider(),
+                _scoreDivider(context),
                 _scoreCell(
                   context,
-                  label: '网费余额',
+                  label: '校园网余额',
                   value: _fmt(o.networkBalance),
                   unit: '元',
-                  color: Colors.cyan[800]!,
+                  color: AppColors.tone(context, Colors.cyan[800]!),
                 ),
               ],
             ),
@@ -462,7 +492,11 @@ class DataCenterScreen extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.credit_card, size: 18, color: Colors.red[600]),
+                Icon(
+                  Icons.credit_card,
+                  size: 18,
+                  color: AppColors.critical(context),
+                ),
                 const SizedBox(width: 6),
                 const Text(
                   '校园卡消费',
@@ -478,23 +512,23 @@ class DataCenterScreen extends ConsumerWidget {
                   label: '本年消费',
                   value: _fmt(o.spendYear),
                   unit: '元',
-                  color: Colors.red[600]!,
+                  color: AppColors.critical(context),
                 ),
-                _scoreDivider(),
+                _scoreDivider(context),
                 _scoreCell(
                   context,
                   label: '当月消费',
                   value: _fmt(o.spendMonth),
                   unit: '元',
-                  color: Colors.orange[700]!,
+                  color: AppColors.caution(context),
                 ),
-                _scoreDivider(),
+                _scoreDivider(context),
                 _scoreCell(
                   context,
                   label: '本周消费',
                   value: _fmt(o.spendWeek),
                   unit: '元',
-                  color: Colors.amber[800]!,
+                  color: AppColors.caution(context),
                 ),
               ],
             ),
@@ -502,10 +536,12 @@ class DataCenterScreen extends ConsumerWidget {
               const SizedBox(height: 12),
               Text(
                 '最近消费',
-                style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                style: TextStyle(fontSize: 11, color: AppColors.textMuted(context)),
               ),
               const SizedBox(height: 6),
-              ...o.consumeRecords.take(5).map((r) => _buildConsumeTile(r)),
+              ...o.consumeRecords.take(5).map(
+                (r) => _buildConsumeTile(context, r),
+              ),
             ],
           ],
         ),
@@ -513,14 +549,14 @@ class DataCenterScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildConsumeTile(DzjConsumeRecord r) {
+  Widget _buildConsumeTile(BuildContext context, DzjConsumeRecord r) {
     return Container(
       margin: const EdgeInsets.only(bottom: 5),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: AppColors.fillSoft(context),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[200]!),
+        border: Border.all(color: AppColors.stroke(context)),
       ),
       child: Row(
         children: [
@@ -531,7 +567,7 @@ class DataCenterScreen extends ConsumerWidget {
                 Text(r.shopName, style: const TextStyle(fontSize: 12.5)),
                 Text(
                   r.time,
-                  style: TextStyle(fontSize: 10.5, color: Colors.grey[500]),
+                  style: TextStyle(fontSize: 10.5, color: AppColors.textMuted(context)),
                 ),
               ],
             ),
@@ -542,7 +578,7 @@ class DataCenterScreen extends ConsumerWidget {
             style: TextStyle(
               fontSize: 13.5,
               fontWeight: FontWeight.bold,
-              color: Colors.red[600],
+              color: AppColors.critical(context),
             ),
           ),
         ],
@@ -559,7 +595,11 @@ class DataCenterScreen extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
         child: Row(
           children: [
-            Icon(Icons.menu_book_outlined, size: 18, color: Colors.brown[600]),
+            Icon(
+              Icons.menu_book_outlined,
+              size: 18,
+              color: AppColors.tone(context, Colors.brown[600]!),
+            ),
             const SizedBox(width: 6),
             const Text(
               '本学期教材',
@@ -571,15 +611,15 @@ class DataCenterScreen extends ConsumerWidget {
               label: '教材费用',
               value: _fmt(o.textbookFee),
               unit: '元',
-              color: Colors.brown[600]!,
+              color: AppColors.tone(context, Colors.brown[600]!),
             ),
-            _scoreDivider(),
+            _scoreDivider(context),
             _scoreCell(
               context,
               label: '教材数量',
               value: _fmt(o.textbookCount),
               unit: '本',
-              color: Colors.brown[700]!,
+              color: AppColors.tone(context, Colors.brown[700]!),
             ),
           ],
         ),
@@ -600,7 +640,7 @@ class DataCenterScreen extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.local_library, size: 18, color: Colors.teal[700]),
+                Icon(Icons.local_library, size: 18, color: AppColors.tone(context, Colors.teal[700]!)),
                 const SizedBox(width: 6),
                 const Text(
                   '图书借阅',
@@ -621,14 +661,14 @@ class DataCenterScreen extends ConsumerWidget {
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: count > 0
-                              ? Colors.teal[700]
-                              : Colors.grey[400],
+                              ? AppColors.tone(context, Colors.teal[700]!)
+                              : AppColors.textMuted(context),
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         label,
-                        style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                        style: TextStyle(fontSize: 11, color: AppColors.textMuted(context)),
                       ),
                     ],
                   ),
@@ -656,7 +696,7 @@ class DataCenterScreen extends ConsumerWidget {
                 Icon(
                   Icons.emoji_events_outlined,
                   size: 18,
-                  color: Colors.amber[800],
+                  color: AppColors.caution(context),
                 ),
                 const SizedBox(width: 6),
                 const Text(
@@ -669,7 +709,7 @@ class DataCenterScreen extends ConsumerWidget {
             if (o.awards.isEmpty)
               Text(
                 '暂无奖助贷勤记录',
-                style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                style: TextStyle(fontSize: 12, color: AppColors.textMuted(context)),
               )
             else
               ...o.awards.map(
@@ -681,7 +721,7 @@ class DataCenterScreen extends ConsumerWidget {
                       Icon(
                         Icons.arrow_right,
                         size: 15,
-                        color: Colors.grey[400],
+                        color: AppColors.textMuted(context),
                       ),
                       const SizedBox(width: 2),
                       Expanded(
@@ -689,7 +729,7 @@ class DataCenterScreen extends ConsumerWidget {
                           a,
                           style: TextStyle(
                             fontSize: 12.5,
-                            color: Colors.grey[800],
+                            color: AppColors.textMuted(context),
                             height: 1.4,
                           ),
                         ),
@@ -716,7 +756,7 @@ class DataCenterScreen extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.timeline, size: 18, color: Colors.indigo[400]),
+                Icon(Icons.timeline, size: 18, color: AppColors.tone(context, Colors.indigo[400]!)),
                 const SizedBox(width: 6),
                 const Text(
                   '门户登录趋势（本周）',
@@ -728,7 +768,7 @@ class DataCenterScreen extends ConsumerWidget {
             if (o.loginTrend.isEmpty)
               Text(
                 '暂无登录数据',
-                style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                style: TextStyle(fontSize: 12, color: AppColors.textMuted(context)),
               )
             else
               Row(
@@ -749,8 +789,8 @@ class DataCenterScreen extends ConsumerWidget {
                             style: TextStyle(
                               fontSize: 10,
                               color: d.count > 0
-                                  ? Colors.indigo[700]
-                                  : Colors.grey[400],
+                                  ? AppColors.tone(context, Colors.indigo[700]!)
+                                  : AppColors.textMuted(context),
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -761,8 +801,8 @@ class DataCenterScreen extends ConsumerWidget {
                               height: height.clamp(2, 60),
                               decoration: BoxDecoration(
                                 color: d.count > 0
-                                    ? Colors.indigo[400]
-                                    : Colors.grey[200],
+                                    ? AppColors.tone(context, Colors.indigo[400]!)
+                                    : AppColors.fillStrong(context),
                                 borderRadius: const BorderRadius.vertical(
                                   top: Radius.circular(3),
                                 ),
@@ -774,7 +814,7 @@ class DataCenterScreen extends ConsumerWidget {
                             d.weekday.replaceAll('星期', '周'),
                             style: TextStyle(
                               fontSize: 9.5,
-                              color: Colors.grey[600],
+                              color: AppColors.textMuted(context),
                             ),
                           ),
                         ],
@@ -801,7 +841,7 @@ class DataCenterScreen extends ConsumerWidget {
     return Expanded(
       child: Column(
         children: [
-          Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+          Text(label, style: TextStyle(fontSize: 11, color: AppColors.textMuted(context))),
           const SizedBox(height: 4),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -819,7 +859,7 @@ class DataCenterScreen extends ConsumerWidget {
               if (unit.isNotEmpty)
                 Text(
                   unit,
-                  style: TextStyle(fontSize: 9.5, color: Colors.grey[500]),
+                  style: TextStyle(fontSize: 9.5, color: AppColors.textMuted(context)),
                 ),
             ],
           ),
@@ -828,8 +868,12 @@ class DataCenterScreen extends ConsumerWidget {
     );
   }
 
-  Widget _scoreDivider() {
-    return Container(width: 1, height: 32, color: Colors.grey[200]);
+  Widget _scoreDivider(BuildContext context) {
+    return Container(
+      width: 1,
+      height: 32,
+      color: AppColors.stroke(context),
+    );
   }
 
   static String _fmt(double v) {

@@ -6,32 +6,34 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/features/campus_address/domain/my_campus.dart';
-
-const _accent = FeaturePalette.cardAccent;
 
 /// 「我的校区」徽标（图钉 + 文字）。
 ///
 /// [onImage] 为真时用实底白字，供压在图片上时保证可读性；否则用浅底彩字。
 Widget myCampusBadge(BuildContext context, {bool onImage = false}) {
+  // 强调色 = 主题强调色 `fp(context).cardAccent`（浅色校红 / 深色亮红）。
+  final accent = fp(context).cardAccent;
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
     decoration: BoxDecoration(
-      color: onImage ? _accent : _accent.withValues(alpha: 0.10),
+      color: onImage ? accent : AppColors.tint(context, accent, 0.10),
       borderRadius: BorderRadius.circular(999),
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.push_pin, size: 11, color: onImage ? Colors.white : _accent),
+        // 压在图片上时是「固定彩色底上的白字」→ 保持 Colors.white 不动。
+        Icon(Icons.push_pin, size: 11, color: onImage ? Colors.white : accent),
         const SizedBox(width: 4),
         Text(
           '我的校区',
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w500,
-            color: onImage ? Colors.white : _accent,
+            color: onImage ? Colors.white : accent,
           ),
         ),
       ],
@@ -48,6 +50,7 @@ Widget myCampusHint(
   required List<String> pinnedNames,
 }) {
   final scheme = Theme.of(context).colorScheme;
+  final accent = fp(context).cardAccent;
   final isSet = mine != null;
   final text = !isSet
       ? '未设置我的校区 · 可在「设置」中指定，本列表将自动置顶对应条目'
@@ -62,7 +65,7 @@ Widget myCampusHint(
         child: Icon(
           isSet ? Icons.push_pin_outlined : Icons.info_outline,
           size: 15,
-          color: isSet ? _accent : scheme.onSurfaceVariant,
+          color: isSet ? accent : scheme.onSurfaceVariant,
         ),
       ),
       const SizedBox(width: 6),
@@ -72,7 +75,7 @@ Widget myCampusHint(
           style: TextStyle(
             fontSize: 12,
             height: 16 / 12,
-            color: isSet ? _accent : scheme.onSurfaceVariant,
+            color: isSet ? accent : scheme.onSurfaceVariant,
           ),
         ),
       ),

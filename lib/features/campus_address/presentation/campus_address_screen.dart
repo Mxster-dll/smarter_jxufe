@@ -3,11 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/design/app_card.dart';
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/features/campus_address/data/my_campus_prefs.dart';
 import 'package:smarter_jxufe/features/campus_address/domain/campus_address.dart';
 import 'package:smarter_jxufe/features/campus_address/domain/my_campus.dart';
 import 'package:smarter_jxufe/features/campus_address/presentation/my_campus_widgets.dart';
+import 'package:smarter_jxufe/design/pane_chrome.dart';
+import 'package:smarter_jxufe/features/settings/domain/settings_section.dart';
 
 /// 学校地址：展示四个校区（蛟桥园 / 青山园 / 麦庐园 / 枫林园）的
 /// 地址与邮编，点击卡片右上角可一键复制整条校区信息。
@@ -44,7 +47,12 @@ class CampusAddressScreen extends ConsumerWidget {
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('学校地址'), centerTitle: true),
+      appBar: paneAppBar(
+        context,
+        title: const Text('学校地址'),
+        centerTitle: true,
+        settingsSections: const [SettingsSection.campus],
+      ),
       body: ListView.separated(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
         // 第 0 项是「我的校区」状态提示行，其后是校区卡片。
@@ -56,13 +64,13 @@ class CampusAddressScreen extends ConsumerWidget {
           }
           final c = ordered[index - 1];
           final pinned = isMine(c);
-          final accent = pinned ? FeaturePalette.cardAccent : scheme.primary;
+          final accent = pinned ? fp(context).cardAccent : scheme.primary;
           return Material(
             color: Theme.of(context).cardTheme.color,
             shape: pinned
-                ? appCardShape(
-                    context,
-                  ).copyWith(side: BorderSide(color: FeaturePalette.cardAccent))
+                ? appCardShape(context).copyWith(
+                    side: BorderSide(color: fp(context).cardAccent),
+                  )
                 : appCardShape(context),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
@@ -76,7 +84,7 @@ class CampusAddressScreen extends ConsumerWidget {
                       width: 42,
                       height: 42,
                       decoration: BoxDecoration(
-                        color: accent.withValues(alpha: 0.10),
+                        color: AppColors.tint(context, accent, 0.10),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(
@@ -107,7 +115,11 @@ class CampusAddressScreen extends ConsumerWidget {
                                   vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: scheme.primary.withValues(alpha: 0.08),
+                                  color: AppColors.tint(
+                                    context,
+                                    scheme.primary,
+                                    0.08,
+                                  ),
                                   borderRadius: BorderRadius.circular(999),
                                 ),
                                 child: Text(

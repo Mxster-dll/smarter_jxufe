@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smarter_jxufe/core/network/dio_providers.dart';
 import 'package:smarter_jxufe/core/platform/file_share.dart';
 import 'package:smarter_jxufe/design/app_card.dart';
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/volunteer_activity.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/providers/volunteer_hours_providers.dart';
+import 'package:smarter_jxufe/design/pane_chrome.dart';
 
 class VolunteerHoursScreen extends ConsumerStatefulWidget {
   const VolunteerHoursScreen({super.key});
@@ -24,53 +26,63 @@ class _VolunteerHoursScreenState extends ConsumerState<VolunteerHoursScreen> {
     final activitiesAsync = ref.watch(volunteerActivitiesProvider);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: paneAppBar(
+        context,
         title: const Text('学生活动时长统计'),
         centerTitle: true,
         actions: [_buildExportAction()],
       ),
-      body: activitiesAsync.when(
-        loading: () => const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('正在加载志愿服务数据...'),
-            ],
-          ),
-        ),
-        error: (error, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
+      body: PaneBody(
+        actions: [_buildExportAction()],
+        padding: EdgeInsets.zero,
+        child: activitiesAsync.when(
+          loading: () => const Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                const SizedBox(height: 16),
-                Text('加载失败', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 8),
-                Text(
-                  error.toString(),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey[600]),
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton.icon(
-                  onPressed: () => ref.invalidate(volunteerActivitiesProvider),
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('重试'),
-                ),
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('正在加载志愿服务数据...'),
               ],
             ),
           ),
+          error: (error, _) => Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    size: 48,
+                    color: AppColors.critical(context),
+                  ),
+                  const SizedBox(height: 16),
+                  Text('加载失败', style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 8),
+                  Text(
+                    error.toString(),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppColors.textMuted(context)),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: () =>
+                        ref.invalidate(volunteerActivitiesProvider),
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('重试'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          data: (activities) {
+            if (activities.isEmpty) {
+              return const Center(child: Text('暂无志愿活动数据'));
+            }
+            return _buildActivityList(context, activities);
+          },
         ),
-        data: (activities) {
-          if (activities.isEmpty) {
-            return const Center(child: Text('暂无志愿活动数据'));
-          }
-          return _buildActivityList(context, activities);
-        },
       ),
     );
   }
@@ -191,7 +203,10 @@ class _VolunteerHoursScreenState extends ConsumerState<VolunteerHoursScreen> {
             children: [
               Text(
                 '共 ${activities.length} 条记录',
-                style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                style: TextStyle(
+                  color: AppColors.textMuted(context),
+                  fontSize: 13,
+                ),
               ),
               const Spacer(),
               TextButton.icon(
@@ -309,7 +324,7 @@ class _VolunteerHoursScreenState extends ConsumerState<VolunteerHoursScreen> {
                       child: Container(
                         height: 8,
                         decoration: BoxDecoration(
-                          color: Colors.grey[200],
+                          color: AppColors.fillStrong(context),
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
@@ -324,8 +339,8 @@ class _VolunteerHoursScreenState extends ConsumerState<VolunteerHoursScreen> {
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              Colors.orange[400]!,
-                              Colors.deepOrange[600]!,
+                              AppColors.tone(context, Colors.orange[400]!),
+                              AppColors.tone(context, Colors.deepOrange[600]!),
                             ],
                           ),
                           borderRadius: BorderRadius.circular(4),
@@ -350,8 +365,11 @@ class _VolunteerHoursScreenState extends ConsumerState<VolunteerHoursScreen> {
                                     ? FontWeight.bold
                                     : FontWeight.normal,
                                 color: clamped >= milestones[i]
-                                    ? Colors.deepOrange[700]
-                                    : Colors.grey[500],
+                                    ? AppColors.tone(
+                                        context,
+                                        Colors.deepOrange[700]!,
+                                      )
+                                    : AppColors.textMuted(context),
                               ),
                             ),
                             const SizedBox(height: 3),
@@ -361,12 +379,21 @@ class _VolunteerHoursScreenState extends ConsumerState<VolunteerHoursScreen> {
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: clamped >= milestones[i]
-                                    ? Colors.deepOrange[600]
-                                    : Colors.grey[350],
+                                    ? AppColors.tone(
+                                        context,
+                                        Colors.deepOrange[600]!,
+                                      )
+                                    // 原写法 `Colors.grey[350]` 是不存在的档位，
+                                    // `MaterialColor[]` 返回 null → 该圆点本就无填充。
+                                    // 保留「无填充」语义，避免改变浅色渲染结果。
+                                    : null,
                                 border: Border.all(
                                   color: clamped >= milestones[i]
-                                      ? Colors.deepOrange[700]!
-                                      : Colors.grey[400]!,
+                                      ? AppColors.tone(
+                                          context,
+                                          Colors.deepOrange[700]!,
+                                        )
+                                      : AppColors.stroke(context),
                                   width: 2,
                                 ),
                               ),
@@ -377,8 +404,14 @@ class _VolunteerHoursScreenState extends ConsumerState<VolunteerHoursScreen> {
                               style: TextStyle(
                                 fontSize: 9,
                                 color: clamped >= milestones[i]
-                                    ? Colors.deepOrange[400]
-                                    : Colors.grey[400],
+                                    ? AppColors.tone(
+                                        context,
+                                        Colors.deepOrange[400]!,
+                                      )
+                                    : AppColors.tone(
+                                        context,
+                                        Colors.grey[400]!,
+                                      ),
                               ),
                             ),
                           ],
@@ -400,7 +433,7 @@ class _VolunteerHoursScreenState extends ConsumerState<VolunteerHoursScreen> {
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.red[700],
+                                  color: AppColors.critical(context),
                                 ),
                               ),
                               const SizedBox(height: 17),
@@ -410,7 +443,10 @@ class _VolunteerHoursScreenState extends ConsumerState<VolunteerHoursScreen> {
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
-                                  color: Colors.red[400],
+                                  color: AppColors.tone(
+                                    context,
+                                    Colors.red[400]!,
+                                  ),
                                 ),
                               ),
                             ],
@@ -485,6 +521,11 @@ class _VolunteerHoursScreenState extends ConsumerState<VolunteerHoursScreen> {
             // 信息区：一列四排
             _compactInfo(Icons.business_outlined, activity.department),
             _compactInfo(Icons.category_outlined, activity.activityCategory),
+            if (activity.activityTimeText.isNotEmpty)
+              _compactInfo(
+                Icons.schedule_outlined,
+                '活动时间：${activity.activityTimeText}',
+              ),
             _compactInfo(
               Icons.assignment_ind_outlined,
               '负责人：${activity.responsiblePerson}',
@@ -500,16 +541,18 @@ class _VolunteerHoursScreenState extends ConsumerState<VolunteerHoursScreen> {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.orange[50],
+                    color: AppColors.cautionFill(context),
                     borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: Colors.orange[200]!),
+                    border: Border.all(
+                      color: AppColors.tone(context, Colors.orange[200]!),
+                    ),
                   ),
                   child: Text(
                     '${activity.recognizedHours} 小时',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
-                      color: Colors.orange[800],
+                      color: AppColors.caution(context),
                     ),
                   ),
                 ),
@@ -532,7 +575,9 @@ class _VolunteerHoursScreenState extends ConsumerState<VolunteerHoursScreen> {
         children: [
           SizedBox(
             width: 14,
-            child: Icon(icon, size: 11, color: Colors.grey[450]),
+            // 原写法 `Colors.grey[450]` 是不存在的档位 → 得到 null → 该图标
+            // 一直走 IconTheme 默认色。删掉 `color` 保持渲染逐像素一致。
+            child: Icon(icon, size: 11),
           ),
           const SizedBox(width: 4),
           Expanded(
@@ -540,7 +585,10 @@ class _VolunteerHoursScreenState extends ConsumerState<VolunteerHoursScreen> {
               text,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+              style: TextStyle(
+                fontSize: 10,
+                color: AppColors.textMuted(context),
+              ),
             ),
           ),
         ],
@@ -556,10 +604,14 @@ class _VolunteerHoursScreenState extends ConsumerState<VolunteerHoursScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
       decoration: BoxDecoration(
-        color: isSuccess ? Colors.green[50] : Colors.grey[100],
+        color: isSuccess
+            ? AppColors.successFill(context)
+            : AppColors.fill(context),
         borderRadius: BorderRadius.circular(3),
         border: Border.all(
-          color: isSuccess ? Colors.green[300]! : Colors.grey[300]!,
+          color: isSuccess
+              ? AppColors.tone(context, Colors.green[300]!)
+              : AppColors.stroke(context),
         ),
       ),
       child: Text(
@@ -567,7 +619,9 @@ class _VolunteerHoursScreenState extends ConsumerState<VolunteerHoursScreen> {
         style: TextStyle(
           fontSize: 9,
           fontWeight: FontWeight.w500,
-          color: isSuccess ? Colors.green[700] : Colors.grey[600],
+          color: isSuccess
+              ? AppColors.success(context)
+              : AppColors.textMuted(context),
         ),
       ),
     );

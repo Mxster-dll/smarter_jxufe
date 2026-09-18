@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/design/app_card.dart';
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/school_calendar_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/wxcal_providers.dart';
 import 'package:smarter_jxufe/features/tice/data/models/tice_models.dart';
 import 'package:smarter_jxufe/features/tice/data/providers/tice_providers.dart';
 import 'package:smarter_jxufe/features/tice/data/tice_remote_datasource.dart';
 import 'package:smarter_jxufe/features/tice/data/tice_stu_num.dart';
+import 'package:smarter_jxufe/design/pane_chrome.dart';
 
 /// 体测成绩页（仅查当前登录账号本人）。
 ///
@@ -122,7 +124,7 @@ class _TiceScreenState extends ConsumerState<TiceScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('体测成绩'), centerTitle: true),
+      appBar: paneAppBar(context, title: const Text('体测成绩'), centerTitle: true),
       body: Column(
         children: [
           _buildYearBar(),
@@ -312,7 +314,7 @@ class _TiceScreenState extends ConsumerState<TiceScreen> {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: scheme.primary.withValues(alpha: 0.10),
+              color: AppColors.tint(context, scheme.primary, 0.10),
               borderRadius: BorderRadius.circular(22),
             ),
             alignment: Alignment.center,
@@ -394,11 +396,15 @@ class _TiceScreenState extends ConsumerState<TiceScreen> {
 
   Widget _sexChip(String sex) {
     final isMale = sex == '男';
-    final color = isMale ? const Color(0xFF1565C0) : const Color(0xFFAD1457);
+    // 男 = 信息蓝（= `Colors.blue.shade800`，浅色逐值不变）；
+    // 女 = 玫红，未登记进功能色板 → 走 `AppColors.tone` 深色下自动提亮。
+    final color = isMale
+        ? AppColors.info(context)
+        : AppColors.tone(context, const Color(0xFFAD1457));
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1.5),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
+        color: AppColors.tint(context, color, 0.10),
         borderRadius: BorderRadius.circular(5),
       ),
       child: Text(
@@ -472,11 +478,12 @@ class _TiceScreenState extends ConsumerState<TiceScreen> {
   /// 分级图例（<60 不及格 / 60-79 及格 / 80-89 良好 / ≥90 优秀）。
   Widget _buildLegendRow() {
     final scheme = Theme.of(context).colorScheme;
-    const legend = [
-      (Color(0xFFC62828), '不及格'),
-      (Color(0xFFEF6C00), '及格'),
-      (Color(0xFF0288D1), '良好'),
-      (Color(0xFF2E7D32), '优秀'),
+    final legend = <(Color, String)>[
+      (AppColors.critical(context), '不及格'),
+      (AppColors.caution(context), '及格'),
+      // `Colors.lightBlue.shade700`，未登记进功能色板 → tone 提亮。
+      (AppColors.tone(context, const Color(0xFF0288D1)), '良好'),
+      (AppColors.success(context), '优秀'),
     ];
     return Wrap(
       spacing: 14,
@@ -508,11 +515,11 @@ class _TiceScreenState extends ConsumerState<TiceScreen> {
   /// 分项迷你定位条：<60 不及格 / 60-79 及格 / 80-89 良好 / ≥90 优秀
   /// 按真实宽度比例分段，白点标记该项得分位置。
   Widget _buildItemBar(double score) {
-    const segments = [
-      (60, Color(0xFFC62828)),
-      (20, Color(0xFFEF6C00)),
-      (10, Color(0xFF0288D1)),
-      (10, Color(0xFF2E7D32)),
+    final segments = <(int, Color)>[
+      (60, AppColors.critical(context)),
+      (20, AppColors.caution(context)),
+      (10, AppColors.tone(context, const Color(0xFF0288D1))),
+      (10, AppColors.success(context)),
     ];
     final value = score.clamp(0.0, 100.0);
     return LayoutBuilder(
@@ -709,7 +716,7 @@ class _TiceScreenState extends ConsumerState<TiceScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: AppColors.tint(context, color, 0.12),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(

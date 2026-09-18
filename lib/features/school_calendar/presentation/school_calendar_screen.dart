@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/platform_guid/presentation/guid_guide_screen.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/calendar_prefs_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/school_calendar_providers.dart';
@@ -10,7 +11,8 @@ import 'package:smarter_jxufe/features/school_calendar/domain/calendar_day_mark.
 import 'package:smarter_jxufe/features/school_calendar/domain/school_calendar.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/wxcal_semester.dart';
 import 'package:smarter_jxufe/features/school_calendar/presentation/calendar_day_sheet.dart';
-import 'package:smarter_jxufe/features/settings/presentation/settings_screen.dart';
+import 'package:smarter_jxufe/features/settings/domain/settings_section.dart';
+import 'package:smarter_jxufe/design/pane_chrome.dart';
 
 /// 校历页：按「学年 × 学段」展示教务公开校历。
 ///
@@ -52,18 +54,12 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
     final markIndex = ref.watch(calendarMarkIndexProvider);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: paneAppBar(
+        context,
         title: const Text('校历'),
-        actions: [
-          // 显示偏好统一收拢在全局设置页「校历」节（约定：不再做 feature-local 设置弹层）。
-          IconButton(
-            tooltip: '设置',
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () => Navigator.of(
-              context,
-            ).push(MaterialPageRoute(builder: (_) => const SettingsScreen())),
-          ),
-        ],
+        // 显示偏好统一收拢在全局设置页「校历」节（约定：不再做 feature-local 设置
+        // 弹层），所以这里的设置按钮只显示那一节（按钮由 paneAppBar 自动追加）。
+        settingsSections: const [SettingsSection.calendar],
       ),
       body: Column(
         children: [
@@ -103,7 +99,7 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
 
     return Container(
       width: double.infinity,
-      color: Colors.white,
+      color: AppColors.card(context),
       padding: const EdgeInsets.fromLTRB(8, 2, 8, 10),
       child: Column(
         children: [
@@ -138,7 +134,7 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
                   selected: _xq == xq,
                   onSelected: (_) => setState(() => _xq = xq),
                   showCheckmark: false,
-                  selectedColor: scheme.primary.withValues(alpha: 0.10),
+                  selectedColor: AppColors.tint(context, scheme.primary, 0.10),
                   labelStyle: TextStyle(
                     color: _xq == xq ? scheme.primary : null,
                     fontWeight: _xq == xq ? FontWeight.w600 : FontWeight.w400,
@@ -168,7 +164,11 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, size: 44, color: Color(0xFFD9534F)),
+            Icon(
+              Icons.error_outline,
+              size: 44,
+              color: AppColors.critical(context),
+            ),
             const SizedBox(height: 12),
             Text(
               '校历加载失败',
@@ -247,7 +247,11 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
           decoration: BoxDecoration(
-            color: calendarMarkColor(kind).withValues(alpha: 0.12),
+            color: AppColors.tint(
+              context,
+              calendarMarkColor(context, kind),
+              0.12,
+            ),
             borderRadius: BorderRadius.circular(4),
           ),
           child: Text(
@@ -256,7 +260,7 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
               fontSize: 9,
               height: 1.05,
               fontWeight: FontWeight.w600,
-              color: calendarMarkColor(kind),
+              color: calendarMarkColor(context, kind),
             ),
           ),
         ),
@@ -314,7 +318,7 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
                 width: 92,
                 child: Text(
                   row.label,
-                  style: textTheme.bodyMedium?.copyWith(color: Colors.black54),
+                  style: textTheme.bodyMedium?.copyWith(color: AppColors.textMuted(context)),
                 ),
               ),
               Text(
@@ -334,7 +338,7 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
           padding: const EdgeInsets.symmetric(vertical: 3),
           child: Text(
             extra,
-            style: textTheme.bodySmall?.copyWith(color: Colors.black54),
+            style: textTheme.bodySmall?.copyWith(color: AppColors.textMuted(context)),
           ),
         ),
       );
@@ -491,7 +495,7 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
         padding: const EdgeInsets.only(bottom: 2),
         child: Text(
           '该学年校历以文字通知发布',
-          style: textTheme.bodySmall?.copyWith(color: Colors.black54),
+          style: textTheme.bodySmall?.copyWith(color: AppColors.textMuted(context)),
         ),
       ),
       for (final para in a.notes)
@@ -577,7 +581,7 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
                   '自动实时拉取最新学期，无需等待快照更新。',
                   style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
                     height: 1.6,
-                    color: Colors.black87,
+                    color: AppColors.textBase(context),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -595,7 +599,9 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
                   '留空并保存 = 回到内置快照。GUID 等同账号标识，请勿泄露。',
                   style: Theme.of(
                     ctx,
-                  ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
+                  ).textTheme.bodySmall?.copyWith(
+                    color: AppColors.textMuted(context),
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Align(
@@ -666,7 +672,7 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
             height: 32,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: scheme.primary.withValues(alpha: 0.08),
+              color: AppColors.tint(context, scheme.primary, 0.08),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(_eventIcon(e.text), size: 17, color: scheme.primary),
@@ -776,7 +782,7 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
                 line,
                 style: textTheme.bodySmall?.copyWith(
                   height: 1.6,
-                  color: Colors.black87,
+                  color: AppColors.textBase(context),
                 ),
               ),
             ),
@@ -856,7 +862,7 @@ class _MonthCard extends StatelessWidget {
             : Container(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                 decoration: BoxDecoration(
-                  color: scheme.primary.withValues(alpha: 0.10),
+                  color: AppColors.tint(context, scheme.primary, 0.10),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -936,7 +942,7 @@ class _MonthCard extends StatelessWidget {
         child: Text(
           text,
           style: textTheme.bodySmall?.copyWith(
-            color: isWeekend ? Colors.grey.shade400 : Colors.grey.shade600,
+            color: AppColors.textMuted(context),
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -944,9 +950,15 @@ class _MonthCard extends StatelessWidget {
     }
     if (text.isEmpty) return const SizedBox.shrink();
 
-    final color = isWeekend ? Colors.grey.shade400 : Colors.black87;
+    // 周末数字比工作日淡（原 grey400 vs black87 → 次级文字 vs 正文）。
+    final color = isWeekend
+        ? AppColors.textMuted(context)
+        : AppColors.textBase(context);
+    // 今天 = 画在**主题色实心圆**上的字。⚠ 这不是「固定彩色底」：`scheme.primary`
+    // 深色下是提亮后的亮红 #F2555A，写死白字只有 3.38:1（读不了）→ 必须用 onPrimary
+    // （深色下 = #1A1A1A 深字；浅色下 onPrimary 就是纯白，与原值逐像素相同）。
     final dayStyle = textTheme.bodySmall?.copyWith(
-      color: isToday ? Colors.white : color,
+      color: isToday ? scheme.onPrimary : color,
       fontWeight: bold || isToday ? FontWeight.w600 : FontWeight.w400,
     );
     final number = isToday
@@ -963,7 +975,7 @@ class _MonthCard extends StatelessWidget {
         : Text(text, style: dayStyle);
 
     final hasMark = mark != null && mark.hasBadge;
-    final badge = hasMark ? calendarBadge(mark, style) : null;
+    final badge = hasMark ? calendarBadge(context, mark, style) : null;
 
     Widget content;
     if (!hasMark) {
@@ -987,7 +999,7 @@ class _MonthCard extends StatelessWidget {
 
     // 整格淡色底：假期淡红、补课淡绿、其它淡蓝灰。
     final fill = (style == CalendarBadgeStyle.filledCell && hasMark)
-        ? calendarMarkColor(mark.kind).withValues(alpha: 0.09)
+        ? AppColors.tint(context, calendarMarkColor(context, mark.kind), 0.09)
         : null;
 
     return GestureDetector(
@@ -1056,7 +1068,7 @@ class _WhiteCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card(context),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: scheme.outlineVariant, width: 1),
       ),
