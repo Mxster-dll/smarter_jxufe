@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../../design/JxufeTheme.dart';
-
 /// 红头通知卡片：左侧朱红饰条 + 文号/标题 + 可折叠正文区。
 /// 内部自带展开收起，[children] 为通知区正文渲染序列。
 class NoticeCard extends StatefulWidget {
@@ -40,7 +38,7 @@ class _NoticeCardState extends State<NoticeCard> {
                     width: 4,
                     height: 26,
                     decoration: BoxDecoration(
-                      color: JxufeTheme.primaryColor,
+                      color: scheme.primary,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -53,7 +51,7 @@ class _NoticeCardState extends State<NoticeCard> {
                       style: TextStyle(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w700,
-                        color: JxufeTheme.primaryColor,
+                        color: scheme.primary,
                         letterSpacing: 0.5,
                       ),
                     ),

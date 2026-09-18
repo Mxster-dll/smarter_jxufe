@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:smarter_jxufe/design/JxufeTheme.dart';
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/qr_login_viewmodel.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/widgets/qr_code_display_strategies.dart';
 
@@ -28,6 +28,7 @@ class QrCodeCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(qrLoginViewModelProvider);
     final viewModel = ref.read(qrLoginViewModelProvider.notifier);
+    final scheme = Theme.of(context).colorScheme;
     const double sideLength = 200;
 
     final strategy = QrCodeDisplayStrategyFactory.createStrategy(state.status);
@@ -51,11 +52,11 @@ class QrCodeCard extends ConsumerWidget {
                     IconButton(
                       onPressed: () => viewModel.refresh(),
                       tooltip: '刷新',
-                      hoverColor: JxufeTheme.secondaryColor.withAlpha(40),
-                      icon: const Icon(
+                      hoverColor: scheme.primary.withAlpha(40),
+                      icon: Icon(
                         Icons.refresh_rounded,
                         size: 20,
-                        color: JxufeTheme.secondaryColor,
+                        color: scheme.primary,
                       ),
                     ),
                   ],
@@ -112,11 +113,11 @@ class QrCodeCard extends ConsumerWidget {
                   child: Text.rich(
                     TextSpan(
                       children: [
-                        const TextSpan(
+                        TextSpan(
                           text: '使用 ',
                           style: TextStyle(
                             fontSize: 13,
-                            color: JxufeTheme.hintColor,
+                            color: AppColors.textMuted(context),
                           ),
                         ),
                         const TextSpan(
@@ -127,11 +128,11 @@ class QrCodeCard extends ConsumerWidget {
                             color: Color(0xFF14c468),
                           ),
                         ),
-                        const TextSpan(
+                        TextSpan(
                           text: ' 或 ',
                           style: TextStyle(
                             fontSize: 13,
-                            color: JxufeTheme.hintColor,
+                            color: AppColors.textMuted(context),
                           ),
                         ),
                         const TextSpan(
@@ -142,11 +143,11 @@ class QrCodeCard extends ConsumerWidget {
                             color: Color(0xFF73A9EC),
                           ),
                         ),
-                        const TextSpan(
+                        TextSpan(
                           text: ' 扫码以完成验证',
                           style: TextStyle(
                             fontSize: 13,
-                            color: JxufeTheme.hintColor,
+                            color: AppColors.textMuted(context),
                           ),
                         ),
                       ],
@@ -165,9 +166,9 @@ class QrCodeCard extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: JxufeTheme.borderColor),
+        border: Border.all(color: AppColors.stroke(context)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withAlpha(8),

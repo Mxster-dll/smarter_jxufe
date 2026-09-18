@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:smarter_jxufe/design/JxufeTheme.dart';
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/Icons.dart';
 import 'package:smarter_jxufe/features/auth/presentation/login_state.dart';
 import 'package:smarter_jxufe/features/auth/presentation/login_viewmodel.dart';
@@ -40,20 +40,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
 
     return Scaffold(
-      backgroundColor: JxufeTheme.backgroundColor,
+      backgroundColor: AppColors.recessed(context),
       body: Stack(
         children: [
-          _buildBackgroundDecorations(),
+          _buildBackgroundDecorations(context),
           SingleChildScrollView(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               child: Column(
                 children: [
-                  _buildHeader(),
+                  _buildHeader(context),
                   const SizedBox(height: 60),
                   _buildLoginCard(context, state, viewModel),
                   const SizedBox(height: 40),
-                  _buildFooter(),
+                  _buildFooter(context),
                 ],
               ),
             ),
@@ -63,7 +63,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  Widget _buildBackgroundDecorations() {
+  Widget _buildBackgroundDecorations(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Stack(
       children: [
         Positioned(
@@ -73,7 +74,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             width: 150,
             height: 150,
             decoration: BoxDecoration(
-              color: JxufeTheme.primaryColor.withAlpha(26),
+              color: AppColors.tint(context, scheme.primary, 26 / 255),
               borderRadius: const BorderRadius.only(
                 bottomLeft: Radius.circular(100),
               ),
@@ -87,7 +88,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             width: 100,
             height: 100,
             decoration: BoxDecoration(
-              color: JxufeTheme.primaryColor.withAlpha(26),
+              color: AppColors.tint(context, scheme.primary, 26 / 255),
               borderRadius: const BorderRadius.only(
                 topRight: Radius.circular(100),
               ),
@@ -98,7 +99,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       margin: const EdgeInsets.only(top: 20, bottom: 40),
       child: Stack(
@@ -113,12 +115,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     width: 50,
                     height: 50,
                     decoration: BoxDecoration(
-                      color: JxufeTheme.primaryColor,
+                      color: scheme.primary,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.school_rounded,
-                      color: Colors.white,
+                      color: scheme.onPrimary,
                       size: 30,
                     ),
                   ),
@@ -131,7 +133,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
-                          color: JxufeTheme.textColor,
+                          color: AppColors.textBase(context),
                           height: 1.2,
                         ),
                       ),
@@ -139,7 +141,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         'Jiangxi University of Finance and Economics',
                         style: TextStyle(
                           fontSize: 12,
-                          color: JxufeTheme.hintColor,
+                          color: AppColors.textMuted(context),
                         ),
                       ),
                     ],
@@ -149,7 +151,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               const SizedBox(height: 24),
               Container(
                 height: 1,
-                color: JxufeTheme.borderColor,
+                color: AppColors.stroke(context),
                 margin: const EdgeInsets.symmetric(horizontal: 20),
               ),
               const SizedBox(height: 24),
@@ -178,7 +180,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return Container(
       width: 450,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card(context),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -193,9 +195,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildFormTitle(state.errorMessage, state.errorVersion),
+            _buildFormTitle(context, state.errorMessage, state.errorVersion),
             const SizedBox(height: 16),
-            _buildAccountField(state, viewModel),
+            _buildAccountField(context, state, viewModel),
             const SizedBox(height: 16),
             _buildPasswordField(context, state, viewModel),
             const SizedBox(height: 24),
@@ -208,7 +210,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  Widget _buildFormTitle(String? errorMessage, int errorVersion) {
+  Widget _buildFormTitle(
+    BuildContext context,
+    String? errorMessage,
+    int errorVersion,
+  ) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       margin: const EdgeInsets.only(bottom: 18),
       child: Row(
@@ -218,7 +225,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             width: 4,
             height: 18,
             decoration: BoxDecoration(
-              color: JxufeTheme.primaryColor,
+              color: scheme.primary,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -230,7 +237,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: JxufeTheme.textColor,
+                color: AppColors.textBase(context),
               ),
             ),
           ),
@@ -262,7 +269,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     child: _ShakingError(
                       errorMessage,
                       errorVersion,
-                      _buildErrorMsg,
+                      (msg) => _buildErrorMsg(context, msg),
                     ),
                   )
                 : const SizedBox.shrink(key: ValueKey('empty')),
@@ -272,10 +279,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  Widget _buildAccountField(LoginState state, LoginViewModel viewModel) {
+  Widget _buildAccountField(
+    BuildContext context,
+    LoginState state,
+    LoginViewModel viewModel,
+  ) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       decoration: BoxDecoration(
-        color: JxufeTheme.inputBgColor,
+        color: AppColors.fill(context),
         borderRadius: BorderRadius.circular(8),
       ),
       child: TextField(
@@ -284,7 +296,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         textInputAction: TextInputAction.next,
         decoration: InputDecoration(
           hintText: '请输入校园卡号',
-          hintStyle: TextStyle(color: JxufeTheme.hintColor),
+          hintStyle: TextStyle(color: AppColors.textMuted(context)),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
@@ -292,10 +304,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
           prefixIcon: Icon(
             Icons.person_outline_rounded,
-            color: JxufeTheme.primaryColor.withAlpha(96),
+            color: scheme.primary.withAlpha(96),
           ),
         ),
-        style: TextStyle(color: JxufeTheme.textColor),
+        style: TextStyle(color: AppColors.textBase(context)),
         keyboardType: TextInputType.text,
       ),
     );
@@ -306,9 +318,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     LoginState state,
     LoginViewModel viewModel,
   ) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       decoration: BoxDecoration(
-        color: JxufeTheme.inputBgColor,
+        color: AppColors.fill(context),
         borderRadius: BorderRadius.circular(8),
       ),
       child: TextField(
@@ -316,7 +329,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         onChanged: (value) => viewModel.updatePassword(value),
         decoration: InputDecoration(
           hintText: '请输入登录密码',
-          hintStyle: TextStyle(color: JxufeTheme.hintColor),
+          hintStyle: TextStyle(color: AppColors.textMuted(context)),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
@@ -324,45 +337,48 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
           prefixIcon: Icon(
             Icons.lock_outline_rounded,
-            color: JxufeTheme.primaryColor.withAlpha(96),
+            color: scheme.primary.withAlpha(96),
           ),
           suffixIcon: IconButton(
             icon: Icon(
               state.passwordVisible
                   ? Icons.visibility_outlined
                   : Icons.visibility_off_outlined,
-              color: JxufeTheme.hintColor,
+              color: AppColors.textMuted(context),
             ),
             onPressed: viewModel.togglePasswordVisibility,
           ),
         ),
-        style: TextStyle(color: JxufeTheme.textColor),
+        style: TextStyle(color: AppColors.textBase(context)),
         obscureText: !state.passwordVisible,
         onSubmitted: (_) => viewModel.login(context),
       ),
     );
   }
 
-  Widget _buildErrorMsg(String msg) {
+  Widget _buildErrorMsg(BuildContext context, String msg) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 12, 16, 12),
       decoration: BoxDecoration(
-        color: JxufeTheme.primaryColor.withAlpha(20),
+        color: AppColors.tint(context, scheme.primary, 20 / 255),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: JxufeTheme.primaryColor.withAlpha(51)),
+        border: Border.all(
+          color: AppColors.tintBorder(context, scheme.primary, 51 / 255),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             Icons.error_outline_rounded,
-            color: JxufeTheme.primaryColor,
+            color: scheme.primary,
             size: 18,
           ),
           const SizedBox(width: 8),
           Text(
             msg,
-            style: TextStyle(color: JxufeTheme.primaryColor, fontSize: 13),
+            style: TextStyle(color: scheme.primary, fontSize: 13),
             overflow: TextOverflow.ellipsis,
             maxLines: 1,
           ),
@@ -376,14 +392,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     LoginViewModel viewModel,
     BuildContext context,
   ) {
+    final scheme = Theme.of(context).colorScheme;
     return SizedBox(
       width: double.infinity,
       height: 50,
       child: ElevatedButton(
         onPressed: state.isLoading ? null : () => viewModel.login(context),
         style: ElevatedButton.styleFrom(
-          backgroundColor: JxufeTheme.primaryColor,
-          foregroundColor: Colors.white,
+          backgroundColor: scheme.primary,
+          foregroundColor: scheme.onPrimary,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(25),
           ),
@@ -391,12 +408,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           shadowColor: Colors.transparent,
         ),
         child: state.isLoading
-            ? const SizedBox(
+            ? SizedBox(
                 height: 20,
                 width: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation(Colors.white),
+                  valueColor: AlwaysStoppedAnimation(scheme.onPrimary),
                 ),
               )
             : const Text(
@@ -408,12 +425,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Widget _buildOtherLoginIcons(BuildContext context, LoginViewModel viewModel) {
+    final scheme = Theme.of(context).colorScheme;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         _buildOtherLoginIcon(
           Icons.qr_code_rounded,
-          JxufeTheme.primaryColor,
+          scheme.primary,
           onTap: () => viewModel.scanLogin(context),
         ),
         const SizedBox(width: 32),
@@ -438,6 +456,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     required VoidCallback onTap,
   }) {
     final isHovering = ValueNotifier<bool>(false);
+    // hover 时背景就是该入口自己的强调色 → 前景取「压在该色上」的那一档。
+    // ⚠ 别用 `ThemeData.estimateBrightnessForColor`：深色主题的亮红 #F2555A
+    // 会被它判成「暗底」→ 取白字只有 3.38:1，
+    // 而深字有 5.16:1（实测）。`AppColors.onAccent` 按实测对比度择字。
+    // 浅色下恒为白，与原先写死的 `Colors.white` 逐像素相同。
+    final onColor = AppColors.onAccent(context, color);
 
     return MouseRegion(
       onEnter: (_) => isHovering.value = true,
@@ -452,10 +476,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: hovering ? color : JxufeTheme.inputBgColor,
+                color: hovering ? color : AppColors.fill(context),
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                  color: hovering ? color : JxufeTheme.borderColor,
+                  color: hovering ? color : AppColors.stroke(context),
                   width: hovering ? 2 : 1,
                 ),
                 boxShadow: hovering
@@ -468,11 +492,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ]
                     : null,
               ),
-              child: Icon(
-                icon,
-                color: hovering ? Colors.white : color,
-                size: 24,
-              ),
+              child: Icon(icon, color: hovering ? onColor : color, size: 24),
             );
           },
         ),
@@ -480,19 +500,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  Widget _buildFooter() {
+  Widget _buildFooter(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(top: 40, bottom: 24),
       child: Column(
         children: [
           Container(
             height: 1,
-            color: JxufeTheme.borderColor,
+            color: AppColors.stroke(context),
             margin: const EdgeInsets.only(bottom: 16),
           ),
-          const Text(
+          Text(
             'Copyright© 2026 All right reserved.',
-            style: TextStyle(fontSize: 12, color: JxufeTheme.hintColor),
+            style: TextStyle(fontSize: 12, color: AppColors.textMuted(context)),
           ),
         ],
       ),

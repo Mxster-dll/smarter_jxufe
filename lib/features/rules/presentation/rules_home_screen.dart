@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:smarter_jxufe/design/app_theme.dart';
+import 'package:smarter_jxufe/design/pane_chrome.dart';
 
 import '../data/rules_repository.dart';
 import '../domain/rule_doc.dart';
@@ -24,23 +26,24 @@ class _RulesHomeScreenState extends ConsumerState<RulesHomeScreen> {
   }
 
   static IconData groupIcon(String g) => switch (g) {
-        '学科竞赛' => Icons.emoji_events_outlined,
-        '教学培养' => Icons.school_outlined,
-        '学籍成绩' => Icons.assignment_outlined,
-        '升学推免' => Icons.flight_takeoff,
-        '资助奖助' => Icons.volunteer_activism,
-        '科研奖励' => Icons.science_outlined,
-        '纪律处分' => Icons.gavel,
-        '综合素质' => Icons.fact_check_outlined,
-        '学位授予' => Icons.workspace_premium_outlined,
-        _ => Icons.description_outlined,
-      };
+    '学科竞赛' => Icons.emoji_events_outlined,
+    '教学培养' => Icons.school_outlined,
+    '学籍成绩' => Icons.assignment_outlined,
+    '升学推免' => Icons.flight_takeoff,
+    '资助奖助' => Icons.volunteer_activism,
+    '科研奖励' => Icons.science_outlined,
+    '纪律处分' => Icons.gavel,
+    '综合素质' => Icons.fact_check_outlined,
+    '学位授予' => Icons.workspace_premium_outlined,
+    _ => Icons.description_outlined,
+  };
 
   @override
   Widget build(BuildContext context) {
     final catalogAsync = ref.watch(rulesCatalogProvider);
     return Scaffold(
-      appBar: AppBar(
+      appBar: paneAppBar(
+        context,
         title: const Text(
           '规章制度',
           style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w600),
@@ -81,17 +84,13 @@ class _RulesHomeScreenState extends ConsumerState<RulesHomeScreen> {
               error: (e, _) => Center(
                 child: Text(
                   '目录加载失败：$e',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.error,
-                  ),
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
               ),
               data: (catalog) {
                 final families = _q.isEmpty
                     ? catalog.families
-                    : catalog.families
-                        .where((f) => _familyMatches(f))
-                        .toList();
+                    : catalog.families.where((f) => _familyMatches(f)).toList();
                 if (families.isEmpty) {
                   return const Center(child: Text('未找到匹配的规则文件'));
                 }
@@ -101,7 +100,9 @@ class _RulesHomeScreenState extends ConsumerState<RulesHomeScreen> {
                 final list = <Widget>[];
                 for (final entry in grouped.entries) {
                   if (entry.value.isEmpty) continue;
-                  list.add(_groupHeader(context, entry.key, entry.value.length));
+                  list.add(
+                    _groupHeader(context, entry.key, entry.value.length),
+                  );
                   for (final f in entry.value) {
                     list.add(_familyTile(f));
                   }
@@ -173,10 +174,7 @@ class _RulesHomeScreenState extends ConsumerState<RulesHomeScreen> {
           const SizedBox(width: 8),
           Text(
             '$count 份',
-            style: TextStyle(
-              fontSize: 12,
-              color: scheme.onSurfaceVariant,
-            ),
+            style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
           ),
         ],
       ),
@@ -209,7 +207,7 @@ class _RulesHomeScreenState extends ConsumerState<RulesHomeScreen> {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: scheme.primary.withValues(alpha: 0.10),
+                    color: AppColors.tint(context, scheme.primary, 0.10),
                     borderRadius: BorderRadius.circular(9),
                   ),
                   child: Icon(

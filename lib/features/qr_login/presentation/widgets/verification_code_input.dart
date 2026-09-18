@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:smarter_jxufe/design/JxufeTheme.dart';
+import 'package:smarter_jxufe/design/app_theme.dart';
 
 /// 通用验证码输入组件。
 ///
@@ -479,8 +479,8 @@ class VerificationCodeInputState extends State<VerificationCodeInput>
         _digits[_cursor] == null;
 
     const r = 12.0;
-    final selC = JxufeTheme.primaryColor;
-    final normC = JxufeTheme.borderColor;
+    final selC = Theme.of(context).colorScheme.primary;
+    final normC = AppColors.stroke(context);
     final w = widget.cellSize;
     final n = widget.length;
 
@@ -528,8 +528,8 @@ class VerificationCodeInputState extends State<VerificationCodeInput>
                     height: w,
                     decoration: BoxDecoration(
                       color: widget.disabled
-                          ? JxufeTheme.inputBgColor
-                          : Colors.white,
+                          ? AppColors.fill(context)
+                          : AppColors.card(context),
                       borderRadius: br,
                     ),
                   ),
@@ -582,8 +582,8 @@ class VerificationCodeInputState extends State<VerificationCodeInput>
                                 fontSize: 20,
                                 fontWeight: FontWeight.w600,
                                 color: widget.disabled
-                                    ? JxufeTheme.hintColor
-                                    : JxufeTheme.textColor,
+                                    ? AppColors.textMuted(context)
+                                    : AppColors.textBase(context),
                               ),
                             ),
                           ),

@@ -9,6 +9,7 @@ import 'package:smarter_jxufe/features/leave/data/providers/leave_providers.dart
 import 'package:smarter_jxufe/features/net_fee/data/providers/net_fee_providers.dart';
 import 'package:smarter_jxufe/features/platform_guid/data/guid_capture_session.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/wxcal_providers.dart';
+import 'package:smarter_jxufe/design/app_theme.dart';
 
 /// 从任意文本中提取平台 GUID（UUID v4 形态）。
 ///
@@ -88,7 +89,7 @@ class _GuidGuideScreenState extends ConsumerState<GuidGuideScreen> {
         ..clearSnackBars()
         ..showSnackBar(
           SnackBar(
-            content: Text('已保存平台标识，网费 / 请假 / 校历实时源已生效'),
+            content: Text('已保存平台标识，校园网 / 请假 / 校历实时源已生效'),
             duration: const Duration(seconds: 2),
           ),
         );
@@ -360,12 +361,12 @@ class _GuidGuideScreenState extends ConsumerState<GuidGuideScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: scheme.primary.withValues(alpha: 0.06),
+                color: AppColors.tint(context, scheme.primary, 0.06),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
                 '请在微信打开「智慧江财」，进入任意需要登录的功能页'
-                '（如请假 / 网费 / 宿舍电费）。页面正常加载即代表已捕获，'
+                '（如请假 / 校园网 / 宿舍电费）。页面正常加载即代表已捕获，'
                 'App 会自动完成并保存（90 秒内）。',
                 style: TextStyle(
                   fontSize: 12.5,
@@ -384,7 +385,7 @@ class _GuidGuideScreenState extends ConsumerState<GuidGuideScreen> {
     final guid = _session.capturedGuid;
     return _whiteCard(
       context,
-      color: scheme.primary.withValues(alpha: 0.05),
+      color: AppColors.tint(context, scheme.primary, 0.05),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -412,7 +413,7 @@ class _GuidGuideScreenState extends ConsumerState<GuidGuideScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              '系统设置已自动还原。点击保存即配置到网费 / 请假 / 校历。',
+              '系统设置已自动还原。点击保存即配置到校园网 / 请假 / 校历。',
               style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
             ),
             const SizedBox(height: 12),
@@ -444,7 +445,7 @@ class _GuidGuideScreenState extends ConsumerState<GuidGuideScreen> {
   Widget _captureStoppedCard(BuildContext context, ColorScheme scheme) {
     return _whiteCard(
       context,
-      color: scheme.error.withValues(alpha: 0.05),
+      color: AppColors.tint(context, scheme.error, 0.05),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -503,8 +504,11 @@ class _GuidGuideScreenState extends ConsumerState<GuidGuideScreen> {
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color: (configured ? scheme.primary : scheme.outlineVariant)
-                    .withValues(alpha: 0.10),
+                color: AppColors.tint(
+                  context,
+                  configured ? scheme.primary : scheme.outlineVariant,
+                  0.10,
+                ),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
@@ -528,8 +532,8 @@ class _GuidGuideScreenState extends ConsumerState<GuidGuideScreen> {
                   const SizedBox(height: 3),
                   Text(
                     configured
-                        ? '$guid\n网费 / 请假 / 校历实时源均已生效'
-                        : '配置后网费、请假、校历官方安排将使用实时数据',
+                        ? '$guid\n校园网 / 请假 / 校历实时源均已生效'
+                        : '配置后校园网、请假、校历官方安排将使用实时数据',
                     style: TextStyle(
                       fontSize: 12,
                       height: 1.5,
@@ -555,7 +559,7 @@ class _GuidGuideScreenState extends ConsumerState<GuidGuideScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('清除平台标识？'),
-        content: const Text('清除后网费 / 请假将不可用，校历回到内置快照。'),
+        content: const Text('清除后校园网 / 请假将不可用，校历回到内置快照。'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -592,7 +596,7 @@ class _GuidGuideScreenState extends ConsumerState<GuidGuideScreen> {
   Widget _buildWhatCard(BuildContext context, ColorScheme scheme) {
     return _whiteCard(
       context,
-      color: scheme.primary.withValues(alpha: 0.04),
+      color: AppColors.tint(context, scheme.primary, 0.04),
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
