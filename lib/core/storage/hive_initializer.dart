@@ -12,7 +12,17 @@ import 'package:smarter_jxufe/features/ims/curriculum/domain/curriculum.dart';
 import 'package:smarter_jxufe/features/major/domain/major.dart';
 
 class HiveInitializer {
-  static Future<void> init() async {
+  /// 单次初始化（幂等）。
+  ///
+  /// ⚠ `Hive.registerAdapter` 对同一个 typeId 重复注册会抛「already registered」，
+  /// 因此初始化**只能跑一次**：`main()` 为了在首帧前拿到外观偏好会先调一次，
+  /// `SplashScreen._checkAuth()` 随后还会再调一次（历史调用点），两次都必须安全。
+  static Future<void>? _init;
+
+  /// 幂等初始化：重复调用复用同一次结果。
+  static Future<void> init() => _init ??= _run();
+
+  static Future<void> _run() async {
     final hiveRootPath = "D:/Project/Ongoing/smarter_jxufe/app_data";
 
     await Hive.initFlutter(hiveRootPath);

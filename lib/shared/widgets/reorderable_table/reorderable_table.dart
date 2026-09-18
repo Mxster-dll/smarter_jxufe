@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/shared/widgets/reorderable_table/controllers/collapse_controller.dart';
 import 'package:smarter_jxufe/shared/widgets/reorderable_table/controllers/highlight_animation_controller.dart';
 import 'package:smarter_jxufe/shared/widgets/reorderable_table/controllers/reorder_controller.dart';
@@ -172,19 +173,41 @@ class _ReorderableTableState extends State<ReorderableTable>
   bool get showCornerPlaceholder =>
       widget.showRowHeaders && widget.showColHeaders;
 
-  Color get rowHeaderNormal => widget.rowHeaderNormal ?? Colors.orange[50]!;
-  Color get rowHeaderHighlight =>
-      widget.rowHeaderHighlight ?? Colors.orange[200]!;
-  Color get colHeaderNormal => widget.colHeaderNormal ?? Colors.green[50]!;
-  Color get colHeaderHighlight =>
-      widget.colHeaderHighlight ?? Colors.green[200]!;
-  Color get cellHighlight => widget.cellHighlight ?? Colors.grey.shade200;
-  Color get cellRowHighlight => widget.cellRowHighlight ?? cellHighlight;
-  Color get cellColHighlight => widget.cellColHighlight ?? cellHighlight;
-  Color get cellNormal => widget.cellNormal ?? Colors.transparent;
+  // ── 兜底配色（调用方未显式传色时用）──────────────────────────────────────
+  //
+  // 原来这里写死 `Colors.orange[50]` / `Colors.green[50]` / `Colors.grey.shade200`
+  // 这类不随亮度变化的裸色，深色下是刺眼亮块。现改为一律**在 build 里由有 context
+  // 的 widget 解析好**再往下传（`CellBackgroundPainter` 是无 context 的
+  // `CustomPainter`，只收最终色值，绝不在 painter 里 `Theme.of`）。
+  Color rowHeaderNormalOf(BuildContext context) =>
+      widget.rowHeaderNormal ?? AppColors.fillSoft(context);
+  Color rowHeaderHighlightOf(BuildContext context) =>
+      widget.rowHeaderHighlight ?? AppColors.fillStrong(context);
+  Color colHeaderNormalOf(BuildContext context) =>
+      widget.colHeaderNormal ?? AppColors.fillSoft(context);
+  Color colHeaderHighlightOf(BuildContext context) =>
+      widget.colHeaderHighlight ?? AppColors.fillStrong(context);
+  Color cellHighlightOf(BuildContext context) =>
+      widget.cellHighlight ?? AppColors.fillStrong(context);
+  Color cellRowHighlightOf(BuildContext context) =>
+      widget.cellRowHighlight ?? cellHighlightOf(context);
+  Color cellColHighlightOf(BuildContext context) =>
+      widget.cellColHighlight ?? cellHighlightOf(context);
+  Color cellNormalOf(BuildContext context) =>
+      widget.cellNormal ?? Colors.transparent;
 
   @override
   Widget build(BuildContext context) {
+    // 表头底 / 高亮底 / 单元格底 / 表框：统一在这里解析成颜色值再传给子组件与 painter。
+    final rowHeaderNormal = rowHeaderNormalOf(context);
+    final rowHeaderHighlight = rowHeaderHighlightOf(context);
+    final colHeaderNormal = colHeaderNormalOf(context);
+    final colHeaderHighlight = colHeaderHighlightOf(context);
+    final cellHighlight = cellHighlightOf(context);
+    final cellRowHighlight = cellRowHighlightOf(context);
+    final cellColHighlight = cellColHighlightOf(context);
+    final cellNormal = cellNormalOf(context);
+
     Widget tableContent = MouseRegion(
       onEnter: _reorderCtrl.handlePointerEnter,
       onHover: _reorderCtrl.handleHover,
@@ -197,7 +220,7 @@ class _ReorderableTableState extends State<ReorderableTable>
           width: cornerWidth + colCount * widget.cellWidth,
           height: cornerHeight + rowCount * widget.cellHeight,
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
+            border: Border.all(color: AppColors.stroke(context)),
           ),
           child: Stack(
             clipBehavior: Clip.none,

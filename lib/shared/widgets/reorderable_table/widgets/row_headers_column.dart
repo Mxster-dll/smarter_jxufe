@@ -79,6 +79,9 @@ class RowHeadersColumn extends StatelessWidget {
                   child: Text(
                     widget.rowHeaders?[originalRow] ??
                         defaultRowHeaders[originalRow],
+                    // 行头文字画在调用方给的表头底色上（现调用方 = 培养方案页，传的是
+                    // `colorScheme.error` / `errorContainer`）→ 属「固定彩色底上的白字」，
+                    // 深色下也是白字才可读，**刻意保留 `Colors.white`**（不跟随主题翻转）。
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
