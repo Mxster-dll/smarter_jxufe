@@ -5,6 +5,9 @@
 /// 换实现、改表、动位序都必须先让本文件全绿。
 library;
 
+// ⚠ 脱敏说明（2026-09-19）：本文件原先的期望密文/摘要取自「真实学号」与教务 JS 的对拍结果；
+// 发布前脱敏把输入学号替换为占位值 `2000000000`，期望值随之按同一实现重算（算法未改动，
+// 故与官方 JS 的一致性结论不变）。改动算法时请用真实环境重新对拍。
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:smarter_jxufe/features/ims/course_selection/domain/kingo_des.dart';
@@ -18,7 +21,7 @@ void main() {
       // 长度 42 → 10 整块 + 2 字符尾块
       'xn=2026&xq_m=0&xh=2000000000&kcdm=1004001943':
           'CEE49DA329830717B3B09F2FEB19AC17A98F1BA79C4733234801647DF98DE834'
-              '594DA17CB4D0F6D1D66ADDF88D3494B548E6AA0A9311FF80546882C6F4735135'
+              'BE730F02CEDC61163FB526D61BD01CBA3FB526D61BD01CBA546882C6F4735135'
               '41822BDDD25326F9BDA05DD0402D689C7B9E6ABA7F627DA6',
       // 短于 4 字符：单块 + 零填充
       'abc': 'AE6638065A31EFF5',
@@ -53,7 +56,7 @@ void main() {
     test('token = md5(md5(params)+md5(timestamp))', () {
       expect(
         kingoEncToken(params, timestamp),
-        '028a3f763c785dd76147f251118e9c43',
+        '7b1e9dc44f381f1f2a582340c1d448b3',
       );
     });
 
@@ -65,11 +68,11 @@ void main() {
       );
       expect(
         body,
-        'params=Q0VFNDlEQTMyOTgzMDcxN0IzQjA5RjJGRUIxOUFDMTdBOThGMUJBNzlDNDczMzIzNDgw'
-        'MTY0N0RGOThERTgzNDU5NERBMTdDQjREMEY2RDFENjZBRERGODhEMzQ5NEI1NDhFNkFBMEE5'
-        'MzExRkY4MDU0Njg4MkM2RjQ3MzUxMzU0MTgyMkJEREQyNTMyNkY5QkRBMDVERDA0MDJENjg5'
-        'QzdCOUU2QUJBN0Y2MjdEQTY='
-        '&token=028a3f763c785dd76147f251118e9c43'
+        'params=Q0VFNDlEQTMyOTgzMDcxN0IzQjA5RjJGRUIxOUFDMTdBOThGMUJBNzlDNDczMzIz'
+        'NDgwMTY0N0RGOThERTgzNEJFNzMwRjAyQ0VEQzYxMTYzRkI1MjZENjFCRDAxQ0JB'
+        'M0ZCNTI2RDYxQkQwMUNCQTU0Njg4MkM2RjQ3MzUxMzU0MTgyMkJEREQyNTMyNkY5'
+        'QkRBMDVERDA0MDJENjg5QzdCOUU2QUJBN0Y2MjdEQTY='
+        '&token=7b1e9dc44f381f1f2a582340c1d448b3'
         '&timestamp=2026-09-14%2013%3A06%3A49',
       );
     });
