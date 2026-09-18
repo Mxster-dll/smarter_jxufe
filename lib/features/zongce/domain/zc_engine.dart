@@ -5,8 +5,10 @@
 library;
 
 import 'zc_catalog.dart';
+import 'zc_foreign.dart';
 import 'zc_models.dart';
 import 'zc_rules.dart';
+import 'zc_weights.dart';
 
 double _c(double v, double lo, double hi) => v.clamp(lo, hi).toDouble();
 double _max0(double v) => v < 0 ? 0.0 : v;
@@ -26,6 +28,11 @@ double? zcMaterialValue(ZcMaterial m) {
       if (m.opt < 0 || m.opt >= zcPaperOrder.length) return null;
       return zcPaperLevels[m.level].$3 * zcPaperOrder[m.opt];
     case ZcTypeId.foreign:
+      // 用户 2026-09-17 二轮：外语按证书名目**查表 10 档位**计分（`manualScore` 存的是
+      // 原始成绩，如四级 489 → 1 分；等级类证书直接取固定分）；
+      // 旧材料（只有档位下标、没有原始成绩）仍按 [zcForeignLevels] 计。
+      final award = zcForeignAward(name: m.name, rawScore: m.manualScore);
+      if (award != null) return _max0(award);
       return m.level >= 0 && m.level < zcForeignLevels.length
           ? zcForeignLevels[m.level].$2
           : null;
@@ -151,6 +158,16 @@ class ZcCalcResult {
   final double volunteerUsed;
   final bool volunteerAuto;
 
+  /// 总评成绩 = Σ 五育分数 × 占比（五育占比见 [weights]）。
+  ///
+  /// 用户 2026-09-18：「综测不是直接算平均分，而是有一个总评成绩，这个成绩的
+  /// 占比由班主任定，应该让用户自行设置」→ 这里就是**唯一**的总评实现，
+  /// 界面层不许再自己写 `(德+智+体+美+劳)/5`（那只是 [average] 五育平均）。
+  final double total;
+
+  /// 本学年生效的五育占比（来自 `ZcManual.weights`）。
+  final ZcWeights weights;
+
   /// 加权为空（未登录/教务不可用且未手动填）。
   final bool weightMissing;
   const ZcCalcResult({
@@ -171,7 +188,12 @@ class ZcCalcResult {
     required this.volunteerUsed,
     required this.volunteerAuto,
     required this.weightMissing,
+    required this.total,
+    required this.weights,
   });
+
+  /// 五育平均（仅供对照/展示，**不是**总评成绩）。
+  double get average => (deyu + zhiyu + tiyu + meiyu + laoyu) / 5;
 }
 
 /// 主计算入口。
@@ -239,7 +261,10 @@ ZcCalcResult zcCalculate(
   final volunteerHours = manual.volunteerHours ?? (autoVolunteer ?? 0);
   final volunteerAuto = manual.volunteerHours == null;
   final volScore = zcVolunteerScore(volunteerHours);
-  final weight = manual.weight ?? autoWeight ?? 0;
+  // 智育总分用**舍入后的加权**计算（用户 2026-09-18：「智育总分是用舍入后的
+  // 加权计算的」）：界面一律显示 2 位小数，若拿原始 double 计分，显示的加权
+  // 与算出来的智育会对不上（91.8596… 显示 91.86，却按 91.8596 算）。
+  final weight = zcRound2(manual.weight ?? autoWeight ?? 0);
   final weightAuto = manual.weight == null;
   final weightMissing = weight <= 0;
 
@@ -319,6 +344,18 @@ ZcCalcResult zcCalculate(
   final lScore = _max0(60 + lPingyi + lAdd - lKou);
   final gL = zcGradeOf(lScore, manual.rankL);
 
+  // ---- 总评成绩（五育加权；占比按学年可设） ----
+  final weights = manual.weights;
+  final total = zcRound2(
+    weights.applyTo(
+      deyu: dScore,
+      zhiyu: zScore,
+      tiyu: tTotal,
+      meiyu: mScore,
+      laoyu: lScore,
+    ),
+  );
+
   // ---- 综合等次（表 2） ----
   final tml = [gT, gM, gL];
   ZcGrade overall;
@@ -386,6 +423,8 @@ ZcCalcResult zcCalculate(
     volunteerUsed: volunteerHours,
     volunteerAuto: volunteerAuto,
     weightMissing: weightMissing,
+    total: total,
+    weights: weights,
   );
 }
 
@@ -394,3 +433,30 @@ List<ZcMaterial> zcFilterByYear(List<ZcMaterial> all, int yearEnd) => [
   for (final m in all)
     if (m.date != null && zcYearWindowContains(m.date!, yearEnd)) m,
 ];
+
+/// 四舍五入到 2 位小数（综测页显示的加权成绩精度；智育总分按它计算）。
+double zcRound2(double v) => (v * 100).roundToDouble() / 100;
+
+/// 学科竞赛里**最终计入总分**的材料 id 集合（= 引擎 calcJS 口径的同一套规则：
+/// 最高项 > 5 分时只计最高那一项；否则按分值从高到低累加，累加到 ≥ 5 分为止，
+/// 总分封顶 5 分）。用户 2026-09-18：「综测智育竞赛加分要把最终贡献分数的项
+/// 高亮一下」——界面用本函数决定高亮哪几条材料，别再自己写一套判断。
+Set<String> zcContestContributingIds(List<ZcMaterial> materials) {
+  final entries = <({String id, double value})>[];
+  for (final m in materials) {
+    if (m.typeId != ZcTypeId.contest) continue;
+    final v = zcMaterialValue(m);
+    if (v != null && v > 0) entries.add((id: m.id, value: v));
+  }
+  if (entries.isEmpty) return const <String>{};
+  entries.sort((a, b) => b.value.compareTo(a.value));
+  if (entries.first.value > 5) return {entries.first.id};
+  final out = <String>{};
+  var sum = 0.0;
+  for (final e in entries) {
+    out.add(e.id);
+    sum += e.value;
+    if (sum >= 5) break;
+  }
+  return out;
+}

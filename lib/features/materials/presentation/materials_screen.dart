@@ -4,13 +4,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:smarter_jxufe/design/app_card.dart';
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/zongce/data/zc_providers.dart';
 import 'package:smarter_jxufe/features/zongce/data/zc_store.dart';
 import 'package:smarter_jxufe/features/zongce/domain/zc_activity.dart';
 import 'package:smarter_jxufe/features/zongce/domain/zc_catalog.dart';
-import 'package:smarter_jxufe/features/zongce/domain/zc_engine.dart';
+import 'package:smarter_jxufe/features/zongce/domain/zc_foreign.dart';
 import 'package:smarter_jxufe/features/zongce/domain/zc_models.dart';
 import 'package:smarter_jxufe/features/zongce/domain/zc_rules.dart';
+import 'package:smarter_jxufe/features/materials/domain/material_grouping.dart';
+import 'package:smarter_jxufe/features/materials/presentation/material_tags.dart';
+import 'package:smarter_jxufe/design/pane_chrome.dart';
+import 'package:smarter_jxufe/features/school_calendar/data/providers/calendar_prefs_providers.dart';
+import 'package:smarter_jxufe/shared/widgets/grid_date_picker.dart';
 
 /// 材料库：独立于综测的证明文件档案（竞赛证书/奖状/评优证明等），
 /// 作为综测计算的数据源之一（同 Hive box 'zongce' key 'materials'）。
@@ -25,64 +31,11 @@ class MaterialsScreen extends ConsumerStatefulWidget {
 }
 
 class _MaterialsScreenState extends ConsumerState<MaterialsScreen> {
-  late int _year;
-
-  @override
-  void initState() {
-    super.initState();
-    _year = zcDefaultYear(DateTime.now());
-  }
-
-  String _fmt(double v) =>
-      v == v.roundToDouble() ? v.round().toString() : v.toString();
-
-  // ---------- 学年 ----------
-  void _switchYear(int delta) {
-    final target = _year + delta;
-    if (!mounted) return;
-    setState(() => _year = target);
-  }
-
-  Widget _buildYearBar(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Row(
-      children: [
-        IconButton(
-          onPressed: () => _switchYear(-1),
-          icon: const Icon(Icons.chevron_left),
-          tooltip: '上一学年',
-        ),
-        Expanded(
-          child: Column(
-            children: [
-              Text(
-                zcYearLabel(_year),
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Text(
-                '材料按盖章时间归入 ${_year - 1}-09-01 ~ $_year-08-31',
-                style: TextStyle(fontSize: 11, color: scheme.outline),
-              ),
-            ],
-          ),
-        ),
-        IconButton(
-          onPressed: () => _switchYear(1),
-          icon: const Icon(Icons.chevron_right),
-          tooltip: '下一学年',
-        ),
-      ],
-    );
-  }
-
   // ---------- 主体 ----------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('材料库'), centerTitle: false),
+      appBar: paneAppBar(context, title: const Text('材料库'), centerTitle: false),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _addMaterial,
         icon: const Icon(Icons.add),
@@ -118,23 +71,24 @@ class _MaterialsScreenState extends ConsumerState<MaterialsScreen> {
         ),
       ),
       data: (all) {
-        final mats = zcFilterByYear(all, _year);
+        // 材料**不分学年**（用户 2026-09-17：「所有的材料本身不分学年，只手动填入
+        // 时间」）→ 全部材料一屏，不再按学年过滤/切换；综测侧也全量计入。
+        final mats = all;
         if (mats.isEmpty) {
           return ListView(
             padding: const EdgeInsets.fromLTRB(24, 12, 24, 120),
             children: [
-              _buildYearBar(context),
               const SizedBox(height: 36),
               Icon(Icons.folder_open, size: 56, color: scheme.outlineVariant),
               const SizedBox(height: 16),
               const Text(
-                '本学年还没有证明材料',
+                '还没有证明材料',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 6),
               Text(
-                '竞赛证书、奖状、评优证明等按类型录入留档，综合测评会自动读取计分，可附加证书照片作证明。\n${zcYearLabel(_year)}窗口：${_year - 1}-09-01 ~ $_year-08-31',
+                '竞赛证书、奖状、评优证明等按类型录入留档，综合测评会自动读取计分，可附加证书照片作证明。\n材料不分学年，填好发生时间即可；综测会把全部材料计入。',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 12,
@@ -145,16 +99,24 @@ class _MaterialsScreenState extends ConsumerState<MaterialsScreen> {
             ],
           );
         }
+        // 分组口径 = **二级分类**（材料类型：学科竞赛获奖 / 论文 · 专利 / 外语水平…），
+        // 不再按综测的「五育」分（用户 2026-09-18：「我希望材料库条目显示不要按综测
+        // 分类，而是直接按二级分类分类，比如学科竞赛这样的」）。分组与组内排序的
+        // 唯一实现 = `groupMaterialsByType`（lib/features/materials/domain/
+        // material_grouping.dart），页面不再自己按 dim 分一遍。
         return ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
           children: [
-            _buildYearBar(context),
-            for (final dim in const ['z', 'd', 't', 'm', 'l'])
-              ..._materialSection(context, dim, mats),
+            for (final group in groupMaterialsByType(mats))
+              ..._materialSection(context, group),
             Padding(
               padding: const EdgeInsets.fromLTRB(4, 10, 4, 4),
               child: Text(
-                '提示：证明材料仅在本档案中维护；综合测评按所选学年自动读取计分，分值口径与测评页计分明细一致。',
+                '提示：证明材料仅在本档案中维护，不区分学年；综合测评会读取全部材料计分，'
+                '分值口径与测评页计分明细一致。\n'
+                '这里的竞赛获奖 / 专利 / 荣誉 / 论文会自动带入「推免成绩」与'
+                '「竞赛奖励」的加分项（改这里，那两页当场跟着变）。',
+                key: const Key('materialsAutoFillHint'),
                 style: TextStyle(
                   fontSize: 11,
                   color: scheme.outline,
@@ -168,28 +130,16 @@ class _MaterialsScreenState extends ConsumerState<MaterialsScreen> {
     );
   }
 
-  String _dimName(String dim) => switch (dim) {
-    'd' => '德育',
-    'z' => '智育',
-    't' => '体育',
-    'm' => '美育',
-    'l' => '劳育',
-    _ => '',
-  };
-
-  List<Widget> _materialSection(
-    BuildContext context,
-    String dim,
-    List<ZcMaterial> mats,
-  ) {
+  /// 一个二级分类分组 = 一行节标题（3px 竖条 + 类型名 + 条数）+ 该类型的材料行。
+  ///
+  /// 标题只写二级分类名（如「学科竞赛获奖」），**不再写「智育加分材料」这种综测口径**
+  /// （用户 2026-09-18：「不要按综测分类，而是直接按二级分类分类」）；组内顺序由
+  /// [groupMaterialsByType] 定（发生时间倒序），这里不再排序。
+  List<Widget> _materialSection(BuildContext context, MaterialGroup group) {
     final scheme = Theme.of(context).colorScheme;
-    final list = [
-      for (final m in mats)
-        if (m.spec.dim == dim) m,
-    ];
-    if (list.isEmpty) return const [];
     return [
       Padding(
+        key: group.groupKey,
         padding: const EdgeInsets.fromLTRB(4, 12, 4, 8),
         child: Row(
           children: [
@@ -203,7 +153,7 @@ class _MaterialsScreenState extends ConsumerState<MaterialsScreen> {
             ),
             const SizedBox(width: 8),
             Text(
-              '${_dimName(dim)}加分材料 · ${list.length}',
+              '${group.label} · ${group.count}',
               style: const TextStyle(
                 fontSize: 13.5,
                 fontWeight: FontWeight.w600,
@@ -212,21 +162,20 @@ class _MaterialsScreenState extends ConsumerState<MaterialsScreen> {
           ],
         ),
       ),
-      for (final m in list) _materialRow(context, m),
+      for (final m in group.materials) _materialRow(context, m),
       const SizedBox(height: 4),
     ];
   }
 
   Widget _materialRow(BuildContext context, ZcMaterial m) {
     final scheme = Theme.of(context).colorScheme;
-    final v = zcMaterialValue(m);
     final spec = m.spec;
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(kAppCardRadius),
-        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+        side: BorderSide(color: AppColors.hairline(context, 0.6)),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(kAppCardRadius),
@@ -239,7 +188,7 @@ class _MaterialsScreenState extends ConsumerState<MaterialsScreen> {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: scheme.primary.withValues(alpha: 0.08),
+                  color: AppColors.tint(context, scheme.primary, 0.08),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -262,31 +211,74 @@ class _MaterialsScreenState extends ConsumerState<MaterialsScreen> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      [
-                        spec.label,
-                        if (m.cat.isNotEmpty) zcCatNames[m.cat] ?? '',
-                        m.optionLabel,
-                        m.dateIso,
-                        if (m.files.isNotEmpty) '附件 ${m.files.length}',
-                      ].where((x) => x.isNotEmpty).join(' · '),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 11, color: scheme.outline),
+                    const SizedBox(height: 5),
+                    // 属性分色胶囊（用户 2026-09-18：「底部的国家级/省级、
+                    // 一二三等奖 I/II/III/IV 类赛的颜色也不用那么浅，并且按不同
+                    // 类别属性，要显示为不同色的胶囊」）。
+                    Wrap(
+                      spacing: 4,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        // ⚠ 行内**不再重复印类型名**：类型已经升级为分组标题
+                        // （二级分类，用户 2026-09-18：「不要按综测分类，而是直接按
+                        // 二级分类分类，比如学科竞赛这样的」）→ 每行再挂一枚同名的
+                        // 中性墨蓝胶囊纯属重复。属性胶囊（类别 / 级别 / 奖项）照旧。
+                        if (m.cat.isNotEmpty)
+                          MaterialTag(
+                            text: zcCatNames[m.cat] ?? '',
+                            color: materialCategoryColor(m.cat),
+                          ),
+                        ...materialLevelTags(context, m),
+                        if (m.dateIso.isNotEmpty)
+                          Text(
+                            m.dateIso,
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        if (m.files.isNotEmpty)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.attach_file,
+                                size: 11,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 1),
+                              Text(
+                                '${m.files.length}',
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: 8),
-              if (v != null)
-                Text(
-                  '+${_fmt(v)}',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: scheme.primary,
-                    fontFeatures: const [FontFeature.tabularFigures()],
+              // 右侧：**不显示加分**（用户 2026-09-17：「材料页不显示加分」），
+              // 改为显示该材料的备注（用户同日：「材料条目的右侧显示备注」）。
+              // ⚠ 备注**不再限宽**（用户 2026-09-18：「材料库备注信息不要限制宽度」）
+              // —— 原来套了 `maxWidth: 132`，稍长的备注定被截成「…」；现在用
+              // `Flexible` 让它按需占位（左侧标题列是 `Expanded`，两边各分一半，
+              // 短备注不会白占地方，长备注也不会被腰斩）。
+              if (m.note.trim().isNotEmpty)
+                Flexible(
+                  child: Text(
+                    m.note.trim(),
+                    maxLines: 2,
+                    textAlign: TextAlign.right,
+                    overflow: TextOverflow.ellipsis,
+                    // 备注颜色与标题一致（用户 2026-09-18：「备注颜色不用那么浅，
+                    // 颜色可以和标题一致」）——原来是 scheme.outline 的浅灰。
+                    style: TextStyle(fontSize: 11, color: scheme.onSurface),
                   ),
                 ),
               Icon(Icons.chevron_right, size: 18, color: scheme.outlineVariant),
@@ -299,44 +291,57 @@ class _MaterialsScreenState extends ConsumerState<MaterialsScreen> {
 
   Future<void> _addMaterial() async {
     // 两级向导：先选活动类型，再选该类型下具体活动/档位，最后进表单补全。
+    // **二级页留在路由栈上**、由它自己打开表单（用户 2026-09-17：「每添加完
+    // 一个赛事后不要回到根页面，而是停留在竞赛选择页，以便连续添加」）——
+    // 这样保存成功后就地留在候选页连续添加，也不会闪一下材料库根页。
     final type = await Navigator.of(context).push<ZcTypeId>(
       MaterialPageRoute(builder: (_) => const _MaterialTypePickerPage()),
     );
     if (type == null || !mounted) return;
     final spec = zcTypeSpecOf[type]!;
-    final outcome = await Navigator.of(context).push<_PickOutcome>(
-      MaterialPageRoute(builder: (_) => _ActivityPickPage(spec: spec)),
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => _ActivityPickPage(
+          spec: spec,
+          onPicked: (item) => _openEditor(null, type: type, activity: item),
+        ),
+      ),
     );
-    if (outcome == null || !mounted) return;
-    if (outcome is _PickDirect) {
-      await _openEditor(null, type: type);
-    } else if (outcome is _PickActivity) {
-      await _openEditor(null, type: type, activity: outcome.item);
-    }
   }
 
   void _editMaterial(ZcMaterial m) {
     _openEditor(m);
   }
 
-  Future<void> _openEditor(
+  /// 打开材料表单；返回**是否保存成功**（向导据此决定是否留在二级页继续添加）。
+  Future<bool> _openEditor(
     ZcMaterial? existing, {
     ZcTypeId? type,
     ZcActivityItem? activity,
   }) async {
     final store = await ref.read(zcStoreProvider.future);
-    if (!mounted) return;
+    if (!mounted) return false;
+    // 日期下限 = **入学年**（用户 2026-09-17：「学科竞赛日期选择器的年份范围应该
+    // 最早是入学年份」）；学籍取不到时退回「今年 - 6」。
+    int? enrollYear;
+    try {
+      enrollYear = (await ref.read(calendarViewerProvider.future)).enrollYear;
+    } catch (_) {
+      enrollYear = null;
+    }
+    if (!mounted) return false;
+    final firstDate = DateTime(enrollYear ?? DateTime.now().year - 6, 1, 1);
     final result = await showDialog<_EditResult>(
       context: context,
       builder: (_) => _MaterialEditDialog(
         store: store,
         existing: existing,
-        initialYear: _year,
+        firstDate: firstDate,
         initialType: type,
         initialActivity: activity,
       ),
     );
-    if (result == null || !mounted) return;
+    if (result == null || !mounted) return false;
     if (result is _EditDelete) {
       final target = existing!;
       final ok = await showDialog<bool>(
@@ -356,19 +361,19 @@ class _MaterialsScreenState extends ConsumerState<MaterialsScreen> {
           ],
         ),
       );
-      if (ok != true || !mounted) return;
+      if (ok != true || !mounted) return false;
       try {
         final all = await store.loadMaterials();
         await store.deleteMaterial(all, target);
-        if (!mounted) return;
+        if (!mounted) return false;
         ref.invalidate(zcMaterialsProvider);
       } catch (e) {
-        if (!mounted) return;
+        if (!mounted) return false;
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('删除失败：$e')));
       }
-      return;
+      return true;
     }
     final draft = (result as _EditSave).draft;
     try {
@@ -383,14 +388,16 @@ class _MaterialsScreenState extends ConsumerState<MaterialsScreen> {
             if (x.id == existing.id) updated else x,
         ]);
       }
-      if (!mounted) return;
+      if (!mounted) return false;
       ref.invalidate(zcMaterialsProvider);
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) return false;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('保存失败：$e')));
+      return false;
     }
+    return true;
   }
 }
 
@@ -418,6 +425,9 @@ class _MaterialDraft {
   int level;
   int opt;
   double qty;
+
+  /// 手填得分（外语等 `manualScore` 类型；用户 2026-09-17 裁定）。
+  double? manualScore;
   List<String> files;
   String note;
   bool catAuto;
@@ -431,6 +441,7 @@ class _MaterialDraft {
     this.level = 0,
     this.opt = 0,
     this.qty = 0,
+    this.manualScore,
     this.files = const [],
     this.note = '',
     this.catAuto = false,
@@ -445,6 +456,7 @@ class _MaterialDraft {
     level: m.level,
     opt: m.opt,
     qty: m.qty,
+    manualScore: m.manualScore,
     files: m.files,
     note: m.note,
     catAuto: m.cat.isNotEmpty,
@@ -460,6 +472,7 @@ class _MaterialDraft {
     level: level,
     opt: opt,
     qty: qty,
+    manualScore: manualScore,
     files: files,
     note: note.trim(),
   );
@@ -468,7 +481,9 @@ class _MaterialDraft {
 class _MaterialEditDialog extends StatefulWidget {
   final ZcStore store;
   final ZcMaterial? existing;
-  final int initialYear;
+
+  /// 日期可选范围下限（= 入学年 1 月 1 日）。
+  final DateTime firstDate;
 
   /// 向导已选类型（新增时非 null → 表头改只读显示，不再弹 19 类型下拉）。
   final ZcTypeId? initialType;
@@ -479,7 +494,7 @@ class _MaterialEditDialog extends StatefulWidget {
   const _MaterialEditDialog({
     required this.store,
     required this.existing,
-    required this.initialYear,
+    required this.firstDate,
     this.initialType,
     this.initialActivity,
   });
@@ -494,6 +509,7 @@ class _MaterialEditDialogState extends State<_MaterialEditDialog> {
   final _orgCtrl = TextEditingController();
   final _noteCtrl = TextEditingController();
   final _qtyCtrl = TextEditingController();
+  final _scoreCtrl = TextEditingController();
   DateTime? _date;
 
   @override
@@ -518,6 +534,10 @@ class _MaterialEditDialogState extends State<_MaterialEditDialog> {
     _orgCtrl.text = _d.org;
     _noteCtrl.text = _d.note;
     _qtyCtrl.text = _d.qty == 0 ? '' : _d.qty.round().toString();
+    final ms = _d.manualScore;
+    _scoreCtrl.text = ms == null
+        ? ''
+        : (ms == ms.roundToDouble() ? ms.round().toString() : '$ms');
     if (_d.dateIso.isNotEmpty) {
       _date = DateTime.tryParse(_d.dateIso);
     }
@@ -529,6 +549,7 @@ class _MaterialEditDialogState extends State<_MaterialEditDialog> {
     _orgCtrl.dispose();
     _noteCtrl.dispose();
     _qtyCtrl.dispose();
+    _scoreCtrl.dispose();
     super.dispose();
   }
 
@@ -605,13 +626,28 @@ class _MaterialEditDialogState extends State<_MaterialEditDialog> {
     );
   }
 
+  /// 竞赛：从目录里点选具体比赛时，「比赛名」与「类别（Ⅰ~Ⅳ）」都是**已定事实**，
+  /// 表单里按固定项展示（用户 2026-09-17 裁定「不要把比赛名和类别显示为可选，
+  /// 而是显示为固定项，自定义竞赛除外」）——只有「其他比赛（手动录入）」与
+  /// 编辑既有材料才保留可编辑。
+  ZcActivityItem? get _lockedActivity {
+    final a = widget.initialActivity;
+    if (widget.existing != null || a == null || a.other) return null;
+    final name = a.namePrefill;
+    if (name == null || name.isEmpty) return null;
+    return a;
+  }
+
   Future<void> _pickDate() async {
     final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
+    // 通用三宫格日期选择器（年 / 月 / 日），取代 Material 月历弹窗。
+    // 下限 = 入学年（`widget.firstDate`），上限 = 今天。
+    final picked = await showGridDatePicker(
+      context,
       initialDate: _date ?? now,
-      firstDate: DateTime(now.year - 6, 1, 1),
+      firstDate: widget.firstDate,
       lastDate: now,
+      title: '选择盖章日期',
       helpText: '证书盖章时间',
     );
     if (picked == null) return;
@@ -627,6 +663,15 @@ class _MaterialEditDialogState extends State<_MaterialEditDialog> {
     if (spec.needName && _d.name.trim().isEmpty) return false;
     if (_d.dateIso.isEmpty) return false;
     if (spec.needCat && _d.cat.isEmpty) return false;
+    if (spec.id == ZcTypeId.foreign) {
+      // 外语：目录内**按原始成绩查表 10 档位**（等级类证书无需填分）；
+      // 目录外的「其他证书」才需要手填分值（单项不高于 2 分）。
+      final cert = zcForeignCertOf(_d.name.trim());
+      final needsValue = cert == null || cert.needsScore;
+      if (needsValue && (_d.manualScore == null || _d.manualScore! < 0)) {
+        return false;
+      }
+    }
     if (_d.level < 0 || _d.level >= spec.levels.length) return false;
     if (spec.opts.isNotEmpty && (_d.opt < 0 || _d.opt >= spec.opts.length)) {
       return false;
@@ -642,6 +687,15 @@ class _MaterialEditDialogState extends State<_MaterialEditDialog> {
     if (_d.dateIso.isEmpty) return '请选择日期';
     if (spec.needCat && _d.cat.isEmpty) {
       return '比赛名称未识别出类别，请手动选择类别';
+    }
+    if (spec.id == ZcTypeId.foreign) {
+      final cert = zcForeignCertOf(_d.name.trim());
+      if (cert == null && _d.manualScore == null) {
+        return '请填写加分分值（目录外的其他证书，单项不高于 2 分）';
+      }
+      if (cert != null && cert.needsScore && _d.manualScore == null) {
+        return '请填写原始成绩（如四级 489、雅思 6.5、托福 90、GRE 320）';
+      }
     }
     return null;
   }
@@ -719,16 +773,20 @@ class _MaterialEditDialogState extends State<_MaterialEditDialog> {
                       ),
                     const SizedBox(height: 12),
                     if (spec.needName) ...[
-                      TextField(
-                        controller: _nameCtrl,
-                        onChanged: _onNameChanged,
-                        decoration: const InputDecoration(
-                          labelText: '名称（竞赛/论文/荣誉等）',
-                          isDense: true,
-                          border: OutlineInputBorder(),
+                      if (_lockedActivity case final locked?) ...[
+                        _buildLockedActivity(context, locked),
+                      ] else ...[
+                        TextField(
+                          controller: _nameCtrl,
+                          onChanged: _onNameChanged,
+                          decoration: const InputDecoration(
+                            labelText: '名称（竞赛/论文/荣誉等）',
+                            isDense: true,
+                            border: OutlineInputBorder(),
+                          ),
                         ),
-                      ),
-                      if (spec.needCat) _buildCatPicker(context),
+                        if (spec.needCat) _buildCatPicker(context),
+                      ],
                     ],
                     const SizedBox(height: 12),
                     Row(
@@ -753,7 +811,9 @@ class _MaterialEditDialogState extends State<_MaterialEditDialog> {
                             ),
                           ),
                         ),
-                        if (spec.needOrg) ...[
+                        // 竞赛不填「组织单位」（用户 2026-09-17：
+                        // 「添加竞赛时不要让我填组织单位」）。
+                        if (spec.needOrg && spec.id != ZcTypeId.contest) ...[
                           const SizedBox(width: 10),
                           Expanded(
                             child: TextField(
@@ -770,43 +830,27 @@ class _MaterialEditDialogState extends State<_MaterialEditDialog> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    DropdownButtonFormField<int>(
-                      initialValue: _clampI(_d.level, spec.levels.length - 1),
-                      decoration: const InputDecoration(
-                        labelText: '级别 / 档位',
-                        isDense: true,
-                        border: OutlineInputBorder(),
+                    if (spec.manualScore)
+                      // 外语等：按证书名目选，得分自己填（用户 2026-09-17 裁定）。
+                      _buildManualScore(context)
+                    else
+                      // 级别 / 档位：一排按钮（用户 2026-09-17 裁定不用下拉）。
+                      _choiceGroup(
+                        context,
+                        label: '级别 / 档位',
+                        items: spec.levels,
+                        selected: _clampI(_d.level, spec.levels.length - 1),
+                        onChanged: (v) => setState(() => _d.level = v),
                       ),
-                      items: [
-                        for (var i = 0; i < spec.levels.length; i++)
-                          DropdownMenuItem(
-                            value: i,
-                            child: Text(spec.levels[i]),
-                          ),
-                      ],
-                      onChanged: (v) {
-                        if (v != null) setState(() => _d.level = v);
-                      },
-                    ),
                     const SizedBox(height: 12),
                     if (spec.opts.isNotEmpty) ...[
-                      DropdownButtonFormField<int>(
-                        initialValue: _clampI(_d.opt, spec.opts.length - 1),
-                        decoration: const InputDecoration(
-                          labelText: '奖项 / 细分',
-                          isDense: true,
-                          border: OutlineInputBorder(),
-                        ),
-                        items: [
-                          for (var i = 0; i < spec.opts.length; i++)
-                            DropdownMenuItem(
-                              value: i,
-                              child: Text(spec.opts[i]),
-                            ),
-                        ],
-                        onChanged: (v) {
-                          if (v != null) setState(() => _d.opt = v);
-                        },
+                      // 奖项 / 细分：同样一排按钮。
+                      _choiceGroup(
+                        context,
+                        label: '奖项 / 细分',
+                        items: spec.opts,
+                        selected: _clampI(_d.opt, spec.opts.length - 1),
+                        onChanged: (v) => setState(() => _d.opt = v),
                       ),
                       const SizedBox(height: 12),
                     ],
@@ -850,10 +894,10 @@ class _MaterialEditDialogState extends State<_MaterialEditDialog> {
                           padding: const EdgeInsets.only(bottom: 4),
                           child: Row(
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.insert_drive_file,
                                 size: 16,
-                                color: Colors.grey,
+                                color: AppColors.textMuted(context),
                               ),
                               const SizedBox(width: 6),
                               Expanded(
@@ -866,10 +910,10 @@ class _MaterialEditDialogState extends State<_MaterialEditDialog> {
                               ),
                               InkWell(
                                 onTap: () => _removeFile(f),
-                                child: const Icon(
+                                child: Icon(
                                   Icons.close,
                                   size: 16,
-                                  color: Colors.grey,
+                                  color: AppColors.textMuted(context),
                                 ),
                               ),
                             ],
@@ -928,6 +972,195 @@ class _MaterialEditDialogState extends State<_MaterialEditDialog> {
                 ),
               ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// 目录里选定的比赛：名称与类别按**固定项**展示（不可改）。
+  Widget _buildLockedActivity(BuildContext context, ZcActivityItem item) {
+    final scheme = Theme.of(context).colorScheme;
+    final catName = zcCatNames[item.cat];
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+      decoration: BoxDecoration(
+        color: AppColors.fill(context),
+        borderRadius: BorderRadius.circular(kAppCardRadius),
+        border: Border.all(color: AppColors.hairline(context, 0.8)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.emoji_events_outlined, size: 16, color: scheme.primary),
+              const SizedBox(width: 6),
+              Text(
+                '比赛项目（目录固定）',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+              const Spacer(),
+              if (catName != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.tint(context, scheme.primary, 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '类别 $catName',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: scheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            item.namePrefill ?? item.title,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '要改比赛或类别，请返回上一步重新选择。',
+            style: TextStyle(fontSize: 11, color: scheme.outline),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 单选选项组：一排按钮（不用下拉），自动换行。
+  /// 得分输入（外语等 `manualScore` 类型）。
+  ///
+  /// 用户 2026-09-17：「外语能力不要分成 xxx≥aaa/xxx>bbb，直接按证书名字，然后
+  /// 手动填入分数」→ 表 10 的档位只作参考文案显示在输入框下方。
+  Widget _buildManualScore(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final cert = zcForeignCertOf(_d.name.trim());
+    // 等级类证书（日语 N1/N2、专八/专四、TOPIK）：表 10 直接给固定分，无需填任何数字。
+    if (cert != null && !cert.needsScore) {
+      return Text(
+        '表 10 档位：${cert.bandHint}（等级类证书无需填分）',
+        style: TextStyle(fontSize: 11, color: scheme.outline, height: 1.5),
+      );
+    }
+    final needsRaw = cert != null; // 目录内需填原始成绩；目录外 = 其他证书需填分值
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: _scoreCtrl,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(
+            labelText: needsRaw ? '原始成绩' : '加分分值（其他证书）',
+            hintText: needsRaw
+                ? '如 ${cert.name == '雅思' || cert.name == '托福' ? '6.5 / 90' : cert.name == 'GRE' ? '320' : '489'}'
+                : '上限 $kZcForeignOtherCap 分',
+            isDense: true,
+            border: const OutlineInputBorder(),
+          ),
+          onChanged: (s) => setState(
+            () => _d.manualScore = s.trim().isEmpty
+                ? null
+                : double.tryParse(s.trim()),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          needsRaw
+              // 「按挡位识别」：显示原始成绩查表 10 得到的**实际加分**（不是原始成绩本身）。
+              ? '按表 10：${zcForeignScoreLabel(name: _d.name.trim(), rawScore: _d.manualScore)}'
+              : '表 10：「其他证书由学院确认最终分值（单项不高于 $kZcForeignOtherCap 分）」',
+          style: TextStyle(
+            fontSize: 11,
+            color: _d.manualScore == null ? scheme.outline : scheme.primary,
+            height: 1.5,
+            fontWeight: _d.manualScore == null
+                ? FontWeight.normal
+                : FontWeight.w600,
+          ),
+        ),
+        if (cert != null) ...[
+          const SizedBox(height: 2),
+          Text(
+            '参考档位：${cert.bandHint}',
+            style: TextStyle(fontSize: 11, color: scheme.outline, height: 1.5),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _choiceGroup(
+    BuildContext context, {
+    required String label,
+    required List<String> items,
+    required int selected,
+    required ValueChanged<int> onChanged,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (var i = 0; i < items.length; i++)
+              _choiceChip(
+                context,
+                text: items[i],
+                selected: i == selected,
+                onTap: () => onChanged(i),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _choiceChip(
+    BuildContext context, {
+    required String text,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: selected ? scheme.primary : AppColors.fill(context),
+      borderRadius: BorderRadius.circular(kAppCardRadius),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(kAppCardRadius),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+              color: selected ? scheme.onPrimary : scheme.onSurface,
+            ),
+          ),
         ),
       ),
     );
@@ -998,16 +1231,8 @@ class _MaterialEditDialogState extends State<_MaterialEditDialog> {
 // ===================================================================
 
 /// 一级页返回结果。
-sealed class _PickOutcome {}
-
-/// 选中二级页某个具体活动候选。
-class _PickActivity extends _PickOutcome {
-  final ZcActivityItem item;
-  _PickActivity(this.item);
-}
-
-/// 「直接填写（不选具体活动）」。
-class _PickDirect extends _PickOutcome {}
+/// 二级页「选中候选 / 直接填写」都走 [onPicked] 回调（`null` = 直接填写），
+/// 由材料库根页打开表单；二级页**不出栈**，保存后可就地继续添加。
 
 /// 材料列表与类型选择分组顺序。
 const _dimOrder = ['z', 'd', 't', 'm', 'l'];
@@ -1103,7 +1328,7 @@ class _MaterialTypePickerPage extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(kAppCardRadius),
             side: BorderSide(
-              color: scheme.outlineVariant.withValues(alpha: 0.6),
+              color: AppColors.hairline(context, 0.6),
             ),
           ),
           child: ListTile(
@@ -1112,7 +1337,7 @@ class _MaterialTypePickerPage extends StatelessWidget {
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                color: scheme.primary.withValues(alpha: 0.08),
+                color: AppColors.tint(context, scheme.primary, 0.08),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(_zcTypeIcon(s.id), size: 19, color: scheme.primary),
@@ -1145,7 +1370,12 @@ class _MaterialTypePickerPage extends StatelessWidget {
 /// 第二级页：某类型的具体活动/档位候选；点选返回 [_PickOutcome]。
 class _ActivityPickPage extends StatefulWidget {
   final ZcTypeSpec spec;
-  const _ActivityPickPage({required this.spec});
+
+  /// 选中候选（或「直接填写」传 `null`）后的处理，返回是否保存成功。
+  /// 由本页调用而不是 `pop` 返回值：本页要**留在路由栈上**以便连续添加。
+  final Future<bool> Function(ZcActivityItem? item) onPicked;
+
+  const _ActivityPickPage({required this.spec, required this.onPicked});
 
   @override
   State<_ActivityPickPage> createState() => _ActivityPickPageState();
@@ -1171,30 +1401,22 @@ class _ActivityPickPageState extends State<_ActivityPickPage> {
     super.dispose();
   }
 
-  /// 查询词命中别名（RoboMaster→机器人大赛）时附加主名匹配。
-  String? _aliasFor(String q) {
-    for (final e in zcContestAliases.entries) {
-      if (e.key.toLowerCase() == q) return e.value;
-    }
-    return null;
+  /// 搜索口径 = `zcActivityMatches`（去空白/标点/零宽 + 关键词/别名/复合赛事
+  /// 子项，用户 2026-09-18：搜「大数据挑战赛」「华为ICT大赛」都要命中）。
+  List<ZcActivityItem> _visible() => [
+    for (final it in _all)
+      if (zcActivityMatches(it, _q)) it,
+  ];
+
+  Future<void> _pick(ZcActivityItem it) async {
+    final saved = await widget.onPicked(it);
+    if (!mounted || !saved) return;
+    // 保存成功 → 清空搜索、留在本页继续挑下一个（用户要求「停留在竞赛选择页」）。
+    _searchCtrl.clear();
+    setState(() => _q = '');
   }
 
-  List<ZcActivityItem> _visible() {
-    final q = _q.trim().toLowerCase();
-    if (q.isEmpty) return _all;
-    final alias = _aliasFor(q)?.toLowerCase();
-    return [
-      for (final it in _all)
-        if (it.title.toLowerCase().contains(q) ||
-            (alias != null && it.title.toLowerCase().contains(alias)) ||
-            (alias != null && it.namePrefill?.toLowerCase() == alias))
-          it,
-    ];
-  }
-
-  void _pick(ZcActivityItem it) => Navigator.of(context).pop(_PickActivity(it));
-
-  void _direct() => Navigator.of(context).pop(_PickDirect());
+  Future<void> _direct() => widget.onPicked(null);
 
   @override
   Widget build(BuildContext context) {
@@ -1297,7 +1519,7 @@ class _ActivityPickPageState extends State<_ActivityPickPage> {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(kAppCardRadius),
-        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+        side: BorderSide(color: AppColors.hairline(context, 0.6)),
       ),
       child: ListTile(
         dense: true,
@@ -1306,7 +1528,7 @@ class _ActivityPickPageState extends State<_ActivityPickPage> {
           width: 34,
           height: 34,
           decoration: BoxDecoration(
-            color: scheme.primary.withValues(alpha: 0.08),
+            color: AppColors.tint(context, scheme.primary, 0.08),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon, size: 17, color: scheme.primary),
@@ -1340,7 +1562,7 @@ class _ActivityPickPageState extends State<_ActivityPickPage> {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(kAppCardRadius),
-        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+        side: BorderSide(color: AppColors.hairline(context, 0.6)),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(kAppCardRadius),

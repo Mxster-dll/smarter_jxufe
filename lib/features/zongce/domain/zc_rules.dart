@@ -346,6 +346,14 @@ const List<(String, double)> zcForeignLevels = [
   ('四六级(艺术体育类) 四级 ≥425', 1.5),
 ];
 
+/// 外语证书**目录**（按名目、含表 10 门槛 → 分值）已迁到
+/// `lib/features/zongce/domain/zc_foreign.dart`（`zcForeignCatalog` /
+/// `zcForeignCertNames` / `zcForeignCertOf` / `zcForeignAward`）。
+///
+/// 用户 2026-09-17 二轮裁定：「四级 489 分导致加分加了 489，实际要按挡位识别」
+/// —— 目录内证书的分值一律由**原始成绩查表 10 档位**得出，不再等于手填数字；
+/// 上面的 [zcForeignLevels]（扁平 label+分值）只剩旧材料回退用，别再新增引用。
+
 /// 自主创业（表 11）。
 const List<(String, double)> zcStartupLevels = [
   ('三年及以上', 4), ('两年及以上', 3), ('一年及以上', 2), ('一年以内', 1),

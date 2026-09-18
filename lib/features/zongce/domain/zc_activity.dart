@@ -1,4 +1,5 @@
 import 'zc_catalog.dart';
+import 'zc_foreign.dart';
 import 'zc_rules.dart';
 
 /// 「材料添加向导」二级页的候选数据源与复合格式拆分。
@@ -23,6 +24,7 @@ class ZcActivityItem {
     this.levelIdx,
     this.cat,
     this.other = false,
+    this.keywords = const <String>[],
   });
 
   /// 显示文案。
@@ -42,6 +44,31 @@ class ZcActivityItem {
 
   /// 「其他 xxx（手动填写）」兜底项。
   final bool other;
+
+  /// 搜索关键词（**不影响显示**）：复合赛事子项、别名等。
+  ///
+  /// 例：`中国高校计算机大赛` 的关键词 = 大数据挑战赛 / 团体程序设计天梯赛 /
+  /// 移动应用创新赛 / 网络技术挑战赛 / 人工智能创意赛（用户 2026-09-18：
+  /// 「显示为『中国高校计算机大赛』是正确的，但是搜索应该可以被
+  /// 『大数据挑战赛』『团体程序设计天梯赛』这样的比赛识别到」）。
+  final List<String> keywords;
+}
+
+/// 候选是否命中查询词（二级页搜索的**唯一口径**）。
+///
+/// 两侧都过 [zcNameKey]（去空白/标点/零宽、小写、全角数字转半角），因此
+/// 「华为ICT大赛」能搜到「华为 ICT 大赛」、「团体程序设计天梯赛」能搜到
+/// 「团体程序设计天梯 赛」（原稿换行残留的空白）。
+bool zcActivityMatches(ZcActivityItem item, String query) {
+  final q = zcNameKey(query);
+  if (q.isEmpty) return true;
+  if (zcNameKey(item.title).contains(q)) return true;
+  final prefill = item.namePrefill;
+  if (prefill != null && zcNameKey(prefill).contains(q)) return true;
+  for (final k in item.keywords) {
+    if (zcNameKey(k).contains(q)) return true;
+  }
+  return false;
 }
 
 /// 例项清理：去首尾空白；尾部单字「等」（列举未完标记）剥除，
@@ -106,22 +133,27 @@ String _cleanEx(String e) {
 }
 
 /// 竞赛目录（Ⅰ~Ⅳ 类）作为候选。
+///
+/// 名称一律过 [zcCleanName]（去原稿换行残留的空白）并挂上 [zcContestKeywords]
+/// （复合赛事子项 + 别名）→ 列表显示主名，搜索可被子项/别名命中。
 List<ZcActivityItem> _contestItems() {
   final out = <ZcActivityItem>[];
   final seen = <String>{};
   for (final cat in const ['c1', 'c2', 'c3']) {
     final group = zcCatNames[cat] ?? cat;
-    for (final n in zcContests[cat] ?? const <String>[]) {
-      if (!seen.add(n)) continue;
+    for (final raw in zcContests[cat] ?? const <String>[]) {
+      final name = zcCleanName(raw);
+      if (!seen.add(zcNameKey(name))) continue;
       out.add(ZcActivityItem(
-        title: n,
+        title: name,
         group: group,
-        namePrefill: n,
+        namePrefill: name,
         cat: cat,
+        keywords: zcContestKeywords(name),
       ));
     }
   }
-  // Ⅳ 类 = 江西省大学生科技创新竞赛子项目。
+  // Ⅳ 类 = 江西省大学生科技创新竞赛子项目（子项名也可直接搜）。
   for (final s in zcJxContestSubs) {
     final name = '江西省大学生科技创新竞赛 $s';
     out.add(ZcActivityItem(
@@ -129,6 +161,7 @@ List<ZcActivityItem> _contestItems() {
       group: 'Ⅳ类（江西省赛）',
       namePrefill: name,
       cat: 'c4',
+      keywords: [s],
     ));
   }
   out.add(const ZcActivityItem(title: '其他比赛（手动录入）', other: true));
@@ -145,19 +178,11 @@ List<ZcActivityItem> _contestItems() {
 List<ZcActivityItem> zcActivityItems(ZcTypeSpec spec) {
   if (spec.id == ZcTypeId.contest) return _contestItems();
   final out = <ZcActivityItem>[];
-  // 外语：levels 语义即证书名（如「雅思（≥6.5）2 分」），
-  // 点选即回填证书名，无需再到表单手输名称。
+  // 外语：用户 2026-09-17「不要分成 xxx≥aaa/xxx>bbb，直接按证书名字，然后手动填入
+  // 分数」→ 候选 = 去重后的证书名目（雅思 / 托福 / 日语 N1 …），得分在表单里手填。
   if (spec.id == ZcTypeId.foreign) {
-    final n =
-        spec.levels.length < zcForeignLevels.length
-            ? spec.levels.length
-            : zcForeignLevels.length;
-    for (var i = 0; i < n; i++) {
-      out.add(ZcActivityItem(
-        title: spec.levels[i],
-        levelIdx: i,
-        namePrefill: zcForeignLevels[i].$1,
-      ));
+    for (final cert in zcForeignCertNames) {
+      out.add(ZcActivityItem(title: cert, namePrefill: cert));
     }
     return out;
   }

@@ -1,7 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/core/storage/local_data_revision.dart';
+import 'package:smarter_jxufe/design/app_theme.dart';
+import 'package:smarter_jxufe/features/comprehensive_service/data/providers/volunteer_hours_providers.dart';
 import 'package:smarter_jxufe/features/materials/presentation/materials_screen.dart';
+import 'package:smarter_jxufe/features/score_estimate/data/ge_providers.dart';
 import 'package:smarter_jxufe/features/tice/data/providers/tice_providers.dart';
 import 'package:smarter_jxufe/features/tice/data/tice_remote_datasource.dart';
 import 'package:smarter_jxufe/features/tice/data/tice_stu_num.dart';
@@ -9,9 +15,17 @@ import 'package:smarter_jxufe/features/zongce/data/zc_providers.dart';
 import 'package:smarter_jxufe/features/zongce/data/zc_store.dart';
 import 'package:smarter_jxufe/features/zongce/domain/zc_catalog.dart';
 import 'package:smarter_jxufe/features/zongce/domain/zc_engine.dart';
+import 'package:smarter_jxufe/features/zongce/domain/zc_foreign.dart';
 import 'package:smarter_jxufe/features/zongce/domain/zc_models.dart';
 import 'package:smarter_jxufe/features/zongce/domain/zc_rules.dart';
+import 'package:smarter_jxufe/features/zongce/domain/zc_tip_data.dart';
+import 'package:smarter_jxufe/features/zongce/domain/zc_weights.dart';
 import 'package:smarter_jxufe/features/zongce/presentation/widgets/rule_tip.dart';
+import 'package:smarter_jxufe/features/zongce/presentation/widgets/volunteer_bar.dart';
+import 'package:smarter_jxufe/features/zongce/presentation/widgets/weight_sheet.dart';
+import 'package:smarter_jxufe/design/pane_chrome.dart';
+import 'package:smarter_jxufe/shared/widgets/academic_year_picker.dart';
+import 'package:smarter_jxufe/shared/widgets/count_stepper.dart';
 
 /// 综合测评 · 自动测算（单页）。
 ///
@@ -19,6 +33,10 @@ import 'package:smarter_jxufe/features/zongce/presentation/widgets/rule_tip.dart
 /// 底部「班级排名估计」卡决定单项等次；配色统一到 App 主题、控件全部换
 /// 成 App 风格。材料加分来自共享数据源 [zcMaterialsProvider]（材料库维护），
 /// 教务加权 / 第二课堂志愿自动带入，评议 / 体测 / 排名手动填写（标注预估）。
+///
+/// 两种自动源都**按测评学年**取数（用户 2026-09-16 裁定「综测按学年算」）：
+/// 课程加权限定学期码落在该学年的课程，志愿时长限定活动日期落在学年窗口
+/// （`[y-1]-09-01 ~ [y]-08-31`）的活动 —— 与材料「按盖章时间归入学年」同一口径。
 class ZongceScreen extends ConsumerStatefulWidget {
   const ZongceScreen({super.key});
 
@@ -27,16 +45,22 @@ class ZongceScreen extends ConsumerStatefulWidget {
 }
 
 class _ZongceScreenState extends ConsumerState<ZongceScreen> {
+  /// 学年选择器可回溯的学年数（当前测评学年往前 [zcYearWindow] 个）。
+  static const int zcYearWindow = 5;
+
   late int _year;
   bool _ready = false;
   ZcManual _manual = const ZcManual();
   ZcStore? _store;
   String? _loadError;
 
+  /// 学年选择器是否被鼠标悬停（悬停展开时把左侧说明淡出，避免年份溢出的
+  /// 数字压在文字上）。
+  bool _pickerHovered = false;
+
   // ---- 体测成绩自动获取（赛康体测平台，仅当用户未手动编辑时回填）----
   bool _ticeBusy = false; // 自动查询进行中
   bool _ticeTouched = false; // 本学年用户已手动编辑体测分数（防覆盖）
-  bool _ticeFilled = false; // 本次自动值已写入（badge 标「自动」）
   String? _ticeNote; // 输入行来源提示（busy/成功/失败/已手填）
 
   /// 五育语义色（同原网页：德红 / 智蓝 / 体绿 / 美紫 / 劳青）。
@@ -107,11 +131,9 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
     final yearEnd = _year;
     setState(() {
       _ticeBusy = true;
-      _ticeFilled = false;
       _ticeNote = '正在从体测平台自动获取成绩…';
     });
     String? note;
-    var filled = false;
     try {
       final stuNum = await resolveTiceStuNum(ref);
       if (stuNum.isEmpty) {
@@ -133,7 +155,6 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
           _updateManual(
             _manual.copyWith(tScore: score.clamp(0, 100).toDouble()),
           );
-          filled = true;
           note = '已自动获取 ${yearEnd - 1} 学年体测成绩 ${_fmt(score)} 分 · 可手动修改';
         }
       }
@@ -145,7 +166,6 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
     if (!mounted || yearEnd != _year) return; // 学年已切换则丢弃
     setState(() {
       _ticeBusy = false;
-      _ticeFilled = filled;
       _ticeNote = note;
     });
   }
@@ -155,7 +175,6 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
     if (_ticeTouched) return;
     setState(() {
       _ticeTouched = true;
-      _ticeFilled = false;
       _ticeNote = null;
     });
   }
@@ -170,7 +189,29 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
     }
   }
 
-  void _switchYear(int delta) => _loadYear(_year + delta);
+  /// **全页统一刷新**（用户 2026-09-18：「体测成绩、加权成绩都不显示输入框和
+  /// 刷新按钮，而是改成全页统一的刷新按钮」）—— 三条自动源一起重取，字段级
+  /// 刷新按钮已全部撤掉。
+  void _refreshAll() {
+    // 加权：先失效底层成绩列表（成绩页可能刚查过新成绩），再失效本学年派生值。
+    ref.invalidate(gePriorGradesProvider);
+    ref.invalidate(zcAutoWeightProvider(_year));
+    // 志愿时长：底层是第二课堂活动列表（联网，会话失效会自动重建）。
+    ref.invalidate(volunteerActivitiesProvider);
+    ref.invalidate(zcAutoVolunteerProvider(_year));
+    // 体测：走本页 State 的自动获取（不经过 provider）。
+    unawaited(_autoTice());
+  }
+
+  /// 云同步「从云端恢复」改了本机落盘的手册条目 → 重读一次
+  /// （只动手册那一份内存副本，不碰体测 / 志愿的自动源）。
+  Future<void> _reloadManual() async {
+    final store = _store;
+    if (store == null) return;
+    final manual = await store.loadManual(_year);
+    if (!mounted) return;
+    setState(() => _manual = manual);
+  }
 
   Future<void> _loadYear(int year) async {
     final store = _store;
@@ -182,7 +223,6 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
       _year = year;
       _manual = manual;
       _ticeTouched = false; // 新学年：重新允许自动回填
-      _ticeFilled = false;
       _ticeNote = null;
     });
     _autoTice();
@@ -192,6 +232,9 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
 
   String _fmt(double v) =>
       v == v.roundToDouble() ? v.round().toString() : v.toString();
+
+  /// 加权成绩保留 2 位（用户 2026-09-17：「综测页智育用的加权成绩保留 2 位」）。
+  String _fmt2(double v) => v.toStringAsFixed(2);
 
   Color _gradeColor(BuildContext context, ZcGrade g) {
     switch (g) {
@@ -226,8 +269,24 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 云同步「从云端恢复」整体改写了本机落盘 → 重读手册条目
+    // （本页的手册是**读进 State** 的，box 变了它不会自己知道）。
+    ref.listen(localDataRevisionProvider, (_, _) => unawaited(_reloadManual()));
     return Scaffold(
-      appBar: AppBar(title: const Text('综合测评'), centerTitle: false),
+      appBar: paneAppBar(
+        context,
+        title: const Text('综合测评'),
+        centerTitle: false,
+        // 全页统一刷新（用户 2026-09-18：「体测成绩、加权成绩都不显示输入框和
+        // 刷新按钮，而是改成全页统一的刷新按钮」）→ 字段级刷新按钮全部撤掉。
+        actions: [
+          IconButton(
+            tooltip: '刷新数据',
+            icon: const Icon(Icons.refresh),
+            onPressed: _refreshAll,
+          ),
+        ],
+      ),
       body: _buildBody(context),
     );
   }
@@ -249,9 +308,13 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
     // 证明材料来自共享数据源（材料库独立维护，增删改后 invalidate 重算）。
     final matsAsync = ref.watch(zcMaterialsProvider);
     final all = matsAsync.value ?? const <ZcMaterial>[];
-    final mats = zcFilterByYear(all, _year);
-    final weightAsync = ref.watch(zcAutoWeightProvider);
-    final volAsync = ref.watch(zcAutoVolunteerProvider);
+    // 材料**不分学年**（用户 2026-09-17：「所有的材料本身不分学年，只手动填入
+    // 时间」）→ 全部材料都计入；学年只用于自动源（下面两个 provider 的参数）。
+    final mats = all;
+    // 自动源也按**测评学年**取（用户 2026-09-16 裁定「综测按学年算」）：
+    // 参数 = 学年结束年，与材料归属同一窗口。
+    final weightAsync = ref.watch(zcAutoWeightProvider(_year));
+    final volAsync = ref.watch(zcAutoVolunteerProvider(_year));
     final autoWeight = weightAsync.value;
     final autoVol = volAsync.value;
 
@@ -291,7 +354,7 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
         const SizedBox(height: 12),
         _buildYuCardMei(context, result, mats),
         const SizedBox(height: 12),
-        _buildYuCardLao(context, result, mats, volAsync.isLoading),
+        _buildYuCardLao(context, result, mats, autoVol),
         const SizedBox(height: 12),
         _buildRankCard(context),
         const SizedBox(height: 12),
@@ -300,36 +363,48 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
     );
   }
 
+  /// 全应用统一的学年选择器（用户 2026-09-18：「综测的年份切换要使用我们的
+  /// 『学年选择器』」）—— 取代原先的两个 `chevron_left/right` 图标按钮。
+  ///
+  /// 范围 = 当前测评学年往前 [zcYearWindow] 个学年，**不允许选未来学年**
+  /// （还没到的学年没有测评意义）。
   Widget _buildYearBar(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final endYear = zcDefaultYear(DateTime.now());
+    final startYear = endYear - zcYearWindow;
     return Row(
       children: [
-        IconButton(
-          onPressed: () => _switchYear(-1),
-          icon: const Icon(Icons.chevron_left),
-          tooltip: '上一学年',
-        ),
         Expanded(
-          child: Column(
-            children: [
-              Text(
-                zcYearLabel(_year),
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 160),
+            opacity: _pickerHovered ? 0.0 : 1.0,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '测评学年',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                    color: scheme.onSurface,
+                  ),
                 ),
-              ),
-              Text(
-                '测评周期：9 月起测评上一学年（材料按盖章时间归档）',
-                style: TextStyle(fontSize: 11, color: scheme.outline),
-              ),
-            ],
+                const SizedBox(height: 3),
+                Text(
+                  '9 月起测评上一学年（材料按盖章时间归档）',
+                  style: TextStyle(fontSize: 11, color: scheme.outline),
+                ),
+              ],
+            ),
           ),
         ),
-        IconButton(
-          onPressed: () => _switchYear(1),
-          icon: const Icon(Icons.chevron_right),
-          tooltip: '下一学年',
+        AcademicYearPicker(
+          key: const Key('zcYearPicker'),
+          startYear: startYear,
+          endYear: endYear,
+          initialYear: _year.clamp(startYear, endYear),
+          onChanged: _loadYear,
+          onHoverChanged: (v) => setState(() => _pickerHovered = v),
         ),
       ],
     );
@@ -338,13 +413,20 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
   // ===================================================================
   // 顶部：测评结果（原网页「结果侧栏」语义，单列时置顶常驻）
   // ===================================================================
+  /// 总评成绩（五育加权）：点胶囊就地改占比（用户 2026-09-18 拍板的入口）。
+  Future<void> _editWeights(ZcWeights current) async {
+    final next = await showZcWeightSheet(context, weights: current);
+    if (next == null || !mounted) return;
+    _updateManual(_manual.copyWith(weights: next));
+  }
+
   Widget _buildResultCard(
     BuildContext context,
     ZcCalcResult r,
     List<ZcMaterial> mats,
   ) {
     final scheme = Theme.of(context).colorScheme;
-    final avg = (r.deyu + r.zhiyu + r.tiyu + r.meiyu + r.laoyu) / 5;
+    final avg = r.average;
     final rows = [
       ('德育', r.deyu, r.gD),
       ('智育', r.zhiyu, r.gZ),
@@ -363,7 +445,7 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: scheme.primary.withValues(alpha: 0.08),
+                  color: AppColors.tint(context, scheme.primary, 0.08),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
@@ -377,9 +459,11 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    _labelTip(
+                      context,
                       '测评结果',
-                      style: TextStyle(
+                      tipKey: 'overall',
+                      style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
                       ),
@@ -392,8 +476,6 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
                 ),
               ),
               _gradeChip(context, r.overall, big: true),
-              const SizedBox(width: 4),
-              RuleTip(tipKey: 'overall', size: 14),
             ],
           ),
           const SizedBox(height: 14),
@@ -458,16 +540,46 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
+                  // 总评成绩 = 五育加权（用户 2026-09-18：「综测不是直接算平均分，
+                  // 而是有一个总评成绩，这个成绩的占比由班主任定，应该让用户自行
+                  // 设置」）→ 点胶囊弹占比设置；平均分降级为下面那行小字。
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '总评成绩',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: scheme.outline,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      KeyedSubtree(
+                        key: const Key('zcTotalChip'),
+                        child: _valueTap(
+                          context,
+                          text: '${_fmt2(r.total)} 分',
+                          onTap: () => _editWeights(r.weights),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    '占比 ${r.weights.label}',
+                    key: const Key('zcTotalWeightsLabel'),
+                    style: TextStyle(fontSize: 10, color: scheme.outline),
+                  ),
+                  const SizedBox(height: 4),
                   _statLine(
                     '五育平均',
                     '${_fmt(avg)} 分',
-                    emphasize: true,
                     context: context,
                   ),
                   const SizedBox(height: 4),
                   _statLine(
                     '加权成绩',
-                    r.weightMissing ? '未获取' : '${_fmt(r.weightUsed)} 分',
+                    r.weightMissing ? '未获取' : '${_fmt2(r.weightUsed)} 分',
                     context: context,
                   ),
                   const SizedBox(height: 4),
@@ -514,7 +626,7 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
         vertical: big ? 6 : 2,
       ),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: AppColors.tint(context, color, 0.12),
         borderRadius: BorderRadius.circular(big ? 10 : 6),
         border: Border.all(color: color.withValues(alpha: 0.45)),
       ),
@@ -559,7 +671,7 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
     final color = _yuColors[dim] ?? scheme.primary;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card(context),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
@@ -570,12 +682,12 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
           Container(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.045),
+              color: AppColors.tint(context, color, 0.045),
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(12),
               ),
               border: Border(
-                bottom: BorderSide(color: color.withValues(alpha: 0.16)),
+                bottom: BorderSide(color: AppColors.tintBorder(context, color, 0.16)),
               ),
             ),
             child: Row(
@@ -584,7 +696,7 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
                   width: 34,
                   height: 34,
                   decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.12),
+                    color: AppColors.tint(context, color, 0.12),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(icon, size: 18, color: color),
@@ -594,8 +706,11 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      _labelTip(
+                        context,
                         name,
+                        tipKey: headerTipKey,
+                        tipColor: color,
                         style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
@@ -609,8 +724,6 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
                   ),
                 ),
                 // 实时分数徽章（同原网页 header .live）
-                if (headerTipKey != null)
-                  RuleTip(tipKey: headerTipKey, size: 13.5),
                 const SizedBox(width: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -659,6 +772,158 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
     );
   }
 
+  /// 把若干个条款点 key 合成一个悬停按钮的内容（同一行既挂分区点又挂行点）。
+  List<String> _tipIdsOf(List<String> keys) => [
+    for (final k in keys) ...?zcTipRefs[k],
+  ];
+
+  /// 行首：标签文字 + **紧跟在文字右侧**的条款依据悬停按钮。
+  ///
+  /// 用户 2026-09-18：「对于综测页所有的悬浮提示位置都改到左端文本的右侧旁」——
+  /// 从前 `Row([Expanded(Text(label)), RuleTip, …])` 会把 `?` 推到整行最右端，
+  /// 与它解释的文字隔了半屏。统一改用本件：`Row(min, [Flexible(Text), ?])`
+  /// 套在 `Expanded(child: Align(centerLeft, …))` 里 —— 文字与 `?` 贴在一起、
+  /// 整体靠左，行尾的分值 / 控件仍在最右侧。
+  Widget _labelTip(
+    BuildContext context,
+    String label, {
+    String? tipKey,
+    List<String>? tipIds,
+    TextStyle? style,
+    Color? tipColor,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Flexible(child: Text(label, style: style)),
+        if (tipKey != null) RuleTip(tipKey: tipKey, color: tipColor, size: 13.5),
+        if (tipKey == null && tipIds != null && tipIds.isNotEmpty)
+          RuleTip(ids: tipIds, color: tipColor, size: 13.5),
+      ],
+    );
+  }
+
+  /// 胶囊内的数值文字（`_valueTap` 的自适应 / 定宽两个分支共用）。
+  Widget _valueTapText(String text, ColorScheme scheme, bool muted) => Text(
+    text,
+    maxLines: 1,
+    overflow: TextOverflow.ellipsis,
+    style: TextStyle(
+      fontSize: 12.5,
+      fontWeight: FontWeight.w700,
+      color: muted ? scheme.outline : scheme.primary,
+      fontFeatures: const [FontFeature.tabularFigures()],
+    ),
+  );
+
+  /// 数值胶囊（`_subRow` 的 trailing）——基础分这类不可改的分数用它。
+  ///
+  /// 用户 2026-09-18 四轮：「我希望显示胶囊而不是卡片，就和其他部分的加分汇总
+  /// 一样」→ 与分区徽章 [._badge] **同款**：主色淡底（`AppColors.tint` 0.09）
+  /// + 圆角 999 + 主色 w700 字。旧的「圆角 8 + 细描边方框」（看着像卡片）已弃用。
+  Widget _staticChip(BuildContext context, String text, {Color? color}) {
+    final scheme = Theme.of(context).colorScheme;
+    final c = color ?? scheme.primary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3.5),
+      decoration: BoxDecoration(
+        color: AppColors.tint(context, c, 0.09),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        text,
+        maxLines: 1,
+        style: TextStyle(
+          fontSize: 12.5,
+          fontWeight: FontWeight.w700,
+          color: c,
+          fontFeatures: const [FontFeature.tabularFigures()],
+        ),
+      ),
+    );
+  }
+
+  /// 单行分区（用户 2026-09-18：「基础分、民主评议分都只显示一行内容，都只有一个
+  /// 标题行，标题行最右侧显示分数，然后评议分点击可修改」）。
+  ///
+  /// 行 = 序号圆块 + 标题 +「紧跟标题的条款按钮」+ 最右端的 [trailing]
+  /// （`60 分` 这样的胶囊，或可点的 `_tapNumber`）。
+  ///
+  /// ⚠ 这一行**不挂任何纯文字 Tooltip**（用户 2026-09-18 四轮：「我希望只有悬浮在
+  /// 指定区域的悬浮提示，没有另一个悬浮提示……那种卡片式的悬浮提示保留」）——
+  /// 「思想端正、遵纪守法……即认定」这类说明文字已整体撤掉，悬停只剩标题右侧的
+  /// `?`（[RuleTip] 卡片）。
+  Widget _subRow(
+    BuildContext context,
+    int? no,
+    String title, {
+    String? tipKey,
+    List<String>? tipIds,
+    Color? color,
+    required Widget trailing,
+  }) {
+    final c = color ?? _schemeColor;
+    final row = Padding(
+      padding: const EdgeInsets.only(top: 12, bottom: 6),
+      child: Row(
+        children: [
+          // 序号方块；`no == null` 时同一 18px 槽位里画一个小圆点 —— 用于「挂在
+          // 分区下面、但不需要单独编号」的行（如劳育「志愿服务时长」）。
+          SizedBox(
+            width: 18,
+            height: 18,
+            child: no == null
+                ? Center(
+                    child: Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: c,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  )
+                : Container(
+                    decoration: BoxDecoration(
+                      color: c,
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '$no',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+          ),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _labelTip(
+                context,
+                title,
+                tipKey: tipKey,
+                tipIds: tipIds,
+                tipColor: c,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          trailing,
+        ],
+      ),
+    );
+    return row;
+  }
+
   /// 分区标题（同原网页 .subhead：序号圆块 + 名称 + 可选徽章/右侧提示）。
   Widget _sub(
     BuildContext context,
@@ -694,13 +959,21 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
           ),
           const SizedBox(width: 7),
           Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _labelTip(
+                context,
+                title,
+                tipKey: tipKey,
+                tipColor: c,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ),
           ?badge,
-          if (tipKey != null) RuleTip(tipKey: tipKey, color: c, size: 13.5),
           if (tip != null)
             Padding(
               padding: const EdgeInsets.only(left: 8),
@@ -721,7 +994,7 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1.5),
       decoration: BoxDecoration(
-        color: c.withValues(alpha: 0.09),
+        color: AppColors.tint(context, c, 0.09),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -751,12 +1024,16 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
           Row(
             children: [
               Expanded(
-                child: Text(
-                  label,
-                  style: TextStyle(fontSize: 13, color: scheme.onSurface),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: _labelTip(
+                    context,
+                    label,
+                    tipKey: tipKey,
+                    style: TextStyle(fontSize: 13, color: scheme.onSurface),
+                  ),
                 ),
               ),
-              if (tipKey != null) RuleTip(tipKey: tipKey, size: 13.5),
               if (scoreText != null)
                 Text(
                   scoreText,
@@ -793,35 +1070,225 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
     );
   }
 
-  /// 数字输入（定宽，无 Expanded —— 只能在有限宽容器里使用）。
-  Widget _numField(
-    String label,
-    String text,
-    ValueChanged<String> onChanged, {
-    String? hint,
-    double width = 150,
+  /// 智育「加分项」的一个小项（用户 2026-09-18：四类分开显示）。
+  ///
+  /// 行 = 小项名 + 条款依据悬停 + 该小项分值；下面接该小项的材料行，
+  /// 一条都没有时给「去材料库录入」入口。**分值一律取引擎明细**
+  /// （`智育 · 学科竞赛`/`智育 · 论文/专利`/`智育 · 外语`/`智育 · 创业`），
+  /// 界面层不重算 —— 四小项之和 == 加分项总徽章 `extra`。
+  Widget _extraItem(
+    BuildContext context, {
+    required String label,
+    required double value,
+    required List<String> tipIds,
+    required List<ZcMaterial> items,
+    Set<String> highlightIds = const <String>{},
+    Set<String> dimmedIds = const <String>{},
   }) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: _labelTip(
+                    context,
+                    label,
+                    tipIds: tipIds,
+                    tipColor: scheme.primary,
+                    style: TextStyle(fontSize: 13, color: scheme.onSurface),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                value > 0 ? '+${_fmt(value)} 分' : '0 分',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: value > 0 ? scheme.primary : scheme.outline,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          if (items.isEmpty)
+            _goMaterials(context, text: '暂无该小项证明 · 去材料库录入')
+          else
+            for (final x in items)
+              _matRow(
+                context,
+                x,
+                highlighted: highlightIds.contains(x.id),
+                dimmed: dimmedIds.contains(x.id),
+              ),
+        ],
+      ),
+    );
+  }
+
+  /// 「点击才输入」的数值件（用户 2026-09-18：「民主评议也改成点击才输入」）。
+  ///
+  /// 页面上**不再常驻输入框**：数值本身是可点的胶囊，点开才弹输入框。
+  /// 次数类字段另走 `CountStepper`（左右三角增减 + 点数字输入）。
+  Widget _valueTap(
+    BuildContext context, {
+    required String text,
+    required VoidCallback onTap,
+    String? tag,
+    bool muted = false,
+    double? width,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    final fixed = width != null;
+    final accent = muted ? scheme.outline : scheme.primary;
     return SizedBox(
       width: width,
-      child: TextFormField(
-        key: ValueKey('$_year-num-$label'),
-        initialValue: text,
-        keyboardType: const TextInputType.numberWithOptions(
-          decimal: true,
-          signed: false,
-        ),
-        decoration: InputDecoration(
-          labelText: label,
-          isDense: true,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 10,
-            vertical: 9,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onTap,
+        // 用户 2026-09-18 四轮：与「加分汇总」徽章同款（主色淡底 + 999 圆角），
+        // 且**不再挂纯文字 Tooltip** —— 悬停提示只保留标题右侧 `?` 的条款卡片，
+        // 可点性由胶囊里的铅笔图标表达。
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3.5),
+          decoration: BoxDecoration(
+            color: AppColors.tint(context, accent, 0.09),
+            borderRadius: BorderRadius.circular(999),
           ),
-          border: const OutlineInputBorder(),
-          hintText: hint,
+          child: Row(
+            // 自适应宽度（width == null）时 Row 收缩到内容宽 —— 胶囊贴合文字，
+            // 与只读的 `_staticChip` 观感一致；定宽时仍用 Expanded 把尾巴推右。
+            mainAxisSize: fixed ? MainAxisSize.max : MainAxisSize.min,
+            children: [
+              if (fixed)
+                Expanded(child: _valueTapText(text, scheme, muted))
+              else
+                _valueTapText(text, scheme, muted),
+              if (tag != null) ...[
+                const SizedBox(width: 6),
+                _sourceTag(context, tag),
+              ],
+              const SizedBox(width: 4),
+              Icon(
+                Icons.edit_outlined,
+                size: 13,
+                color: accent.withValues(alpha: 0.75),
+              ),
+            ],
+          ),
         ),
-        onChanged: onChanged,
       ),
+    );
+  }
+
+  /// 「自动 / 手动」小标（让用户一眼看出这个值是不是自动带入的）。
+  Widget _sourceTag(BuildContext context, String text) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+      decoration: BoxDecoration(
+        // 叠在同为主色淡底的数值胶囊上，0.10 会看不见 → 加深到 0.22。
+        color: AppColors.tint(context, scheme.primary, 0.22),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: scheme.primary,
+        ),
+      ),
+    );
+  }
+
+  /// 非空数值字段（评议分 / 体测分）：点击 → 弹输入框。
+  Widget _tapNumber(
+    BuildContext context, {
+    required String label,
+    required double value,
+    required ValueChanged<double> onChanged,
+    double min = 0,
+    double max = 20,
+    bool integer = false,
+    String? display,
+    String? note,
+    double? width,
+  }) {
+    return _valueTap(
+      context,
+      text: display ?? (integer ? value.round().toString() : _fmt(value)),
+      width: width,
+      tag: note,
+      muted: value <= 0,
+      onTap: () async {
+        final out = await promptNumberValue(
+          context,
+          title: '输入$label',
+          label: label,
+          initial: value,
+          min: min,
+          max: max,
+          integer: integer,
+          helper: '范围 ${_fmt(min)} ~ ${_fmt(max)}',
+        );
+        if (out.confirmed && !out.cleared && out.value != null) {
+          onChanged(out.value!);
+        }
+      },
+    );
+  }
+
+  /// 可空数值字段（加权成绩 / 志愿时长）：手动值 null = 用自动值。
+  Widget _tapNumberOpt(
+    BuildContext context, {
+    required String label,
+    required double? value,
+    required double? autoValue,
+    required ValueChanged<double?> onChanged,
+    double min = 0,
+    double max = 100,
+    String? display,
+    double? width,
+  }) {
+    final manual = value != null;
+    final shown = value ?? autoValue;
+    return _valueTap(
+      context,
+      // 手动值优先显示；没有手动值时才用调用方给的自动值文案（加权要 2 位小数）。
+      text: manual
+          ? _fmt(value)
+          : (display ?? (shown == null ? '未获取' : _fmt(shown))),
+      width: width,
+      // 用户 2026-09-18 五轮：「加权和体测成绩不要显示『自动』字样」→
+      // 自动带入的值**不挂标**，只有手动覆盖时才挂「手动」。
+      tag: manual ? '手动' : null,
+      muted: shown == null,
+      onTap: () async {
+        final out = await promptNumberValue(
+          context,
+          title: '输入$label',
+          label: label,
+          initial: value ?? autoValue,
+          min: min,
+          max: max,
+          helper: '范围 ${_fmt(min)} ~ ${_fmt(max)}；留空用自动值',
+          allowClear: manual,
+        );
+        if (!out.confirmed) return;
+        if (out.cleared) {
+          onChanged(null);
+        } else if (out.value != null) {
+          onChanged(out.value!);
+        }
+      },
     );
   }
 
@@ -858,7 +1325,7 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
       label: Text(label, style: const TextStyle(fontSize: 11.5)),
       selected: value,
       visualDensity: VisualDensity.compact,
-      selectedColor: (color ?? _schemeColor).withValues(alpha: 0.14),
+      selectedColor: AppColors.tint(context, color ?? _schemeColor, 0.14),
       checkmarkColor: color ?? _schemeColor,
       labelStyle: TextStyle(
         color: value ? (color ?? _schemeColor) : null,
@@ -868,18 +1335,35 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
     );
   }
 
-  /// 材料只读行：名称 + 类型·日期 + 分值（自动来自材料库）。
-  Widget _matRow(BuildContext context, ZcMaterial m) {
+  /// 材料只读行：名称 + 类型·档位 + 分值（自动来自材料库）。
+  ///
+  /// [highlighted] = 这一条**最终计入了总分**（用户 2026-09-18：「综测智育竞赛
+  /// 加分要把最终贡献分数的项高亮一下」）；[dimmed] = 有分但被上限截掉、没计入。
+  Widget _matRow(
+    BuildContext context,
+    ZcMaterial m, {
+    bool highlighted = false,
+    bool dimmed = false,
+  }) {
     final scheme = Theme.of(context).colorScheme;
     final spec = zcTypeSpecOf[m.typeId];
     final v = zcMaterialValue(m);
-    return Container(
+    return Opacity(
+      opacity: dimmed ? 0.55 : 1,
+      child: Container(
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        color: highlighted
+            ? AppColors.tint(context, scheme.primary, 0.10)
+            : scheme.surfaceContainerHighest.withValues(alpha: 0.35),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+        border: Border.all(
+          color: highlighted
+              ? scheme.primary.withValues(alpha: 0.55)
+              : AppColors.hairline(context, 0.5),
+          width: highlighted ? 1.1 : 1,
+        ),
       ),
       child: Row(
         children: [
@@ -889,11 +1373,33 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  m.displayName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12.5),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        // 外语行标题 = **原文条目名**（`大学英语四级 ≥425`），不再
+                        // 只显示证书名（用户 2026-09-18：「不能只显示『大学英语四级』
+                        // 这样的证书名，要显示原文里『大学英语四级>=425』这样的加分
+                        // 条目名」）。认不出（目录外 / 未填分 / 未达门槛）→ 证书名。
+                        m.typeId == ZcTypeId.foreign
+                            ? (zcForeignEntryLabel(
+                                    name: m.name,
+                                    rawScore: m.manualScore,
+                                  ) ??
+                                  m.displayName)
+                            : m.displayName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 12.5),
+                      ),
+                    ),
+                    RuleTip(
+                      ids: _materialRuleIds[m.typeId],
+                      color: scheme.primary,
+                      size: 13,
+                    ),
+                  ],
                 ),
                 Text(
                   '${spec?.label ?? ''} · ${m.optionLabel}',
@@ -901,13 +1407,21 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(fontSize: 10.5, color: scheme.outline),
                 ),
+                // 竞赛条目补一行备注（用户 2026-09-18：「智育的竞赛条目上也要显示
+                // 竞赛的备注信息」）——备注里放的是子项目/赛道/组别（`C++ B组`、
+                // `2026 ICPC全国邀请赛（沈阳）`），不显示就分不清同一赛事的几条。
+                if (m.typeId == ZcTypeId.contest && m.note.trim().isNotEmpty)
+                  Text(
+                    m.note.trim(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
               ],
             ),
-          ),
-          RuleTip(
-            ids: _materialRuleIds[m.typeId],
-            color: scheme.primary,
-            size: 13,
           ),
           const SizedBox(width: 6),
           if (v != null)
@@ -922,7 +1436,32 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
             )
           else
             Text('不计', style: TextStyle(fontSize: 11, color: scheme.outline)),
+          if (highlighted) ...[
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+              decoration: BoxDecoration(
+                color: scheme.primary,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                '计入总分',
+                style: TextStyle(
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w700,
+                  color: scheme.onPrimary,
+                ),
+              ),
+            ),
+          ] else if (dimmed) ...[
+            const SizedBox(width: 6),
+            Text(
+              '未计入',
+              style: TextStyle(fontSize: 9.5, color: scheme.outline),
+            ),
+          ],
         ],
+      ),
       ),
     );
   }
@@ -987,36 +1526,28 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
       grade: r.gD,
       headerTipKey: 'sec-deyu',
       sections: [
-        // 1 基础分
-        _sub(context, 1, '基础分', tip: '思想端正、遵纪守法、品德优良即认定'),
-        _editRow(
+        // 1 基础分（单行：标题在左、分数在右）
+        _subRow(
           context,
-          '德育基础分',
+          1,
+          '基础分',
           tipKey: 'd-1-basic',
-          scoreText: '60 分',
-          scoreColor: scheme.outline,
-          child: const SizedBox.shrink(),
-          note: '自动认定 60 分',
+          trailing: _staticChip(context, '60 分'),
         ),
-        // 2 民主评议
-        _sub(
+        // 2 民主评议（单行：右侧分值可点修改）
+        _subRow(
           context,
           2,
           '民主评议分（预估）',
-          tipKey: 'sh-d-2',
-          badge: _badge(context, '${_fmt(pingyi)} / 20'),
-        ),
-        _editRow(
-          context,
-          '德育民主评议分（0~20）',
-          tipKey: 'd-2-ping',
-          child: _numField(
-            '德育评议',
-            _fmt(m.deyuPingyi),
-            (s) =>
-                _updateManual(m.copyWith(deyuPingyi: double.tryParse(s) ?? 0)),
+          tipIds: _tipIdsOf(const ['sh-d-2', 'd-2-ping']),
+          trailing: _tapNumber(
+            context,
+            label: '民主评议分',
+            value: m.deyuPingyi,
+            display: '${_fmt(pingyi)} / 20',
+            max: 20,
+            onChanged: (v) => _updateManual(m.copyWith(deyuPingyi: v)),
           ),
-          note: '思想政治8 + 社会公德3 + 遵纪守法3 + 集体观念3 + 行为规范3',
         ),
         // 3 附加分（材料自动）
         _sub(
@@ -1041,29 +1572,27 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
               : null,
           color: scheme.error,
         ),
-        _editRow(
+        _subRow(
           context,
+          null,
           '无故缺课',
           tipKey: 'd-4-1',
-          child: _numField(
-            '缺课节数',
-            '${m.kouQk}',
-            (s) => _updateManual(m.copyWith(kouQk: int.tryParse(s) ?? 0)),
-            width: 110,
+          trailing: CountStepper(
+            label: '缺课节数',
+            value: m.kouQk,
+            onChanged: (v) => _updateManual(m.copyWith(kouQk: v)),
           ),
-          note: '节 × 2 分/节（班主任、任课老师认定）',
         ),
-        _editRow(
+        _subRow(
           context,
+          null,
           '无故缺席重大集体活动',
           tipKey: 'd-4-2',
-          child: _numField(
-            '缺席次数',
-            '${m.kouHd}',
-            (s) => _updateManual(m.copyWith(kouHd: int.tryParse(s) ?? 0)),
-            width: 110,
+          trailing: CountStepper(
+            label: '缺席次数',
+            value: m.kouHd,
+            onChanged: (v) => _updateManual(m.copyWith(kouHd: v)),
           ),
-          note: '次 × 1 分/次',
         ),
         _editRow(
           context,
@@ -1123,9 +1652,6 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
     final zMats = mats
         .where((x) => zcTypeSpecOf[x.typeId]?.dim == 'z')
         .toList();
-    final weightTxt = m.weight == null
-        ? ''
-        : (m.weight == 0 ? '' : _fmt(m.weight!));
     final extra = _sumDetail(r, const [
       '智育 · 学科竞赛',
       '智育 · 论文/专利',
@@ -1133,6 +1659,11 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
       '智育 · 创业',
     ]);
     final kou = _sumDetail(r, const ['智育 · 扣分']);
+    final contestItems = [
+      for (final x in zMats)
+        if (x.typeId == ZcTypeId.contest) x,
+    ];
+    final contestCounted = zcContestContributingIds(contestItems);
     return _yuCard(
       context,
       dim: 'z',
@@ -1143,54 +1674,23 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
       grade: r.gZ,
       headerTipKey: 'sec-zhiyu',
       sections: [
-        _sub(
+        // 单行：标题 + 右侧胶囊（点击修改 · 用户 2026-09-18 三轮）
+        _subRow(
           context,
           1,
           '加权成绩',
-          badge: _badge(
-            context,
-            '${r.weightMissing ? '未获取' : _fmt(r.weightUsed)} 分',
-          ),
-          tip: weightLoading ? '教务加载中…' : null,
-        ),
-        _editRow(
-          context,
-          '课程加权平均成绩',
           tipKey: 'z-1-sync',
-          child: SizedBox(
-            width: 170,
-            child: TextFormField(
-              key: ValueKey('$_year-num-智育加权'),
-              initialValue: weightTxt,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-                signed: false,
-              ),
-              decoration: InputDecoration(
-                labelText: '加权成绩',
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 9,
-                ),
-                border: const OutlineInputBorder(),
-                hintText: r.weightAuto
-                    ? '自动 ${r.weightUsed <= 0 ? '未获取' : _fmt(r.weightUsed)}'
-                    : null,
-                suffixIcon: IconButton(
-                  tooltip: '刷新教务加权',
-                  icon: Icon(Icons.refresh, size: 16, color: scheme.primary),
-                  onPressed: () => ref.invalidate(zcAutoWeightProvider),
-                ),
-              ),
-              onChanged: (s) => _updateManual(
-                m.copyWith(
-                  weight: () => s.trim().isEmpty ? null : double.tryParse(s),
-                ),
-              ),
-            ),
+          trailing: _tapNumberOpt(
+            context,
+            label: '加权成绩',
+            value: m.weight,
+            autoValue: r.weightMissing ? null : r.weightUsed,
+            max: 100,
+            display: weightLoading
+                ? '加载中…'
+                : (r.weightMissing ? null : _fmt2(r.weightUsed)),
+            onChanged: (v) => _updateManual(m.copyWith(weight: () => v)),
           ),
-          note: '教务自动带入，留空即用自动值；也可手动覆盖',
         ),
         if (r.weightMissing)
           Padding(
@@ -1205,7 +1705,7 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    '未获取到加权成绩（需登录教务或手动填写）',
+                    '本学年未获取到加权成绩（成绩缓存无该学年课程，可手动填写）',
                     style: TextStyle(fontSize: 11, color: scheme.error),
                   ),
                 ),
@@ -1215,15 +1715,59 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
         _sub(
           context,
           2,
-          '加分项 · 证明材料（四类各计最高）',
+          '加分项 · 四类各计最高（附加合计 ≤ 20 分）',
           tipKey: 'sh-z-2',
           badge: extra > 0 ? _badge(context, '+${_fmt(extra)}') : null,
           tip: zMats.isEmpty ? null : '${zMats.length} 条',
         ),
-        if (zMats.isEmpty)
-          _goMaterials(context, text: '暂无智育证明 · 去材料库录入')
-        else
-          for (final x in zMats) _matRow(context, x),
+        // 用户 2026-09-18：「综测智育加分项分为四部分，我希望你分开显示为四小项」
+        // → 四个小项各自出分值（取引擎明细，不重算），下面挂各自的证明材料。
+        _extraItem(
+          context,
+          label: '学科竞赛（表 8）',
+          value: _sumDetail(r, const ['智育 · 学科竞赛']),
+          tipIds: const ['r77', 'r37'],
+          items: contestItems,
+          // 用户 2026-09-18：「综测智育竞赛加分要把最终贡献分数的项高亮一下」
+          // —— 取引擎同一套 calcJS 口径（最高项 > 5 只计最高，否则累加封顶 5）。
+          highlightIds: contestCounted,
+          dimmedIds: {
+            for (final x in contestItems)
+              if (!contestCounted.contains(x.id) &&
+                  (zcMaterialValue(x) ?? 0) > 0)
+                x.id,
+          },
+        ),
+        _extraItem(
+          context,
+          label: '论文 / 专利（表 9）',
+          value: _sumDetail(r, const ['智育 · 论文/专利']),
+          tipIds: const ['r42', 'r43'],
+          items: [
+            for (final x in zMats)
+              if (x.typeId == ZcTypeId.paper) x,
+          ],
+        ),
+        _extraItem(
+          context,
+          label: '外语能力（表 10）',
+          value: _sumDetail(r, const ['智育 · 外语']),
+          tipIds: const ['r44'],
+          items: [
+            for (final x in zMats)
+              if (x.typeId == ZcTypeId.foreign) x,
+          ],
+        ),
+        _extraItem(
+          context,
+          label: '创新创业（表 11）',
+          value: _sumDetail(r, const ['智育 · 创业']),
+          tipIds: const ['r45'],
+          items: [
+            for (final x in zMats)
+              if (x.typeId == ZcTypeId.startup) x,
+          ],
+        ),
         _sub(
           context,
           3,
@@ -1233,17 +1777,16 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
               : null,
           color: scheme.error,
         ),
-        _editRow(
+        _subRow(
           context,
+          null,
           '无故不参加实习实训 / 课外学术创新活动',
           tipKey: 'z-3-1',
-          child: _numField(
-            '次数',
-            '${m.kouZhiyu}',
-            (s) => _updateManual(m.copyWith(kouZhiyu: int.tryParse(s) ?? 0)),
-            width: 110,
+          trailing: CountStepper(
+            label: '未参加实习实训次数',
+            value: m.kouZhiyu,
+            onChanged: (v) => _updateManual(m.copyWith(kouZhiyu: v)),
           ),
-          note: '次 × 3 分/次',
         ),
         _sub(context, 4, '特殊情况', tipKey: 'z-4-1', color: scheme.error),
         SwitchListTile(
@@ -1298,45 +1841,39 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
       grade: r.gT,
       headerTipKey: 'sec-tiyu',
       sections: [
-        _sub(
+        // 单行：标题 + 右侧胶囊（点击修改 · 用户 2026-09-18 三轮）
+        _subRow(
           context,
           1,
-          '体质测试成绩',
-          badge: _badge(
-            context,
-            m.tMian
-                ? '60 分（免测）'
-                : (_ticeFilled ? '${_fmt(m.tScore)} 分 · 自动' : '${_fmt(m.tScore)} 分'),
-          ),
-        ),
-        _editRow(
-          context,
           '体测成绩（0~100）',
           tipKey: 't-1-score',
-          child: _numField(
-            '体测成绩',
-            m.tMian ? '' : _fmt(m.tScore),
-            (s) {
+          trailing: _tapNumber(
+            context,
+            label: '体测成绩',
+            value: m.tScore,
+            max: 100,
+            display: m.tMian ? '60（免测）' : null,
+            onChanged: (v) {
               _markTiceManual();
-              _updateManual(
-                m.copyWith(tScore: double.tryParse(s) ?? (m.tMian ? 60 : 0)),
-              );
+              _updateManual(m.copyWith(tScore: v));
             },
-            hint: m.tMian ? '免测按 60' : null,
-            width: 150,
           ),
-          note: ticeNote,
+        ),
+        // 体测自动获取的状态说明（用户 2026-09-18 四轮不要纯文字悬停 → 从整行
+        // Tooltip 改成行下一行灰字；这条是状态信息，不能丢）。
+        Padding(
+          padding: const EdgeInsets.only(left: 25, bottom: 4),
+          child: Text(
+            ticeNote,
+            style: TextStyle(fontSize: 11, color: scheme.outline),
+          ),
         ),
         Align(
           alignment: Alignment.centerLeft,
-          child: _check(
-            '获批免测 / 未测试（按 60 分计）',
-            m.tMian,
-            (v) {
-              _updateManual(m.copyWith(tMian: v));
-              _autoTice(); // 免测状态变化 → 重新评估自动获取
-            },
-          ),
+          child: _check('获批免测 / 未测试（按 60 分计）', m.tMian, (v) {
+            _updateManual(m.copyWith(tMian: v));
+            _autoTice(); // 免测状态变化 → 重新评估自动获取
+          }),
         ),
         _sub(
           context,
@@ -1359,29 +1896,27 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
               : null,
           color: scheme.error,
         ),
-        _editRow(
+        _subRow(
           context,
+          null,
           '体育活动当众扰乱秩序',
           tipKey: 't-3-1',
-          child: _numField(
-            '次数',
-            '${m.tKou1}',
-            (s) => _updateManual(m.copyWith(tKou1: int.tryParse(s) ?? 0)),
-            width: 110,
+          trailing: CountStepper(
+            label: '扰乱秩序次数',
+            value: m.tKou1,
+            onChanged: (v) => _updateManual(m.copyWith(tKou1: v)),
           ),
-          note: '次 × 5 分/次',
         ),
-        _editRow(
+        _subRow(
           context,
+          null,
           '参赛无故弃权 / 中途退场',
           tipKey: 't-3-2',
-          child: _numField(
-            '次数',
-            '${m.tKou2}',
-            (s) => _updateManual(m.copyWith(tKou2: int.tryParse(s) ?? 0)),
-            width: 110,
+          trailing: CountStepper(
+            label: '体育弃权次数',
+            value: m.tKou2,
+            onChanged: (v) => _updateManual(m.copyWith(tKou2: v)),
           ),
-          note: '次 × 2 分/次',
         ),
       ],
     );
@@ -1413,34 +1948,26 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
       grade: r.gM,
       headerTipKey: 'sec-meiyu',
       sections: [
-        _sub(context, 1, '基础分', tip: '注重感受美、表现美、鉴赏美、创造美'),
-        _editRow(
+        _subRow(
           context,
-          '美育基础分',
+          1,
+          '基础分',
           tipKey: 'm-1-basic',
-          scoreText: '60 分',
-          scoreColor: scheme.outline,
-          child: const SizedBox.shrink(),
-          note: '自动认定 60 分',
+          trailing: _staticChip(context, '60 分'),
         ),
-        _sub(
+        _subRow(
           context,
           2,
           '民主评议分（预估）',
-          tipKey: 'sh-m-2',
-          badge: _badge(context, '${_fmt(pingyi)} / 20'),
-        ),
-        _editRow(
-          context,
-          '美育民主评议分（0~20）',
-          tipKey: 'm-2-ping',
-          child: _numField(
-            '美育评议',
-            _fmt(m.meiyuPingyi),
-            (s) =>
-                _updateManual(m.copyWith(meiyuPingyi: double.tryParse(s) ?? 0)),
+          tipIds: _tipIdsOf(const ['sh-m-2', 'm-2-ping']),
+          trailing: _tapNumber(
+            context,
+            label: '民主评议分',
+            value: m.meiyuPingyi,
+            display: '${_fmt(pingyi)} / 20',
+            max: 20,
+            onChanged: (v) => _updateManual(m.copyWith(meiyuPingyi: v)),
           ),
-          note: '含人文素养、艺术修养、审美能力等',
         ),
         _sub(
           context,
@@ -1463,41 +1990,38 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
               : null,
           color: scheme.error,
         ),
-        _editRow(
+        _subRow(
           context,
+          null,
           '文艺活动当众扰乱秩序',
           tipKey: 'm-4-1',
-          child: _numField(
-            '次数',
-            '${m.mKou1}',
-            (s) => _updateManual(m.copyWith(mKou1: int.tryParse(s) ?? 0)),
-            width: 110,
+          trailing: CountStepper(
+            label: '文艺扰乱次数',
+            value: m.mKou1,
+            onChanged: (v) => _updateManual(m.copyWith(mKou1: v)),
           ),
-          note: '次 × 1 分/次',
         ),
-        _editRow(
+        _subRow(
           context,
+          null,
           '艺术团未满服务期退团',
           tipKey: 'm-4-2',
-          child: _numField(
-            '次数',
-            '${m.mKou2}',
-            (s) => _updateManual(m.copyWith(mKou2: int.tryParse(s) ?? 0)),
-            width: 110,
+          trailing: CountStepper(
+            label: '退团次数',
+            value: m.mKou2,
+            onChanged: (v) => _updateManual(m.copyWith(mKou2: v)),
           ),
-          note: '次 × 2 分/次',
         ),
-        _editRow(
+        _subRow(
           context,
+          null,
           '代表参赛无故弃权 / 中途退场',
           tipKey: 'm-4-3',
-          child: _numField(
-            '次数',
-            '${m.mKou3}',
-            (s) => _updateManual(m.copyWith(mKou3: int.tryParse(s) ?? 0)),
-            width: 110,
+          trailing: CountStepper(
+            label: '文艺弃权次数',
+            value: m.mKou3,
+            onChanged: (v) => _updateManual(m.copyWith(mKou3: v)),
           ),
-          note: '次 × 5 分/次',
         ),
       ],
     );
@@ -1510,7 +2034,7 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
     BuildContext context,
     ZcCalcResult r,
     List<ZcMaterial> mats,
-    bool volLoading,
+    double? autoVolunteer,
   ) {
     final m = _manual;
     final scheme = Theme.of(context).colorScheme;
@@ -1521,7 +2045,6 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
     final volScore = _sumDetail(r, const ['劳育 · 志愿服务']);
     final otherExtra = _sumDetail(r, const ['劳育 · 实践/活动/寝室']);
     final kou = _sumDetail(r, const ['劳育 · 扣分']);
-    final volTxt = m.volunteerHours == null ? '' : _fmt(m.volunteerHours!);
     return _yuCard(
       context,
       dim: 'l',
@@ -1532,34 +2055,26 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
       grade: r.gL,
       headerTipKey: 'sec-laoyu',
       sections: [
-        _sub(context, 1, '基础分', tip: '劳动观念正确、技能过关'),
-        _editRow(
+        _subRow(
           context,
-          '劳育基础分',
+          1,
+          '基础分',
           tipKey: 'l-1-basic',
-          scoreText: '60 分',
-          scoreColor: scheme.outline,
-          child: const SizedBox.shrink(),
-          note: '自动认定 60 分',
+          trailing: _staticChip(context, '60 分'),
         ),
-        _sub(
+        _subRow(
           context,
           2,
           '民主评议分（预估）',
-          tipKey: 'sh-l-2',
-          badge: _badge(context, '${_fmt(pingyi)} / 20'),
-        ),
-        _editRow(
-          context,
-          '劳育民主评议分（0~20）',
-          tipKey: 'l-2-ping',
-          child: _numField(
-            '劳育评议',
-            _fmt(m.laoyuPingyi),
-            (s) =>
-                _updateManual(m.copyWith(laoyuPingyi: double.tryParse(s) ?? 0)),
+          tipIds: _tipIdsOf(const ['sh-l-2', 'l-2-ping']),
+          trailing: _tapNumber(
+            context,
+            label: '民主评议分',
+            value: m.laoyuPingyi,
+            display: '${_fmt(pingyi)} / 20',
+            max: 20,
+            onChanged: (v) => _updateManual(m.copyWith(laoyuPingyi: v)),
           ),
-          note: '劳动教育课出勤、劳动实践态度等',
         ),
         _sub(
           context,
@@ -1571,46 +2086,29 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
               : null,
           tip: lMats.isEmpty ? null : '${lMats.length} 条',
         ),
-        _editRow(
+        // 志愿服务时长：与基础分/评议分/加权/体测同款的单行胶囊（右侧可点改），
+        // 差别只在于**下方多一条按表 18 档位分段的进度条**
+        // （用户 2026-09-18：「志愿服务也基本和基本分、评议分、加权/体测成绩一样
+        // 显示，唯一不同的是，还要额外在下方显示一个进度条，并根据各级别分段」）。
+        // 标题不带「（按表 18 档位换算）」、条下不带任何说明文案
+        // （用户同日二轮：「提示文本太多……都要去掉」）。
+        _subRow(
           context,
-          '志愿服务时长（按表 18 档位换算）',
+          null,
+          '志愿服务时长',
           tipKey: 'l-3-1',
-          child: SizedBox(
-            width: 170,
-            child: TextFormField(
-              key: ValueKey('$_year-num-劳育志愿'),
-              initialValue: volTxt,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-                signed: false,
-              ),
-              decoration: InputDecoration(
-                labelText: '本学年志愿时长(h)',
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 9,
-                ),
-                border: const OutlineInputBorder(),
-                hintText: r.volunteerAuto ? '自动累计' : null,
-                suffixIcon: IconButton(
-                  tooltip: '刷新第二课堂累计',
-                  icon: Icon(Icons.refresh, size: 16, color: scheme.primary),
-                  onPressed: () => ref.invalidate(zcAutoVolunteerProvider),
-                ),
-              ),
-              onChanged: (s) => _updateManual(
-                m.copyWith(
-                  volunteerHours: () =>
-                      s.trim().isEmpty ? null : double.tryParse(s),
-                ),
-              ),
-            ),
+          trailing: _tapNumberOpt(
+            context,
+            label: '学年志愿时长(h)',
+            value: m.volunteerHours,
+            autoValue: autoVolunteer,
+            max: 500,
+            onChanged: (v) => _updateManual(m.copyWith(volunteerHours: () => v)),
           ),
-          scoreText: volLoading
-              ? '…'
-              : '${_fmt(r.volunteerUsed)} h → ${_fmt(volScore)} 分',
-          scoreColor: scheme.primary,
+        ),
+        Padding(
+          padding: const EdgeInsets.only(left: 25, right: 2, bottom: 8),
+          child: ZcVolunteerBar(hours: r.volunteerUsed),
         ),
         if (lMats.isEmpty)
           _goMaterials(context, text: '暂无劳育证明 · 去材料库录入')
@@ -1625,17 +2123,16 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
               : null,
           color: scheme.error,
         ),
-        _editRow(
+        _subRow(
           context,
+          null,
           '未参加学校/学院组织的劳育活动',
           tipKey: 'l-4-1',
-          child: _numField(
-            '次数',
-            '${m.lKou1}',
-            (s) => _updateManual(m.copyWith(lKou1: int.tryParse(s) ?? 0)),
-            width: 110,
+          trailing: CountStepper(
+            label: '未参加劳育活动次数',
+            value: m.lKou1,
+            onChanged: (v) => _updateManual(m.copyWith(lKou1: v)),
           ),
-          note: '次 × 1 分/次',
         ),
         Wrap(
           spacing: 6,
@@ -1728,9 +2225,11 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    _labelTip(
+                      context,
                       '班级排名估计',
-                      style: TextStyle(
+                      tipKey: 'sec-rank',
+                      style: const TextStyle(
                         fontSize: 14.5,
                         fontWeight: FontWeight.w600,
                       ),
@@ -1742,9 +2241,6 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
                   ],
                 ),
               ),
-              Icon(Icons.help_outline, size: 15, color: scheme.outline),
-              const SizedBox(width: 6),
-              RuleTip(tipKey: 'sec-rank', size: 13.5),
             ],
           ),
           const SizedBox(height: 10),
@@ -1754,12 +2250,19 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      it.$1,
-                      style: TextStyle(fontSize: 13, color: scheme.onSurface),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: _labelTip(
+                        context,
+                        it.$1,
+                        tipKey: it.$4,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: scheme.onSurface,
+                        ),
+                      ),
                     ),
                   ),
-                  RuleTip(tipKey: it.$4, size: 13),
                   const SizedBox(width: 6),
                   SizedBox(
                     width: 190,
@@ -1815,13 +2318,12 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
 
   // ---------- 卡片 helpers ----------
   Widget _card(BuildContext context, Widget child) {
-    final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card(context),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+        border: Border.all(color: AppColors.hairline(context, 0.6)),
       ),
       child: child,
     );

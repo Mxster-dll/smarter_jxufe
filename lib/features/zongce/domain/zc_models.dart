@@ -4,7 +4,9 @@ library;
 import 'dart:convert';
 
 import 'zc_catalog.dart';
+import 'zc_foreign.dart';
 import 'zc_rules.dart';
+import 'zc_weights.dart';
 
 /// 测评学年（结束年编码）：测评学年 [yearEnd] 覆盖窗口
 /// 2025-09-01 ~ 2026-08-31（yearEnd=2026），即对上一教学学年的测评。
@@ -47,6 +49,10 @@ class ZcMaterial {
   /// 次数型（思想教育参与度）。
   final double qty;
 
+  /// 手动填写的得分（用户 2026-09-17：外语按证书名目 + 手填分数）。
+  /// 仅 [ZcTypeSpec.manualScore] 为真的类型使用；null = 回退表内档位（旧数据兼容）。
+  final double? manualScore;
+
   /// 附件相对文件名列表（存于应用材料目录）。
   final List<String> files;
 
@@ -62,6 +68,7 @@ class ZcMaterial {
     this.level = 0,
     this.opt = 0,
     this.qty = 0,
+    this.manualScore,
     this.files = const [],
     this.note = '',
   });
@@ -84,6 +91,7 @@ class ZcMaterial {
         'level': level,
         'opt': opt,
         'qty': qty,
+        'manualScore': manualScore,
         'files': files,
         'note': note,
       };
@@ -99,6 +107,7 @@ class ZcMaterial {
         level: json['level'] as int? ?? 0,
         opt: json['opt'] as int? ?? 0,
         qty: (json['qty'] as num?)?.toDouble() ?? 0,
+        manualScore: (json['manualScore'] as num?)?.toDouble(),
         files: [for (final f in (json['files'] as List?) ?? const []) '$f'],
         note: json['note'] as String? ?? '',
       );
@@ -113,6 +122,8 @@ class ZcMaterial {
     int? level,
     int? opt,
     double? qty,
+    /// 传函数才能把值改回 null（`copyWith(manualScore: () => null)`）。
+    double? Function()? manualScore,
     List<String>? files,
     String? note,
   }) =>
@@ -126,6 +137,7 @@ class ZcMaterial {
         level: level ?? this.level,
         opt: opt ?? this.opt,
         qty: qty ?? this.qty,
+        manualScore: manualScore == null ? this.manualScore : manualScore(),
         files: files ?? this.files,
         note: note ?? this.note,
       );
@@ -133,9 +145,12 @@ class ZcMaterial {
   /// 列表展示名。
   String get displayName => name.isEmpty ? spec.label : name;
 
-  /// 行内辅助描述（档位标签）。
+  /// 行内辅助描述（档位标签；外语按证书 + 表 10 档位显示，如 `大学英语四级 489 → 1 分`）。
   String get optionLabel {
     final s = spec;
+    if (s.id == ZcTypeId.foreign) {
+      return zcForeignScoreLabel(name: name, rawScore: manualScore);
+    }
     final lvl = s.levels.isNotEmpty && level >= 0 && level < s.levels.length
         ? s.levels[level]
         : '';
@@ -179,6 +194,11 @@ class ZcManual {
   // ---- 排名（五育各自档位，班级评议后填） ----
   final ZcRank rankD, rankZ, rankT, rankM, rankL;
 
+  /// 五育占比（总评成绩口径；用户 2026-09-18 拍板「占比由班主任定，让用户自行
+  /// 设置」）——**按学年各存一套**（本对象就是按学年落盘的 `manual-<yearEnd>`），
+  /// 默认 `20/35/15/15/15`。明细见 `zc_weights.dart`。
+  final ZcWeights weights;
+
   const ZcManual({
     this.deyuPingyi = 0,
     this.kouQk = 0,
@@ -208,6 +228,7 @@ class ZcManual {
     this.rankT = ZcRank.unknown,
     this.rankM = ZcRank.unknown,
     this.rankL = ZcRank.unknown,
+    this.weights = ZcWeights.initial,
   });
 
   Map<String, dynamic> toJson() => {
@@ -239,6 +260,7 @@ class ZcManual {
         'rankT': rankT.name,
         'rankM': rankM.name,
         'rankL': rankL.name,
+        'weights': weights.toJson(),
       };
 
   factory ZcManual.fromJson(Map<String, dynamic>? json) {
@@ -274,6 +296,8 @@ class ZcManual {
       rankT: rank('rankT'),
       rankM: rank('rankM'),
       rankL: rank('rankL'),
+      // 旧数据没有这一项 → 回落默认档（20/35/15/15/15）。
+      weights: ZcWeights.fromJson(json['weights']),
     );
   }
 
@@ -306,6 +330,7 @@ class ZcManual {
     ZcRank? rankT,
     ZcRank? rankM,
     ZcRank? rankL,
+    ZcWeights? weights,
   }) =>
       ZcManual(
         deyuPingyi: deyuPingyi ?? this.deyuPingyi,
@@ -337,6 +362,7 @@ class ZcManual {
         rankT: rankT ?? this.rankT,
         rankM: rankM ?? this.rankM,
         rankL: rankL ?? this.rankL,
+        weights: weights ?? this.weights,
       );
 }
 
