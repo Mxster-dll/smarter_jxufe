@@ -9,6 +9,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/features/ims/course_selection/data/course_selection_repository.dart';
 import 'package:smarter_jxufe/features/ims/course_selection/data/datasources/course_selection_remote_datasource.dart';
@@ -213,7 +214,7 @@ class _SelectionOnlineViewState extends ConsumerState<SelectionOnlineView> {
     SelectionQuota? quota,
   ) {
     final scheme = Theme.of(context).colorScheme;
-    final accent = FeaturePalette.cardAccent;
+    final accent = fp(context).cardAccent;
     return Card(
       elevation: 0,
       shape: geCardShape(context),
@@ -291,11 +292,11 @@ class _SelectionOnlineViewState extends ConsumerState<SelectionOnlineView> {
   Widget _openPill(BuildContext context, SelectionSession session) {
     final scheme = Theme.of(context).colorScheme;
     final open = session.open;
-    final color = open ? FeaturePalette.cardAccent : scheme.outline;
+    final color = open ? fp(context).cardAccent : scheme.outline;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: AppColors.tint(context, color, 0.12),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Text(
@@ -369,7 +370,7 @@ class _SelectionOnlineViewState extends ConsumerState<SelectionOnlineView> {
                   value: ratio,
                   minHeight: 5,
                   backgroundColor: scheme.surfaceContainerHighest,
-                  valueColor: AlwaysStoppedAnimation(FeaturePalette.cardAccent),
+                  valueColor: AlwaysStoppedAnimation(fp(context).cardAccent),
                 ),
               ),
             ),
@@ -450,7 +451,7 @@ class _SelectionOnlineViewState extends ConsumerState<SelectionOnlineView> {
             geCardTitle(
               context,
               text: '检索条件',
-              accent: FeaturePalette.cardAccent,
+              accent: fp(context).cardAccent,
             ),
             const SizedBox(height: 8),
             // ── 课程范围（原页面 `select#kcfw`，切换即自动检索）
@@ -537,7 +538,7 @@ class _SelectionOnlineViewState extends ConsumerState<SelectionOnlineView> {
                     child: FilledButton(
                       onPressed: () => _search(scope),
                       style: FilledButton.styleFrom(
-                        backgroundColor: FeaturePalette.cardAccent,
+                        backgroundColor: fp(context).cardAccent,
                         padding: const EdgeInsets.symmetric(horizontal: 18),
                       ),
                       child: const Text('检索'),
@@ -725,7 +726,7 @@ class _SelectionOnlineViewState extends ConsumerState<SelectionOnlineView> {
             child: geCardTitle(
               context,
               text: countText,
-              accent: FeaturePalette.cardAccent,
+              accent: fp(context).cardAccent,
             ),
           ),
           for (final course in filtered)
@@ -769,7 +770,7 @@ class _SelectionOnlineViewState extends ConsumerState<SelectionOnlineView> {
               '已选',
               style: TextStyle(
                 fontSize: 12.5,
-                color: FeaturePalette.cardAccent,
+                color: fp(context).cardAccent,
                 fontWeight: FontWeight.w600,
               ),
             )

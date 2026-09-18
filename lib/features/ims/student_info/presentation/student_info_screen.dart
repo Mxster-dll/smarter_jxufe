@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/auth/data/account_avatar_controller.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/account_avatar_provider.dart';
 import 'package:smarter_jxufe/features/auth/domain/account_avatar.dart';
@@ -25,7 +26,11 @@ class StudentInfoScreen extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, size: 48, color: Colors.red),
+            Icon(
+              Icons.error_outline,
+              size: 48,
+              color: AppColors.critical(context),
+            ),
             const SizedBox(height: 8),
             Text('加载失败\n$error', textAlign: TextAlign.center),
             const SizedBox(height: 16),
@@ -328,42 +333,50 @@ class StudentInfoScreen extends ConsumerWidget {
   }
 
   // ── 卡片 ──
-  Widget _card(BuildContext context, String title, List<Widget> rows) =>
-      Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: Card(
-          color: Colors.white,
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 7,
-                ),
-                color: Color.fromARGB(255, 239, 160, 160),
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black,
-                  ),
+  Widget _card(BuildContext context, String title, List<Widget> rows) {
+    // 卡头条带：浅色逐值不变（原来的粉 `#EFA0A0` + 黑字）；深色改为「主题红 22%
+    // 叠在卡片底」+ 正文色文字 —— 用户 2026-09-17：「个人主页卡片的顶部颜色没有
+    // 适配」。原来两侧都写死粉底黑字，深色下粉带刺眼、黑字也几乎看不见。
+    final dark = AppColors.isDark(context);
+    final bandColor = dark
+        ? AppColors.statusFill(context, Theme.of(context).colorScheme.primary)
+        : const Color(0xFFEFA0A0);
+    final bandTextColor = dark
+        ? AppColors.textBase(context)
+        : const Color(0xFF000000);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Card(
+        color: AppColors.card(context),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              color: bandColor,
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: bandTextColor,
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(10, 6, 10, 4),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: rows,
-                ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 6, 10, 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: rows,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-      );
+      ),
+    );
+  }
 }
 
 // ── 键值行 ──

@@ -21,6 +21,7 @@ class WeekPager extends StatefulWidget {
     required this.onWeekChanged,
     required this.pageBuilder,
     this.enabled = true,
+    this.smoothRequest = 0,
   });
 
   /// 总周数（≥ 1），一页一周。
@@ -38,11 +39,46 @@ class WeekPager extends StatefulWidget {
   /// 是否允许手势翻页（桌面端 false → 只能靠外部改 [week]，仍会补间滚动）。
   final bool enabled;
 
+  /// 「平滑跳转」请求序号：外部**希望这次改周横划过去**（哪怕跨十几周）时 +1。
+  ///
+  /// 用户 2026-09-17：「长按周数返回本周要显示横划动画」。从前跨多周一律
+  /// `jumpToPage`（瞬间到位），只有 ±1 周才补间 —— 而长按回本周常常跨十几周，
+  /// 于是屏幕上是一次「瞬移」，看不出翻页方向。
+  ///
+  /// 为什么不做成「跨多周一律补间」：**返回本周是一次有意的跳转，弹窗选周 /
+  /// 切学期是「定位到某一周」**，后者刷过去会让一整屏不相干的周次（切学期时
+  /// 甚至是另一个学期的内容）在眼前掠过。故只给显式请求这条路开补间。
+  final int smoothRequest;
+
   /// 单页切换（相邻周之间）的补间时长。
   static const Duration pageTransition = Duration(milliseconds: 280);
 
+  /// 平滑跳转时**每多跨一页**追加的时长。
+  static const Duration smoothPerPage = Duration(milliseconds: 45);
+
+  /// 平滑跳转的时长上限（再远也不拖更久）。
+  static const Duration smoothMaxTransition = Duration(milliseconds: 700);
+
   /// 外部改周时超过这么多页就直接跳（不逐页刷过去）。
   static const int jumpThreshold = 1;
+
+  /// 跨 [pages] 页的平滑跳转时长：一页 [pageTransition]，每多一页 +[smoothPerPage]，
+  /// 上限 [smoothMaxTransition]。
+  ///
+  /// 为什么不固定成 [pageTransition]：19 周一次跳完若仍给 280ms，平均每页只占
+  /// ~15ms（不到一帧），既看不清方向，又要在每帧里现建/丢弃两页课表。
+  /// 按跨度给时长能把「每页停留」稳在 2 帧以上（700ms / 19 页 ≈ 37ms/页）。
+  static Duration smoothTransitionFor(int pages) {
+    final n = pages < 1 ? 1 : pages;
+    final ms =
+        pageTransition.inMilliseconds + (n - 1) * smoothPerPage.inMilliseconds;
+    return Duration(
+      milliseconds: ms.clamp(
+        pageTransition.inMilliseconds,
+        smoothMaxTransition.inMilliseconds,
+      ),
+    );
+  }
 
   @override
   State<WeekPager> createState() => _WeekPagerState();
@@ -50,6 +86,15 @@ class WeekPager extends StatefulWidget {
 
 class _WeekPagerState extends State<WeekPager> {
   late final PageController _controller;
+
+  /// 最近一次**由本分页器自己**上报出去的周（`onPageChanged` → 外部 → 回灌）。
+  ///
+  /// 跨多周补间途中 `onPageChanged` 会**逐页**上报（PageView 在滚动通知里按
+  /// `page.round()` 报），外部随即把 `week` 同步回来。若不区分「这是自己的回声」，
+  /// [didUpdateWidget] 会把它当成一次新的外部改周：此刻 `_controller.page` 还是
+  /// 小数（如 7.4），`round()` 恰好等于刚越过的那一页 → 又 `animateToPage` 回去，
+  /// 长跳转会被反复拽回、来回抖。
+  int? _selfReported;
 
   int get _safeWeek =>
       widget.week.clamp(1, widget.weekCount < 1 ? 1 : widget.weekCount);
@@ -67,17 +112,28 @@ class _WeekPagerState extends State<WeekPager> {
         widget.weekCount == oldWidget.weekCount) {
       return;
     }
-    _followWeek();
+    // 自己刚上报的周（手势翻页 / 补间途中的逐页上报）不是外部改周。
+    if (widget.week == _selfReported) return;
+    _followWeek(smooth: widget.smoothRequest != oldWidget.smoothRequest);
   }
 
-  /// 外部改了周（上一周/下一周按钮、学期切换、周次夹取）→ 让分页器跟上：
-  /// 相邻一周走补间（看起来就是翻了一页），跨多周直接跳（不逐页刷屏）；
+  /// 外部改了周（长按回本周、弹窗选周、学期切换、周次夹取）→ 让分页器跟上：
+  /// [smooth] = true（用户明确要求横划的跳转，见 [WeekPager.smoothRequest]）
+  /// 时**跨多少周都补间**；否则相邻一周走补间、跨多周直接跳（不逐页刷屏）；
   /// 若第 1 帧还没 attach，`initialPage` 已经落好了，无需处理。
-  void _followWeek() {
+  void _followWeek({required bool smooth}) {
     if (!_controller.hasClients) return;
     final target = _safeWeek - 1;
     final current = _controller.page;
     if (current == null || (current - target).abs() < 0.01) return;
+    if (smooth) {
+      _controller.animateToPage(
+        target,
+        duration: WeekPager.smoothTransitionFor((current - target).abs().ceil()),
+        curve: Curves.easeOutCubic,
+      );
+      return;
+    }
     if ((current.round() - target).abs() <= WeekPager.jumpThreshold) {
       _controller.animateToPage(
         target,
@@ -104,7 +160,10 @@ class _WeekPagerState extends State<WeekPager> {
       physics: widget.enabled
           ? const PageScrollPhysics()
           : const NeverScrollableScrollPhysics(),
-      onPageChanged: (index) => widget.onWeekChanged(index + 1),
+      onPageChanged: (index) {
+        _selfReported = index + 1;
+        widget.onWeekChanged(index + 1);
+      },
       itemBuilder: (context, index) => widget.pageBuilder(context, index + 1),
     );
   }

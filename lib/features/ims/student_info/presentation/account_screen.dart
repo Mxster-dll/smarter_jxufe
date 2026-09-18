@@ -2,15 +2,14 @@ import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:smarter_jxufe/design/JxufeTheme.dart';
 
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/account_repository_provider.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_for_account_provider.dart';
 import 'package:smarter_jxufe/features/auth/domain/entities/account.dart';
 import 'package:smarter_jxufe/features/auth/presentation/login_screen.dart';
 import 'package:smarter_jxufe/features/home/presentation/home_screen.dart';
 import 'package:smarter_jxufe/features/ims/student_info/data/providers/student_info_repository_provider.dart';
-import 'package:smarter_jxufe/features/ims/student_info/domain/student_info.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/qr_login_viewmodel.dart';
 import 'package:smarter_jxufe/core/network/dio_providers.dart';
 import 'package:smarter_jxufe/core/navigation/navigator_key.dart';
@@ -101,14 +100,14 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
         account.displayName[0],
         style: TextStyle(
           fontSize: 20,
-          color: Theme.of(context).colorScheme.onError,
+          color: AppColors.onErrorFill(context),
         ),
       );
     }
     return Icon(
       Icons.person,
       size: 24,
-      color: Theme.of(context).colorScheme.onError,
+      color: AppColors.onErrorFill(context),
     );
   }
 
@@ -136,7 +135,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           children: [
             CircleAvatar(
               radius: 24,
-              backgroundColor: Theme.of(context).colorScheme.error,
+              backgroundColor: AppColors.errorFill(context),
               child: _avatarContent(context, ref, account),
             ),
             const SizedBox(width: 16),
@@ -168,11 +167,11 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                     onPressed: () => _switchAccount(context, ref, account),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Color.lerp(
-                        Theme.of(context).colorScheme.error,
-                        JxufeTheme.primaryColor.withAlpha(160),
+                        AppColors.errorFill(context),
+                        Theme.of(context).colorScheme.primary.withAlpha(160),
                         t,
                       ),
-                      foregroundColor: Theme.of(context).colorScheme.onError,
+                      foregroundColor: AppColors.onErrorFill(context),
                     ),
                     child: child,
                   );
@@ -187,7 +186,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                             height: 18,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Colors.white,
+                              color: AppColors.onErrorFill(context),
                             ),
                           )
                         : const Text('登录'),

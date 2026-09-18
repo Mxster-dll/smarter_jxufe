@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
 
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/reschedule.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/reschedule_engine.dart';
 
 /// 调课相关的展示小件 —— 网格与横版列表共用，避免两处各写一遍。
 
-/// 标记对应的角标颜色。
-Color rescheduleMarkColor(EffectiveMark mark) => switch (mark) {
-  EffectiveMark.moved => FeaturePalette.reschedule,
-  EffectiveMark.movedAway => FeaturePalette.classCancelled,
-  EffectiveMark.cancelled => FeaturePalette.classCancelled,
-  EffectiveMark.extra => FeaturePalette.makeUpClass,
-  EffectiveMark.normal => FeaturePalette.schedule,
-};
+/// 标记对应的角标颜色（走 `fp`，深色下自动提亮）。
+Color rescheduleMarkColor(BuildContext context, EffectiveMark mark) =>
+    switch (mark) {
+      EffectiveMark.moved => fp(context).reschedule,
+      EffectiveMark.movedAway => fp(context).classCancelled,
+      EffectiveMark.cancelled => fp(context).classCancelled,
+      EffectiveMark.extra => fp(context).makeUpClass,
+      EffectiveMark.normal => fp(context).schedule,
+    };
 
 /// 标记对应的角标文案；[EffectiveMark.normal] 返回 null（无角标）。
 String? rescheduleBadgeText(EffectiveMark mark) => switch (mark) {
@@ -25,21 +27,21 @@ String? rescheduleBadgeText(EffectiveMark mark) => switch (mark) {
 };
 
 /// 角标组件；[EffectiveMark.normal] 返回 null。
-Widget? rescheduleBadge(EffectiveMark mark) {
+Widget? rescheduleBadge(BuildContext context, EffectiveMark mark) {
   final text = rescheduleBadgeText(mark);
   if (text == null) return null;
-  return _Badge(text: text, color: rescheduleMarkColor(mark));
+  return _Badge(text: text, color: rescheduleMarkColor(context, mark));
 }
 
 /// 整学期视图专用：某个原课位上有 [count] 条单次调课时的提示角标。
 ///
 /// 整学期模板不区分周次，单次调课无法就地展开，因此只提示「这里有过调整」，
 /// 让用户切到具体某一周去看细节。
-Widget? rescheduleOnceBadge(int count) {
+Widget? rescheduleOnceBadge(BuildContext context, int count) {
   if (count <= 0) return null;
   return _Badge(
     text: count > 1 ? '调×$count' : '调',
-    color: FeaturePalette.reschedule,
+    color: fp(context).reschedule,
   );
 }
 
@@ -78,9 +80,11 @@ class _Badge extends StatelessWidget {
     ),
     child: Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 9,
-        color: Colors.white,
+        // 深色下 reschedule/makeUpClass/classCancelled 会被提亮成亮底，
+        // 写死白字会掉到 2.1–2.9:1（读不了）→ 按底的亮度择字，浅色仍是白。
+        color: AppColors.onAccent(context, color),
         fontWeight: FontWeight.w700,
         height: 1.2,
       ),

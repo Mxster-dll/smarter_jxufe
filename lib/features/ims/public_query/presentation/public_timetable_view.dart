@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/features/ims/public_query/domain/public_timetable.dart';
 import 'package:smarter_jxufe/features/score_estimate/presentation/ge_common.dart';
@@ -189,7 +190,7 @@ class PublicTimetableCard extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(4),
           border: Border.all(
-            color: scheme.outlineVariant.withValues(alpha: 0.5),
+            color: AppColors.hairline(context, 0.5),
           ),
         ),
       );
@@ -204,10 +205,10 @@ class PublicTimetableCard extends StatelessWidget {
           constraints: const BoxConstraints(minHeight: 46),
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            color: FeaturePalette.cardAccent.withValues(alpha: 0.10),
+            color: AppColors.tint(context, fp(context).cardAccent, 0.10),
             borderRadius: BorderRadius.circular(4),
             border: Border.all(
-              color: FeaturePalette.cardAccent.withValues(alpha: 0.35),
+              color: fp(context).cardAccent.withValues(alpha: 0.35),
             ),
           ),
           child: Column(

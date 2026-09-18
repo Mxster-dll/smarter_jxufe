@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/design/app_card.dart';
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/ims/menu/domain/ims_tab.dart';
 import 'package:smarter_jxufe/features/ims/menu/presentation/ims_tab_container.dart';
 import 'package:smarter_jxufe/features/platform/presentation/platform_selection_screen.dart';
@@ -50,7 +51,10 @@ class ImsMenuScreen extends ConsumerWidget {
               const SizedBox(height: 8),
               Text(
                 '选择要使用的功能',
-                style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                style: TextStyle(
+                  color: AppColors.textMuted(context),
+                  fontSize: 14,
+                ),
               ),
               const SizedBox(height: 48),
               Wrap(
@@ -105,7 +109,7 @@ class ImsMenuScreen extends ConsumerWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
+                  color: AppColors.tint(context, color, 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, size: 20, color: color),
@@ -122,7 +126,10 @@ class ImsMenuScreen extends ConsumerWidget {
               const SizedBox(height: 2),
               Text(
                 subtitle,
-                style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                style: TextStyle(
+                  fontSize: 10,
+                  color: AppColors.textMuted(context),
+                ),
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,

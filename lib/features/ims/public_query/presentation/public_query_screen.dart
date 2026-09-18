@@ -15,6 +15,8 @@ import 'package:smarter_jxufe/features/school_calendar/data/providers/wxcal_prov
 import 'package:smarter_jxufe/features/school_calendar/domain/school_term.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/teaching_week.dart';
 import 'package:smarter_jxufe/features/score_estimate/presentation/ge_common.dart';
+import 'package:smarter_jxufe/design/pane_chrome.dart';
+import 'package:smarter_jxufe/features/settings/domain/settings_section.dart';
 
 /// 教务「公共查询」聚合页：按课程 / 教师 / 班级 / 教室查课表，
 /// 并可把多个班级拉到一起**对照出共同空闲时间**。
@@ -160,72 +162,85 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
     );
   }
 
+  /// 原导航栏里的「刷新学期列表」。
+  ///
+  /// 整页模式进 `AppBar.actions`；侧栏内嵌模式（面板首路由）由 `PaneBody` 下沉到
+  /// 内容首行 —— 用户 2026-09-16 裁定：面板顶部不留 chrome（见 AGENTS.md §19）。
+  List<Widget> _headerActions() => [
+    IconButton(
+      tooltip: '刷新学期列表',
+      icon: const Icon(Icons.refresh),
+      onPressed: () {
+        ref.invalidate(publicQueryTermsProvider);
+        ref.invalidate(publicQueryCampusesProvider);
+      },
+    ),
+  ];
+
   Widget _buildScreen(BuildContext context, ColorScheme scheme) {
     final termsAsync = ref.watch(publicQueryTermsProvider);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: paneAppBar(
+        context,
         title: const Text('公共查询'),
-        actions: [
-          IconButton(
-            tooltip: '刷新学期列表',
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              ref.invalidate(publicQueryTermsProvider);
-              ref.invalidate(publicQueryCampusesProvider);
-            },
-          ),
-        ],
+        actions: _headerActions(),
+        settingsSections: const [SettingsSection.imsSession],
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 64),
-        children: [
-          _kindCard(context),
-          const SizedBox(height: 12),
-          termsAsync.when(
-            loading: () => _loadingCard(context, '正在读取「已发布课表」的学年学期…'),
-            error: (e, _) => _errorCard(
-              context,
-              '学期列表加载失败：$e',
-              onRetry: () => ref.invalidate(publicQueryTermsProvider),
-            ),
-            data: (terms) {
-              if (terms.isEmpty) {
-                return _infoCard(
-                  context,
-                  Icons.event_busy_outlined,
-                  '目前还没有已发布的课表信息',
-                  '教务没有任何「已发布课表」的学年学期，公共查询暂时查不到数据。',
+      body: PaneBody(
+        actions: _headerActions(),
+        padding: EdgeInsets.zero,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 64),
+          children: [
+            _kindCard(context),
+            const SizedBox(height: 12),
+            termsAsync.when(
+              loading: () => _loadingCard(context, '正在读取「已发布课表」的学年学期…'),
+              error: (e, _) => _errorCard(
+                context,
+                '学期列表加载失败：$e',
+                onRetry: () => ref.invalidate(publicQueryTermsProvider),
+              ),
+              data: (terms) {
+                if (terms.isEmpty) {
+                  return _infoCard(
+                    context,
+                    Icons.event_busy_outlined,
+                    '目前还没有已发布的课表信息',
+                    '教务没有任何「已发布课表」的学年学期，公共查询暂时查不到数据。',
+                  );
+                }
+                final effective = _effectiveTerm(terms);
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _termCard(context, terms, effective),
+                    const SizedBox(height: 12),
+                    _filterCard(context, effective),
+                  ],
                 );
-              }
-              final effective = _effectiveTerm(terms);
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _termCard(context, terms, effective),
-                  const SizedBox(height: 12),
-                  _filterCard(context, effective),
-                ],
-              );
-            },
-          ),
-          if (_kind == PublicQueryKind.klass) ...[
-            const SizedBox(height: 12),
-            // ⚠️ 班级课表**也要**显示结果区（曾用 `_kind != klass` 挡掉 →
-            // 选了班级查出来只看到对照卡、看不到那张班的课表，用户报「查到了但看不到课表」）。
-            _resultSection(context, scheme),
-            const SizedBox(height: 12),
-            _compareCard(context),
+              },
+            ),
+            if (_kind == PublicQueryKind.klass) ...[
+              const SizedBox(height: 12),
+              // ⚠️ 班级课表**也要**显示结果区（曾用 `_kind != klass` 挡掉 →
+              // 选了班级查出来只看到对照卡、看不到那张班的课表，用户报「查到了但看不到课表」）。
+              _resultSection(context, scheme),
+              const SizedBox(height: 12),
+              _compareCard(context),
+            ],
+            if (_kind == PublicQueryKind.klass &&
+                _compareClasses.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _freeTimeSection(context),
+            ],
+            if (_kind != PublicQueryKind.klass) ...[
+              const SizedBox(height: 12),
+              _resultSection(context, scheme),
+            ],
           ],
-          if (_kind == PublicQueryKind.klass && _compareClasses.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            _freeTimeSection(context),
-          ],
-          if (_kind != PublicQueryKind.klass) ...[
-            const SizedBox(height: 12),
-            _resultSection(context, scheme),
-          ],
-        ],
+        ),
       ),
     );
   }
@@ -418,7 +433,7 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
             geCardTitle(
               context,
               text: '查询方式',
-              accent: FeaturePalette.cardAccent,
+              accent: fp(context).cardAccent,
             ),
             const SizedBox(height: 10),
             // 四个分段在 1280 宽下用全称会被裁剪 → 用短标签（值 = 完整标题在结果区展示）
@@ -477,7 +492,7 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
             Icon(
               Icons.event_note_outlined,
               size: 20,
-              color: FeaturePalette.cardAccent,
+              color: fp(context).cardAccent,
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -520,7 +535,7 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
             geCardTitle(
               context,
               text: '筛选条件',
-              accent: FeaturePalette.cardAccent,
+              accent: fp(context).cardAccent,
             ),
             const SizedBox(height: 8),
             ..._filterRows(context, term),
@@ -1053,7 +1068,7 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
             geCardTitle(
               context,
               text: '多班对照 · 找共同无课时间',
-              accent: FeaturePalette.cardAccent,
+              accent: fp(context).cardAccent,
               trailing: TextButton.icon(
                 onPressed: _kind == PublicQueryKind.klass
                     ? () => _pickCompareClasses(context)

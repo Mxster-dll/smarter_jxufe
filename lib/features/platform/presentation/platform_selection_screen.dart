@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/design/app_card.dart';
+import 'package:smarter_jxufe/design/app_theme.dart';
+import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/comprehensive_service_home_screen.dart';
 import 'package:smarter_jxufe/features/data_center/presentation/data_center_screen.dart';
 import 'package:smarter_jxufe/features/ims/splash/presentation/ims_splash_screen.dart';
@@ -12,6 +14,7 @@ class PlatformSelectionScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final f = fp(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -37,7 +40,7 @@ class PlatformSelectionScreen extends ConsumerWidget {
                 icon: Icons.school,
                 label: '教学信息服务',
                 subtitle: 'IMS 教务管理系统',
-                color: const Color(0xFF1565C0),
+                color: f.schedule,
                 onTap: () {
                   Navigator.pushReplacement(
                     context,
@@ -51,7 +54,7 @@ class PlatformSelectionScreen extends ConsumerWidget {
                 icon: Icons.manage_accounts,
                 label: '综合管理服务平台',
                 subtitle: '志愿服务时长等',
-                color: const Color(0xFF2E7D32),
+                color: f.grade,
                 onTap: () {
                   Navigator.pushReplacement(
                     context,
@@ -67,7 +70,7 @@ class PlatformSelectionScreen extends ConsumerWidget {
                 icon: Icons.insights,
                 label: '学生个人数据中心',
                 subtitle: '学业成绩 · 消费 · 图书 · 校园卡全景',
-                color: const Color(0xFFAD1457),
+                color: f.courseSelection,
                 onTap: () {
                   Navigator.pushReplacement(
                     context,
@@ -106,7 +109,7 @@ class PlatformSelectionScreen extends ConsumerWidget {
                   width: 56,
                   height: 56,
                   decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.12),
+                    color: AppColors.tint(context, color, 0.12),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Icon(icon, size: 30, color: color),
@@ -127,12 +130,18 @@ class PlatformSelectionScreen extends ConsumerWidget {
                       const SizedBox(height: 4),
                       Text(
                         subtitle,
-                        style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textMuted(context),
+                        ),
                       ),
                     ],
                   ),
                 ),
-                Icon(Icons.chevron_right, color: Colors.grey[400]),
+                Icon(
+                  Icons.chevron_right,
+                  color: AppColors.textMuted(context),
+                ),
               ],
             ),
           ),

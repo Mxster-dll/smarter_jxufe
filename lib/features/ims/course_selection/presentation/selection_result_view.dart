@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/features/ims/course_selection/data/datasources/course_selection_remote_datasource.dart';
 import 'package:smarter_jxufe/features/ims/course_selection/data/providers/course_selection_providers.dart';
@@ -117,7 +118,7 @@ class _SelectionResultViewState extends ConsumerState<SelectionResultView> {
             geCardTitle(
               context,
               text: '选课统计',
-              accent: FeaturePalette.cardAccent,
+              accent: fp(context).cardAccent,
               trailing: result.fromCache
                   ? Text(
                       '缓存',
@@ -162,16 +163,16 @@ class _SelectionResultViewState extends ConsumerState<SelectionResultView> {
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: FeaturePalette.cardAccent.withValues(
+                        color: fp(context).cardAccent.withValues(
                           alpha: 0.10,
                         ),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         '${entry.key} ${geFmt(entry.value)} 学分',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11.5,
-                          color: FeaturePalette.cardAccent,
+                          color: fp(context).cardAccent,
                         ),
                       ),
                     ),
@@ -226,7 +227,7 @@ class _SelectionResultViewState extends ConsumerState<SelectionResultView> {
             child: geCardTitle(
               context,
               text: '已选课程（${result.courses.length}）',
-              accent: FeaturePalette.cardAccent,
+              accent: fp(context).cardAccent,
             ),
           ),
           for (final course in result.courses)
@@ -409,8 +410,8 @@ class _SelectionResultViewState extends ConsumerState<SelectionResultView> {
             ),
             FilledButton(
               style: FilledButton.styleFrom(
-                backgroundColor: scheme.error,
-                foregroundColor: scheme.onError,
+                backgroundColor: AppColors.errorFill(context),
+                foregroundColor: AppColors.onErrorFill(context),
               ),
               onPressed: acknowledged
                   ? () => Navigator.of(dialogContext).pop(true)

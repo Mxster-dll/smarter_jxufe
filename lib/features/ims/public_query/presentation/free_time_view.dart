@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/features/ims/public_query/domain/free_time.dart';
 import 'package:smarter_jxufe/features/score_estimate/presentation/ge_common.dart';
@@ -52,8 +53,8 @@ class FreeTimeView extends StatelessWidget {
     this.onTapWindow,
   });
 
-  static const _freeBg = Color(0xFFE8F5E9);
-  static const _freeFg = Color(0xFF2E7D32);
+  // 「全空」格子的语义色走 `AppColors.success*`（浅色 = 原来的
+  // `#E8F5E9` / `#2E7D32`，深色自动提亮），见 `lib/design/app_theme.dart`。
 
   List<ScheduleSlot> get _slots => [for (final c in columns) ...c.slots];
 
@@ -154,7 +155,7 @@ class _Summary extends StatelessWidget {
             Icon(
               windowCount == 0 ? Icons.search_off : Icons.event_available,
               size: 22,
-              color: windowCount == 0 ? scheme.error : FreeTimeView._freeFg,
+              color: windowCount == 0 ? scheme.error : AppColors.success(context),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -207,7 +208,7 @@ class _GridCard extends StatelessWidget {
             geCardTitle(
               context,
               text: '第 $maxPeriod 节占用一览',
-              accent: FeaturePalette.cardAccent,
+              accent: fp(context).cardAccent,
               trailing: const _Legend(),
             ),
             const SizedBox(height: 8),
@@ -269,21 +270,21 @@ class _GridCard extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: free
-            ? FreeTimeView._freeBg
+            ? AppColors.successFill(context)
             : scheme.primary.withValues(
                 alpha: 0.06 + 0.10 * (count - 1).clamp(0, 6),
               ),
         borderRadius: BorderRadius.circular(4),
         border: Border.all(
           color: free
-              ? FreeTimeView._freeFg.withValues(alpha: 0.25)
+              ? AppColors.success(context).withValues(alpha: 0.25)
               : scheme.outlineVariant,
         ),
       ),
       child: Text(
         free ? '' : '$count',
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: free ? FreeTimeView._freeFg : scheme.primary,
+          color: free ? AppColors.success(context) : scheme.primary,
           fontWeight: free ? null : FontWeight.w600,
         ),
       ),
@@ -336,7 +337,7 @@ class _Legend extends StatelessWidget {
 
     return Row(
       children: [
-        dot(FreeTimeView._freeBg, '全空'),
+        dot(AppColors.successFill(context), '全空'),
         const SizedBox(width: 8),
         dot(scheme.primary.withValues(alpha: 0.16), '有课（数字=几个对象有课）'),
       ],
@@ -403,7 +404,7 @@ class _WindowList extends StatelessWidget {
             geCardTitle(
               context,
               text: '空闲时段（${windows.length} 段，按从长到短）',
-              accent: FeaturePalette.cardAccent,
+              accent: fp(context).cardAccent,
             ),
             const SizedBox(height: 4),
             for (final day in days) ...[
@@ -436,16 +437,16 @@ class _WindowList extends StatelessWidget {
       leading: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: FreeTimeView._freeBg,
+          color: AppColors.successFill(context),
           borderRadius: BorderRadius.circular(4),
           border: Border.all(
-            color: FreeTimeView._freeFg.withValues(alpha: 0.3),
+            color: AppColors.success(context).withValues(alpha: 0.3),
           ),
         ),
         child: Text(
           '${w.periods} 节',
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: FreeTimeView._freeFg,
+            color: AppColors.success(context),
             fontWeight: FontWeight.w600,
           ),
         ),

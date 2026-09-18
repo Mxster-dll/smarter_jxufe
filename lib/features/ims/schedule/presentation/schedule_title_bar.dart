@@ -19,11 +19,14 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/school_calendar.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/school_term.dart'
     show schoolTermCode;
 import 'package:smarter_jxufe/shared/widgets/academic_year_picker.dart';
 import 'package:smarter_jxufe/shared/widgets/school_term_grid.dart';
+
+import 'schedule_week_picker.dart';
 
 /// 标题栏内容（学期选择器 + 周次切换）的 Key。
 ///
@@ -85,7 +88,18 @@ class ScheduleSemesterSelector extends StatelessWidget {
   }
 }
 
-/// 周次切换：`‹ 第 N 周 ›` + 「本周」+ 周视图 / 整学期切换。
+/// 周次切换：只显示 `第 N 周`（点击开周数选择器、**长按回本周**）。
+///
+/// 用户 2026-09-16 三条裁定叠在这一个控件上：
+/// ①「取消周数的左右按钮，但是点击周数，显示一个周数选择器，要可以输入周数 /
+///   点击直接选择周数」——`‹ ›` 已删，逐周前后翻靠**课表左右滑动**（`WeekPager`）；
+/// ②「整学期视图下，不要显示『整学期』字样」——`week == null` 时本控件
+///   **整个不渲染**（回周视图靠标题栏右侧的视图切换按钮）；
+/// ③「标题栏中不显示本周按钮，但是当前周数如果是本周的话，则高亮；同时，长按
+///   周数可以回到本周」——`本周` 按钮已删，改为主色高亮 + `onLongPress`；
+/// ④ 用户 2026-09-17：「长按周数返回本周要显示横划动画」——长按走
+///   [onReturnToCurrentWeek]（课表页据此请求分页器横划过去），未传时退回
+///   [onGoToWeek]（默认直接跳）。
 ///
 /// 首/末周边界由调用方在 [onGoToWeek] 里夹取（`clampTeachingWeek`）。
 class ScheduleWeekSwitcher extends StatelessWidget {
@@ -95,62 +109,112 @@ class ScheduleWeekSwitcher extends StatelessWidget {
     required this.currentWeek,
     required this.isCurrentTerm,
     required this.compact,
+    required this.lastWeek,
     required this.onGoToWeek,
-    required this.onToggleView,
+    this.onReturnToCurrentWeek,
+    this.mondayOf,
+    this.onToggleView,
   });
 
-  /// 正在展示的教学周；null = 整学期视图。
+  /// 正在展示的教学周；null = 整学期视图（此时不渲染任何东西）。
   final int? week;
   final int? currentWeek;
   final bool isCurrentTerm;
   final bool compact;
   final ValueChanged<int> onGoToWeek;
-  final VoidCallback onToggleView;
+
+  /// 长按周数回本周时走这里（可缺省 = 退回 [onGoToWeek]）。
+  ///
+  /// 单独一条回调是因为**回本周是一次有意的跨周跳转**：课表页要让分页器横划
+  /// 过去（用户 2026-09-17），而弹窗选周 / 切学期仍是直接跳 —— 两者都走
+  /// `onGoToWeek`，分不出意图。
+  final ValueChanged<int>? onReturnToCurrentWeek;
+
+  /// 视图切换按钮（周视图 / 整学期）。
+  ///
+  /// **标题栏里不传**：用户 2026-09-16「切换整学期/周视图的按钮和调课按钮放到
+  /// 一起，而不是居中」→ 它在 `ScheduleScreen` 的 `actions` 里；只有正文筛选栏
+  /// （`showAppBar == false`）仍把按钮留在这里。
+  final VoidCallback? onToggleView;
+
+  /// 本周期最后教学周（周数选择器的范围；来自 `resolveLastTeachingWeek`）。
+  final int lastWeek;
+
+  /// 第 N 周的周一（用于选择器里显示日期范围），可缺。
+  final DateTime? Function(int week)? mondayOf;
+
+  /// 当前显示的周就是本周（用来高亮）。
+  bool get _isCurrent =>
+      week != null &&
+      isCurrentTerm &&
+      currentWeek != null &&
+      week == currentWeek;
+
+  Future<void> _pickWeek(BuildContext context) async {
+    final picked = await showScheduleWeekPicker(
+      context,
+      week: week ?? currentWeek ?? 1,
+      lastWeek: lastWeek,
+      currentWeek: currentWeek,
+      mondayOf: mondayOf,
+      compact: compact,
+    );
+    if (picked != null) onGoToWeek(picked);
+  }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final w = week;
+    if (w == null && onToggleView == null) {
+      // 整学期视图 + 标题栏（按钮在 actions 里）→ 什么都不显示。
+      return const SizedBox.shrink();
+    }
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _miniIconButton(
-          icon: Icons.chevron_left,
-          tooltip: '上一周',
-          compact: compact,
-          onPressed: w == null ? null : () => onGoToWeek(w - 1),
-        ),
-        GestureDetector(
-          onTap: () => onGoToWeek(currentWeek ?? 1),
-          child: Text(
-            w == null ? '整学期' : '第 $w 周',
-            style: TextStyle(
-              fontSize: compact ? 12 : 13,
-              fontWeight: FontWeight.w600,
-              color: scheme.onSurface,
+        if (w != null)
+          // 周数文字本身即入口（无边框、无箭头，与学期码按钮同形态）。
+          Tooltip(
+            message: '选择周数 · 长按回到本周',
+            child: InkWell(
+              key: scheduleWeekButtonKey,
+              borderRadius: BorderRadius.circular(8),
+              onTap: () => _pickWeek(context),
+              // 长按回本周（用户 2026-09-16：「长按周数可以回到本周」）——
+              // 取代从前的「本周」按钮；用户 2026-09-17 追加要求这次跳转
+              // **横划过去**，故优先走 `onReturnToCurrentWeek`。
+              onLongPress: () {
+                if (isCurrentTerm && currentWeek != null) {
+                  (onReturnToCurrentWeek ?? onGoToWeek)(currentWeek!);
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                decoration: _isCurrent
+                    ? BoxDecoration(
+                        color: AppColors.tint(context, scheme.primary, 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      )
+                    : null,
+                child: Text(
+                  '第 $w 周',
+                  style: TextStyle(
+                    fontSize: compact ? 12 : 13,
+                    fontWeight: _isCurrent ? FontWeight.w700 : FontWeight.w600,
+                    color: _isCurrent ? scheme.primary : scheme.onSurface,
+                  ),
+                ),
+              ),
             ),
           ),
-        ),
-        _miniIconButton(
-          icon: Icons.chevron_right,
-          tooltip: '下一周',
-          compact: compact,
-          onPressed: w == null ? null : () => onGoToWeek(w + 1),
-        ),
-        if (isCurrentTerm && currentWeek != null && w != currentWeek)
-          _miniTextButton(
-            '本周',
+        if (onToggleView != null)
+          scheduleBarAction(
+            icon: w == null ? Icons.view_week : Icons.grid_view,
+            tooltip: w == null ? '切换到周视图' : '切换到整学期视图',
             compact: compact,
-            onPressed: () {
-              onGoToWeek(currentWeek!);
-            },
+            onPressed: onToggleView!,
           ),
-        _miniIconButton(
-          icon: w == null ? Icons.view_week : Icons.grid_view,
-          tooltip: w == null ? '切换到周视图' : '切换到整学期视图',
-          compact: compact,
-          onPressed: onToggleView,
-        ),
       ],
     );
   }
@@ -177,7 +241,11 @@ class ScheduleTitleBar extends StatelessWidget {
     required this.onSemesterChanged,
     required this.onTermPicked,
     required this.onGoToWeek,
-    required this.onToggleView,
+    required this.actionCount,
+    this.onReturnToCurrentWeek,
+    this.hasLeading = true,
+    this.lastWeek = 20,
+    this.mondayOf,
   });
 
   final int selectedYear;
@@ -197,10 +265,46 @@ class ScheduleTitleBar extends StatelessWidget {
   /// 手机端选中某个学期码后的回调（学年 + 学段一起改）。
   final ValueChanged<({int xn, int xq})> onTermPicked;
   final ValueChanged<int> onGoToWeek;
-  final VoidCallback onToggleView;
 
-  /// AppBar 左侧返回键 56 + 两个 action 图标各 48。
-  static const double chromeWidth = 152;
+  /// 长按周数回本周（用户 2026-09-17 要求这次跳转横划过去）；缺省退回
+  /// [onGoToWeek]。口径见 [ScheduleWeekSwitcher.onReturnToCurrentWeek]。
+  final ValueChanged<int>? onReturnToCurrentWeek;
+
+  /// 标题栏右侧有几个 action 按钮（调课管理 / 视图切换 / 桌面端刷新）。
+  ///
+  /// 用户 2026-09-16：「感觉不知道哪个组件的边距特别大，导致标题栏总是换行，
+  /// 但是标题栏其实是可以装下那么多内容的」——根因就是这里从前**写死 2 个按钮**
+  /// （`chromeWidth = 152`），而手机端实际只有 1 个（刷新按钮已取消）、桌面端有
+  /// 3 个：手机端白扣 48px → 明明放得下却换行。
+  final int actionCount;
+
+  /// 是否占用 AppBar 左侧返回键的 56（整页模式 true；内嵌面板行内 false）。
+  final bool hasLeading;
+
+  /// 本学期最后教学周（周数选择器范围）；缺省 20 只作兜底，页面应传真实值。
+  final int lastWeek;
+
+  /// 第 N 周的周一，用于周数选择器里的日期范围提示。
+  final DateTime? Function(int week)? mondayOf;
+
+  /// 每个 action 按钮占的宽度。
+  ///
+  /// 用户 2026-09-16：「标题栏右侧按钮过大」→ 按钮改用紧凑 IconButton
+  /// （`iconSize` 18/20 + `visualDensity: compact` + `padding: zero`），实测宽
+  /// **40**（M3 默认 IconButton 是 48）。改 [scheduleBarAction] 的尺寸必须同步
+  /// 这个常量，否则 `fitsOneRow` 的判定与实际不符
+  /// （守卫：`test/schedule_title_bar_test.dart` 的「action 按钮量宽契约」）。
+  static const double actionWidth = 40.0;
+
+  /// 标题栏之外被 chrome 占掉的宽度：左侧返回键 56（[hasLeading] 时）
+  /// + 每个 action 按钮 [actionWidth]。
+  static double chromeWidthFor({
+    required int actionCount,
+    bool hasLeading = true,
+  }) => (hasLeading ? 56.0 : 0.0) + actionWidth * actionCount;
+
+  /// 兼容旧调用点的默认值（= 返回键 + 2 个按钮）。
+  static const double chromeWidth = 56.0 + actionWidth * 2;
 
   /// 可选的学年范围。
   static const int firstYear = 2018;
@@ -228,6 +332,8 @@ class ScheduleTitleBar extends StatelessWidget {
       isCurrentTerm: isCurrentTerm,
       currentWeek: currentWeek,
       week: week,
+      actionCount: actionCount,
+      hasLeading: hasLeading,
     );
     // 桌面：学年选择器 + 学段下拉；手机：合并成一个学期码按钮。
     final termSelector = compact
@@ -259,8 +365,11 @@ class ScheduleTitleBar extends StatelessWidget {
       currentWeek: currentWeek,
       isCurrentTerm: isCurrentTerm,
       compact: compact,
+      lastWeek: lastWeek,
+      mondayOf: mondayOf,
       onGoToWeek: onGoToWeek,
-      onToggleView: onToggleView,
+      onReturnToCurrentWeek: onReturnToCurrentWeek,
+      // 标题栏里**不放**视图切换按钮（它在 actions 里，与调课按钮并排）。
     );
     final gap = compact ? 6.0 : 10.0;
 
@@ -269,8 +378,9 @@ class ScheduleTitleBar extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               termSelector,
-              SizedBox(width: gap),
-              weekSwitcher,
+              // 整学期视图下周次控件整个不渲染（用户 2026-09-16：「整学期视图下，
+              // 不要显示『整学期』字样」），间距也不要白留。
+              if (week != null) ...[SizedBox(width: gap), weekSwitcher],
             ],
           )
         : Column(
@@ -278,8 +388,11 @@ class ScheduleTitleBar extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               termSelector,
-              SizedBox(height: compact ? 1 : 2),
-              weekSwitcher,
+              // 同上：整学期视图没有周次控件，第二行只留学期选择器。
+              if (week != null) ...[
+                SizedBox(height: compact ? 1 : 2),
+                weekSwitcher,
+              ],
             ],
           );
     // 内容包 Key：居中后组件自身的 RenderBox 会撑满标题槽，量宽必须量这里
@@ -372,22 +485,17 @@ class ScheduleTitleBar extends StatelessWidget {
     // 图标按钮实测宽度：`IconButton(visualDensity: compact, padding: zero)`
     // = 48 的点击区 − 8（visualDensity 每轴 −4），与 `minWidth: 30/34` 无关
     // → compact 与桌面端都是 40.0（2026-09-15 实测，勿按约束值估）。
-    const iconButton = 40.0;
     final weekFontSize = compact ? 12.0 : 13.0;
-    final weekLabel = widest([
-      textWidth('整学期', weekFontSize),
-      textWidth('第 20 周', weekFontSize),
-    ]);
-    // 「本周」按钮的显示条件（`ScheduleWeekSwitcher`）是
-    // `isCurrentTerm && currentWeek != null && week != currentWeek` ——
-    // **整学期视图（week == null）同样会显示**，所以只有在
-    // `week == currentWeek`（进入课表页的默认状态）时才不预留它。
-    final thisWeekButton =
-        isCurrentTerm && currentWeek != null && week != currentWeek
-        ? textWidth('本周', compact ? 11.5 : 13) + (compact ? 12 : 16)
-        : 0.0;
-
-    return head + gap + (iconButton * 3 + weekLabel + thisWeekButton);
+    // 周数文字本身即入口（用户 2026-09-16 取消 `‹ ›`）→ 外面套 InkWell 的
+    // 左右内边距 6 + 6，必须计进去。
+    const weekButtonPadding = 12.0;
+    // 周次那一段：**只在周视图存在**（整学期视图不显示「整学期」字样）；文案取
+    // 最宽的「第 20 周」。「本周」按钮已删、视图切换按钮已移进 `actions`
+    // （2026-09-16 三条裁定）→ 这里只剩这一个按钮。
+    final weekPart = week == null
+        ? 0.0
+        : widest([textWidth('第 20 周', weekFontSize)]) + weekButtonPadding;
+    return head + (weekPart == 0 ? 0 : gap) + weekPart;
   }
 
   /// 标题栏可用宽度是否放得下一行（留 6 的余量，避免恰好卡在边界时溢出）。
@@ -401,8 +509,12 @@ class ScheduleTitleBar extends StatelessWidget {
     required bool isCurrentTerm,
     required int? currentWeek,
     required int? week,
+    required int actionCount,
+    bool hasLeading = true,
   }) {
-    final available = MediaQuery.sizeOf(context).width - chromeWidth;
+    final available =
+        MediaQuery.sizeOf(context).width -
+        chromeWidthFor(actionCount: actionCount, hasLeading: hasLeading);
     final need = rowNeed(
       context,
       compact: compact,
@@ -420,11 +532,16 @@ class ScheduleTitleBar extends StatelessWidget {
   }
 }
 
-Widget _miniIconButton({
+/// 标题栏 / 筛选栏里的小尺寸图标按钮（紧凑款）。
+///
+/// 用户 2026-09-16：「标题栏右侧按钮过大」→ 课表页 AppBar 的 action 一律走这里
+/// （图标 18/20 而非 M3 默认 24，点击区实测 40 而非 48）。
+/// **尺寸契约 = [ScheduleTitleBar.actionWidth]**，改这里必须同步那个常量。
+Widget scheduleBarAction({
   required IconData icon,
   required String tooltip,
-  required bool compact,
   required VoidCallback? onPressed,
+  bool compact = true,
 }) {
   return IconButton(
     tooltip: tooltip,
@@ -437,26 +554,5 @@ Widget _miniIconButton({
       minHeight: compact ? 30 : 34,
     ),
     onPressed: onPressed,
-  );
-}
-
-Widget _miniTextButton(
-  String text, {
-  required bool compact,
-  required VoidCallback onPressed,
-}) {
-  return TextButton(
-    onPressed: onPressed,
-    style: TextButton.styleFrom(
-      visualDensity: VisualDensity.compact,
-      padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 8),
-      minimumSize: Size.zero,
-      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      textStyle: TextStyle(
-        fontSize: compact ? 11.5 : 13,
-        fontWeight: FontWeight.w600,
-      ),
-    ),
-    child: Text(text),
   );
 }
