@@ -90,8 +90,13 @@ void main() {
       expect(tap, contains('color: AppColors.tint(context, accent, 0.09),'));
       expect(tap, isNot(contains('Tooltip(')));
       expect(tap, isNot(contains('Border.all(')));
-      // 数值文字与徽章同色（主色 700）——字色在 `_valueTapText` helper 里
-      expect(src, contains('color: muted ? scheme.outline : scheme.primary,'));
+      // 数值文字与徽章同色（主色 700）——字色在 `zcValueTapText` helper 里。
+      // 2026-09-21 二轮：新增可选 `color` 覆盖（结果卡头部那枚总评按综合等次上色），
+      // **默认档（未传 color）仍是 `muted ? outline : primary`**。
+      expect(
+        src,
+        contains('color: color ?? (muted ? scheme.outline : scheme.primary),'),
+      );
     });
 
     test('民主评议的分数胶囊保留「x / 20」口径', () {

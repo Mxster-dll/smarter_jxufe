@@ -146,7 +146,10 @@ Widget zcResultCard(
             const SizedBox(width: 12),
             // 用户 2026-09-21：「'测评结果'改成'总评成绩'，右侧显示总评成绩」+
             // 「去除'填写/录入后自动计算，实时更新'」→ 标题换名、副标题整条删掉，
-            // 右侧那个位置放总评成绩本身（仍是可点胶囊，点它改占比）。
+            // 右侧那个位置放总评成绩本身。
+            // 用户 2026-09-21 二轮：「总评成绩不要显示为胶囊」（并选定「分数可点、
+            // 但不显示铅笔图标」+「也按综合等次上色」）→ 纯文字 + 等次色，仍可点开
+            // 占比弹层（`Key('zcTotalChip')` 语义不变）。
             Expanded(
               child: zcLabelTip(
                 context,
@@ -164,6 +167,9 @@ Widget zcResultCard(
                 context,
                 text: '${zcFmt2(r.total)} 分',
                 large: true,
+                pill: false,
+                showPencil: false,
+                textColor: zcGradeColor(context, r.overall),
                 onTap: () => onEditWeights(r.weights),
               ),
             ),
@@ -186,9 +192,12 @@ Widget zcResultCard(
                       width: 40,
                       child: Text(
                         it.$1,
+                        // 用户 2026-09-21 二轮：「对于优秀项，其“x育”以及分数都要用
+                        // 优秀的颜色，其他评级以此类推」→ 育名与分数都按该育等次上色
+                        // （行尾那枚等次小胶囊保留，颜色信息不靠单一通道传达）。
                         style: TextStyle(
                           fontSize: 12.5,
-                          color: scheme.outline,
+                          color: zcGradeColor(context, it.$3),
                         ),
                       ),
                     ),
@@ -218,9 +227,12 @@ Widget zcResultCard(
                     Expanded(
                       child: Text(
                         '${zcFmt(it.$2)} 分',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12.5,
-                          fontFeatures: [FontFeature.tabularFigures()],
+                          color: zcGradeColor(context, it.$3),
+                          fontFeatures: const [
+                            FontFeature.tabularFigures(),
+                          ],
                         ),
                       ),
                     ),
@@ -445,6 +457,7 @@ Widget zcValueTapText(
   ColorScheme scheme,
   bool muted, {
   bool large = false,
+  Color? color,
 }) => Text(
   text,
   maxLines: 1,
@@ -452,7 +465,8 @@ Widget zcValueTapText(
   style: TextStyle(
     fontSize: large ? 19 : 12.5,
     fontWeight: FontWeight.w700,
-    color: muted ? scheme.outline : scheme.primary,
+    // `color` 非空时优先（用户 2026-09-21：总评成绩按综合等次上色）。
+    color: color ?? (muted ? scheme.outline : scheme.primary),
     fontFeatures: const [FontFeature.tabularFigures()],
   ),
 );
@@ -786,46 +800,76 @@ Widget zcValueTap(
   bool muted = false,
   bool large = false,
   double? width,
+  bool pill = true,
+  bool showPencil = true,
+  Color? textColor,
 }) {
   final scheme = Theme.of(context).colorScheme;
   final fixed = width != null;
   final accent = muted ? scheme.outline : scheme.primary;
+  final ink = textColor ?? accent;
   return SizedBox(
     width: width,
     child: InkWell(
-      borderRadius: BorderRadius.circular(999),
+      borderRadius: BorderRadius.circular(pill ? 999 : 8),
       onTap: onTap,
       // 用户 2026-09-18 四轮：与「加分汇总」徽章同款（主色淡底 + 999 圆角），
       // 且**不再挂纯文字 Tooltip** —— 悬停提示只保留标题右侧 `?` 的条款卡片，
       // 可点性由胶囊里的铅笔图标表达。
+      // 用户 2026-09-21 二轮：「总评成绩不要显示为胶囊」（且「不显示铅笔图标」）
+      // → `pill: false` 去掉淡底与圆角，只留内边距当点击热区；`showPencil: false`
+      // 让头部那枚大号分数只剩纯文字。
       child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: large ? 12 : 10,
-          vertical: large ? 5 : 3.5,
-        ),
-        decoration: BoxDecoration(
-          color: AppColors.tint(context, accent, 0.09),
-          borderRadius: BorderRadius.circular(999),
-        ),
+        padding: pill
+            ? EdgeInsets.symmetric(
+                horizontal: large ? 12 : 10,
+                vertical: large ? 5 : 3.5,
+              )
+            : EdgeInsets.symmetric(
+                horizontal: large ? 8 : 6,
+                vertical: large ? 3 : 2,
+              ),
+        decoration: pill
+            ? BoxDecoration(
+                color: AppColors.tint(context, accent, 0.09),
+                borderRadius: BorderRadius.circular(999),
+              )
+            : null,
         child: Row(
           // 自适应宽度（width == null）时 Row 收缩到内容宽 —— 胶囊贴合文字，
           // 与只读的 `zcStaticChip` 观感一致；定宽时仍用 Expanded 把尾巴推右。
           mainAxisSize: fixed ? MainAxisSize.max : MainAxisSize.min,
           children: [
             if (fixed)
-              Expanded(child: zcValueTapText(text, scheme, muted, large: large))
+              Expanded(
+                child: zcValueTapText(
+                  text,
+                  scheme,
+                  muted,
+                  large: large,
+                  color: textColor,
+                ),
+              )
             else
-              zcValueTapText(text, scheme, muted, large: large),
+              zcValueTapText(
+                text,
+                scheme,
+                muted,
+                large: large,
+                color: textColor,
+              ),
             if (tag != null) ...[
               const SizedBox(width: 6),
               zcSourceTag(context, tag),
             ],
-            const SizedBox(width: 4),
-            Icon(
-              Icons.edit_outlined,
-              size: large ? 15 : 13,
-              color: accent.withValues(alpha: 0.75),
-            ),
+            if (showPencil) ...[
+              const SizedBox(width: 4),
+              Icon(
+                Icons.edit_outlined,
+                size: large ? 15 : 13,
+                color: ink.withValues(alpha: 0.75),
+              ),
+            ],
           ],
         ),
       ),

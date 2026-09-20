@@ -4,8 +4,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:smarter_jxufe/design/status_palette.dart';
 import 'package:smarter_jxufe/features/zongce/domain/zc_engine.dart';
 import 'package:smarter_jxufe/features/zongce/domain/zc_models.dart';
+import 'package:smarter_jxufe/features/zongce/domain/zc_rules.dart';
 import 'package:smarter_jxufe/features/zongce/domain/zc_weights.dart';
 import 'package:smarter_jxufe/features/zongce/presentation/widgets/weight_sheet.dart';
 import 'package:smarter_jxufe/features/zongce/presentation/zongce_widgets.dart';
@@ -299,7 +301,7 @@ void main() {
   group('源码守卫', () {
     final screen = _zcSrc();
 
-    test('总评成绩行 = 可点胶囊，点它打开占比弹层', () {
+    test('总评成绩 = 可点数值（二轮起不是胶囊），点它打开占比弹层', () {
       expect(screen, contains("Key('zcTotalChip')"));
       expect(screen, contains("'总评成绩'"));
       expect(screen, contains('_editWeights(r.weights)'));
@@ -309,6 +311,13 @@ void main() {
         isTrue,
         reason: '弹层结果必须写回按学年落盘的 ZcManual',
       );
+      // 用户 2026-09-21 二轮：「总评成绩不要显示为胶囊」+「不显示铅笔图标」。
+      final code = screen
+          .split('\n')
+          .map((line) => line.split('//').first)
+          .join('\n');
+      expect(code, contains('pill: false'), reason: '头部那栏不再画胶囊底');
+      expect(code, contains('showPencil: false'), reason: '不再画铅笔提示');
       // 界面层不许再自己算平均当总评
       expect(
         screen.contains('(r.deyu + r.zhiyu + r.tiyu + r.meiyu + r.laoyu) / 5'),
@@ -324,7 +333,11 @@ void main() {
       // 名称后面」+「"测评结果"改成"总评成绩"，右侧显示总评成绩」+「去除
       // "填写/录入后自动计算，实时更新"」。
       expect(screen, contains("Key('zcTotalChip')"), reason: '总评成绩移到头部右侧');
-      expect(screen, contains('large: true'), reason: '头部那枚是大号可点胶囊');
+      expect(
+        screen,
+        contains('large: true'),
+        reason: '头部那枚是大号可点数值（二轮起去掉胶囊壳，仍是 19px 大字）',
+      );
       expect(screen, contains("'总评成绩'"));
       // ⚠ 判「旧文案是否还在」要**剥掉注释**再比：本轮新增的说明性注释里逐字引用了
       // 用户原话（含「测评结果」「材料条数」），直接 contains 会把注释判成违规。
@@ -354,6 +367,14 @@ void main() {
         contains(r"'${zcWeightPercentText(it.$4)}%'"),
         reason: '占比改成每育名称后的小胶囊（第 4 项 = 该育占比）',
       );
+      // 二轮（用户 2026-09-21：「对于优秀项，其“x育”以及分数都要用优秀的颜色，
+      // 其他评级以此类推」）→ 育名与分数都取各自等次色；等次小胶囊保留。
+      expect(
+        code,
+        contains(r'color: zcGradeColor(context, it.$3)'),
+        reason: '育名与分数按该育等次上色',
+      );
+      expect(code, contains('it.\$3.label'), reason: '行尾等次小胶囊保留');
     });
 
     test('学年切换 = 共享学年选择器（旧的两个箭头按钮已撤）', () {
@@ -424,14 +445,7 @@ void main() {
 
     setUp(() => edited = <ZcWeights>[]);
 
-    Future<ZcCalcResult> pumpCard(
-      WidgetTester tester,
-      ZcWeights weights,
-    ) async {
-      final result = zcCalculate(
-        const <ZcMaterial>[],
-        manual: ZcManual(weights: weights),
-      );
+    Future<void> pumpResult(WidgetTester tester, ZcCalcResult result) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -443,10 +457,21 @@ void main() {
           ),
         ),
       );
+    }
+
+    Future<ZcCalcResult> pumpCard(
+      WidgetTester tester,
+      ZcWeights weights,
+    ) async {
+      final result = zcCalculate(
+        const <ZcMaterial>[],
+        manual: ZcManual(weights: weights),
+      );
+      await pumpResult(tester, result);
       return result;
     }
 
-    testWidgets('头部 = 「总评成绩」+ 右侧大号总分胶囊 + 等次胶囊，副标题已撤', (
+    testWidgets('头部 = 「总评成绩」+ 右侧纯文字大号总分（无胶囊 / 无铅笔），副标题已撤', (
       tester,
     ) async {
       final r = await pumpCard(tester, ZcWeights.initial);
@@ -457,9 +482,77 @@ void main() {
         findsNothing,
         reason: '副标题整条删掉',
       );
-      expect(find.byKey(const Key('zcTotalChip')), findsOneWidget);
+      final chip = find.byKey(const Key('zcTotalChip'));
+      expect(chip, findsOneWidget);
       expect(find.text('${zcFmt2(r.total)} 分'), findsOneWidget);
       expect(find.text('综合等次'), findsOneWidget, reason: '等次胶囊保留在右侧');
+      // 用户 2026-09-21 二轮：「总评成绩不要显示为胶囊」+「分数可点，但是不显示
+      // 铅笔图标」（原话）。
+      expect(
+        find.descendant(of: chip, matching: find.byIcon(Icons.edit_outlined)),
+        findsNothing,
+        reason: '不再有铅笔提示（分数仍可点）',
+      );
+      expect(
+        [
+          for (final c in tester.widgetList<Container>(
+            find.descendant(of: chip, matching: find.byType(Container)),
+          ))
+            c.decoration,
+        ].whereType<Decoration>(),
+        isEmpty,
+        reason: '不再有胶囊底色 / 描边（纯文字）',
+      );
+      expect(
+        tester.widget<Text>(find.text('${zcFmt2(r.total)} 分')).style!.color,
+        _gradeColor(r.overall),
+        reason: '总分按综合等次上色（用户拍板「也按综合等次上色」）',
+      );
+    });
+
+    testWidgets('五育名与分数按各自等次上色（用户 2026-09-21 二轮）', (tester) async {
+      // 用户原话：「对于优秀项，其“x育”以及分数都要用优秀的颜色，其他评级以此类推」。
+      const r = ZcCalcResult(
+        deyu: 60,
+        zhiyu: 102.86,
+        tiyu: 67.8,
+        meiyu: 80,
+        laoyu: 84,
+        gD: ZcGrade.pass,
+        gZ: ZcGrade.ok,
+        gT: ZcGrade.good,
+        gM: ZcGrade.ok,
+        gL: ZcGrade.ok,
+        overall: ZcGrade.ok,
+        details: <ZcDetail>[],
+        weightUsed: 91.86,
+        weightAuto: true,
+        volunteerUsed: 24,
+        volunteerAuto: true,
+        weightMissing: false,
+        total: 82.77,
+        weights: ZcWeights.initial,
+      );
+      await pumpResult(tester, r);
+      const cases = <String, ZcGrade>{
+        '德育': ZcGrade.pass,
+        '60 分': ZcGrade.pass,
+        '智育': ZcGrade.ok,
+        '102.86 分': ZcGrade.ok,
+        '体育': ZcGrade.good,
+        '67.8 分': ZcGrade.good,
+        '美育': ZcGrade.ok,
+        '80 分': ZcGrade.ok,
+        '劳育': ZcGrade.ok,
+        '84 分': ZcGrade.ok,
+      };
+      for (final e in cases.entries) {
+        expect(
+          tester.widget<Text>(find.text(e.key)).style!.color,
+          _gradeColor(e.value),
+          reason: '「${e.key}」应取${e.value.label}的颜色',
+        );
+      }
     });
 
     testWidgets('占比挪到每育名称后：五枚胶囊各取自己那一育的占比', (tester) async {
@@ -484,7 +577,7 @@ void main() {
       expect(find.textContaining('占比'), findsNothing);
     });
 
-    testWidgets('点头部总分胶囊 = 改占比入口（弹层口径不变）', (tester) async {
+    testWidgets('点头部大号总分 = 改占比入口（弹层口径不变）', (tester) async {
       await pumpCard(tester, ZcWeights.even);
       await tester.tap(find.byKey(const Key('zcTotalChip')));
       await tester.pump();
@@ -501,3 +594,12 @@ String _zcSrc() => const [
   'lib/features/zongce/presentation/zongce_screen.dart',
   'lib/features/zongce/presentation/zongce_widgets.dart',
 ].map((p) => File(p).readAsStringSync()).join('\n');
+
+/// 等次色的测试侧对照表（与 `zcGradeColor` 同值；色值唯一出处 =
+/// `lib/design/status_palette.dart` 的 `ZongceTone`）。
+Color _gradeColor(ZcGrade g) => switch (g) {
+  ZcGrade.ok => ZongceTone.gradeOk,
+  ZcGrade.good => ZongceTone.gradeGood,
+  ZcGrade.pass => ZongceTone.gradePass,
+  ZcGrade.fail => ZongceTone.gradeFail,
+};
