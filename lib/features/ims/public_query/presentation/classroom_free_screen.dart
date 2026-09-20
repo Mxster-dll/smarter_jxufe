@@ -106,6 +106,26 @@ class _ClassroomFreeScreenState extends ConsumerState<ClassroomFreeScreen> {
   /// 用户是否动过节次 chip：动过之后不再被自动选段覆盖。
   bool _periodsTouched = false;
 
+  /// 拖动选择（用户 2026-09-20 八轮：「我希望支持拖动选择」）的三个临时量。
+  ///
+  /// - [_periodDragAnchor] = 按下那一格（拖动的固定端）；
+  /// - [_periodDragBase] = 起手瞬间的选中集合（每次移动都从它重算，所以「拖回来」
+  ///   等于原样撤销，不需要额外手势）；
+  /// - [_periodDragSelecting] = 本次拖动是「选中」还是「取消」——**由起手那格的状态决定**：
+  ///   起手格原来选着 → 整段取消，原来没选 → 整段选中（与画图工具的笔刷同一直觉）。
+  int? _periodDragAnchor;
+  Set<int>? _periodDragBase;
+  bool _periodDragSelecting = true;
+
+  /// 本次拖动上一次落到的节次（同一格里继续移动不必重算）。
+  int? _periodDragTarget;
+
+  /// 每一节次格的几何句柄：拖动时按「指针到哪一格的矩形最近」定位（落在 6px 缝里
+  /// 也能命中，跨行拖动同样成立）。
+  final Map<int, GlobalKey> _periodCellKeys = {
+    for (var p = 1; p <= schedulePeriodCount; p++) p: GlobalKey(),
+  };
+
   bool _includeWeekend = true;
   int _minPeriods = 1;
 
@@ -532,10 +552,9 @@ class _ClassroomFreeScreenState extends ConsumerState<ClassroomFreeScreen> {
   ///
   /// 用户 2026-09-19 三轮：「节次被选择后不要显示前面的对勾，因为会导致按钮宽度
   /// 变化」—— M3 的 `FilterChip` 在选中时会插一个 18px 对勾 + 8px 间隔，格子宽度
-  /// 因此跳变。这里一律 `showCheckmark: false`，并且把胶囊自身的底色/描边交出去
-  /// （`backgroundColor` / `selectedColor` 透明，描边由调用方给）：
-  /// 于是同一格在「选中 / 未选中」「独立 / 合并段内」四种情形下**尺寸完全一致**，
-  /// 视觉状态只由外层容器与外层描边表达。
+  /// 因此跳变。这里一律 `showCheckmark: false`，并且把底色交出去：选中态的红色由外层
+  /// 那一块 `_chipFill` 出，胶囊自己只涂一层 [kClassroomChipFillAlpha] 的红（≈看不见，
+  /// 但**不能真给透明色** —— 见该常量的说明），[label] 的前景由 [selectedLabel] 给。
   Widget _classroomChoiceChip(
     BuildContext context, {
     required Key key,
@@ -545,7 +564,6 @@ class _ClassroomFreeScreenState extends ConsumerState<ClassroomFreeScreen> {
     BorderSide? side,
     Color? selectedLabel,
     Color? selectedFill,
-    BorderRadius? radius,
   }) {
     final accent = fp(context).publicQuery;
     return FilterChip(
@@ -558,22 +576,18 @@ class _ClassroomFreeScreenState extends ConsumerState<ClassroomFreeScreen> {
       visualDensity: VisualDensity.compact,
       elevation: 0,
       pressElevation: 0,
-      // ⚠ 底色必须**由胶囊自己画**：只靠外层 `_chipFill` 是不行的 —— `FilterChip`
-      // 在深色下会用 `colorScheme.surface`（#121212）把外层那层红整个盖住，窗口像素
-      // 实测只剩「每格左边 11px 的红边」（最长连续红段仅 24px），用户看到的仍是黑按钮
-      // （2026-09-20 四轮：「按钮选中后也要显示 c62828，而不是黑色」）。
+      // 底色：选中 = 真透明 —— 红由外层 `_chipFill` 出，而**那层红同时被写进了
+      // `canvasColor`**（见 `_chipFill` 的说明）：chip 内部那个没有显式颜色的 `Material`
+      // 于是也是红的，格子边缘的抗锯齿再也混不出异色细线。
       backgroundColor: selected ? selectedFill : Colors.transparent,
       selectedColor: selectedFill,
       disabledColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       shadowColor: Colors.transparent,
       side: side ?? BorderSide(color: AppColors.stroke(context)),
-      // 圆角由调用方给：合并段内部一律**方角**（`BorderRadius.zero`）、只有段两端保留
-      // 8 圆角 —— 于是整段是「一块」而不是「并排的圆角按钮」（用户 2026-09-20 七轮：
-      // 「连续选中的节数按钮之间看起来还是不连续，感觉是按钮边框的问题」）。
-      shape: RoundedRectangleBorder(
-        borderRadius: radius ?? BorderRadius.circular(8),
-      ),
+      // 圆角交给外层那一块红（`_chipFill` 的 8 圆角）；胶囊自己几乎不画底，形状只影响
+      // 水波纹，不再影响观感。
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       labelStyle: TextStyle(
         fontSize: 13,
         fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
@@ -605,10 +619,11 @@ class _ClassroomFreeScreenState extends ConsumerState<ClassroomFreeScreen> {
       key: Key('classroomFreeWeekday-$d'),
       label: weekdayLabel(d),
       selected: selected,
-      // 与节次格同一口径：选中 = 红实心件 + **无描边**（用户 2026-09-20 六轮）。
+      // 与节次格同一口径：选中 = 红实心件 + **无描边**（用户 2026-09-20 六轮）；
+      // 红底由下面那张 `_chipFill` 出（胶囊自己透明，连同它的 `canvasColor` 一起变红）。
       side: selected ? const BorderSide(color: Colors.transparent) : null,
       selectedLabel: selected ? AppColors.onErrorFill(context) : null,
-      selectedFill: AppColors.errorFill(context),
+      selectedFill: Colors.transparent,
       onTap: () => setState(() {
         if (selected) {
           _weekdays.remove(d);
@@ -633,20 +648,27 @@ class _ClassroomFreeScreenState extends ConsumerState<ClassroomFreeScreen> {
     final fill = AppColors.errorFill(context);
     final onFill = AppColors.onErrorFill(context);
     final merged = run.length > 1;
-    Widget cell(int p, {BorderRadius? radius}) {
+    Widget cell(int p) {
       final selected = periods.contains(p);
-      return _classroomChoiceChip(
-        context,
-        key: Key('classroomFreePeriod-$p'),
-        label: '$p',
-        selected: selected,
-        // 用户 2026-09-20 六轮：「被选中的节数按钮不要显示边框」—— 选中态只留那块红实心件，
-        // 描边一律透明（否则红底上还要套一圈灰框）；未选中仍保留细描边。
-        side: selected ? const BorderSide(color: Colors.transparent) : null,
-        radius: radius,
-        selectedLabel: onFill,
-        selectedFill: fill,
-        onTap: () => _togglePeriod(p, periods),
+      return _periodDragCell(
+        p,
+        periods,
+        _classroomChoiceChip(
+          context,
+          key: Key('classroomFreePeriod-$p'),
+          label: '$p',
+          selected: selected,
+          // 用户 2026-09-20 六轮：「被选中的节数按钮不要显示边框」—— 选中态只留那块红实心件，
+          // 描边一律透明（否则红底上还要套一圈灰框）；未选中仍保留细描边。
+          side: selected ? const BorderSide(color: Colors.transparent) : null,
+          selectedLabel: onFill,
+          // 格子自己一格红都不画（真透明）：整块红由外层 `_chipFill` 出，而它也把这块红
+          // 写进了 `canvasColor` —— chip 内部那个没有显式颜色的 `Material` 因此同样是红的，
+          // 格子边缘的抗锯齿再也混不出异色细线（用户 2026-09-20 八轮：「被连续选中的按钮
+          // 视觉上要是一个矩形，但是现有的实现会导致中间有细线影响效果」）。
+          selectedFill: Colors.transparent,
+          onTap: () => _togglePeriod(p, periods),
+        ),
       );
     }
 
@@ -662,19 +684,9 @@ class _ClassroomFreeScreenState extends ConsumerState<ClassroomFreeScreen> {
       );
     }
 
-    // 合并段 = **一整块**：段内格子的圆角一律削平，只有段首 / 段尾保留 8 圆角（与外层
-    // `_chipFill` 的圆角对齐），格子之间的 6px 由格子自己的红色铺满 —— 于是缝里也是
-    // 同一块红，不再依赖「父容器从缝里透出来」，屏幕像素上不可能再出现断口
-    // （用户 2026-09-20 七轮：「看起来还是不连续，感觉是按钮边框的问题」）。
-    const radius = Radius.circular(8);
-    BorderRadius radiusAt(int i) {
-      if (i == 0) return const BorderRadius.horizontal(left: radius);
-      if (i == run.length - 1) {
-        return const BorderRadius.horizontal(right: radius);
-      }
-      return BorderRadius.zero;
-    }
-
+    // 合并段 = **一整块圆角红**：外层 `_chipFill` 是**唯一**的绘制方（8 圆角），
+    // 段内格子全透明、连圆角也不画（它们的 `shape` 只剩水波纹用），格子之间那 6px
+    // 仍是透明占位 —— 于是屏幕上就是一块矩形，中间不可能出现细线。
     return _chipFill(
       context,
       color: fill,
@@ -684,16 +696,45 @@ class _ClassroomFreeScreenState extends ConsumerState<ClassroomFreeScreen> {
         children: [
           for (var i = 0; i < run.length; i++) ...[
             if (i > 0) _runGap(),
-            // 段内格子方角 + 选中态透明描边：格子之间那 6px 由外层 `_chipFill` 的同一块红
-            // 铺满（`_runGap()` 只占位、不画东西）→ 屏幕上是一整块，看不出「按钮」。
-            cell(run[i], radius: radiusAt(i)),
+            cell(run[i]),
           ],
         ],
       ),
     );
   }
 
+  /// 节次格的**拖动选择**包（用户 2026-09-20 八轮：「我希望支持拖动选择」）。
+  ///
+  /// - 只注册**横向**拖动：竖向手势仍归页面滚动，不受影响（AGENTS §3：拖拽一律用
+  ///   真实指针事件驱动，不靠 hover）；
+  /// - 起手那格原来是选中 → 本次拖动 = 取消整段，原来未选中 → 选中整段（笔刷口径），
+  ///   于是「拖回来」就等于原样撤销；
+  /// - 指针落到哪一格由 `_periodAt` 按矩形最近者判定（缝里、跨行都能命中）；
+  /// - 不干扰点按：手势竞技场里横向拖动要先越过 touch slop 才会赢，轻点仍走 chip 的
+  ///   `onSelected` → [_togglePeriod]。
+  Widget _periodDragCell(int period, Set<int> periods, Widget child) =>
+      GestureDetector(
+        key: _periodCellKeys[period],
+        onHorizontalDragStart: (_) => _beginPeriodDrag(period, periods),
+        onHorizontalDragUpdate: (d) => _dragPeriodTo(d.globalPosition),
+        onHorizontalDragEnd: (_) => _endPeriodDrag(),
+        onHorizontalDragCancel: _endPeriodDrag,
+        child: child,
+      );
+
+
   /// 选中态那张圆角实心底（独立格与合并段共用同一个底色 = 调用方给的红实心件档）。
+  ///
+  /// ⚠ 必须顺手把 **`canvasColor` 也染成同一块红**：`FilterChip` 的底色是 `Ink` 画在
+  /// **`Material` 之上**的，而那个 Material 没有显式 `color`
+  /// （`chip.dart`：`Material(elevation: …, shape: …, child: InkWell(child: Ink(decoration: …)))`
+  /// —— 整句里没有 `color:`），于是它取主题的 `canvasColor`（本应用浅色 = 纯白
+  /// #FFFFFF、深色 = 卡片黑）。后果实测：胶囊自己那块底色的**抗锯齿边缘会跟这层白/黑
+  /// 混出一列 1px 的异色像素** —— 连续选中时每一格边上都留一条「细线」，正是用户
+  /// 2026-09-20 八轮说的那条线。
+  ///
+  /// 把这一小块子树里的 `canvasColor` 也换成同一块红之后，红下面压着的还是红：格子的
+  /// 边缘、格子之间的 6px 缝、整段两端，屏幕上全是同一个颜色，细线在物理上不可能出现。
   Widget _chipFill(
     BuildContext context, {
     required Color color,
@@ -705,7 +746,10 @@ class _ClassroomFreeScreenState extends ConsumerState<ClassroomFreeScreen> {
       color: color,
       borderRadius: BorderRadius.circular(8),
     ),
-    child: child,
+    child: Theme(
+      data: Theme.of(context).copyWith(canvasColor: color),
+      child: child,
+    ),
   );
 
   /// 合并段内部的**透明**占位（宽 = [kClassroomChipGap]，不改变总宽）。
@@ -729,6 +773,77 @@ class _ClassroomFreeScreenState extends ConsumerState<ClassroomFreeScreen> {
         ..clear()
         ..addAll(next);
     });
+  }
+
+  /// 拖动选择开始：记锚点、起手快照、本次是选还是取消。
+  void _beginPeriodDrag(int period, Set<int> effective) {
+    _periodDragAnchor = period;
+    _periodDragBase = <int>{...effective};
+    _periodDragSelecting = !effective.contains(period);
+    _periodDragTarget = period;
+  }
+
+  /// 指针移到别的一格才重算（同一格内继续移动是空操作）。
+  void _dragPeriodTo(Offset globalPosition) {
+    final period = _periodAt(globalPosition);
+    if (period == null || period == _periodDragTarget) return;
+    _periodDragTarget = period;
+    final anchor = _periodDragAnchor;
+    final base = _periodDragBase;
+    if (anchor == null || base == null) return;
+    final lo = anchor <= period ? anchor : period;
+    final hi = anchor <= period ? period : anchor;
+    final next = <int>{...base};
+    for (var p = lo; p <= hi; p++) {
+      if (_periodDragSelecting) {
+        next.add(p);
+      } else {
+        next.remove(p);
+      }
+    }
+    setState(() {
+      _periodsTouched = true;
+      _periods
+        ..clear()
+        ..addAll(next);
+    });
+  }
+
+  void _endPeriodDrag() {
+    _periodDragAnchor = null;
+    _periodDragBase = null;
+    _periodDragTarget = null;
+  }
+
+  /// 指针现在压在哪一格：取**矩形距离最近**的那一格。
+  ///
+  /// 用「点到格子的矩形距离」而不是直接判包含，是为了让落在格子之间 6px 缝里、乃至
+  /// 拖出节次区（屏幕上更靠外）的指针也有确定归属 —— 拖到最右端外面就是第 12 节，
+  /// 拖到下一行越界也会落到那一行最近的格子。
+  int? _periodAt(Offset globalPosition) {
+    int? best;
+    var bestDistance = double.infinity;
+    for (final entry in _periodCellKeys.entries) {
+      final box = entry.value.currentContext?.findRenderObject();
+      if (box is! RenderBox || !box.hasSize) continue;
+      final rect = box.localToGlobal(Offset.zero) & box.size;
+      final dx = globalPosition.dx < rect.left
+          ? rect.left - globalPosition.dx
+          : (globalPosition.dx > rect.right
+                ? globalPosition.dx - rect.right
+                : 0.0);
+      final dy = globalPosition.dy < rect.top
+          ? rect.top - globalPosition.dy
+          : (globalPosition.dy > rect.bottom
+                ? globalPosition.dy - rect.bottom
+                : 0.0);
+      final distance = dx * dx + dy * dy;
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = entry.key;
+      }
+    }
+    return best;
   }
   // ---------------- 模式 A：按时间找教室 ----------------
 

@@ -302,7 +302,17 @@ void main() {
       if (path.endsWith('materials_screen.dart')) {
         // 材料库文件里另有「选择活动类型」「专业规格」两个**页内二级页**，
         // 它们不是服务主页，照旧保留自己的导航栏。
-        expect(bare, 2, reason: '材料库只该剩两个二级页 AppBar，实为 $bare');
+        // ⚠ 2026-09-20 架构审查 ⑥：这两个二级页已外提到 `material_pick_pages.dart`
+        // → 主页文件应为 0 个裸 AppBar，二级页文件恰好 2 个（原意不变，只是换了落点）。
+        expect(bare, 0, reason: '材料库主页不该再有裸 AppBar（二级页已外提），实为 $bare');
+        final pages = _code(
+          'lib/features/materials/presentation/material_pick_pages.dart',
+        );
+        expect(
+          RegExp(r'appBar: AppBar\(').allMatches(pages).length,
+          2,
+          reason: '两个页内二级页各保留一个 AppBar',
+        );
       } else {
         expect(bare, 0, reason: '$path 还留着裸 AppBar（应为 paneAppBar）');
       }

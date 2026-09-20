@@ -168,9 +168,13 @@ void main() {
 
   group('材料不分学年 + 智育 2 位小数（源码守卫）', () {
     test('材料库：不按学年过滤、无学年切换条、外语填原始成绩', () {
-      final src = File(
+      // ⚠ 2026-09-20 架构审查 ⑥：材料库拆成三个文件，故守卫读**三文件并集** ——
+      // 「不分学年」这类否定断言反而更强（任一文件里复活都会被抓住）。
+      final src = [
         'lib/features/materials/presentation/materials_screen.dart',
-      ).readAsStringSync();
+        'lib/features/materials/presentation/material_pick_pages.dart',
+        'lib/features/materials/presentation/widgets/material_edit_dialog.dart',
+      ].map((p) => File(p).readAsStringSync()).join('\n');
       expect(src.contains('zcFilterByYear'), isFalse, reason: '材料不分学年');
       expect(src.contains('_buildYearBar'), isFalse, reason: '学年切换条已删');
       expect(src.contains("tooltip: '上一学年'"), isFalse);

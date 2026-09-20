@@ -23,10 +23,18 @@ import 'package:smarter_jxufe/features/network_service/domain/network_service_mo
 void main() {
   const panelPath = 'lib/features/home/presentation/dashboard_panel.dart';
   const homePath = 'lib/features/home/presentation/home_screen.dart';
+  // ⚠ 2026-09-20 架构审查 ⑥：仪表盘拆成三件（panel 壳 + 指标卡簇 + 今日课程簇），
+  // 下面的源码守卫改读**三文件并集** —— 原意不变（这些版式标记必须存在于这一族里），
+  // 只是不再假设它们都住在同一个文件里（`Key('dashTodayCourse-` 之类已随簇外提）。
+  const dashFamilyPaths = [
+    panelPath,
+    'lib/features/home/presentation/dashboard_metrics.dart',
+    'lib/features/home/presentation/dashboard_today_courses.dart',
+  ];
 
   group('源码守卫', () {
     test('两个小标题已删；今日课程 = 合并块 + 大间隔分隔线', () {
-      final panel = File(panelPath).readAsStringSync();
+      final panel = dashFamilyPaths.map((p) => File(p).readAsStringSync()).join('\n');
       final home = File(homePath).readAsStringSync();
 
       expect(panel.contains("'数据一览'"), isFalse, reason: '仪表盘小标题已删');

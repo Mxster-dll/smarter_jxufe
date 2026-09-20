@@ -925,9 +925,15 @@ void main() {
 
     test('源码守卫：成绩页的红实心件 / 红描边不得再直接吃 colorScheme.error', () {
       // 亮红 #EE4C50 是**当文字用**的档；实心件与描边必须走 AppColors。
-      final src = File(
-        'lib/features/ims/grades/presentation/grades_screen.dart',
-      ).readAsStringSync();
+      // ⚠ 2026-09-20：巨型页面拆分（架构审查 ⑥）把总览卡 / 排名行 / 成绩明细表
+      // 外提到 presentation/widgets/，守卫改成扫**整个 presentation 目录的并集** ——
+      // 原意不变（成绩页这一族的红件必须走 AppColors），只是不再假设它们住在同一文件里。
+      final src = Directory('lib/features/ims/grades/presentation')
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.dart'))
+          .map((f) => f.readAsStringSync())
+          .join('\n');
       expect(src.contains('AppColors.errorFill(context)'), isTrue);
       expect(src.contains('AppColors.onErrorFill(context)'), isTrue);
       expect(src.contains('AppColors.errorBorder(context)'), isTrue);

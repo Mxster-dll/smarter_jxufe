@@ -221,9 +221,12 @@ void main() {
 
   group('接入点守卫（仪表盘胶囊 / 志愿页时间行 / 列表详情接口）', () {
     test('仪表盘「志愿时长」卡带本学年胶囊，口径来自 volunteerHoursStats', () {
-      final panel = File(
+      // ⚠ 2026-09-20 架构审查 ⑥：指标卡簇已从 dashboard_panel.dart 外提到
+      // dashboard_metrics.dart（面板壳只剩版式），故这里读**两文件并集**。
+      final panel = [
         'lib/features/home/presentation/dashboard_panel.dart',
-      ).readAsStringSync();
+        'lib/features/home/presentation/dashboard_metrics.dart',
+      ].map((p) => File(p).readAsStringSync()).join('\n');
       expect(panel.contains("Key('dash_volunteer_year')"), isTrue);
       expect(panel.contains('本学年'), isTrue);
       // 口径（provider 本身）2026-09-20 从 panel 下沉到 data 层 —— 桌面小组件要在

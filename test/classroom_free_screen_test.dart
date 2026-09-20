@@ -5,7 +5,11 @@
 /// 2. 两个模式在页面上的接线（条件 → 结果卡、点某行跳到「按教室查空闲」）。
 library;
 
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -119,10 +123,15 @@ Future<void> _pumpPage(
   List<PublicQueryOption> classrooms = _classrooms,
   PublicQueryBuilding? defaultBuilding,
   DateTime? now,
+  ThemeData? theme,
+  Size physicalSize = const Size(1100, 2600),
+  double dpr = 1,
+  Key? boundaryKey,
 }) async {
-  tester.view.physicalSize = const Size(1100, 2600);
-  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = physicalSize;
+  tester.view.devicePixelRatio = dpr;
   addTearDown(tester.view.reset);
+  final Widget page = ClassroomFreeScreen(now: now ?? DateTime(2026, 9, 16));
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
@@ -145,7 +154,10 @@ Future<void> _pumpPage(
         ),
       ],
       child: MaterialApp(
-        home: ClassroomFreeScreen(now: now ?? DateTime(2026, 9, 16)),
+        theme: theme ?? ThemeData.light(),
+        home: boundaryKey == null
+            ? page
+            : RepaintBoundary(key: boundaryKey, child: page),
       ),
     ),
   );
@@ -153,6 +165,136 @@ Future<void> _pumpPage(
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 50));
   await tester.pump(const Duration(milliseconds: 50));
+}
+
+/// 一次像素采样：`RepaintBoundary.toImage` → rawRgba。
+class _Pixels {
+  _Pixels(this.width, this.height, this.bytes);
+
+  final int width;
+  final int height;
+  final ByteData bytes;
+
+  Color at(int x, int y) {
+    final i = (y * width + x) * 4;
+    return Color.fromARGB(
+      bytes.getUint8(i + 3),
+      bytes.getUint8(i),
+      bytes.getUint8(i + 1),
+      bytes.getUint8(i + 2),
+    );
+  }
+}
+
+/// 把 [boundaryKey] 那块真实栅格化出来（要真异步 → 必须 `runAsync`）。
+Future<_Pixels> _capturePixels(
+  WidgetTester tester,
+  Key boundaryKey, {
+  double ratio = 1,
+}) async {
+  final boundary = tester.renderObject<RenderRepaintBoundary>(
+    find.byKey(boundaryKey),
+  );
+  late _Pixels pixels;
+  await tester.runAsync(() async {
+    final image = await boundary.toImage(pixelRatio: ratio);
+    final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+    pixels = _Pixels(image.width, image.height, data!);
+    image.dispose();
+  });
+  return pixels;
+}
+
+bool _near(Color a, Color b, {int tolerance = 8}) =>
+    (a.r - b.r).abs() * 255 <= tolerance &&
+    (a.g - b.g).abs() * 255 <= tolerance &&
+    (a.b - b.b).abs() * 255 <= tolerance;
+
+/// 扫描一个圆角矩形件里**与文字无关**的那些列：贯穿整个高度的异色列 = 那条细线。
+///
+/// 两个判据合起来才干净：
+/// 1. 只看离每个格子的中心 [glyphMargin] 之外的列 —— 格子中央那串白色数字（含抗锯齿
+///    边缘）本身就在像素上占满整个高度，容易被误判成「贯穿的异色列」；
+/// 2. 这些列必须**上到下整列同色**（异色行数 ≥ 满高的 [fullHeightRatio] 才算）——
+///    接缝是两格各画一块底留下的色差，必然是贯穿的；而文字影响只出现在字形附近。
+List<String> _scanSolidRect(
+  _Pixels pixels,
+  Rect rect,
+  Color fill, {
+  required double ratio,
+  required List<Rect> glyphRects,
+  double inset = 10,
+  double glyphMargin = 14,
+  double fullHeightRatio = 0.9,
+}) {
+  final x0 = ((rect.left + inset) * ratio).round();
+  final x1 = ((rect.right - inset) * ratio).round();
+  final y0 = ((rect.top + 1) * ratio).round();
+  final y1 = ((rect.bottom - 1) * ratio).round();
+  final rows = y1 - y0 + 1;
+  final bad = <String>[];
+  var scanned = 0;
+  for (var x = x0; x <= x1; x++) {
+    final logicalX = x / ratio;
+    final nearGlyph = glyphRects.any(
+      (r) => (logicalX - r.center.dx).abs() < glyphMargin,
+    );
+    if (nearGlyph) continue;
+    scanned++;
+    var off = 0;
+    var firstOff = -1;
+    for (var y = y0; y <= y1; y++) {
+      if (_near(pixels.at(x, y), fill)) continue;
+      off++;
+      if (firstOff < 0) firstOff = y;
+    }
+    if (off >= rows * fullHeightRatio) {
+      bad.add(
+        'x=$x（逻辑 ${logicalX.toStringAsFixed(1)}）有 $off/$rows 行不是底色：'
+        '#${pixels.at(x, firstOff).toARGB32().toRadixString(16)}'
+        ' ≠ #${fill.toARGB32().toRadixString(16)}',
+      );
+    }
+  }
+  expect(
+    scanned,
+    greaterThan(8),
+    reason: '排除字形附近的列之后还得剩够多的列可比（否则这条测试等于没扫）',
+  );
+  return bad;
+}
+
+/// 横向拖动选节：从第 [from] 节拖到第 [to] 节。
+///
+/// ⚠ 必须**分多步**移动：越过 touch slop 的那一次移动只会触发 `onHorizontalDragStart`，
+/// 它本身不作为 update 送达（`DragStartBehavior.start`）—— 一步到位的话拖动只等于
+/// 「按了一下」，一格都选不中。真实手指拖动本来也是密密麻麻的 move 事件。
+Future<void> _dragPeriods(
+  WidgetTester tester, {
+  required int from,
+  required int to,
+  int steps = 8,
+}) async {
+  final start = tester.getCenter(find.byKey(Key('classroomFreePeriod-$from')));
+  final end = tester.getCenter(find.byKey(Key('classroomFreePeriod-$to')));
+  final gesture = await tester.startGesture(start);
+  await _glide(tester, gesture, start, end, steps: steps);
+  await gesture.up();
+  await tester.pumpAndSettle();
+}
+
+/// 让一根已经按下去了的手指从 [from] 滑到 [to]（分 [steps] 步）。
+Future<void> _glide(
+  WidgetTester tester,
+  TestGesture gesture,
+  Offset from,
+  Offset to, {
+  int steps = 8,
+}) async {
+  for (var i = 1; i <= steps; i++) {
+    await gesture.moveTo(Offset.lerp(from, to, i / steps)!);
+    await tester.pump();
+  }
 }
 
 void main() {
@@ -418,15 +560,26 @@ void main() {
     expect(runFill.a, 1.0, reason: '实心，不是半透明淡底');
     expect(runFill, isNot(accent), reason: '不再是页面强调色（紫）');
     expect(periodLabelColor(tester, 3), onRed, reason: '红底上用 onErrorFill 白字');
-    // ⚠ **胶囊自己也必须画这块红**：只靠外层容器时，`FilterChip` 会用
-    // `colorScheme.surface`（深色 #121212）把容器整片盖住，真机上只剩「每格左边 11px
-    // 的红边」（窗口像素实测最长连续红段仅 24px），用户看到的还是黑按钮。
-    expect(periodChip(tester, 3).selectedColor, red);
-    expect(periodChip(tester, 3).backgroundColor, red);
+    // 整段那块红**只有外层一个绘制方**：胶囊自己是透明的。
+    //
+    // ⚠ 光把胶囊改成透明是不够的（2026-09-20 实测）：`FilterChip` 的底是 `Ink` 画在一个
+    // **没有显式 color 的 `Material`** 上，那层 Material 取主题 `canvasColor`（本应用浅色
+    // = 纯白、深色 = 卡片黑）—— 于是每格的抗锯齿边缘会跟白/黑混出一列 1px 的异色，连续
+    // 选中时每一格边上留一条「细线」（用户八轮报的现象）。所以 `_chipFill` 顺手把这块红
+    // 也写进 `canvasColor`，这条断言钉住它。
+    expect(periodChip(tester, 3).selectedColor, Colors.transparent);
+    expect(periodChip(tester, 3).backgroundColor, Colors.transparent);
+    expect(
+      Theme.of(
+        tester.element(find.byKey(const Key('classroomFreePeriod-3'))),
+      ).canvasColor,
+      red,
+      reason: '红必须同时是 canvasColor（chip 内部 Material 的底色），否则边缘混出细线',
+    );
     expect(
       periodChip(tester, 6).backgroundColor,
       Colors.transparent,
-      reason: '未选中的格子不涂底色（与选中态宽度一致）',
+      reason: '未选中的格子同样不涂底色（与选中态宽度一致）',
     );
 
     // 只留一格选中 → 同样是这块红（单格走 classroomFreePeriodFill-<p>）。
@@ -467,8 +620,8 @@ void main() {
       tester
           .widget<FilterChip>(find.byKey(const Key('classroomFreeWeekday-7')))
           .selectedColor,
-      red,
-      reason: '星期胶囊同样要自己画出红底（否则被 surface 盖住）',
+      Colors.transparent,
+      reason: '红底由那张 `_chipFill` 出；胶囊自己透明 + canvasColor 也是红',
     );
 
     // 点周一 → 它也变红；再点周三 → 红底消失。
@@ -588,18 +741,32 @@ void main() {
       reason: '旧版那条 1px×16 的分格线必须消失',
     );
 
-    // 合并段 = 一整块：段内格子方角、只有段首/段尾保留 8 圆角（用户 2026-09-20 七轮：
-    // 「看起来还是不连续，感觉是按钮边框的问题」—— 圆角是最后一处「按钮感」）。
-    BorderRadius radiusOf(int period) =>
-        (periodChip(tester, period).shape as RoundedRectangleBorder)
-            .borderRadius as BorderRadius;
-    expect(radiusOf(1), const BorderRadius.horizontal(left: Radius.circular(8)));
-    expect(radiusOf(5), const BorderRadius.horizontal(right: Radius.circular(8)));
-    for (final p in const [2, 3, 4]) {
-      expect(radiusOf(p), BorderRadius.zero, reason: '第 $p 节在段内必须是方角');
+    // 合并段 = 一整块矩形：段内格子自己**不画底色**（透明），整块红只由外层 `_chipFill`
+    // 出 —— 它同时把这块红写进 `canvasColor`，于是 chip 内部那层没有显式颜色的 Material
+    // 也是红的，格子边缘的抗锯齿混不出异色（用户 2026-09-20 八轮：「被连续选中的按钮
+    // 视觉上要是一个矩形，但是现有的实现会导致中间有细线影响效果」）。
+    for (final p in const [1, 2, 3, 4, 5]) {
+      expect(
+        periodChip(tester, p).selectedColor,
+        Colors.transparent,
+        reason: '第 $p 节在段内：整段只由外层那一块红出画',
+      );
+      expect(periodChip(tester, p).backgroundColor, Colors.transparent);
     }
-    // 段外 / 未选中的格子仍是圆角胶囊（它们本来就是独立按钮）。
-    expect(radiusOf(6), BorderRadius.circular(8));
+    expect(
+      Theme.of(
+        tester.element(find.byKey(const Key('classroomFreePeriod-3'))),
+      ).canvasColor,
+      AppColors.errorFill(
+        tester.element(find.byKey(const Key('classroomFreePeriod-3'))),
+      ),
+      reason: '段内 canvasColor 必须是同一块红',
+    );
+    // 段外 / 未选中的格子仍是描边胶囊（它们本来就是独立按钮）。
+    expect(
+      (periodChip(tester, 6).shape as RoundedRectangleBorder).borderRadius,
+      BorderRadius.circular(8),
+    );
     expect(
       (tester
                   .widget<FilterChip>(
@@ -640,6 +807,122 @@ void main() {
           ?.color,
       isNot(Colors.transparent),
     );
+  });
+
+  testWidgets('拖动选择：从第 7 节横拖到第 10 节 → 7-10 连成一段', (tester) async {
+    // 用户 2026-09-20 八轮：「我希望支持拖动选择」—— 按下那格是锚点，拖到哪就选到哪，
+    // 中间那几节**哪怕原来没选中也一起选上**（连续区间口径）。
+    await _pumpPage(tester); // 00:00 → 自动选中 1-5
+    await _dragPeriods(tester, from: 7, to: 10);
+    for (final p in const [7, 8, 9, 10]) {
+      expect(periodChip(tester, p).selected, isTrue, reason: '第 $p 节');
+    }
+    expect(periodChip(tester, 6).selected, isFalse, reason: '锚点左边不受影响');
+    expect(
+      periodChip(tester, 5).selected,
+      isTrue,
+      reason: '原有那一段（1-5）不该被拖动清掉',
+    );
+    expect(
+      find.byKey(const Key('classroomFreePeriodRun-7-10')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('classroomFreePeriodAutoHint')),
+      findsNothing,
+      reason: '拖动也算「手动动过」，自动选段的提示要收起',
+    );
+  });
+
+  testWidgets('在已选中的格上起手拖动 = 取消整段（笔刷口径）', (tester) async {
+    // 起手格原来选着 → 本次拖动是「取消」：中途那些原来没选中的格子当然还是没选中，
+    // 于是整段被拖干净；起手格左边（第 3 节）不受影响。
+    await _pumpPage(tester); // 自动选中 1-5
+    await _dragPeriods(tester, from: 4, to: 9);
+    expect(periodChip(tester, 3).selected, isTrue);
+    for (final p in const [4, 5, 6, 7, 8, 9]) {
+      expect(periodChip(tester, p).selected, isFalse, reason: '第 $p 节已拖掉');
+    }
+  });
+
+  testWidgets('拖过头再拖回来 = 原样撤销（每次都从起手快照重算）', (tester) async {
+    await _pumpPage(tester); // 自动选中 1-5
+    final start = tester.getCenter(
+      find.byKey(const Key('classroomFreePeriod-7')),
+    );
+    final far = tester.getCenter(find.byKey(const Key('classroomFreePeriod-11')));
+    final back = tester.getCenter(find.byKey(const Key('classroomFreePeriod-8')));
+    final gesture = await tester.startGesture(start);
+    await _glide(tester, gesture, start, far);
+    expect(periodChip(tester, 11).selected, isTrue);
+    await _glide(tester, gesture, far, back);
+    expect(periodChip(tester, 11).selected, isFalse, reason: '拖回来就撤销');
+    expect(periodChip(tester, 8).selected, isTrue, reason: '停在 8 → 选到 8');
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('classroomFreePeriodRun-7-8')), findsOneWidget);
+  });
+
+  testWidgets('连续选中段在像素上就是一整块矩形：浅色 / 深色两档都没有异色细线', (tester) async {
+    // 用户 2026-09-20 八轮：「被连续选中的按钮视觉上要是一个矩形，但是现有的实现会导致
+    // 中间有细线影响效果」。这条测试**直接看像素**：整段内部（跳过白字那些列）从上到下
+    // 必须是同一个底色 —— 只要哪一列冒出别的颜色，就是那条细线。
+    // 1.5 倍 dpr + 非整宽：把格子边界压在像素中间，最容易逼出接缝。
+    const shotKey = Key('classroomFreeShot');
+    for (final (label, theme) in <(String, ThemeData)>[
+      ('浅色', appLightTheme),
+      ('深色', appDarkTheme),
+    ]) {
+      await _pumpPage(
+        tester,
+        theme: theme,
+        physicalSize: const Size(1501, 2601),
+        dpr: 1.5,
+        boundaryKey: shotKey,
+      );
+      // ⚠ 必须等转场跑完：`toImage` 抓的是 RepaintBoundary 自己的坐标空间（不含路由
+      // 转场的位移），而 `tester.getRect` 给的是含位移的全局坐标 —— 转场没结束就对不上，
+      // 会扫到别的行的像素（曾因此把白卡片当成「整段不是红的」）。
+      await tester.pumpAndSettle();
+      final run = find.byKey(const Key('classroomFreePeriodRun-1-5'));
+      expect(run, findsOneWidget, reason: '$label：自动选中 1-5');
+      final fill =
+          (tester.widget<Container>(run).decoration! as BoxDecoration).color!;
+      final pixels = await _capturePixels(tester, shotKey, ratio: 1.5);
+      final cellRects = [
+        for (final p in const [1, 2, 3, 4, 5])
+          tester.getRect(find.byKey(Key('classroomFreePeriod-$p'))),
+      ];
+      expect(
+        _scanSolidRect(
+          pixels,
+          tester.getRect(run),
+          fill,
+          ratio: 1.5,
+          glyphRects: cellRects,
+        ),
+        isEmpty,
+        reason: '$label：整段内部必须处处同色（出现别的颜色就是细线）',
+      );
+
+      // 星期格（单格选中）同一口径：胶囊不画底之后，深色下也不许把整块红盖成黑按钮。
+      final wed = find.byKey(const Key('classroomFreeWeekdayFill-3'));
+      expect(wed, findsOneWidget, reason: '$label：默认选周三');
+      final wedFill =
+          (tester.widget<Container>(wed).decoration! as BoxDecoration).color!;
+      final wedRect = tester.getRect(wed);
+      expect(
+        _scanSolidRect(
+          pixels,
+          wedRect,
+          wedFill,
+          ratio: 1.5,
+          glyphRects: [wedRect],
+        ),
+        isEmpty,
+        reason: '$label：星期格那块红必须是实心同色',
+      );
+    }
   });
 
   testWidgets('设置页的「默认教学楼」预填（当前校区里有这栋楼才选）', (tester) async {

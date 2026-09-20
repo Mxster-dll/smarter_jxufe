@@ -167,9 +167,13 @@ void main() {
 
   group('源码守卫', () {
     test('搜索口径统一在 zcActivityMatches，材料库不再自建别名匹配', () {
-      final src = File(
+      // ⚠ 2026-09-20 架构审查 ⑥：材料库拆成三个文件（主页 / 编辑弹层 / 挑选页），
+      // 搜索口径的调用点在弹层里 → 守卫改读**三文件并集**，原意不变。
+      final src = [
         'lib/features/materials/presentation/materials_screen.dart',
-      ).readAsStringSync();
+        'lib/features/materials/presentation/material_pick_pages.dart',
+        'lib/features/materials/presentation/widgets/material_edit_dialog.dart',
+      ].map((p) => File(p).readAsStringSync()).join('\n');
       expect(src, contains('zcActivityMatches'));
       expect(src.contains('_aliasFor'), isFalse, reason: '别名已并入候选 keywords，别再各写一套');
     });
