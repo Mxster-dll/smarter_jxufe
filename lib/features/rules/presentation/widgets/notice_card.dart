@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:smarter_jxufe/design/app_card.dart';
+
 /// 红头通知卡片：左侧朱红饰条 + 文号/标题 + 可折叠正文区。
 /// 内部自带展开收起，[children] 为通知区正文渲染序列。
 class NoticeCard extends StatefulWidget {
@@ -19,10 +21,12 @@ class _NoticeCardState extends State<NoticeCard> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardTheme.color,
-        border: Border.all(color: scheme.outlineVariant),
-        borderRadius: BorderRadius.circular(10),
+      // 卡片契约（`lib/design/app_card.dart`）：圆角 12 + hairline 描边 + 卡片底色。
+      // 曾是 radius 10 + `outlineVariant` 实线描边 —— 比契约重一档、圆角也不同，
+      // 于是同页里「红头通知卡」与其它卡片看起来像两套样式。
+      decoration: ShapeDecoration(
+        shape: appCardShape(context),
+        color: appCardColor(context),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(

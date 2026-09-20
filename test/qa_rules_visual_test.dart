@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/features/rules/data/md_parser.dart';
 import 'package:smarter_jxufe/features/rules/data/rules_repository.dart';
 import 'package:smarter_jxufe/features/rules/domain/doc_blocks.dart';
@@ -396,6 +397,22 @@ void main() {
       ),
     );
     await tester.pump(const Duration(milliseconds: 100));
+
+    // 卡片契约（用户 2026-09-20：「『规章制度』和『网站导航』中的卡片样式与其他页面
+    // 不同」）：家族瓦片必须逐值等于 `appCardShape`（圆角 12 + hairline 描边）+ 卡片底色，
+    // 而不是本页从前自己拼的 `radius 9 + BorderSide(color: scheme.outline)`。
+    final ctx = tester.element(find.byType(RulesHomeScreen));
+    final tile = tester.widget<Material>(
+      find
+          .ancestor(
+            of: find.text('学科竞赛管理办法'),
+            matching: find.byType(Material),
+          )
+          .first,
+    );
+    expect(tile.shape, appCardShape(ctx));
+    expect(tile.color, appCardColor(ctx));
+
     await expectLater(
       find.byType(RulesHomeScreen),
       matchesGoldenFile('goldens/qa_home_family_tiles.png'),

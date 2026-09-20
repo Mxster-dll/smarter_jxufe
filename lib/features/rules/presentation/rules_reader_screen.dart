@@ -173,12 +173,9 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
             Container(
               width: 236,
               margin: const EdgeInsets.only(top: 14, left: 10),
-              decoration: BoxDecoration(
+              decoration: ShapeDecoration(
+                shape: appCardShape(context),
                 color: Theme.of(context).colorScheme.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.outlineVariant,
-                ),
               ),
               clipBehavior: Clip.antiAlias,
               child: _tocList(toc, sideRail: true),
@@ -817,7 +814,8 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       decoration: BoxDecoration(
         color: AppColors.tint(context, scheme.primary, 0.07),
-        borderRadius: BorderRadius.circular(9),
+        // 圆角对齐卡片契约（着色块，按 §3 口径手写填充）。
+        borderRadius: BorderRadius.circular(kAppCardRadius),
       ),
       child: Row(
         children: [
@@ -1009,7 +1007,8 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
       child: Material(
         color: AppColors.tint(context, scheme.primary, 0.06),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
+          // 着色卡（主题红淡底 + 红描边）按 §3 口径有意手写，只有圆角对齐卡片契约。
+          borderRadius: BorderRadius.circular(kAppCardRadius),
           side: BorderSide(color: scheme.primary.withValues(alpha: 0.30)),
         ),
         clipBehavior: Clip.antiAlias,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/pane_chrome.dart';
 
@@ -178,11 +179,11 @@ class _RulesHomeScreenState extends ConsumerState<RulesHomeScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
-        color: Theme.of(context).cardTheme.color,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(9),
-          side: BorderSide(color: scheme.outline),
-        ),
+        // 卡片样式唯一口径 = `lib/design/app_card.dart`（圆角 12 + hairline 描边 + 纯白）。
+        // 这里曾是 radius 9 + `scheme.outline` 实线描边，与「网站导航」一样是全应用
+        // 唯二偏离契约的卡片 —— 用户 2026-09-20 指出后收敛。
+        color: appCardColor(context),
+        shape: appCardShape(context),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: () => Navigator.of(context).push(
