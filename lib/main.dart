@@ -7,15 +7,19 @@ import 'package:pdfrx/pdfrx.dart';
 
 import 'package:smarter_jxufe/core/navigation/navigator_key.dart';
 import 'package:smarter_jxufe/core/navigation/page_auto_refresh.dart';
+import 'package:smarter_jxufe/core/navigation/service_nav.dart';
 import 'package:smarter_jxufe/core/storage/hive_initializer.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/ai/presentation/ai_floating_ball.dart';
 import 'package:smarter_jxufe/features/auth/data/auth_exception.dart';
 import 'package:smarter_jxufe/features/auth/data/mfa_relogin_service.dart';
+import 'package:smarter_jxufe/features/home/presentation/home_screen.dart';
 import 'package:smarter_jxufe/features/home_widget/data/home_widget_background.dart';
 import 'package:smarter_jxufe/features/home_widget/presentation/home_widget_launcher.dart';
+import 'package:smarter_jxufe/features/materials/presentation/materials_screen.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/qr_login_viewmodel.dart';
 import 'package:smarter_jxufe/features/settings/data/theme_prefs.dart';
+import 'package:smarter_jxufe/features/settings/presentation/settings_screen.dart';
 import 'package:smarter_jxufe/features/splash/presentation/splash_screen.dart';
 import 'package:smarter_jxufe/shared/services/notification_service.dart';
 
@@ -51,6 +55,20 @@ void _installMfaFallback() {
   });
 }
 
+/// 页面之间的「跳转缝」注册（**组装根职责**，2026-09-20 · 架构审查 ⑦）。
+///
+/// 有两条 feature → feature 的**反向**导航边造出了双向依赖环：
+/// `features/zongce` 为了「去材料库」import `materials/presentation/materials_screen.dart`、
+/// `features/ims/student_info` 为了「切换账号后回主页」import `home/presentation/home_screen.dart`
+/// （各自反向都还有一条**数据**依赖，见 `docs/agents/33-…md` §33.6）。
+/// 现在业务代码只喊 id（`openServiceScreen` / `resetToServiceScreen`），目标页在这里登记 ——
+/// 与 [_installMfaFallback] 同一套路：**组装根本来就知道所有模块**。
+void _installServiceScreens() {
+  registerServiceScreen(kServiceHome, () => const HomeScreen());
+  registerServiceScreen(kServiceMaterials, () => const MaterialsScreen());
+  registerServiceScreen(kServiceSettings, () => const SettingsScreen());
+}
+
 /// 主题（浅色 / 深色 / 卡片语言 / 转场 / 字体）唯一出处 = `lib/design/app_theme.dart`。
 /// 底色阶梯的取值与口径见 `lib/design/app_ladder.dart`。
 void main() async {
@@ -82,6 +100,7 @@ void main() async {
   HomeWidgetLauncher.install();
 
   _installMfaFallback();
+  _installServiceScreens();
 
   // ── 外观偏好预热（深色模式适配，2026-09-16）──────────────────────────────
   // 必须在 `runApp` **之前**把用户选定的 ThemeMode 读出来，否则首帧会先按

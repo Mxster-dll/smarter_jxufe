@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/design/app_theme.dart';
+import 'package:smarter_jxufe/core/navigation/service_nav.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/account_repository_provider.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_for_account_provider.dart';
 import 'package:smarter_jxufe/features/auth/domain/entities/account.dart';
 import 'package:smarter_jxufe/features/auth/presentation/login_screen.dart';
-import 'package:smarter_jxufe/features/home/presentation/home_screen.dart';
 import 'package:smarter_jxufe/features/ims/data/ims_exception.dart';
 import 'package:smarter_jxufe/features/ims/student_info/data/providers/student_info_repository_provider.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/qr_login_viewmodel.dart';
@@ -357,12 +357,10 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     if (idx >= 0) {
       await accountRepo.setCurrentAccount(idx);
     }
-    // 跳转到主页宫格
+    // 跳转到主页宫格（2026-09-20 架构审查 ⑦：走「跳转缝」而不是直接 import 首页 ——
+    // 那条 `ims → home/presentation` 的边曾与 `home → ims` 的数据依赖构成双向环）。
     if (mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-        (_) => false,
-      );
+      resetToServiceScreen(context, kServiceHome);
     }
   }
 

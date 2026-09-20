@@ -779,10 +779,13 @@ void main() {
       //   ② 「平台标识」（platformGuidProvider）归一 —— 它被 7 个 feature 使用，
       //      从前住在 school_calendar、net_fee 里又复制一份，三处手工 invalidate
       //      把 platform_guid 与 leave / net_fee / school_calendar 咬成 3 条环。
-      // 剩下 14 条多为**页面互推**（presentation → presentation 的 `Navigator.push`
+      // 剩下 12 条多为**页面互推**（presentation → presentation 的 `Navigator.push`
       // 目标）与共享内核（ims/student_info、school_calendar），台账见 docs/agents/33 §33.6。
+      // 2026-09-20 第二轮（⑦）：其中两条**反向导航边**已收进「跳转缝」
+      //（`lib/core/navigation/service_nav.dart`：zongce → 材料库、student_info → 主页），
+      // 14 → 12。
       // ⚠ 这条是棘轮：**只许减**。新增一条要先想清楚，别靠调大这个数过关。
-      const maxFeatureCycles = 14;
+      const maxFeatureCycles = 12;
       final cycles = _featureCycles(_featureEdges(sources));
       expect(
         cycles.length,
@@ -818,6 +821,53 @@ void main() {
         reason: '数据层去 import 界面层了 —— 要么把口径下沉到 data，'
             '要么让界面层把实现注册进来（两条先例见 docs/agents/33 §33.6）',
       );
+    });
+
+    test('页面互推走「跳转缝」（service_nav），不再直接 import 别家页面', () {
+      // 2026-09-20 立 · 架构审查 ⑦：`service_nav.dart` 只放**注册表 + 两个动作**，
+      // 目标页 builder 由组装根 `lib/main.dart` 注册（与 mfaReloginService.setFallback 同套路）。
+      expect(
+        _hits(sources, 'void registerServiceScreen('),
+        ['lib/core/navigation/service_nav.dart'],
+        reason: '跳转缝只能有一份实现',
+      );
+      expect(
+        _hits(sources, 'bool openServiceScreen('),
+        ['lib/core/navigation/service_nav.dart'],
+      );
+      // 该文件不许 import 任何 feature（core 是地基，唯一允许方向 = feature → core）。
+      // ⚠ 两个坑都踩过：① 用 `_codeHits`（跳过注释行）——文件头注释里**必然**会引用它
+      //   替代掉的那两条边；② 必须**只扫这一个文件**（`_codeHits` 默认扫全仓，
+      //   别的文件里出现 `features/` 是正常的）。
+      final seam = sources['lib/core/navigation/service_nav.dart'] ?? '';
+      expect(seam, isNotEmpty, reason: '跳转缝文件必须存在');
+      expect(
+        _codeHits({'seam': seam}, 'features/'),
+        isEmpty,
+        reason: 'core/navigation/service_nav.dart 不许 import feature',
+      );
+      // 组装根必须注册这三页（否则跳转静默失效）。
+      final mainSrc = sources['lib/main.dart'] ?? '';
+      for (final id in const ['kServiceHome', 'kServiceMaterials', 'kServiceSettings']) {
+        expect(mainSrc, contains('registerServiceScreen($id'), reason: '组装根少了 $id');
+      }
+      // 两条已收口的反向边不得复活。
+      for (final entry in sources.entries) {
+        if (entry.key.startsWith('lib/features/zongce/')) {
+          expect(
+            entry.value.contains('features/materials/presentation/'),
+            isFalse,
+            reason: '${entry.key} 又去 import 材料库页面了（改用 openServiceScreen）',
+          );
+        }
+        if (entry.key.endsWith('ims/student_info/presentation/account_screen.dart')) {
+          expect(
+            entry.value.contains('features/home/presentation/home_screen.dart'),
+            isFalse,
+            reason: '账号页又去 import 首页了（改用 resetToServiceScreen(kServiceHome)）',
+          );
+        }
+      }
     });
 
     test('「设置分节」chrome 契约住在 design 层', () {

@@ -13,13 +13,13 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'package:smarter_jxufe/core/navigation/service_nav.dart';
 import 'package:smarter_jxufe/design/app_card.dart';
 
 import 'package:smarter_jxufe/design/app_theme.dart';
 
 import 'package:smarter_jxufe/design/status_palette.dart';
 
-import 'package:smarter_jxufe/features/materials/presentation/materials_screen.dart';
 
 import 'package:smarter_jxufe/features/zongce/domain/zc_catalog.dart';
 
@@ -1156,9 +1156,9 @@ Widget zcGoMaterials(BuildContext context, {String text = '去材料库管理'})
   final scheme = Theme.of(context).colorScheme;
   return InkWell(
     borderRadius: BorderRadius.circular(6),
-    onTap: () => Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const MaterialsScreen())),
+    // 2026-09-20 架构审查 ⑦：走「跳转缝」（`zongce → materials/presentation` 那条边
+    // 与 `materials → zongce` 的数据依赖构成双向环）。
+    onTap: () => openServiceScreen(context, kServiceMaterials),
     child: Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
