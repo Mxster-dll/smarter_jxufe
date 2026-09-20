@@ -278,7 +278,7 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
         else
           const SizedBox(height: 6),
         const SizedBox(height: 8),
-        zcResultCard(context, result, mats, onEditWeights: _editWeights),
+        zcResultCard(context, result, onEditWeights: _editWeights),
         const SizedBox(height: 14),
         _buildYuCardDe(context, result, mats),
         const SizedBox(height: 12),
@@ -345,7 +345,7 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
   }
 
   // ===================================================================
-  // 顶部：测评结果（原网页「结果侧栏」语义，单列时置顶常驻）
+  // 顶部：总评成绩（原网页「结果侧栏」语义，单列时置顶常驻）
   // ===================================================================
   /// 总评成绩（五育加权）：点胶囊就地改占比（用户 2026-09-18 拍板的入口）。
   Future<void> _editWeights(ZcWeights current) async {

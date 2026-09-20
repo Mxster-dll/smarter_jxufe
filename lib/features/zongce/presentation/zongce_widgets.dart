@@ -109,17 +109,19 @@ double zcSumDetail(ZcCalcResult r, List<String> prefixes) {
 
 Widget zcResultCard(
   BuildContext context,
-  ZcCalcResult r,
-  List<ZcMaterial> mats, {
+  ZcCalcResult r, {
   required void Function(ZcWeights) onEditWeights,
 }) {
   final scheme = Theme.of(context).colorScheme;
+  // 用户 2026-09-21：「我希望综测顶部汇总卡片不要显示：占比 20 / 35 / 15 / 15 / 15、
+  // 加权成绩 91.86 分、材料条数 13 条 这些信息，而是把占比显示到每个“育”的名称
+  // 后面」→ 第 4 项 = 该育自己的占比（百分数），逐行渲染成名称后的小胶囊。
   final rows = [
-    ('德育', r.deyu, r.gD),
-    ('智育', r.zhiyu, r.gZ),
-    ('体育', r.tiyu, r.gT),
-    ('美育', r.meiyu, r.gM),
-    ('劳育', r.laoyu, r.gL),
+    ('德育', r.deyu, r.gD, r.weights.d),
+    ('智育', r.zhiyu, r.gZ, r.weights.z),
+    ('体育', r.tiyu, r.gT, r.weights.t),
+    ('美育', r.meiyu, r.gM, r.weights.m),
+    ('劳育', r.laoyu, r.gL, r.weights.l),
   ];
   return zcCard(
     context,
@@ -142,163 +144,114 @@ Widget zcResultCard(
               ),
             ),
             const SizedBox(width: 12),
+            // 用户 2026-09-21：「'测评结果'改成'总评成绩'，右侧显示总评成绩」+
+            // 「去除'填写/录入后自动计算，实时更新'」→ 标题换名、副标题整条删掉，
+            // 右侧那个位置放总评成绩本身（仍是可点胶囊，点它改占比）。
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  zcLabelTip(
-                    context,
-                    '测评结果',
-                    tipKey: 'overall',
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Text(
-                    '填写/录入后自动计算，实时更新',
-                    style: TextStyle(fontSize: 11, color: scheme.outline),
-                  ),
-                ],
+              child: zcLabelTip(
+                context,
+                '总评成绩',
+                tipKey: 'overall',
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
+            KeyedSubtree(
+              key: const Key('zcTotalChip'),
+              child: zcValueTap(
+                context,
+                text: '${zcFmt2(r.total)} 分',
+                large: true,
+                onTap: () => onEditWeights(r.weights),
+              ),
+            ),
+            const SizedBox(width: 10),
             zcGradeChip(context, r.overall, big: true),
           ],
         ),
         const SizedBox(height: 14),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        // 用户 2026-09-21：原来的右列（总评成绩 / 占比 / 加权成绩 / 材料条数）整块
+        // 删掉 —— 总评成绩移到卡片头部右侧、占比移到每育名称后，另两行不再显示
+        // （加权成绩在「智育」卡里仍有一行可点输入）。
+        Column(
           children: [
-            Expanded(
-              child: Column(
-                children: [
-                  for (final it in rows)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2.5),
-                      child: Row(
-                        children: [
-                          SizedBox(
-                            width: 40,
-                            child: Text(
-                              it.$1,
-                              style: TextStyle(
-                                fontSize: 12.5,
-                                color: scheme.outline,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Text(
-                              '${zcFmt(it.$2)} 分',
-                              style: const TextStyle(
-                                fontSize: 12.5,
-                                fontFeatures: [FontFeature.tabularFigures()],
-                              ),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 7,
-                              vertical: 1.5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: zcGradeColor(
-                                context,
-                                it.$3,
-                              ).withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                            child: Text(
-                              it.$3.label,
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: zcGradeColor(context, it.$3),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
+            for (final it in rows)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2.5),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 40,
+                      child: Text(
+                        it.$1,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: scheme.outline,
+                        ),
                       ),
                     ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                // 总评成绩 = 五育加权（用户 2026-09-18：「综测不是直接算平均分，
-                // 而是有一个总评成绩，这个成绩的占比由班主任定，应该让用户自行
-                // 设置」）→ 点胶囊弹占比设置。
-                // ⚠ 下面是「占比 + 加权成绩 + 材料条数」三行，**没有再显示「五育平均」**
-                // （用户 2026-09-20：「综测页不要显示"五育平均"」）—— `ZcCalcResult.average`
-                // 只留给引擎与测试当对照值，界面不再露它。
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '总评成绩',
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        color: scheme.outline,
+                    // 用户 2026-09-21：「把占比显示到每个“育”的名称后面」→ 名称后
+                    // 一枚淡底小胶囊（文案走 `zcWeightPercentText`，与占比弹层
+                    // 输入框同一份口径：整数不带小数点）。
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 1.5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.tint(context, scheme.outline, 0.12),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        '${zcWeightPercentText(it.$4)}%',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w600,
+                          color: scheme.outline,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    KeyedSubtree(
-                      key: const Key('zcTotalChip'),
-                      child: zcValueTap(
-                        context,
-                        text: '${zcFmt2(r.total)} 分',
-                        onTap: () => onEditWeights(r.weights),
+                    Expanded(
+                      child: Text(
+                        '${zcFmt(it.$2)} 分',
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontFeatures: [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 1.5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: zcGradeColor(
+                          context,
+                          it.$3,
+                        ).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      child: Text(
+                        it.$3.label,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: zcGradeColor(context, it.$3),
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  '占比 ${r.weights.label}',
-                  key: const Key('zcTotalWeightsLabel'),
-                  style: TextStyle(fontSize: 10, color: scheme.outline),
-                ),
-                const SizedBox(height: 4),
-                zcStatLine(
-                  '加权成绩',
-                  r.weightMissing ? '未获取' : '${zcFmt2(r.weightUsed)} 分',
-                  context: context,
-                ),
-                const SizedBox(height: 4),
-                zcStatLine('材料条数', '${mats.length} 条', context: context),
-              ],
-            ),
+              ),
           ],
         ),
       ],
     ),
-  );
-}
-
-Widget zcStatLine(
-  String label,
-  String value, {
-  required BuildContext context,
-  bool emphasize = false,
-}) {
-  final scheme = Theme.of(context).colorScheme;
-  return Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Text(label, style: TextStyle(fontSize: 11.5, color: scheme.outline)),
-      const SizedBox(width: 8),
-      Text(
-        value,
-        style: TextStyle(
-          fontSize: emphasize ? 16 : 12.5,
-          fontWeight: emphasize ? FontWeight.w700 : FontWeight.w600,
-          color: emphasize ? zcSchemeColor(context) : null,
-          fontFeatures: const [FontFeature.tabularFigures()],
-        ),
-      ),
-    ],
   );
 }
 
@@ -484,12 +437,20 @@ Widget zcLabelTip(
 }
 
 /// 胶囊内的数值文字（`zcValueTap` 的自适应 / 定宽两个分支共用）。
-Widget zcValueTapText(String text, ColorScheme scheme, bool muted) => Text(
+///
+/// `large` = 结果卡头部那枚总评成绩（用户 2026-09-21：「右侧显示总评成绩」）
+/// —— 它是整张卡最该被一眼看到的数，故比行内胶囊大一号。
+Widget zcValueTapText(
+  String text,
+  ColorScheme scheme,
+  bool muted, {
+  bool large = false,
+}) => Text(
   text,
   maxLines: 1,
   overflow: TextOverflow.ellipsis,
   style: TextStyle(
-    fontSize: 12.5,
+    fontSize: large ? 19 : 12.5,
     fontWeight: FontWeight.w700,
     color: muted ? scheme.outline : scheme.primary,
     fontFeatures: const [FontFeature.tabularFigures()],
@@ -823,6 +784,7 @@ Widget zcValueTap(
   required VoidCallback onTap,
   String? tag,
   bool muted = false,
+  bool large = false,
   double? width,
 }) {
   final scheme = Theme.of(context).colorScheme;
@@ -837,7 +799,10 @@ Widget zcValueTap(
       // 且**不再挂纯文字 Tooltip** —— 悬停提示只保留标题右侧 `?` 的条款卡片，
       // 可点性由胶囊里的铅笔图标表达。
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3.5),
+        padding: EdgeInsets.symmetric(
+          horizontal: large ? 12 : 10,
+          vertical: large ? 5 : 3.5,
+        ),
         decoration: BoxDecoration(
           color: AppColors.tint(context, accent, 0.09),
           borderRadius: BorderRadius.circular(999),
@@ -848,9 +813,9 @@ Widget zcValueTap(
           mainAxisSize: fixed ? MainAxisSize.max : MainAxisSize.min,
           children: [
             if (fixed)
-              Expanded(child: zcValueTapText(text, scheme, muted))
+              Expanded(child: zcValueTapText(text, scheme, muted, large: large))
             else
-              zcValueTapText(text, scheme, muted),
+              zcValueTapText(text, scheme, muted, large: large),
             if (tag != null) ...[
               const SizedBox(width: 6),
               zcSourceTag(context, tag),
@@ -858,7 +823,7 @@ Widget zcValueTap(
             const SizedBox(width: 4),
             Icon(
               Icons.edit_outlined,
-              size: 13,
+              size: large ? 15 : 13,
               color: accent.withValues(alpha: 0.75),
             ),
           ],

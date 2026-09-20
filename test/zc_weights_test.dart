@@ -8,6 +8,7 @@ import 'package:smarter_jxufe/features/zongce/domain/zc_engine.dart';
 import 'package:smarter_jxufe/features/zongce/domain/zc_models.dart';
 import 'package:smarter_jxufe/features/zongce/domain/zc_weights.dart';
 import 'package:smarter_jxufe/features/zongce/presentation/widgets/weight_sheet.dart';
+import 'package:smarter_jxufe/features/zongce/presentation/zongce_widgets.dart';
 
 /// 总评成绩（五育加权）的守卫 —— 用户 2026-09-18：
 /// 「综测不是直接算平均分，而是有一个总评成绩，这个成绩的占比由班主任定，
@@ -300,7 +301,6 @@ void main() {
 
     test('总评成绩行 = 可点胶囊，点它打开占比弹层', () {
       expect(screen, contains("Key('zcTotalChip')"));
-      expect(screen, contains("Key('zcTotalWeightsLabel')"));
       expect(screen, contains("'总评成绩'"));
       expect(screen, contains('_editWeights(r.weights)'));
       expect(screen, contains('showZcWeightSheet(context, weights: current)'));
@@ -316,6 +316,44 @@ void main() {
         reason: '平均分只是对照值，总评一律取引擎的 r.total',
       );
       expect(screen, contains('r.total'));
+    });
+
+    test('结果卡头部 = 总评成绩，占比挪到每育名称后（用户 2026-09-21）', () {
+      // 用户原话：「我希望综测顶部汇总卡片不要显示：占比 20 / 35 / 15 / 15 / 15、
+      // 加权成绩 91.86 分、材料条数 13 条 这些信息，而是把占比显示到每个"育"的
+      // 名称后面」+「"测评结果"改成"总评成绩"，右侧显示总评成绩」+「去除
+      // "填写/录入后自动计算，实时更新"」。
+      expect(screen, contains("Key('zcTotalChip')"), reason: '总评成绩移到头部右侧');
+      expect(screen, contains('large: true'), reason: '头部那枚是大号可点胶囊');
+      expect(screen, contains("'总评成绩'"));
+      // ⚠ 判「旧文案是否还在」要**剥掉注释**再比：本轮新增的说明性注释里逐字引用了
+      // 用户原话（含「测评结果」「材料条数」），直接 contains 会把注释判成违规。
+      final code = screen
+          .split('\n')
+          .map((line) => line.split('//').first)
+          .join('\n');
+      expect(code.contains('测评结果'), isFalse, reason: '标题已改名');
+      expect(
+        code.contains('填写/录入后自动计算，实时更新'),
+        isFalse,
+        reason: '副标题整条删掉',
+      );
+      expect(code.contains('材料条数'), isFalse, reason: '材料条数那行不再显示');
+      expect(
+        code.contains('zcStatLine('),
+        isFalse,
+        reason: '加权成绩 / 材料条数两行是 zcStatLine 唯一用途，函数已删',
+      );
+      expect(
+        code.contains("Key('zcTotalWeightsLabel')"),
+        isFalse,
+        reason: '「占比 20 / 35 / 15 / 15 / 15」那行已删',
+      );
+      expect(
+        code,
+        contains(r"'${zcWeightPercentText(it.$4)}%'"),
+        reason: '占比改成每育名称后的小胶囊（第 4 项 = 该育占比）',
+      );
     });
 
     test('学年切换 = 共享学年选择器（旧的两个箭头按钮已撤）', () {
@@ -374,6 +412,83 @@ void main() {
         contains('m.typeId == ZcTypeId.contest && m.note.trim().isNotEmpty'),
       );
       expect(screen, contains('m.note.trim()'), reason: '备注文本按原样渲染');
+    });
+  });
+
+  group('结果卡改版（用户 2026-09-21）', () {
+    // 用户原话：「我希望综测顶部汇总卡片不要显示：占比 20 / 35 / 15 / 15 / 15、
+    // 加权成绩 91.86 分、材料条数 13 条 这些信息，而是把占比显示到每个“育”的
+    // 名称后面」+「“测评结果”改成“总评成绩”，右侧显示总评成绩」+「去除
+    // “填写/录入后自动计算，实时更新”」。
+    late List<ZcWeights> edited;
+
+    setUp(() => edited = <ZcWeights>[]);
+
+    Future<ZcCalcResult> pumpCard(
+      WidgetTester tester,
+      ZcWeights weights,
+    ) async {
+      final result = zcCalculate(
+        const <ZcMaterial>[],
+        manual: ZcManual(weights: weights),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => SingleChildScrollView(
+                child: zcResultCard(context, result, onEditWeights: edited.add),
+              ),
+            ),
+          ),
+        ),
+      );
+      return result;
+    }
+
+    testWidgets('头部 = 「总评成绩」+ 右侧大号总分胶囊 + 等次胶囊，副标题已撤', (
+      tester,
+    ) async {
+      final r = await pumpCard(tester, ZcWeights.initial);
+      expect(find.text('总评成绩'), findsOneWidget);
+      expect(find.text('测评结果'), findsNothing, reason: '标题已改名');
+      expect(
+        find.text('填写/录入后自动计算，实时更新'),
+        findsNothing,
+        reason: '副标题整条删掉',
+      );
+      expect(find.byKey(const Key('zcTotalChip')), findsOneWidget);
+      expect(find.text('${zcFmt2(r.total)} 分'), findsOneWidget);
+      expect(find.text('综合等次'), findsOneWidget, reason: '等次胶囊保留在右侧');
+    });
+
+    testWidgets('占比挪到每育名称后：五枚胶囊各取自己那一育的占比', (tester) async {
+      await pumpCard(tester, const ZcWeights(d: 11, z: 22, t: 33, m: 44, l: 55));
+      const labels = ['11%', '22%', '33%', '44%', '55%'];
+      for (final label in labels) {
+        expect(find.text(label), findsOneWidget, reason: '$label 应恰好一枚');
+      }
+      final ys = [for (final label in labels) tester.getTopLeft(find.text(label)).dy];
+      expect(
+        ys,
+        orderedEquals([...ys]..sort()),
+        reason: '竖序必须是 德育 → 智育 → 体育 → 美育 → 劳育',
+      );
+    });
+
+    testWidgets('加权成绩 / 材料条数 / 「占比 …」那行都不再出现', (tester) async {
+      await pumpCard(tester, ZcWeights.initial);
+      expect(find.text('加权成绩'), findsNothing);
+      expect(find.text('材料条数'), findsNothing);
+      expect(find.byKey(const Key('zcTotalWeightsLabel')), findsNothing);
+      expect(find.textContaining('占比'), findsNothing);
+    });
+
+    testWidgets('点头部总分胶囊 = 改占比入口（弹层口径不变）', (tester) async {
+      await pumpCard(tester, ZcWeights.even);
+      await tester.tap(find.byKey(const Key('zcTotalChip')));
+      await tester.pump();
+      expect(edited, [ZcWeights.even]);
     });
   });
 }
