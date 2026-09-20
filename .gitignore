@@ -69,3 +69,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+# 本地数据挖掘产物（2026-09-20 立）：含学生个人信息（学号 / 姓名 / 联系电话 / 手机号），绝不入库。
+# 来源 = 电费·宿舍房间挖掘那条线（dianfei_work/ 下的普查脚本与 tsv/json/txt，外加根目录的宿舍表 dump）。
+# 需要留档请另存到仓库外，不要 git add -A。
+dianfei_work/
+dorm_sheet_*.json
+dorm_sheet_*.txt
