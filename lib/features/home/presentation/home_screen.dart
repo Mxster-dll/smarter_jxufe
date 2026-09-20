@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/design/app_page_transitions.dart';
+import 'package:smarter_jxufe/design/settings_entry.dart';
 import 'package:smarter_jxufe/features/home/data/home_layout_prefs.dart';
 import 'package:smarter_jxufe/features/home/domain/home_layout.dart';
 import 'package:smarter_jxufe/features/home/presentation/dashboard_panel.dart';
@@ -10,7 +11,6 @@ import 'package:smarter_jxufe/features/home/presentation/home_service_catalog.da
 import 'package:smarter_jxufe/features/home/presentation/home_service_grid.dart';
 import 'package:smarter_jxufe/features/home/presentation/home_sidebar.dart';
 import 'package:smarter_jxufe/features/home_widget/presentation/home_widget_sync_scope.dart';
-import 'package:smarter_jxufe/features/settings/presentation/settings_screen.dart';
 import 'package:smarter_jxufe/features/ims/student_info/presentation/student_info_screen.dart';
 import 'package:smarter_jxufe/shared/widgets/account_avatar.dart';
 
@@ -146,7 +146,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   color: Theme.of(context).colorScheme.onSurface,
                 ),
                 label: '设置',
-                onTap: () => _pushPage(context, const SettingsScreen()),
+                onTap: () => openSettings(context),
               ),
             ],
           ),
@@ -273,7 +273,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints.tightFor(width: 36, height: 36),
               visualDensity: VisualDensity.compact,
-              onPressed: () => _pushPage(context, const SettingsScreen()),
+              onPressed: () => openSettings(context),
             ),
             const SizedBox(width: 4),
             // 个人入口：本地头像（未设置则姓名首字，再退通用图标）。

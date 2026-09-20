@@ -30,6 +30,15 @@ const String kServiceMaterials = 'materials';
 /// 这里只给「需要整栈替换」等特殊场景兜底。
 const String kServiceSettings = 'settings';
 
+/// IMS 教务（平台选择器「教学信息服务」的落点）。
+const String kServiceIms = 'ims';
+
+/// 综合管理服务平台（平台选择器「综合管理服务平台」的落点）。
+const String kServiceComprehensive = 'comprehensive';
+
+/// 学生个人数据中心（平台选择器「学生个人数据中心」的落点）。
+const String kServiceDataCenter = 'dataCenter';
+
 final Map<String, ServiceScreenBuilder> _builders = <String, ServiceScreenBuilder>{};
 
 /// 组装根用：注册一个可跳转的服务页（重复注册覆盖，便于测试替换）。
@@ -68,4 +77,15 @@ void resetToServiceScreen(BuildContext context, String id) {
     MaterialPageRoute(builder: (_) => builder()),
     (_) => false,
   );
+}
+
+/// **替换当前页**打开目标页（平台选择器那类「选完就换页、不再回来」的场景）；
+/// 未注册则什么都不做并返回 false。
+bool replaceServiceScreen(BuildContext context, String id) {
+  final builder = _builders[id];
+  if (builder == null) return false;
+  Navigator.of(context).pushReplacement(
+    MaterialPageRoute(builder: (_) => builder()),
+  );
+  return true;
 }

@@ -1,12 +1,15 @@
+/// 平台选择器：选完**替换当前页**进入对应平台（2026-09-20 架构审查 ⑦：三条落点都走
+/// 「跳转缝」，本文件不再 import 三个 feature 的页面 —— 它们反过来 import 本页做入口，
+/// 直接 import 会构成 `ims ⇄ platform` / `comprehensive_service ⇄ platform` 双向环）。
+library;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/core/navigation/service_nav.dart';
 import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
-import 'package:smarter_jxufe/features/comprehensive_service/presentation/comprehensive_service_home_screen.dart';
-import 'package:smarter_jxufe/features/data_center/presentation/data_center_screen.dart';
-import 'package:smarter_jxufe/features/ims/splash/presentation/ims_splash_screen.dart';
 
 class PlatformSelectionScreen extends ConsumerWidget {
   const PlatformSelectionScreen({super.key});
@@ -41,12 +44,8 @@ class PlatformSelectionScreen extends ConsumerWidget {
                 label: '教学信息服务',
                 subtitle: 'IMS 教务管理系统',
                 color: f.schedule,
-                onTap: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => const ImsSplashScreen()),
-                  );
-                },
+                onTap: () =>
+                    replaceServiceScreen(context, kServiceIms),
               ),
               const SizedBox(height: 24),
               _buildPlatformButton(
@@ -55,14 +54,8 @@ class PlatformSelectionScreen extends ConsumerWidget {
                 label: '综合管理服务平台',
                 subtitle: '志愿服务时长等',
                 color: f.grade,
-                onTap: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const ComprehensiveServiceHomeScreen(),
-                    ),
-                  );
-                },
+                onTap: () =>
+                    replaceServiceScreen(context, kServiceComprehensive),
               ),
               const SizedBox(height: 24),
               _buildPlatformButton(
@@ -71,12 +64,8 @@ class PlatformSelectionScreen extends ConsumerWidget {
                 label: '学生个人数据中心',
                 subtitle: '学业成绩 · 消费 · 图书 · 校园卡全景',
                 color: f.courseSelection,
-                onTap: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => const DataCenterScreen()),
-                  );
-                },
+                onTap: () =>
+                    replaceServiceScreen(context, kServiceDataCenter),
               ),
             ],
           ),

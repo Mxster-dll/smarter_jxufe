@@ -779,13 +779,14 @@ void main() {
       //   ② 「平台标识」（platformGuidProvider）归一 —— 它被 7 个 feature 使用，
       //      从前住在 school_calendar、net_fee 里又复制一份，三处手工 invalidate
       //      把 platform_guid 与 leave / net_fee / school_calendar 咬成 3 条环。
-      // 剩下 12 条多为**页面互推**（presentation → presentation 的 `Navigator.push`
-      // 目标）与共享内核（ims/student_info、school_calendar），台账见 docs/agents/33 §33.6。
-      // 2026-09-20 第二轮（⑦）：其中两条**反向导航边**已收进「跳转缝」
-      //（`lib/core/navigation/service_nav.dart`：zongce → 材料库、student_info → 主页），
-      // 14 → 12。
+      // 剩下 9 条多为**共享内核**（ims/student_info、school_calendar）与同族耦合
+      //（ai/home、cxstar/read_credit …），台账见 docs/agents/33 §33.6。
+      // 2026-09-20 · ⑦ 两轮：**四条纯导航的反向边**已收进「跳转缝」
+      //（`lib/core/navigation/service_nav.dart`）—— zongce → 材料库、student_info → 主页、
+      // home / ai → 设置页（改走 design 层官方入口 openSettings）、平台选择器 → 三个落点，
+      // 14 → 12 → **9**。
       // ⚠ 这条是棘轮：**只许减**。新增一条要先想清楚，别靠调大这个数过关。
-      const maxFeatureCycles = 12;
+      const maxFeatureCycles = 9;
       final cycles = _featureCycles(_featureEdges(sources));
       expect(
         cycles.length,
@@ -846,9 +847,21 @@ void main() {
         isEmpty,
         reason: 'core/navigation/service_nav.dart 不许 import feature',
       );
-      // 组装根必须注册这三页（否则跳转静默失效）。
-      final mainSrc = sources['lib/main.dart'] ?? '';
-      for (final id in const ['kServiceHome', 'kServiceMaterials', 'kServiceSettings']) {
+      // 组装根必须注册这些页（否则跳转静默失效）。
+      // ⚠ 先把空白压掉再比：注册调用可能被折成多行
+      //   （`registerServiceScreen(\n  kServiceX,\n  …)`），裸 contains 会漏判。
+      final mainSrc = (sources['lib/main.dart'] ?? '')
+          .replaceAll(RegExp(r'\s+'), '');
+      for (final id in const [
+        'kServiceHome',
+        'kServiceMaterials',
+        'kServiceSettings',
+        // 2026-09-20 第三轮：平台选择器的三个落点也走缝（`platform_selection_screen.dart`
+        // 不再 import ims / comprehensive_service / data_center 的页面）。
+        'kServiceIms',
+        'kServiceComprehensive',
+        'kServiceDataCenter',
+      ]) {
         expect(mainSrc, contains('registerServiceScreen($id'), reason: '组装根少了 $id');
       }
       // 两条已收口的反向边不得复活。
@@ -865,6 +878,33 @@ void main() {
             entry.value.contains('features/home/presentation/home_screen.dart'),
             isFalse,
             reason: '账号页又去 import 首页了（改用 resetToServiceScreen(kServiceHome)）',
+          );
+        }
+        if (entry.key.endsWith('platform/presentation/platform_selection_screen.dart')) {
+          for (final dead in const [
+            'features/ims/splash/presentation/ims_splash_screen.dart',
+            'features/comprehensive_service/presentation/comprehensive_service_home_screen.dart',
+            'features/data_center/presentation/data_center_screen.dart',
+          ]) {
+            expect(
+              entry.value.contains(dead),
+              isFalse,
+              reason: '平台选择器又直接 import 落点页了（改用 replaceServiceScreen）',
+            );
+          }
+          expect(
+            entry.value.contains('replaceServiceScreen('),
+            isTrue,
+            reason: '三个落点应全部走跳转缝',
+          );
+        }
+        // 设置页入口一律走 design 层的官方件（`openSettings` / `SettingsActionButton`）。
+        if (entry.key.endsWith('features/home/presentation/home_screen.dart') ||
+            entry.key.endsWith('features/ai/presentation/ai_chat_screen.dart')) {
+          expect(
+            entry.value.contains('features/settings/presentation/settings_screen.dart'),
+            isFalse,
+            reason: '${entry.key} 又直接 import 设置页了（改用 openSettings）',
           );
         }
       }
@@ -1122,6 +1162,26 @@ void main() {
       expect(bad..sort(), isEmpty,
           reason: '与卡片契约等价的形状请写 appCardShape(context)'
               '（BoxDecoration 用 ShapeDecoration(shape: appCardShape(context), color: …)）');
+    });
+
+    test('卡片描边只许比契约轻：`scheme.outline` 实线描边零命中', () {
+      // 卡片描边的唯一出处 = `appCardBorderSide`（浅色 `outlineVariant` 60% / 深色原值）。
+      // 起点：`lib/features/rules/presentation/rules_home_screen.dart` 与
+      // `lib/features/site_nav/presentation/site_nav_screen.dart` 曾写
+      // `side: BorderSide(color: scheme.outline)` —— 比契约深一档的灰实线 + 自定圆角（9），
+      // 用户 2026-09-20 一眼看出「『规章制度』和『网站导航』中的卡片样式与其他页面不同」。
+      final sources = _sources();
+      expect(
+        _codeHits(sources, 'BorderSide(color: scheme.outline)'),
+        isEmpty,
+        reason: '卡片描边请走 appCardShape(context) / appCardBorderSide(scheme)，'
+            '别自己写 scheme.outline 实线描边',
+      );
+      expect(
+        _codeHits(sources, 'Border.all(color: scheme.outline)'),
+        isEmpty,
+        reason: '手拼卡片容器请用 ShapeDecoration(shape: appCardShape(context), color: …)',
+      );
     });
 
     test('响应式断点只有一份取值表', () {

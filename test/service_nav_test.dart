@@ -96,4 +96,48 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('go'), findsOneWidget, reason: '回到根页面');
   });
+
+  testWidgets('replaceServiceScreen（已注册）= 替换当前页，返回键不再回到旧页', (tester) async {
+    registerServiceScreen(kServiceIms, () => const Text('教务'));
+    await tester.pumpWidget(
+      _host(
+        (c) => Navigator.of(c).push(
+          MaterialPageRoute<void>(
+            builder: (_) => TextButton(
+              onPressed: () => replaceServiceScreen(c, kServiceIms),
+              child: const Text('换页'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('go'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('换页'));
+    await tester.pumpAndSettle();
+    expect(find.text('教务'), findsOneWidget);
+    expect(find.text('换页'), findsNothing, reason: 'pushReplacement 不保留旧页');
+  });
+
+  testWidgets('replaceServiceScreen（未注册）不抛、返回 false', (tester) async {
+    var result = true;
+    await tester.pumpWidget(
+      _host((c) {
+        Navigator.of(c).push(
+          MaterialPageRoute<void>(
+            builder: (_) => TextButton(
+              onPressed: () => result = replaceServiceScreen(c, 'nope'),
+              child: const Text('换页'),
+            ),
+          ),
+        );
+      }),
+    );
+    await tester.tap(find.text('go'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('换页'));
+    await tester.pumpAndSettle();
+    expect(result, isFalse);
+    expect(find.text('换页'), findsOneWidget);
+  });
 }

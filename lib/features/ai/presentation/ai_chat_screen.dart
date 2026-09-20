@@ -23,8 +23,8 @@ import 'package:smarter_jxufe/features/ai/presentation/ai_floating_ball.dart';
 import 'package:smarter_jxufe/features/ai/presentation/ai_page_launcher.dart';
 import 'package:smarter_jxufe/features/ai/presentation/widgets/ai_markdown_view.dart';
 import 'package:smarter_jxufe/features/ai/presentation/widgets/ai_write_confirm.dart';
+import 'package:smarter_jxufe/design/settings_entry.dart';
 import 'package:smarter_jxufe/design/settings_section.dart';
-import 'package:smarter_jxufe/features/settings/presentation/settings_screen.dart';
 
 /// 首次进入时的建议问题（点一下直接发）。
 const List<String> kAiStarterQuestions = [
@@ -166,13 +166,9 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   }
 
   void _openSettings() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const SettingsScreen(
-          sections: [SettingsSection.aiAssistant],
-        ),
-      ),
-    );
+    // 2026-09-20 架构审查 ⑦：走官方入口（`lib/design/settings_entry.dart`），
+    // 不再直接 import 设置页 —— 那条边与 settings → ai 的依赖构成双向环。
+    openSettings(context, sections: const [SettingsSection.aiAssistant]);
   }
 
   /// 回答里的 `[文字](链接)` 交给系统浏览器。

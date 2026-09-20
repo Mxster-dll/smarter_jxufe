@@ -13,7 +13,10 @@ import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/ai/presentation/ai_floating_ball.dart';
 import 'package:smarter_jxufe/features/auth/data/auth_exception.dart';
 import 'package:smarter_jxufe/features/auth/data/mfa_relogin_service.dart';
+import 'package:smarter_jxufe/features/comprehensive_service/presentation/comprehensive_service_home_screen.dart';
+import 'package:smarter_jxufe/features/data_center/presentation/data_center_screen.dart';
 import 'package:smarter_jxufe/features/home/presentation/home_screen.dart';
+import 'package:smarter_jxufe/features/ims/splash/presentation/ims_splash_screen.dart';
 import 'package:smarter_jxufe/features/home_widget/data/home_widget_background.dart';
 import 'package:smarter_jxufe/features/home_widget/presentation/home_widget_launcher.dart';
 import 'package:smarter_jxufe/features/materials/presentation/materials_screen.dart';
@@ -57,16 +60,20 @@ void _installMfaFallback() {
 
 /// 页面之间的「跳转缝」注册（**组装根职责**，2026-09-20 · 架构审查 ⑦）。
 ///
-/// 有两条 feature → feature 的**反向**导航边造出了双向依赖环：
-/// `features/zongce` 为了「去材料库」import `materials/presentation/materials_screen.dart`、
-/// `features/ims/student_info` 为了「切换账号后回主页」import `home/presentation/home_screen.dart`
-/// （各自反向都还有一条**数据**依赖，见 `docs/agents/33-…md` §33.6）。
-/// 现在业务代码只喊 id（`openServiceScreen` / `resetToServiceScreen`），目标页在这里登记 ——
+/// 已收口的反向导航边：`zongce → 材料库`、`student_info → 主页`、`home / ai → 设置页`、
+/// `platform 选择器 → IMS / 综合服务 / 数据中台`（各自反向都还有**数据**依赖，见
+/// `docs/agents/33-…md` §33.6）。业务代码只喊 id，目标页在这里登记 ——
 /// 与 [_installMfaFallback] 同一套路：**组装根本来就知道所有模块**。
 void _installServiceScreens() {
   registerServiceScreen(kServiceHome, () => const HomeScreen());
   registerServiceScreen(kServiceMaterials, () => const MaterialsScreen());
   registerServiceScreen(kServiceSettings, () => const SettingsScreen());
+  registerServiceScreen(kServiceIms, () => const ImsSplashScreen());
+  registerServiceScreen(
+    kServiceComprehensive,
+    () => const ComprehensiveServiceHomeScreen(),
+  );
+  registerServiceScreen(kServiceDataCenter, () => const DataCenterScreen());
 }
 
 /// 主题（浅色 / 深色 / 卡片语言 / 转场 / 字体）唯一出处 = `lib/design/app_theme.dart`。
