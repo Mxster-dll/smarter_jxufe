@@ -22,6 +22,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'package:smarter_jxufe/core/web/external_url.dart';
+import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/site_nav/data/site_favorites.dart';
 import 'package:smarter_jxufe/features/site_nav/domain/campus_site.dart';
@@ -580,6 +581,46 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('还没有收藏 · 点行尾的星标即可收藏'), findsOneWidget);
     });
+
+    testWidgets('站点行用的是全应用卡片契约（圆角 12 + hairline 边；浅色/深色同款）', (
+      tester,
+    ) async {
+      // 用户 2026-09-20：「『规章制度』和『网站导航』中的卡片样式与其他页面不同」
+      // —— 本页从前自己拼了 `radius 9 + BorderSide(color: scheme.outline)`。
+      for (final theme in <ThemeData>[appLightTheme, appDarkTheme]) {
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              externalUrlOpenerProvider.overrideWithValue((uri) async => true),
+            ],
+            child: MaterialApp(theme: theme, home: const SiteNavScreen()),
+          ),
+        );
+        // 用搜索把行拉进视口（ListView 懒构建，靠后的分组不会渲染）。
+        await tester.enterText(find.byType(TextField), 'jwc');
+        await tester.pumpAndSettle();
+
+        final context = tester.element(find.byType(SiteNavScreen));
+        final tile = tester.widget<Material>(
+          find
+              .ancestor(
+                of: find.text('教务处'),
+                matching: find.byType(Material),
+              )
+              .first,
+        );
+        expect(
+          tile.shape,
+          appCardShape(context),
+          reason: '瓦片形状必须逐值等于 appCardShape(context)（圆角 12 + hairline 描边）',
+        );
+        expect(
+          tile.color,
+          appCardColor(context),
+          reason: '瓦片底色必须等于 appCardColor(context)（浅色纯白 / 深色 #1A1A1A）',
+        );
+      }
+    });
   });
 
   group('源码守卫', () {
@@ -617,6 +658,18 @@ void main() {
       expect(source.contains("const siteNavPrefsBoxName = 'siteNavPrefs'"), isTrue);
       expect(source.contains('bindBoxReload'), isTrue);
       expect(source.contains('jsonEncode'), isTrue);
+    });
+
+    test('站点行卡片走卡片契约（不自己拼圆角 + 描边）', () {
+      final source = File(_file).readAsStringSync();
+      expect(source.contains('shape: appCardShape(context)'), isTrue);
+      expect(source.contains('color: appCardColor(context)'), isTrue);
+      expect(
+        source.contains('BorderSide(color: scheme.outline)'),
+        isFalse,
+        reason: '卡片描边唯一出处 = appCardBorderSide（scheme.outline 实线比契约深一档，'
+            '用户 2026-09-20 当场指出这一页卡片与别页不同）',
+      );
     });
 
     test('首页目录已挂「网站导航」，色板已登记 siteNav', () {

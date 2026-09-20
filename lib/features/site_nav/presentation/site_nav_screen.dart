@@ -17,6 +17,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/core/web/external_url.dart';
+import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/pane_chrome.dart';
 
@@ -317,11 +318,12 @@ class _SiteNavScreenState extends ConsumerState<SiteNavScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
-        color: Theme.of(context).cardTheme.color,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(9),
-          side: BorderSide(color: scheme.outline),
-        ),
+        // 卡片样式唯一口径 = `lib/design/app_card.dart`（圆角 12 + hairline 描边 + 纯白）。
+        // 这里曾是 radius 9 + `scheme.outline` 实线描边（比契约重一档的灰边），
+        // 全应用只有本页与「规章制度」这么写 —— 用户 2026-09-20 当场指出
+        // 「卡片样式与其他页面不同」，故收敛回契约。
+        color: appCardColor(context),
+        shape: appCardShape(context),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: () => _open(site),
