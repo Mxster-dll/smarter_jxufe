@@ -32,6 +32,8 @@ import 'ge_dialogs.dart';
 import 'ge_memo_card.dart';
 import 'ge_ratio_bar.dart';
 import 'ge_summary_card.dart';
+import 'package:smarter_jxufe/design/app_states.dart';
+import 'package:smarter_jxufe/design/section_title.dart';
 
 class CourseDetailScreen extends ConsumerStatefulWidget {
   final GeCourse course;
@@ -264,7 +266,7 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
     if (_loading) {
       return Scaffold(
         appBar: AppBar(title: Text(_c.name)),
-        body: const Center(child: CircularProgressIndicator()),
+        body: const AppLoadingState(),
       );
     }
     if (_error != null) {
@@ -332,22 +334,10 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
               title: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    width: 3,
-                    height: 13,
-                    decoration: BoxDecoration(
-                      color: fp(context).cardAccent,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(width: 7),
-                  const Text(
-                    '计分模型说明',
-                    style: TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.3,
-                    ),
+                  appSectionTitle(
+                    context,
+                    text: '计分模型说明',
+                    accent: fp(context).cardAccent,
                   ),
                 ],
               ),

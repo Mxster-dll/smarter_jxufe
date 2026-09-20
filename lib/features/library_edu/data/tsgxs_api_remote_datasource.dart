@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 
+import 'package:smarter_jxufe/core/errors/app_exception.dart';
 import 'package:smarter_jxufe/features/library_edu/data/anti_corruption/tsgxs_exam_parser.dart';
 import 'package:smarter_jxufe/features/library_edu/data/anti_corruption/tsgxs_html_parser.dart';
 import 'package:smarter_jxufe/features/library_edu/data/tsgxs_auth_remote_datasource.dart';
@@ -11,12 +12,8 @@ import 'package:smarter_jxufe/features/library_edu/domain/tsgxs_exam.dart';
 import 'package:smarter_jxufe/features/library_edu/domain/tsgxs_models.dart';
 
 /// 入馆教育业务接口异常(非会话问题)。
-class TsgxsApiException implements Exception {
-  final String message;
-  const TsgxsApiException(this.message);
-
-  @override
-  String toString() => message;
+class TsgxsApiException extends AppException {
+  const TsgxsApiException(super.message);
 }
 
 /// 服务端明确**未授权**的业务响应(302 → `/html/401.html`)。
@@ -25,12 +22,8 @@ class TsgxsApiException implements Exception {
 /// `GET /Web/Exam?cid=<章节>` 一律 302 到 `/html/401.html`
 /// (本章线索未看完 / 前序章节未通过,答题尚未开放),
 /// 章节地图同样如此(第 2~5 章需先通过上一章考试)。
-class TsgxsAccessDeniedException implements Exception {
-  final String message;
-  const TsgxsAccessDeniedException(this.message);
-
-  @override
-  String toString() => message;
+class TsgxsAccessDeniedException extends AppException {
+  const TsgxsAccessDeniedException(super.message);
 }
 
 /// 章节考试状态。
@@ -68,12 +61,8 @@ class TsgxsExamStatus {
 /// 而「答题尚未开放」是 `302 → /html/401.html`(见
 /// [TsgxsAccessDeniedException])。语义相反,不能当会话失效 —— 否则
 /// 最后一章会永远算未通过(入馆教育进度卡恒显示 4/5 未完成)。
-class TsgxsChapterPassedException implements Exception {
-  final String message;
-  const TsgxsChapterPassedException(this.message);
-
-  @override
-  String toString() => message;
+class TsgxsChapterPassedException extends AppException {
+  const TsgxsChapterPassedException(super.message);
 }
 
 /// 入馆教育(tsgxs.jxufe.cn)业务数据源:全部页面服务端渲染,取回 HTML 后解析。
@@ -189,7 +178,7 @@ class TsgxsApiRemoteDataSource {
     if (status >= 300 && status < 400) {
       throw _redirectError(status, resp);
     }
-    if (body.contains('已在别处登录') || body.contains('被迫下线')) {
+    if (TsgxsAuthRemoteDataSource.isKickedOffPage(body)) {
       throw TsgxsSessionExpiredException('账号已在别处登录,本会话被顶下线');
     }
     if (status != 200) {
@@ -234,7 +223,7 @@ class TsgxsApiRemoteDataSource {
     if (status >= 300 && status < 400) {
       throw _redirectError(status, resp);
     }
-    if (body.contains('已在别处登录') || body.contains('被迫下线')) {
+    if (TsgxsAuthRemoteDataSource.isKickedOffPage(body)) {
       throw TsgxsSessionExpiredException('账号已在别处登录,本会话被顶下线');
     }
     if (status != 200) {

@@ -14,7 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:smarter_jxufe/design/pane_chrome.dart';
 import 'package:smarter_jxufe/features/ims/schedule/presentation/schedule_title_bar.dart';
-import 'package:smarter_jxufe/features/settings/domain/settings_section.dart';
+import 'package:smarter_jxufe/design/settings_section.dart';
 
 /// 与生产页面同构的最小页面：`paneAppBar` + `PaneBody`。
 ///

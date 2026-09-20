@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:smarter_jxufe/features/ims/data/ims_exception.dart';
 
 class ImsAuthRemoteDataSource {
   final Dio _dio;
@@ -36,12 +37,12 @@ class ImsAuthRemoteDataSource {
 
     final setCookie = response.headers['set-cookie'];
     if (setCookie == null || setCookie.isEmpty) {
-      throw Exception('Missing set-cookie header');
+      throw ImsApiException('Missing set-cookie header');
     }
 
     final match = RegExp(r'JSESSIONID=([^;]+)').firstMatch(setCookie.first);
     final jsessionId = match?.group(1);
-    if (jsessionId == null) throw Exception('JSESSIONID not found');
+    if (jsessionId == null) throw ImsApiException('JSESSIONID not found');
     return jsessionId;
   }
 }

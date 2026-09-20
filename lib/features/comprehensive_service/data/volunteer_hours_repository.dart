@@ -4,6 +4,7 @@ import 'package:smarter_jxufe/features/comprehensive_service/data/datasource/vol
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/volunteer_activity.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/volunteer_export_file.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/ssp_auth_repository.dart';
+import 'package:smarter_jxufe/features/comprehensive_service/data/ssp_exception.dart';
 
 /// 志愿服务时长业务仓库。
 ///
@@ -41,7 +42,7 @@ class VolunteerHoursRepository {
       try {
         return await _fetchActivitiesWithTime(freshSessionId);
       } on SspSessionExpiredException {
-        throw Exception('综合管理平台会话刷新失败，请稍后重试');
+        throw SspApiException('综合管理平台会话刷新失败，请稍后重试');
       }
     }
   }
@@ -124,7 +125,7 @@ class VolunteerHoursRepository {
           sessionId: freshSessionId,
         );
       } on SspSessionExpiredException {
-        throw Exception('综合管理平台会话刷新失败，请稍后重试');
+        throw SspApiException('综合管理平台会话刷新失败，请稍后重试');
       }
     }
   }

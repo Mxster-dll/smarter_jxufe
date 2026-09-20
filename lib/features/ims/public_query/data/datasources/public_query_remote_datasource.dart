@@ -74,7 +74,7 @@ class PublicQueryRemoteDataSource {
       referer: 'https://jwxt.jxufe.edu.cn/kbbp/dykb.bjkb.html?menucode=SB03',
     );
     final body = _decodeUtf8(response.data ?? const []);
-    if (isExpiredSession(body)) throw StateError('凭证已失效，请重新登录！');
+    if (jwSessionExpired(body)) throw StateError('凭证已失效，请重新登录！');
     return body;
   }
 
@@ -192,7 +192,7 @@ class PublicQueryRemoteDataSource {
       ...params,
     }, referer: referer);
     final body = _decodeUtf8(response.data ?? const []);
-    if (isExpiredSession(body)) throw StateError('凭证已失效，请重新登录！');
+    if (jwSessionExpired(body)) throw StateError('凭证已失效，请重新登录！');
     return parseComboBoxXml(body);
   }
 
@@ -230,7 +230,7 @@ class PublicQueryRemoteDataSource {
       query: 'kblx=${request.kind.reportType}',
     );
     final html = decodeGbkBytes(response.data ?? const <int>[]);
-    if (isExpiredSession(html)) throw StateError('凭证已失效，请重新登录！');
+    if (jwSessionExpired(html)) throw StateError('凭证已失效，请重新登录！');
     return html;
   }
 }

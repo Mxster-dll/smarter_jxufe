@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>学生端</title>
+</head>
+<body>
+<!-- 学期筛选用 fixture（2026-09-20 建）：结构与 chaoxing_courses.html 同款，
+     但覆盖「当下学期 / 往期学期 / 无学期前缀（照扫）」三档 —— 真实数据里
+     261学期 与 252/251学期 各占一批，另有 2 门无前缀（实训 / 通识）。
+     courseId/classId/cpi 全是假号。 -->
+<div class="ulDiv">
+	<ul>
+		<li class="courseItem">
+			<input type="hidden" name="courseId" value="100000002" />
+			<input type="hidden" name="classId" value="200000002" />
+			<div class="courseInfo">
+				<a href='/visit/stucoursemiddle?courseid=100000002&clazzid=200000002&vc=1&cpi=900000001' target="_blank" class="cover"></a>
+				<h3><a class="courseName" href='/visit/stucoursemiddle?courseid=100000002&clazzid=200000002&vc=1&cpi=900000001' target="_blank" title="261学期&nbsp;线性代数(工)">261学期&nbsp;线性代数(工)</a><i></i></h3>
+			</div>
+		</li>
+		<li class="courseItem">
+			<input type="hidden" name="courseId" value="100000006" />
+			<input type="hidden" name="classId" value="200000006" />
+			<div class="courseInfo">
+				<a href='/visit/stucoursemiddle?courseid=100000006&clazzid=200000006&vc=1&cpi=900000001' target="_blank" class="cover"></a>
+				<h3><a class="courseName" href='/visit/stucoursemiddle?courseid=100000006&clazzid=200000006&vc=1&cpi=900000001' target="_blank" title="252学期&nbsp;程序设计实践">252学期&nbsp;程序设计实践</a><i></i></h3>
+			</div>
+		</li>
+		<li class="courseItem">
+			<input type="hidden" name="courseId" value="100000007" />
+			<input type="hidden" name="classId" value="200000007" />
+			<div class="courseInfo">
+				<a href='/visit/stucoursemiddle?courseid=100000007&clazzid=200000007&vc=1&cpi=900000001' target="_blank" class="cover"></a>
+				<h3><a class="courseName" href='/visit/stucoursemiddle?courseid=100000007&clazzid=200000007&vc=1&cpi=900000001' target="_blank" title="251学期&nbsp;计算机科学导论">251学期&nbsp;计算机科学导论</a><i></i></h3>
+			</div>
+		</li>
+		<li class="courseItem">
+			<input type="hidden" name="courseId" value="100000003" />
+			<input type="hidden" name="classId" value="200000003" />
+			<div class="courseInfo">
+				<a href='/visit/stucoursemiddle?courseid=100000003&clazzid=200000003&vc=1&cpi=900000001' target="_blank" class="cover"></a>
+				<h3><a class="courseName" href='/visit/stucoursemiddle?courseid=100000003&clazzid=200000003&vc=1&cpi=900000001' target="_blank" title="253程序设计实训">253程序设计实训</a><i></i></h3>
+			</div>
+		</li>
+		<li class="courseItem">
+			<input type="hidden" name="courseId" value="100000004" />
+			<input type="hidden" name="classId" value="200000004" />
+			<div class="courseInfo">
+				<a href='/visit/stucoursemiddle?courseid=100000004&clazzid=200000004&vc=1&cpi=900000001' target="_blank" class="cover"></a>
+				<h3><a class="courseName" href='/visit/stucoursemiddle?courseid=100000004&clazzid=200000004&vc=1&cpi=900000001' target="_blank" title="大学生国家安全教育">大学生国家安全教育</a><i></i></h3>
+			</div>
+		</li>
+	</ul>
+</div>
+<!-- 占位项：没有 stucoursemiddle 链接，解析时必须被跳过 -->
+<li class="addLi"><a href="javascript:;">新建课程</a></li>
+</body>
+</html>

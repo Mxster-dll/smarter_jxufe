@@ -1,14 +1,14 @@
 import 'package:dio/dio.dart';
 
+import 'package:smarter_jxufe/core/errors/app_exception.dart';
+import 'package:smarter_jxufe/core/network/cas_walk.dart';
+import 'package:smarter_jxufe/core/network/cookie_jar.dart';
+import 'package:smarter_jxufe/core/network/trace_text.dart';
 import 'package:smarter_jxufe/features/library_edu/data/anti_corruption/tsgxs_exam_parser.dart';
 
 /// tsgxs(图书馆新生入馆教育,ASP.NET)会话已失效/被顶下线。
-class TsgxsSessionExpiredException implements Exception {
-  final String message;
-  TsgxsSessionExpiredException([this.message = '入馆教育会话已过期']);
-
-  @override
-  String toString() => message;
+class TsgxsSessionExpiredException extends SessionExpiredException {
+  TsgxsSessionExpiredException([super.message = '入馆教育会话已过期']);
 }
 
 /// 入馆教育(tsgxs.jxufe.cn)会话建立远程数据源。
@@ -61,85 +61,73 @@ class TsgxsAuthRemoteDataSource {
     String ticketUrl, {
     List<String>? trace,
   }) async {
-    final jar = <String, Map<String, String>>{};
-    var url = ticketUrl;
+    final jar = HostCookieJar();
+    // 循环机制走地基件（`lib/core/network/cas_walk.dart`，含「按当前 URL 作 Referer」
+    // 与本平台特有的 14 跳上限 / trace 宽度）；这里只留本平台私有语义：
+    // JS 跳转兜底（stub 页才有资格追）、跨域预热、补选皮肤后复验登录。
+    final outcome = await walkCasRedirects<String>(
+      startUrl: ticketUrl,
+      jar: jar,
+      send: casDioSender(_dio, refererIsCurrentUrl: true),
+      spec: const CasWalkSpec(
+        maxHops: 14,
+        traceUrlMax: 140,
+        traceLocationMax: 80,
+      ),
+      trace: trace,
+      afterResponse: (step) async {
+        if (step.hasLocation) return null;
 
-    for (var i = 0; i < 14; i++) {
-      final host = Uri.parse(url).host;
-      final cookieHeader = _cookieHeader(jar, host);
-      final response = await _dio.get(
-        url,
-        options: Options(
-          followRedirects: false,
-          validateStatus: (s) => true,
-          headers: {
-            if (cookieHeader.isNotEmpty) 'Cookie': cookieHeader,
-            'Referer': url,
-          },
-        ),
-      );
-      final newCookies = response.headers['set-cookie'];
-      _store(jar, host, newCookies);
-      final location = response.headers.value('location');
-      final cookieNames = (newCookies ?? const <String>[])
-          .map((c) => c.split(';').first)
-          .join(',');
-      if (trace != null) {
-        trace.add(
-          '跳[$i] ${response.statusCode} ${_clip(url, 140)}'
-          '${location != null && location.isNotEmpty ? ' -> ${_clip(location, 80)}' : ''}'
-          '${cookieNames.isNotEmpty ? '  Set-Cookie($host): $cookieNames' : ''}',
-        );
-      }
-
-      if (location == null || location.isEmpty) {
-        final body = response.data?.toString() ?? '';
+        final body = step.bodyText ?? '';
         // 仅追踪“无 <html> 的纯跳转 stub 页”(casapi Info 页、tsgxs 的
         // 顶下线提示页),完整页面内的 location.href 属业务脚本,不得误追。
         final jsTarget = !body.contains('<html') || body.length < 400
             ? _jsRedirectUrl(body)
             : null;
         if (jsTarget != null) {
-          final rawTarget = Uri.parse(url).resolve(jsTarget).toString();
+          final rawTarget = Uri.parse(step.url).resolve(jsTarget).toString();
           final targetHost = Uri.parse(rawTarget).host;
-          if (trace != null) {
-            trace.add('    ↳ JS跳转 -> ${_clip(rawTarget, 200)}');
-          }
-          if (_isKickedOff(body)) {
-            throw TsgxsSessionExpiredException('账号已在别处登录,入馆教育会话被顶下线,请重新建立会话');
+          trace?.add('    ↳ JS跳转 -> ${clipForTrace(rawTarget, 200)}');
+          if (isKickedOffPage(body)) {
+            throw TsgxsSessionExpiredException(
+              '账号已在别处登录,入馆教育会话被顶下线,请重新建立会话',
+            );
           }
           // 跨域进入 tsgxs 前预热:匿名取登录页,建立 tsgxs 自身会话
           // (登录页需带 from=0 才返回 200;/Web/User 匿名会 302 到根页,
           // 根页会下发 from=0,故先跟随后重取)。
-          if (targetHost != host) {
+          if (targetHost != step.host) {
             await _warmUp(jar, targetHost, trace);
           }
-          url = rawTarget;
-          continue;
+          // 改跳（这一跳的地址是页面里算出来的,不是响应头给的）。
+          return CasHopGoto<String>(rawTarget);
         }
+
         if (trace != null) {
           final head = body.replaceAll(RegExp(r'\s+'), ' ').trim();
           trace.add(
-            '终点页(${response.statusCode}) len=${body.length} '
+            '终点页(${step.statusCode}) len=${body.length} '
             '头: ${head.substring(0, head.length > 240 ? 240 : head.length)}',
           );
         }
-        if (_isKickedOff(body)) {
-          throw TsgxsSessionExpiredException('账号已在别处登录,入馆教育会话被顶下线,请重新建立会话');
+        if (isKickedOffPage(body)) {
+          throw TsgxsSessionExpiredException(
+            '账号已在别处登录,入馆教育会话被顶下线,请重新建立会话',
+          );
         }
         // cblogin 才是登录本体;校验它是否真的下发登录态 uid。
-        final loggedIn = await _verifyTsgxsLogin(jar, trace, url);
-        final session = _cookieHeader(jar, tsgxsHost);
+        final loggedIn = await _verifyTsgxsLogin(jar, trace, step.url);
+        final session = jar.headerFor(tsgxsHost);
         if (session.isEmpty) {
           throw TsgxsSessionExpiredException(
             '建立入馆教育会话失败：未取得 tsgxs 会话 Cookie '
-            '(status=${response.statusCode})',
+            '(status=${step.statusCode})',
           );
         }
         if (!hasUid(session)) {
           throw TsgxsSessionExpiredException(
             '建立入馆教育会话失败：cblogin 未完成,会话 Cookie 仅'
-            '[${_cookieNamesOf(jar, tsgxsHost)}](缺 uid);'
+            '[${jar.namesOf(tsgxsHost)}](缺 uid);'
             '逐跳诊断已写入 tsgxs_login_trace.log',
           );
         }
@@ -150,10 +138,12 @@ class TsgxsAuthRemoteDataSource {
             '逐跳诊断已写入 tsgxs_login_trace.log',
           );
         }
-        return session;
-      }
-      url = Uri.parse(url).resolve(location).toString();
-    }
+        return CasHopFinish<String>(session);
+      },
+    );
+
+    final session = outcome.result;
+    if (session != null) return session;
     throw TsgxsSessionExpiredException('建立入馆教育会话失败：重定向次数过多');
   }
 
@@ -173,11 +163,11 @@ class TsgxsAuthRemoteDataSource {
   /// 缺 uid 且无任何 uid 线索时本链无从补救(CAS 票据一次性),返回后由
   /// [establishSession] 抛错,上层重走整条换取链。
   Future<bool> _verifyTsgxsLogin(
-    Map<String, Map<String, String>> jar,
+    HostCookieJar jar,
     List<String>? trace,
     String currentUrl,
   ) async {
-    final cookie = _cookieHeader(jar, tsgxsHost);
+    final cookie = jar.headerFor(tsgxsHost);
     if (cookie.isEmpty) return false;
     final resp = await _dio.get(
       'http://$tsgxsHost/Web/User',
@@ -187,12 +177,12 @@ class TsgxsAuthRemoteDataSource {
         headers: {'Cookie': cookie, 'Referer': 'http://$tsgxsHost/'},
       ),
     );
-    _store(jar, tsgxsHost, resp.headers['set-cookie']);
+    jar.absorb(tsgxsHost, resp.headers['set-cookie']);
     final body = resp.data?.toString() ?? '';
-    if (_isKickedOff(body)) {
+    if (isKickedOffPage(body)) {
       throw TsgxsSessionExpiredException('账号已在别处登录,入馆教育会话被顶下线,请重新建立会话');
     }
-    var uid = _cookieValue(jar, tsgxsHost, 'uid');
+    var uid = jar.valueOf(tsgxsHost, 'uid');
     if (uid != null) {
       if (trace != null) {
         trace.add('    登录态校验 ${resp.statusCode} len=${body.length} 已登录(uid)');
@@ -205,7 +195,7 @@ class TsgxsAuthRemoteDataSource {
       if (trace != null) {
         trace.add(
           '    登录态校验 ${resp.statusCode} len=${body.length} '
-          '未登录且无 uid 线索(Cookie=[${_cookieNamesOf(jar, tsgxsHost)}])',
+          '未登录且无 uid 线索(Cookie=[${jar.namesOf(tsgxsHost)}])',
         );
       }
       return false;
@@ -228,13 +218,13 @@ class TsgxsAuthRemoteDataSource {
         {'uid': pendingUid, 'tid': themeId},
         trace,
         label: '补选皮肤(首次登录)',
-        extra: 'tid=${_clip(themeId, 8)}',
+        extra: 'tid=${clipForTrace(themeId, 8)}',
       );
     }
     // 服务端可能仍未下发 uid cookie(uid 只在跳转地址里),则按其给出的值
     // 补写为请求 Cookie —— 供后续业务接口携带鉴权标识。
-    if (_cookieValue(jar, tsgxsHost, 'uid') == null) {
-      jar.putIfAbsent(tsgxsHost, () => <String, String>{})['uid'] = pendingUid;
+    if (jar.valueOf(tsgxsHost, 'uid') == null) {
+      jar.set(tsgxsHost, 'uid', pendingUid);
       if (trace != null) {
         trace.add('    服务端未下发 uid cookie,按 success 跳转地址里的 uid 补写');
       }
@@ -245,17 +235,17 @@ class TsgxsAuthRemoteDataSource {
       options: Options(
         followRedirects: false,
         validateStatus: (s) => true,
-        headers: {'Cookie': _cookieHeader(jar, tsgxsHost)},
+        headers: {'Cookie': jar.headerFor(tsgxsHost)},
       ),
     );
-    _store(jar, tsgxsHost, probe.headers['set-cookie']);
+    jar.absorb(tsgxsHost, probe.headers['set-cookie']);
     // 实测(2026-09-11):被顶下线的会话对任何地址都返回 **HTTP 200 + 103 字节**
     // 提示页,匿名/伪造 uid 则 302 到 `/`。故判据必须是「200 且含成绩页标记」,
     // 只看状态码会把顶下线/匿名会话误判为已登录。
     final probeBody = probe.data?.toString() ?? '';
     final ok =
         probe.statusCode == 200 &&
-        !_isKickedOff(probeBody) &&
+        !isKickedOffPage(probeBody) &&
         (probeBody.contains('闯关用时') || probeBody.contains('我的成绩'));
     if (trace != null) {
       trace.add(
@@ -268,7 +258,7 @@ class TsgxsAuthRemoteDataSource {
 
   /// 表单 POST(表单编码),收集 Set-Cookie 并记录诊断。
   Future<void> _postForm(
-    Map<String, Map<String, String>> jar,
+    HostCookieJar jar,
     String path,
     Map<String, dynamic> data,
     List<String>? trace, {
@@ -282,44 +272,20 @@ class TsgxsAuthRemoteDataSource {
         contentType: Headers.formUrlEncodedContentType,
         followRedirects: false,
         validateStatus: (s) => true,
-        headers: {'Cookie': _cookieHeader(jar, tsgxsHost)},
+        headers: {'Cookie': jar.headerFor(tsgxsHost)},
       ),
     );
-    _store(jar, tsgxsHost, resp.headers['set-cookie']);
+    jar.absorb(tsgxsHost, resp.headers['set-cookie']);
     if (trace != null) {
       final text = (resp.data?.toString() ?? '')
           .replaceAll(RegExp(r'\s+'), ' ')
           .trim();
       trace.add(
         '    $label ${resp.statusCode} $extra '
-        'Set-Cookie(${_cookieNames(resp.headers['set-cookie'])}): '
+        'Set-Cookie(${setCookieNames(resp.headers['set-cookie'], empty: '(无)')}): '
         '${text.length > 160 ? '${text.substring(0, 160)}…' : text}',
       );
     }
-  }
-
-  /// 指定 host 已收到的 cookie 名列表(诊断用,不含值)。
-  static String _cookieNamesOf(
-    Map<String, Map<String, String>> jar,
-    String host,
-  ) {
-    final map = jar[host];
-    if (map == null || map.isEmpty) return '(空)';
-    return map.keys.join(',');
-  }
-
-  static String _cookieNames(List<String>? setCookies) =>
-      setCookies == null || setCookies.isEmpty
-      ? '(无)'
-      : setCookies.map((c) => c.split(';').first.split('=').first).join(',');
-
-  static String? _cookieValue(
-    Map<String, Map<String, String>> jar,
-    String host,
-    String name,
-  ) {
-    final value = jar[host]?[name];
-    return (value == null || value.isEmpty) ? null : value;
   }
 
   /// 从页面正文里兜底提取 uid(隐藏域 / JS 变量 / 链接参数)。
@@ -338,14 +304,14 @@ class TsgxsAuthRemoteDataSource {
 
   /// 预热目标域会话:先请求根页拿 `from`,再请求登录页拿会话与 `uid`。
   Future<void> _warmUp(
-    Map<String, Map<String, String>> jar,
+    HostCookieJar jar,
     String host,
     List<String>? trace,
   ) async {
     var warmUrl = 'http://$host/Web/User';
     for (var hop = 0; hop < 4; hop++) {
       final h = Uri.parse(warmUrl).host;
-      final warmCookie = _cookieHeader(jar, h);
+      final warmCookie = jar.headerFor(h);
       final warm = await _dio.get(
         warmUrl,
         options: Options(
@@ -354,15 +320,13 @@ class TsgxsAuthRemoteDataSource {
           headers: {if (warmCookie.isNotEmpty) 'Cookie': warmCookie},
         ),
       );
-      _store(jar, h, warm.headers['set-cookie']);
+      jar.absorb(h, warm.headers['set-cookie']);
       final loc = warm.headers.value('location');
       if (trace != null) {
-        final names = (warm.headers['set-cookie'] ?? const <String>[])
-            .map((c) => c.split(';').first)
-            .join(',');
+        final names = setCookieNames(warm.headers['set-cookie']);
         trace.add(
-          '    预热[$hop] ${warm.statusCode} ${_clip(warmUrl, 110)}'
-          '${loc != null && loc.isNotEmpty ? ' -> ${_clip(loc, 60)}' : ''}'
+          '    预热[$hop] ${warm.statusCode} ${clipForTrace(warmUrl, 110)}'
+          '${loc != null && loc.isNotEmpty ? ' -> ${clipForTrace(loc, 60)}' : ''}'
           '${names.isNotEmpty ? '  Set-Cookie($h): $names' : ''}',
         );
       }
@@ -371,7 +335,7 @@ class TsgxsAuthRemoteDataSource {
     }
     // 根页已下发 from=0 后,再取一次登录页,取得 tsgxs 会话与 uid。
     final loginUrl = 'http://$host/Web/User';
-    final loginCookie = _cookieHeader(jar, host);
+    final loginCookie = jar.headerFor(host);
     final login = await _dio.get(
       loginUrl,
       options: Options(
@@ -380,49 +344,24 @@ class TsgxsAuthRemoteDataSource {
         headers: {if (loginCookie.isNotEmpty) 'Cookie': loginCookie},
       ),
     );
-    _store(jar, host, login.headers['set-cookie']);
+    jar.absorb(host, login.headers['set-cookie']);
     if (trace != null) {
-      final names = (login.headers['set-cookie'] ?? const <String>[])
-          .map((c) => c.split(';').first)
-          .join(',');
+      final names = setCookieNames(login.headers['set-cookie']);
       trace.add(
-        '    预热登录页 ${login.statusCode} ${_clip(loginUrl, 110)}'
+        '    预热登录页 ${login.statusCode} ${clipForTrace(loginUrl, 110)}'
         '${names.isNotEmpty ? '  Set-Cookie($host): $names' : ''}',
       );
     }
   }
 
   /// 是否为“账号已在别处登录/被迫下线”提示页。
-  static bool _isKickedOff(String body) =>
+  ///
+  /// 公开给同 feature 的 `tsgxs_api_remote_datasource.dart`：那边曾把同一判据
+  /// 内联两遍（2026-09-20 收敛）。⚠ 文案是超星私有的，**刻意不进 `lib/core/`**
+  /// —— 只有本 feature 用得到。
+  static bool isKickedOffPage(String body) =>
       body.contains('已在别处登录') || body.contains('被迫下线');
 
-  static String _clip(String s, int n) =>
-      s.length > n ? '${s.substring(0, n)}…' : s;
-
-  /// 取出指定 host 的 Cookie 请求头。
-  static String _cookieHeader(
-    Map<String, Map<String, String>> jar,
-    String host,
-  ) {
-    final map = jar[host];
-    if (map == null || map.isEmpty) return '';
-    return map.entries.map((e) => '${e.key}=${e.value}').join('; ');
-  }
-
-  /// 把某 host 响应的 Set-Cookie 存入其专属 jar(同名覆盖)。
-  static void _store(
-    Map<String, Map<String, String>> jar,
-    String host,
-    List<String>? setCookies,
-  ) {
-    if (setCookies == null || setCookies.isEmpty) return;
-    final map = jar.putIfAbsent(host, () => <String, String>{});
-    for (final raw in setCookies) {
-      final first = raw.split(';').first.trim();
-      final eq = first.indexOf('=');
-      if (eq > 0) map[first.substring(0, eq).trim()] = first.substring(eq + 1);
-    }
-  }
 
   /// 从页面正文提取 JS 跳转目标（`location.href='…'` 或 `location.replace('…')`）。
   static String? _jsRedirectUrl(String body) {

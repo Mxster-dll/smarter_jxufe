@@ -6,8 +6,10 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
+import 'package:smarter_jxufe/design/status_palette.dart';
 import 'package:smarter_jxufe/features/read_credit/domain/read_credit_models.dart';
 
 /// 白卡容器（圆角 12 + 描边 0.6，与首页宫格页一致）。
@@ -18,10 +20,9 @@ Widget readCreditCard(
 }) {
   final scheme = Theme.of(context).colorScheme;
   return Container(
-    decoration: BoxDecoration(
+    decoration: ShapeDecoration(
+      shape: appCardShape(context),
       color: scheme.surface,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: AppColors.hairline(context, 0.6)),
     ),
     padding: padding,
     child: child,
@@ -90,17 +91,17 @@ IconData readCreditKindIcon(ReadCreditKind kind) => switch (kind) {
 /// 深色下由 [AppColors.tone] 自动提亮；浅色逐值 = 原来的深色调（一个像素都不变）。
 Color readCreditPartColor(BuildContext context, ReadCreditKind kind) =>
     switch (kind) {
-      ReadCreditKind.classic => AppColors.tone(context, const Color(0xFF2E7D32)),
-      ReadCreditKind.ordinary => AppColors.tone(context, const Color(0xFF1565C0)),
+      ReadCreditKind.classic => AppColors.tone(context, ReadCreditTone.classic),
+      ReadCreditKind.ordinary => AppColors.tone(context, ReadCreditTone.ordinary),
       ReadCreditKind.libraryEdu => AppColors.tone(
         context,
-        const Color(0xFF00B8D4),
+        ReadCreditTone.libraryEdu,
       ),
       ReadCreditKind.infoLiteracy => AppColors.tone(
         context,
-        const Color(0xFFEF6C00),
+        ReadCreditTone.infoLiteracy,
       ),
-      ReadCreditKind.culture => AppColors.tone(context, const Color(0xFF795548)),
+      ReadCreditKind.culture => AppColors.tone(context, ReadCreditTone.culture),
     };
 
 /// 进度条上「实际」那一档的颜色（浅红）——用户裁定：浅红 = 实际数据。

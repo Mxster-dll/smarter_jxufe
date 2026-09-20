@@ -10,16 +10,15 @@ import 'package:uuid/uuid.dart';
 
 import '../domain/zc_models.dart';
 
+import 'package:smarter_jxufe/core/errors/app_exception.dart';
+
 const _kMaterials = 'materials';
 String _kManual(int year) => 'manual-$year';
 const _uuid = Uuid();
 
 /// 附件拷贝进应用目录失败（如文件不存在）抛出此异常。
-class ZcFileException implements Exception {
-  final String message;
-  const ZcFileException(this.message);
-  @override
-  String toString() => message;
+class ZcFileException extends AppException {
+  const ZcFileException(super.message);
 }
 
 class ZcStore {

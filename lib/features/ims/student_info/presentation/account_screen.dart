@@ -9,11 +9,13 @@ import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_for_a
 import 'package:smarter_jxufe/features/auth/domain/entities/account.dart';
 import 'package:smarter_jxufe/features/auth/presentation/login_screen.dart';
 import 'package:smarter_jxufe/features/home/presentation/home_screen.dart';
+import 'package:smarter_jxufe/features/ims/data/ims_exception.dart';
 import 'package:smarter_jxufe/features/ims/student_info/data/providers/student_info_repository_provider.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/qr_login_viewmodel.dart';
 import 'package:smarter_jxufe/core/network/dio_providers.dart';
 import 'package:smarter_jxufe/core/navigation/navigator_key.dart';
 import 'package:smarter_jxufe/features/auth/data/mfa_relogin_service.dart';
+import 'package:smarter_jxufe/design/app_states.dart';
 
 /// 账户管理页面 —— 多账户卡片 + 添加账户。
 class AccountScreen extends ConsumerStatefulWidget {
@@ -52,14 +54,17 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
         centerTitle: true,
       ),
       body: accountsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('$e')),
+        loading: () => const AppLoadingState(),
+        error: (e, _) => AppErrorState(
+          error: e,
+          onRetry: () => ref.invalidate(_accountsProvider),
+        ),
         data: (accounts) {
           return Column(
             children: [
               Expanded(
                 child: accounts.isEmpty
-                    ? const Center(child: Text('暂无账户'))
+                    ? const AppEmptyState(message: '暂无账户')
                     : ListView(
                         padding: const EdgeInsets.all(16),
                         children: accounts.map((a) {
@@ -221,7 +226,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           defaultTargetPlatform != TargetPlatform.android;
       final mfaHandler = (String mfaState) async {
         final ctx = navigatorKey.currentContext;
-        if (ctx == null) throw Exception('无法获取当前页面上下文');
+        if (ctx == null) throw ImsApiException('无法获取当前页面上下文');
         final result = await qrVm.unifiedMfaVerify(
           ctx,
           account.cardNumber,
@@ -231,7 +236,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           displayName: account.displayName,
           barrierDismissible: true,
         );
-        if (!result.authorized) throw Exception('用户取消 MFA 验证');
+        if (!result.authorized) throw ImsApiException('用户取消 MFA 验证');
         // 把「信任此设备」带回 AuthRepository → 自动重登时继续登记到 CAS。
         return result.trustDevice;
       };
@@ -371,7 +376,7 @@ final _accountsProvider = FutureProvider<List<Account>>((ref) async {
   final repo = await ref.watch(accountRepositoryProvider.future);
   final result = repo.getAccounts();
   return result.fold(
-    (failure) => throw Exception(failure.message),
+    (failure) => throw ImsApiException(failure.message ?? '账号列表加载失败'),
     (accounts) => accounts,
   );
 });

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/breakpoints.dart';
 import 'package:smarter_jxufe/design/fluent/fluent.dart';
+import 'package:smarter_jxufe/features/ims/data/ims_exception.dart';
 import 'package:smarter_jxufe/features/ims/graduation_requirements/data/providers/graduation_requirements_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/graduation_requirements/domain/graduation_requirement.dart';
 
@@ -13,7 +15,7 @@ final graduationRequirementsProvider =
       );
       final result = await repo.getGraduationRequirements();
       return result.fold(
-        (failure) => throw Exception(failure.message ?? '获取毕业学分要求失败'),
+        (failure) => throw ImsApiException(failure.message ?? '获取毕业学分要求失败'),
         (requirements) => requirements,
       );
     });
@@ -175,7 +177,7 @@ class _RequirementsView extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final wide = constraints.maxWidth >= 720;
+        final wide = constraints.maxWidth >= Breakpoints.wide;
         final pagePadding = wide ? FluentSpacing.xl : FluentSpacing.lg;
 
         return ListView(

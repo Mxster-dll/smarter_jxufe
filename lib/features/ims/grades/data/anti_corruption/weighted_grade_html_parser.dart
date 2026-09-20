@@ -1,5 +1,6 @@
 import 'package:html/parser.dart' as html_parser;
 
+import 'package:smarter_jxufe/features/ims/data/ims_exception.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/weighted_grade.dart';
 
 /// 解析加权成绩排名 HTML。
@@ -18,13 +19,13 @@ class WeightedGradeHtmlParser {
 
     // 找到数据行（tbody 中的 tr）
     final tbody = document.querySelector('tbody');
-    if (tbody == null) throw Exception('解析排名数据失败：未找到 tbody');
+    if (tbody == null) throw ImsApiException('解析排名数据失败：未找到 tbody');
 
     final dataRow = tbody.querySelector('tr');
-    if (dataRow == null) throw Exception('解析排名数据失败：未找到数据行');
+    if (dataRow == null) throw ImsApiException('解析排名数据失败：未找到数据行');
 
     final cells = dataRow.querySelectorAll('td');
-    if (cells.length < 6) throw Exception('解析排名数据失败：单元格数量不足');
+    if (cells.length < 6) throw ImsApiException('解析排名数据失败：单元格数量不足');
 
     final grade = cells[2].text.trim();
     final classRank = int.tryParse(cells[3].text.trim());
@@ -35,7 +36,7 @@ class WeightedGradeHtmlParser {
         classRank == null ||
         majorRank == null ||
         gradeRank == null) {
-      throw Exception('解析排名数据失败：数据格式错误');
+      throw ImsApiException('解析排名数据失败：数据格式错误');
     }
 
     return WeightedGrade(

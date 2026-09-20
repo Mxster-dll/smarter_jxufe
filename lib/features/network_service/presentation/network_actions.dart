@@ -9,6 +9,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/core/errors/app_exception.dart';
 import 'package:smarter_jxufe/features/network_service/data/datasources/network_service_remote_datasource.dart';
 import 'package:smarter_jxufe/features/network_service/data/providers/network_service_providers.dart';
 import 'package:smarter_jxufe/features/network_service/domain/network_service_models.dart';
@@ -89,7 +90,7 @@ Future<NetworkActionResult?> runNetworkAction(
     return result;
   } catch (error) {
     closeDialog();
-    toast(error.toString().replaceFirst('Exception: ', ''));
+    toast(friendlyErrorText(error));
     return null;
   }
 }

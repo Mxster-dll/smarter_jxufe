@@ -7,8 +7,10 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'package:smarter_jxufe/core/errors/app_exception.dart';
 import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
+import 'package:smarter_jxufe/design/section_title.dart';
 
 /// 纯格式化工具在 domain 层（`network_service_format.dart`），这里一并转出：
 /// 各页面只 import 本文件即可用 `networkFormatFlow` / `networkFormatDate` 等。
@@ -77,32 +79,13 @@ Widget networkSectionTitle(
   String text, {
   Widget? trailing,
   Color? accent,
-}) {
-  final scheme = Theme.of(context).colorScheme;
-  return Row(
-    children: [
-      Container(
-        width: 3,
-        height: 13,
-        decoration: BoxDecoration(
-          color: accent ?? networkAccent(context),
-          borderRadius: BorderRadius.circular(2),
-        ),
-      ),
-      const SizedBox(width: 7),
-      Text(
-        text,
-        style: TextStyle(
-          fontSize: 13.5,
-          fontWeight: FontWeight.w600,
-          color: scheme.onSurface,
-          letterSpacing: 0.3,
-        ),
-      ),
-      if (trailing != null) ...[const Spacer(), trailing],
-    ],
-  );
-}
+}) =>
+    appSectionTitle(
+      context,
+      text: text,
+      trailing: trailing,
+      accent: accent ?? networkAccent(context),
+    );
 
 /// 加载中的占位卡。
 Widget networkLoadingCard(BuildContext context, {String text = '正在读取网络服务…'}) {
@@ -134,7 +117,7 @@ Widget networkErrorCard(
   VoidCallback? onConfigureGuid,
 }) {
   final scheme = Theme.of(context).colorScheme;
-  final text = error.toString().replaceFirst('Exception: ', '');
+  final text = friendlyErrorText(error);
   final needGuid = onConfigureGuid != null && text.contains('GUID');
   return Container(
     padding: const EdgeInsets.all(14),

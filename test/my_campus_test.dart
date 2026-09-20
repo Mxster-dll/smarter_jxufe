@@ -1,8 +1,15 @@
-import 'package:flutter_test/flutter_test.dart';
+import 'dart:io';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+
+import 'package:smarter_jxufe/features/campus_address/data/my_campus_center.dart';
+import 'package:smarter_jxufe/features/campus_address/data/my_campus_prefs.dart';
 import 'package:smarter_jxufe/features/campus_address/domain/campus_address.dart';
 import 'package:smarter_jxufe/features/campus_address/domain/my_campus.dart';
 import 'package:smarter_jxufe/features/campus_address/presentation/campus_map_screen.dart';
+import 'package:smarter_jxufe/features/data_center/data/providers/data_center_providers.dart';
 
 void main() {
   group('MyCampus 与上游三套命名的映射（漂移守卫）', () {
@@ -200,6 +207,118 @@ void main() {
 
     test('全空返回 null（未设置我的校区且无绑定）', () {
       expect(resolveElectricityCampusId(), isNull);
+    });
+  });
+
+  /// 用户 2026-09-20 原话：「现在『设置』页的校区设置，改成直接用数据中心的数据，
+  /// 如果获取失败，再手动设置」；同日追问后裁定**手动优先、数据中心只补空**。
+  group('数据中心补空（校区设置接数据中心）', () {
+    setUpAll(() async {
+      // 照 `settings_calendar_section_test.dart`：偏好 store 会 `Hive.openBox`，
+      // 未初始化时错误会 complete 到无人监听的 future → zone 级未处理异常判失败。
+      final dir = Directory.systemTemp.createTempSync('my_campus_center_test');
+      Hive.init(dir.path);
+      await Hive.openBox<String>(myCampusPrefsBoxName);
+    });
+
+    setUp(() async {
+      await Hive.box<String>(myCampusPrefsBoxName).clear();
+    });
+
+    tearDownAll(() async {
+      await Hive.close();
+    });
+
+    ProviderContainer containerWith(Map<String, String> center) {
+      final container = ProviderContainer(
+        overrides: [
+          dzjBasicInfoProvider.overrideWith((ref) async => center),
+        ],
+      );
+      addTearDown(container.dispose);
+      return container;
+    }
+
+    /// 等数据中心那一份到货，并把补空的**写盘 + Hive 事件**跑完。
+    ///
+    /// ⚠ 不能只 `await Future.delayed(Duration.zero)`：补空要写 Hive（真 I/O），
+    /// 写完还有 `box.watch()` 的事件要再投递几拍 —— 实测一拍不够
+    /// （2026-09-20 这里先红过一次：断言时读到的是「写盘写到一半」的状态）。
+    Future<void> settle(
+      ProviderContainer container, {
+      bool Function()? until,
+    }) async {
+      await container.read(dzjBasicInfoProvider.future);
+      for (var i = 0; i < 100; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+        if (until != null && until()) return;
+      }
+    }
+
+    test('列名映射：只有认识的名字才认（不认识 / 取不到 → null，宁可让用户手选）', () async {
+      final mailu = containerWith({'所属校区': '麦庐园校区'});
+      await settle(mailu);
+      expect(mailu.read(myCampusHintProvider), MyCampus.mailu);
+
+      final unknown = containerWith({'所属校区': '某某校区'});
+      await settle(unknown);
+      expect(unknown.read(myCampusHintProvider), isNull);
+
+      final empty = containerWith(const <String, String>{});
+      await settle(empty);
+      expect(empty.read(myCampusHintProvider), isNull);
+    });
+
+    test('从没设过 → 自动采用数据中心的值（来源 = 数据中心）', () async {
+      final container = containerWith({'所属校区': '麦庐园校区'});
+      final store = container.read(myCampusStoreProvider);
+      expect(store.campus, isNull);
+      await settle(container, until: () => store.source != null);
+      expect(store.campus, MyCampus.mailu);
+      expect(store.source, MyCampusSource.center);
+    });
+
+    test('手动设过 → 只补空、不覆盖（手动优先）', () async {
+      final container = containerWith({'所属校区': '麦庐园校区'});
+      final store = container.read(myCampusStoreProvider);
+      await store.save(MyCampus.jiaoqiao);
+      await settle(container);
+      expect(store.campus, MyCampus.jiaoqiao);
+      expect(store.source, MyCampusSource.manual);
+    });
+
+    test('数据中心取不到 → 什么都不做（设置页照旧让用户手选）', () async {
+      final container = containerWith(const <String, String>{});
+      final store = container.read(myCampusStoreProvider);
+      await settle(container);
+      expect(store.campus, isNull);
+      expect(store.source, isNull);
+    });
+
+    test('存档里已有值也不会被补空冲掉（先落盘再补空）', () async {
+      final first = MyCampusStore();
+      await first.save(MyCampus.fenglin); // 老用户：手选过枫林园
+      final second = MyCampusStore(); // 重开一次 = 下一次启动
+      await second.fillIfEmpty(MyCampus.mailu);
+      expect(second.campus, MyCampus.fenglin);
+      expect(second.source, MyCampusSource.manual);
+    });
+
+    test('fillIfEmpty(null) 是空操作；用户清除后可以再补', () async {
+      final store = MyCampusStore();
+      await store.fillIfEmpty(null);
+      expect(store.campus, isNull);
+
+      await store.fillIfEmpty(MyCampus.fenglin);
+      expect(store.campus, MyCampus.fenglin);
+      expect(store.source, MyCampusSource.center);
+
+      await store.save(null); // 设置页「不设置」
+      expect(store.campus, isNull);
+      expect(store.source, isNull);
+
+      await store.fillIfEmpty(MyCampus.mailu); // 再补空时又能写进来
+      expect(store.campus, MyCampus.mailu);
     });
   });
 }

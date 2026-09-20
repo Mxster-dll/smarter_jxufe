@@ -6,6 +6,7 @@ library;
 
 import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/design/app_card.dart';
@@ -411,6 +412,26 @@ class _ProfileEditorState extends ConsumerState<_ProfileEditor> {
     );
   }
 
+  /// 从系统剪贴板粘贴 API Key。
+  ///
+  /// 用户 2026-09-19：「api-key 要允许粘贴」—— 输入框本身照样支持长按 /
+  /// Ctrl+V，但移动端长按弹不出选择工具条、桌面端焦点丢失时就不灵，故给一个
+  /// **显式按钮**（读 `Clipboard.kTextPlain`，两头都稳）。
+  Future<void> _pasteApiKey() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = data?.text?.trim() ?? '';
+    if (!mounted) return;
+    if (text.isEmpty) {
+      _toast('剪贴板里没有文本');
+      return;
+    }
+    setState(() {
+      _apiKey.text = text;
+      _draft = _draft.copyWith(apiKey: text);
+    });
+    _toast('已粘贴 API Key');
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -511,18 +532,34 @@ class _ProfileEditorState extends ConsumerState<_ProfileEditor> {
               obscureText: _obscure,
               autocorrect: false,
               enableSuggestions: false,
+              // 显式开启选择/粘贴（用户 2026-09-19：「api-key 要允许粘贴」）。
+              enableInteractiveSelection: true,
               decoration: InputDecoration(
                 labelText: 'API Key',
                 hintText: 'sk-…',
                 helperText: '只保存在本机 Hive，不参与云同步',
                 isDense: true,
-                suffixIcon: IconButton(
-                  tooltip: _obscure ? '显示' : '隐藏',
-                  iconSize: 18,
-                  icon: Icon(
-                    _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                  ),
-                  onPressed: () => setState(() => _obscure = !_obscure),
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      key: const Key('aiKeyPaste'),
+                      tooltip: '粘贴',
+                      iconSize: 18,
+                      icon: const Icon(Icons.content_paste_outlined),
+                      onPressed: _pasteApiKey,
+                    ),
+                    IconButton(
+                      tooltip: _obscure ? '显示' : '隐藏',
+                      iconSize: 18,
+                      icon: Icon(
+                        _obscure
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                      onPressed: () => setState(() => _obscure = !_obscure),
+                    ),
+                  ],
                 ),
               ),
             ),

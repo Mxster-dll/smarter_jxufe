@@ -1,6 +1,7 @@
 /// 宿舍电费（智慧江财供电服务）数据模型。
 library;
 
+import 'package:smarter_jxufe/core/errors/app_exception.dart';
 /// 级联目录节点（校区 / 楼栋 / 楼层 / 房间通用）。
 class RoomNode {
   final int id;
@@ -102,14 +103,10 @@ class RoomBindingRecord {
 }
 
 /// 业务失败（如「未绑定该房间！」），携带服务端 code 与 message。
-class ElectricityApiException implements Exception {
+class ElectricityApiException extends AppException {
   final int code;
-  final String message;
 
-  const ElectricityApiException(this.code, this.message);
-
-  @override
-  String toString() => message;
+  const ElectricityApiException(this.code, super.message);
 }
 
 /// 一条电费充值记录。

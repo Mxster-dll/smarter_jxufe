@@ -9,8 +9,8 @@ import 'package:smarter_jxufe/features/my_mail/data/providers/my_mail_providers.
     show myMailboxProvider;
 import 'package:smarter_jxufe/features/my_mail/domain/student_mailbox.dart'
     show myMailStudentAddress;
-import 'package:smarter_jxufe/features/school_calendar/data/providers/wxcal_providers.dart'
-    show wxGuidProvider;
+import 'package:smarter_jxufe/features/platform_guid/data/providers/guid_providers.dart'
+    show platformGuidProvider;
 
 /// 未配置平台标识（GUID）时的固定文案。
 const String kTranscriptNeedGuid = '未配置微信平台标识（GUID），无法申请成绩单';
@@ -40,7 +40,7 @@ final transcriptRemoteDataSourceProvider = Provider<TranscriptRemoteDataSource>(
 
 /// 加密账号（H5 的 `userId` 参数）——发送与查类型都要它。
 final transcriptEncUserIdProvider = FutureProvider<String>((ref) async {
-  final guid = (await ref.watch(wxGuidProvider.future))?.trim();
+  final guid = (await ref.watch(platformGuidProvider.future))?.trim();
   if (guid == null || guid.isEmpty) {
     throw const TranscriptApiException(kTranscriptNeedGuid);
   }

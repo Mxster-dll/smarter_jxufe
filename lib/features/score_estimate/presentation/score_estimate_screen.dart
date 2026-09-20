@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import 'package:smarter_jxufe/design/pane_chrome.dart';
-import 'package:smarter_jxufe/features/settings/domain/settings_section.dart';
+import 'package:smarter_jxufe/design/settings_section.dart';
 
 import '../../../core/network/dio_providers.dart';
 import '../../../core/storage/local_data_revision.dart';
@@ -35,6 +35,7 @@ import 'ge_memo_card.dart';
 import 'ge_ratio_bar.dart';
 import 'course_detail_screen.dart';
 import 'ge_summary_card.dart';
+import 'package:smarter_jxufe/design/app_states.dart';
 
 const _uuid = Uuid();
 
@@ -532,7 +533,7 @@ class _ScoreEstimateScreenState extends ConsumerState<ScoreEstimateScreen> {
         actions: _headerActions(context),
         padding: const EdgeInsets.only(right: 12),
         child: _loading
-            ? const Center(child: CircularProgressIndicator())
+            ? const AppLoadingState()
             : _error != null
             ? _ErrorRetry(message: _error!, onRetry: _init)
             : _courses.isEmpty

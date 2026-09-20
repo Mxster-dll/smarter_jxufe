@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1,maximum-scale=1, user-scalable=no" />
+<meta http-equiv="pragma" content="no-cache"/>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>提示页面</title>
+</head>
+<body>
+<!-- 2026-09-19 实抓脱敏：请求过密时超星回的**风控挑战页**（真实响应 = HTTP 202 + 4527 B）。
+     它是「刷新会刷新没」的根因：正文里既没有课程锚点、也没有 getAllWork 作业入口，
+     更没有「暂无内容」空态标记 —— 首版把它当成了「这门课没有作业」于是静默丢数据。
+     触发口径（实测）：稳态 1 请求/秒 × 20 → 0 次；突发 8/16 并发 → 0 次；
+     24 并发 → 24/24 全中；触发后至少 60 秒不恢复。 -->
+<div class="tips">
+	<p class="tips-tit">提示页面</p>
+	<p class="tips-txt">【9010】操作异常，请输入图片中的验证码</p>
+	<div class="code">
+		<img src="/verifycode?t=0" alt="验证码" />
+		<input type="text" id="code" name="code" maxlength="4" placeholder="请输入验证码" />
+		<a href="javascript:;" class="btn">确定</a>
+	</div>
+</div>
+<script type="text/javascript">
+	function checkCode() {
+		var code = document.getElementById('code').value;
+		if (code.length < 4) { alert('请输入图片中的验证码'); return false; }
+		return true;
+	}
+</script>
+</body>
+</html>

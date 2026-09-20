@@ -6,6 +6,7 @@ import 'package:smarter_jxufe/features/comprehensive_service/data/datasource/jh_
 import 'package:smarter_jxufe/features/comprehensive_service/data/jh_read_repository.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/jh_read_record.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/providers/ssp_auth_providers.dart';
+import 'package:smarter_jxufe/features/comprehensive_service/data/ssp_exception.dart';
 
 /// 蛟湖阅读数据源提供者。
 final jhReadDataSourceProvider = Provider<JhReadRemoteDataSource>((ref) {
@@ -44,11 +45,11 @@ final currentStudentNameProvider = FutureProvider<String>((ref) async {
 final jhReadRecordsProvider = FutureProvider<List<JhReadRecord>>((ref) async {
   final account = ref.watch(currentAccountProvider);
   if (account.isEmpty) {
-    throw Exception('请先登录后再查看蛟湖阅读情况');
+    throw SspApiException('请先登录后再查看蛟湖阅读情况');
   }
   final studentName = await ref.watch(currentStudentNameProvider.future);
   if (studentName.isEmpty) {
-    throw Exception('暂无法获取当前学生姓名，无法查询蛟湖阅读记录');
+    throw SspApiException('暂无法获取当前学生姓名，无法查询蛟湖阅读记录');
   }
   final repository = await ref.watch(jhReadRepositoryProvider.future);
   return repository.fetchReadRecords(

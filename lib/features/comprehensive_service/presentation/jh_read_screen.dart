@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/core/navigation/page_auto_refresh.dart';
+import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
+import 'package:smarter_jxufe/design/section_title.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/jh_read_record.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/providers/jh_read_providers.dart';
 import 'package:smarter_jxufe/features/cxstar/data/providers/cxstar_providers.dart';
@@ -13,7 +15,7 @@ import 'package:smarter_jxufe/features/read_credit/data/providers/read_credit_pr
 import 'package:smarter_jxufe/features/read_credit/presentation/read_credit_progress_section.dart';
 import 'package:smarter_jxufe/features/read_credit/presentation/read_credit_rules_card.dart';
 import 'package:smarter_jxufe/design/pane_chrome.dart';
-import 'package:smarter_jxufe/features/settings/domain/settings_section.dart';
+import 'package:smarter_jxufe/design/settings_section.dart';
 
 /// 蛟湖阅读页（阅读学分平台 + 入馆教育 + 学工平台记录的三源单一入口）。
 ///
@@ -162,7 +164,7 @@ class _JhReadScreenState extends ConsumerState<JhReadScreen> {
           Align(
             alignment: Alignment.centerRight,
             child: OutlinedButton.icon(
-              onPressed: () => ref.invalidate(jhReadRecordsProvider),
+              onPressed: () => invalidateIfLoaded(ref, jhReadRecordsProvider),
               icon: const Icon(Icons.refresh, size: 16),
               label: const Text('刷新'),
             ),
@@ -382,7 +384,7 @@ class _JhReadScreenState extends ConsumerState<JhReadScreen> {
           Align(
             alignment: Alignment.centerRight,
             child: OutlinedButton.icon(
-              onPressed: () => ref.invalidate(jhReadRecordsProvider),
+              onPressed: () => invalidateIfLoaded(ref, jhReadRecordsProvider),
               icon: const Icon(Icons.refresh, size: 16),
               label: const Text('重试'),
             ),
@@ -393,26 +395,8 @@ class _JhReadScreenState extends ConsumerState<JhReadScreen> {
   }
 }
 
-Widget _sectionTitle(BuildContext context, String text) {
-  final scheme = Theme.of(context).colorScheme;
-  return Row(
-    children: [
-      Container(
-        width: 3,
-        height: 15,
-        decoration: BoxDecoration(
-          color: scheme.primary,
-          borderRadius: BorderRadius.circular(2),
-        ),
-      ),
-      const SizedBox(width: 8),
-      Text(
-        text,
-        style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
-      ),
-    ],
-  );
-}
+Widget _sectionTitle(BuildContext context, String text) =>
+    appSectionTitle(context, text: text);
 
 Widget _infoCard(BuildContext context, String text) => _card(
   context,
@@ -432,10 +416,9 @@ Widget _infoCard(BuildContext context, String text) => _card(
 Widget _card(BuildContext context, {required Widget child}) {
   final scheme = Theme.of(context).colorScheme;
   return Container(
-    decoration: BoxDecoration(
+    decoration: ShapeDecoration(
+      shape: appCardShape(context),
       color: scheme.surface,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: AppColors.hairline(context, 0.6)),
     ),
     padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
     child: child,

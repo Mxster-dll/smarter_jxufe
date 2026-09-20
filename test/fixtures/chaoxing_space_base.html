@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>个人空间</title>
+</head>
+<body>
+<!-- 2026-09-19 实抓脱敏：学习空间首页里与「收件箱 token」相关的片段。
+     token 是会话级凭据，这里用同形态的假值。 -->
+<div class="label-item" dataurl="https://notice.chaoxing.com/pc/notice/myNotice">
+	<div role="menuitem" level="1" tabindex="-1" name="收件箱" id="first637140"
+	     onclick="setUrl('637140','https://notice.chaoxing.com/pc/notice/myNotice?s=0123456789abcdef0123456789abcdef',this,'0','收件箱');"
+	     imgName="icon-home"
+	     dataurl="https://notice.chaoxing.com/pc/notice/myNotice?s=0123456789abcdef0123456789abcdef">收件箱</div>
+</div>
+<div class="label-item">
+	<div onclick="setUrl('637141','https://mooc1-1.chaoxing.com/visit/interaction?s=0123456789abcdef0123456789abcdef',this,'0','课程');">课程</div>
+</div>
+<script>
+	// 页内会拿这个数据给「收件箱」加红点
+	jQuery.ajax({ url: '/base/getNoticeCount', type: 'get', success: function (data) {
+		var notice = data.msg;
+		var messageBox = $(".label-item[dataurl*='://notice.chaoxing.com/pc/notice/myNotice']");
+		if (notice) { messageBox.addClass("box-new-message"); }
+	}});
+</script>
+</body>
+</html>

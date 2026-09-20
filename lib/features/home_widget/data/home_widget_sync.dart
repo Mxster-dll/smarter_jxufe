@@ -9,7 +9,7 @@ import 'package:smarter_jxufe/features/auth/data/providers/account_local_datasou
 import 'package:smarter_jxufe/features/auth/data/providers/auth_local_datasource_provider.dart';
 import 'package:smarter_jxufe/features/electricity/data/models/electricity_models.dart';
 import 'package:smarter_jxufe/features/electricity/data/providers/electricity_providers.dart';
-import 'package:smarter_jxufe/features/home/presentation/dashboard_panel.dart';
+import 'package:smarter_jxufe/features/home/data/providers/dashboard_providers.dart';
 import 'package:smarter_jxufe/features/home_widget/data/home_widget_bridge.dart';
 import 'package:smarter_jxufe/features/home_widget/domain/home_widget_snapshot.dart';
 import 'package:smarter_jxufe/features/ims/auth/data/providers/ims_auth_local_datasource_provider.dart';

@@ -7,6 +7,7 @@ import '../../../design/app_card.dart';
 import '../../../design/app_theme.dart';
 import '../../../design/feature_palette.dart';
 import '../domain/ge_models.dart';
+import 'package:smarter_jxufe/design/section_title.dart';
 
 /// 数字展示：保留 [decimals] 位并去掉无意义尾零（100.0 → 100；0.5 → 0.5）。
 String geFmt(num v, {int decimals = 1}) {
@@ -234,28 +235,10 @@ Widget geCardTitle(
   required String text,
   Widget? trailing,
   Color? accent,
-}) {
-  final a = accent ?? appCardAccent(context);
-  return Row(
-    children: [
-      Container(
-        width: 3,
-        height: 13,
-        decoration: BoxDecoration(
-          color: a,
-          borderRadius: BorderRadius.circular(2),
-        ),
-      ),
-      const SizedBox(width: 7),
-      Text(
-        text,
-        style: const TextStyle(
-          fontSize: 13.5,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.3,
-        ),
-      ),
-      if (trailing != null) ...[const Spacer(), trailing],
-    ],
-  );
-}
+}) =>
+    appSectionTitle(
+      context,
+      text: text,
+      trailing: trailing,
+      accent: accent ?? appCardAccent(context),
+    );

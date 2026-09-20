@@ -2,17 +2,14 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
+import 'package:smarter_jxufe/core/errors/app_exception.dart';
 import 'package:smarter_jxufe/features/leave/domain/leave_models.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/datasources/wxcal_remote_datasource.dart';
 
 /// 请假接口异常（message 面向 UI 直显）。
-class LeaveApiException implements Exception {
-  final String message;
+class LeaveApiException extends AppException {
 
-  const LeaveApiException(this.message);
-
-  @override
-  String toString() => message;
+  const LeaveApiException(super.message);
 }
 
 /// 「学生请假」记录数据源（智慧江财小程序 · 金智流程应用）。

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:rxdart/rxdart.dart';
 
+import 'package:smarter_jxufe/features/qr_login/data/qr_login_exception.dart';
 import 'package:smarter_jxufe/features/qr_login/data/datasources/mfa_login_remote_datasource.dart';
 import 'package:smarter_jxufe/features/qr_login/data/datasources/scan_login_remote_datasource.dart';
 import 'package:smarter_jxufe/features/qr_login/data/datasources/wechat_login_remote_datasource.dart';
@@ -166,7 +167,7 @@ class QrCodeRepository {
         _mfaPassword!,
       );
       if (!need) {
-        throw Exception('MFA 状态已失效，无法重新初始化二维码');
+        throw QrLoginException('MFA 状态已失效，无法重新初始化二维码');
       }
       _mfaMfaState = newState;
       return await _mfaLoginDs.initQrCode(newState);
@@ -179,7 +180,7 @@ class QrCodeRepository {
     _setStatus(QrCodeStatus.loading);
 
     if (_mfaAccount == null || _mfaPassword == null) {
-      throw Exception('MFA 刷新失败：缺少账号密码');
+      throw QrLoginException('MFA 刷新失败：缺少账号密码');
     }
 
     final (need, mfaState) = await _mfaLoginDs.detectMfa(
@@ -225,7 +226,7 @@ class QrCodeRepository {
         _mfaPassword!,
       );
       if (!need) {
-        throw Exception('手机验证码初始化失败，MFA 状态已失效');
+        throw QrLoginException('手机验证码初始化失败，MFA 状态已失效');
       }
       _mfaMfaState = newState;
       return await _mfaLoginDs.initSecurePhone(newState);
@@ -256,7 +257,7 @@ class QrCodeRepository {
         await refreshMfa();
         return;
       case null:
-        throw Exception('没有活跃的登录流程');
+        throw QrLoginException('没有活跃的登录流程');
     }
   }
 

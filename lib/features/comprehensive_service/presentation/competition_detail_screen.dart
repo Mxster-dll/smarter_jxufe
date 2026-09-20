@@ -13,7 +13,9 @@ import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/competition_repository.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/competition.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/providers/competition_providers.dart';
+import 'package:smarter_jxufe/features/comprehensive_service/data/ssp_exception.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/competition_widgets.dart';
+import 'package:smarter_jxufe/design/app_states.dart';
 
 /// 详情加载器（申请 / 公示各一个）。
 typedef CompetitionDetailLoader =
@@ -60,7 +62,7 @@ class _CompetitionDetailScreenState
     });
     try {
       final account = ref.read(currentAccountProvider);
-      if (account.isEmpty) throw Exception('请先登录后再查看');
+      if (account.isEmpty) throw SspApiException('请先登录后再查看');
       final repository = await ref.read(competitionRepositoryProvider.future);
       final detail = await widget.loader(repository, account);
       if (!mounted) return;
@@ -94,7 +96,7 @@ class _CompetitionDetailScreenState
     return Scaffold(
       appBar: AppBar(title: Text(widget.title), centerTitle: true),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const AppLoadingState()
           : _error != null
           ? Center(
               child: Padding(

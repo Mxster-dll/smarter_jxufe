@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
+import 'package:smarter_jxufe/design/status_palette.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/jh_read_screen.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/second_class_credit_screen.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/volunteer_hours_screen.dart';
@@ -63,7 +64,7 @@ class ComprehensiveServiceHomeScreen extends ConsumerWidget {
                 icon: Icons.volunteer_activism,
                 label: '志愿服务时长',
                 subtitle: '查看学生志愿活动时长统计',
-                color: AppColors.tone(context, const Color(0xFFE65100)),
+                color: AppColors.tone(context, PlatformEntryTone.volunteer),
                 onTap: () {
                   Navigator.push(
                     context,
@@ -79,7 +80,7 @@ class ComprehensiveServiceHomeScreen extends ConsumerWidget {
                 icon: Icons.school_outlined,
                 label: '第二课堂学分',
                 subtitle: '成绩单与学分预警 · 毕业达标进度',
-                color: AppColors.tone(context, const Color(0xFF6A1B9A)),
+                color: AppColors.tone(context, PlatformEntryTone.secondClass),
                 onTap: () {
                   Navigator.push(
                     context,
@@ -95,7 +96,7 @@ class ComprehensiveServiceHomeScreen extends ConsumerWidget {
                 icon: Icons.auto_stories_outlined,
                 label: '蛟湖阅读',
                 subtitle: '蛟湖阅读考核记录 · 入馆学习与借阅达标',
-                color: AppColors.tone(context, const Color(0xFF1565C0)),
+                color: AppColors.tone(context, PlatformEntryTone.jhRead),
                 onTap: () {
                   Navigator.push(
                     context,

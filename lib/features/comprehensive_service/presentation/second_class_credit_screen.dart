@@ -6,6 +6,7 @@ import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/second_class_credit.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/providers/second_class_credit_providers.dart';
 import 'package:smarter_jxufe/design/pane_chrome.dart';
+import 'package:smarter_jxufe/design/app_states.dart';
 
 class SecondClassCreditScreen extends ConsumerWidget {
   const SecondClassCreditScreen({super.key});
@@ -31,35 +32,10 @@ class SecondClassCreditScreen extends ConsumerWidget {
             ],
           ),
         ),
-        error: (error, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.error_outline,
-                  size: 48,
-                  color: AppColors.critical(context),
-                ),
-                const SizedBox(height: 16),
-                Text('加载失败', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 8),
-                Text(
-                  error.toString(),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.textMuted(context)),
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton.icon(
-                  onPressed: () =>
-                      ref.invalidate(secondClassCreditOverviewProvider),
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('重试'),
-                ),
-              ],
-            ),
-          ),
+        error: (error, _) => AppErrorState(
+          title: '加载失败',
+          error: error,
+          onRetry: () => ref.invalidate(secondClassCreditOverviewProvider),
         ),
         data: (overview) => _buildContent(context, overview),
       ),

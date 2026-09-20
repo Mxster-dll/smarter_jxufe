@@ -2,16 +2,13 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
+import 'package:smarter_jxufe/core/errors/app_exception.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/transcript_report.dart';
 
 /// 本科生成绩单接口异常（message 面向 UI 直显，服务端 message 优先）。
-class TranscriptApiException implements Exception {
-  final String message;
+class TranscriptApiException extends AppException {
 
-  const TranscriptApiException(this.message);
-
-  @override
-  String toString() => message;
+  const TranscriptApiException(super.message);
 }
 
 /// 智慧江财「本科生成绩单」数据源（门户 H5 `layuiApp` 域）。

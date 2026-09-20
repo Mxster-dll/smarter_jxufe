@@ -16,10 +16,53 @@ void main() {
   final entries = homeServiceEntries(push: (_) {});
   final titles = entries.map((e) => e.title).toList();
 
-  test('目录条目齐全（26 条）', () {
+  test('目录条目齐全（30 条）', () {
     // 25 = 并行工作流新增两项后的 23 + 2026-09-17 新增「推免成绩 / 竞赛奖励」两项；
-    // 26 = 2026-09-19 新增「AI 助手」（内置对话式问答，排在第一格）。
-    expect(entries.length, 26, reason: '增删服务入口请同步本测试与 AGENTS.md §3');
+    // 26 = 2026-09-19 新增「AI 助手」（内置对话式问答，排在第一格）；
+    // 27 = 2026-09-19 新增「学习通」（超星课程 / 作业 / 通知只读接入）；
+    // 28 = 2026-09-19 新增「AA 算账」（纯本地记账：成员 + 开销 → 两两转账）；
+    // 29 = 2026-09-19 新增「找空闲教室」（公共查询 SB11 / SB12 两个子功能独立成磁贴）；
+    // 30 = 2026-09-19 新增「网站导航」（137 条全校站点目录 + 星标收藏）。
+    expect(entries.length, 30, reason: '增删服务入口请同步本测试与 AGENTS.md §3');
+  });
+
+  test('「找空闲教室」在「教务系统」组里，且页面是 ClassroomFreeScreen', () {
+    final ims = homeServiceEntriesInGroup(entries, HomeServiceGroup.ims)
+        .map((e) => e.title)
+        .toList();
+    expect(ims, contains('找空闲教室'));
+    final free = entries.firstWhere((e) => e.title == '找空闲教室');
+    expect(
+      free.builder().runtimeType.toString(),
+      contains('ClassroomFreeScreen'),
+    );
+    // 独立的是**找空闲教室**（用户 2026-09-19 二轮纠正）；「找无课时间」不进磁贴，
+    // 仍走公共查询页那张入口卡。
+    expect(titles, isNot(contains('找无课时间')));
+    expect(
+      entries.firstWhere((e) => e.title == '公共查询').subtitle,
+      contains('多班对照'),
+    );
+  });
+
+  test('「学习通」在「学习与测评」组里，且页面是 ChaoxingScreen', () {
+    final study = homeServiceEntriesInGroup(entries, HomeServiceGroup.study)
+        .map((e) => e.title)
+        .toList();
+    expect(study, contains('学习通'));
+    final chaoxing = entries.firstWhere((e) => e.title == '学习通');
+    expect(chaoxing.builder().runtimeType.toString(), contains('ChaoxingScreen'));
+    expect(chaoxing.accent, isNotNull);
+  });
+
+  test('「网站导航」在「数据与信息」组里，且页面是 SiteNavScreen', () {
+    final info = homeServiceEntriesInGroup(entries, HomeServiceGroup.info)
+        .map((e) => e.title)
+        .toList();
+    expect(info, contains('网站导航'));
+    final nav = entries.firstWhere((e) => e.title == '网站导航');
+    expect(nav.builder().runtimeType.toString(), contains('SiteNavScreen'));
+    expect(nav.subtitle, contains('学院'));
   });
 
   test('AI 助手排在第一位，且它的页面是 AiChatScreen', () {

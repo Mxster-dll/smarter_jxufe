@@ -16,12 +16,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/core/network/current_account_provider.dart';
 import 'package:smarter_jxufe/design/app_card.dart';
+import 'package:smarter_jxufe/design/status_palette.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/competition_image_picker.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/competition.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/providers/competition_providers.dart';
+import 'package:smarter_jxufe/features/comprehensive_service/data/ssp_exception.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/competition_pickers.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/competition_widgets.dart';
 import 'package:smarter_jxufe/features/ims/student_info/data/providers/student_info_repository_provider.dart';
+import 'package:smarter_jxufe/features/score_estimate/presentation/ge_common.dart';
 
 /// 单张证书上限（官网 `maxFileSize: 3072` KB）。
 const int competitionMaxAttachmentBytes = 3072 * 1024;
@@ -56,7 +59,7 @@ class _CompetitionApplyFormScreenState
     setState(() => _selfBusy = true);
     try {
       final account = ref.read(currentAccountProvider);
-      if (account.isEmpty) throw Exception('请先登录后再申请');
+      if (account.isEmpty) throw SspApiException('请先登录后再申请');
       final infoRepository = await ref.read(
         studentInfoRepositoryProvider.future,
       );
@@ -65,7 +68,7 @@ class _CompetitionApplyFormScreenState
         (value) => value,
       );
       final serialNo = info?.serialNo ?? '';
-      if (serialNo.isEmpty) throw Exception('读不到学籍学号，请手动搜索添加');
+      if (serialNo.isEmpty) throw SspApiException('读不到学籍学号，请手动搜索添加');
       final repository = await ref.read(competitionRepositoryProvider.future);
       final page = await repository.fetchStudents(account, studentId: serialNo);
       CompetitionStudent? me;
@@ -76,7 +79,7 @@ class _CompetitionApplyFormScreenState
         }
       }
       if (me == null) {
-        throw Exception('成员列表里没搜到 $serialNo，请手动搜索添加');
+        throw SspApiException('成员列表里没搜到 $serialNo，请手动搜索添加');
       }
       if (!mounted) return;
       final found = me;
@@ -180,7 +183,7 @@ class _CompetitionApplyFormScreenState
     setState(() => _busy = true);
     try {
       final account = ref.read(currentAccountProvider);
-      if (account.isEmpty) throw Exception('请先登录后再申请');
+      if (account.isEmpty) throw SspApiException('请先登录后再申请');
       final repository = await ref.read(competitionRepositoryProvider.future);
       final attachmentIds = <int>[];
       for (final image in _images) {
@@ -508,7 +511,7 @@ class _CompetitionApplyFormScreenState
                           : () => setState(() => _images.removeAt(i)),
                       child: Container(
                         decoration: const BoxDecoration(
-                          color: Color(0xB3000000),
+                          color: StatusPalette.scrim,
                           shape: BoxShape.circle,
                         ),
                         padding: const EdgeInsets.all(2),
@@ -562,26 +565,7 @@ class _CompetitionApplyFormScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 3,
-                height: 13,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(width: 7),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
+          geCardTitle(context, text: title, accent: theme.colorScheme.primary),
           const SizedBox(height: 10),
           ...children,
         ],

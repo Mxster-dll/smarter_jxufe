@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/core/errors/app_exception.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/design/pane_chrome.dart';
@@ -545,7 +546,7 @@ class _NetworkServicesScreenState extends ConsumerState<NetworkServicesScreen>
         ..clearSnackBars()
         ..showSnackBar(
           SnackBar(
-            content: Text(error.toString().replaceFirst('Exception: ', '')),
+            content: Text(friendlyErrorText(error)),
           ),
         );
       return;

@@ -22,6 +22,7 @@ import 'package:smarter_jxufe/features/cxstar/data/providers/cxstar_shelf_provid
 import 'package:smarter_jxufe/features/cxstar/domain/cxstar_reader.dart';
 import 'package:smarter_jxufe/features/cxstar/domain/cxstar_shelf.dart';
 import 'package:smarter_jxufe/features/cxstar/presentation/cxstar_reader_screen.dart';
+import 'package:smarter_jxufe/design/app_states.dart';
 
 class CxstarShelfScreen extends ConsumerStatefulWidget {
   const CxstarShelfScreen({super.key, this.initialKeyword = ''});
@@ -412,7 +413,7 @@ class _CxstarShelfScreenState extends ConsumerState<CxstarShelfScreen> {
     if (_searchMode && _keyword.isEmpty) {
       return _hotSearchPanel(context, scheme);
     }
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) return const AppLoadingState();
     if (_error != null && _books.isEmpty) return _errorView(scheme, _error!);
     if (_books.isEmpty) {
       return _hintView(

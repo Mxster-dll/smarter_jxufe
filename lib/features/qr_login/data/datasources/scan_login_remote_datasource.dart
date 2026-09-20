@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 
+import 'package:smarter_jxufe/features/qr_login/data/qr_login_exception.dart';
 import 'package:smarter_jxufe/features/qr_login/domain/entities/qr_code_status.dart';
 
 /// 扫码登录远程数据源
@@ -55,7 +56,7 @@ class ScanLoginRemoteDataSource {
     );
 
     if (response.statusCode != 200) {
-      throw Exception(
+      throw QrLoginException(
         '连接错误${response.statusCode}: $baseUrl/cas/qr/qrcode?r=$id',
       );
     }
@@ -69,7 +70,7 @@ class ScanLoginRemoteDataSource {
   String _extractSessionCookie(Response<dynamic> response) {
     final List<String>? cookies = response.headers['set-cookie'];
 
-    if (cookies == null) throw Exception('缺失轮询 Cookie: $response');
+    if (cookies == null) throw QrLoginException('缺失轮询 Cookie: $response');
 
     for (final String cookie in cookies) {
       for (final String part in cookie.split(';')) {
@@ -81,7 +82,7 @@ class ScanLoginRemoteDataSource {
       }
     }
 
-    throw Exception('缺失轮询 Cookie: $response');
+    throw QrLoginException('缺失轮询 Cookie: $response');
   }
 
   static const _statusMap = {
@@ -100,7 +101,7 @@ class ScanLoginRemoteDataSource {
     );
 
     if (response.statusCode != 200) {
-      throw Exception('连接错误${response.statusCode}');
+      throw QrLoginException('连接错误${response.statusCode}');
     }
 
     return _extractStatus(response.data);

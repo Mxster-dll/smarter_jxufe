@@ -70,6 +70,8 @@ SmarterJxUFE（智慧尼采）是一个用 Flutter 从零编写的「智慧江�
 
 **阅读** —— 新生入馆教育原生闯关（五章学习地图 + App 内答题，后门模式可一键通过全部章节）；蛟湖阅读四部分进度（实际值 / 服务端值双档进度条）；畅想之星「经典阅读」接入：分类书架 + 检索、**原生 PDF 阅读器**（逐页解密渲染、进度云同步、阅读时长如实计入平台统计）、逐书阅读报告。
 
+**学习通（超星，只读）** —— 复用 App 已有 CAS 换证链（service 换超星统一认证网关，**零密码**）拿到学习通会话：课程 / 作业 / 通知三件套，待做作业按截止时间排序并带倒计时、已完成带分数、通知带未读标记；快照本地缓存，二次进入先出旧数据再静默刷新（1 分钟节流）。
+
 **其他** —— 桌面小组件扩到 **24 个**（数据一览 / 电费余额 / 课程加权 × 8 档尺寸）；新增网上选课、公共查询、上课实况窗、本科生成绩单申请、网络服务（校园网并入）、我的邮箱、请假记录；全局设置入口常驻各页标题栏且**只显示本页相关的设置节**。
 
 ## 功能特性
@@ -107,6 +109,7 @@ SmarterJxUFE（智慧尼采）是一个用 Flutter 从零编写的「智慧江�
 | 学科竞赛 | 第二课堂「学科竞赛申请 + 竞赛公示」：我的申请列表与审批状态、**选比赛（208 页目录 + 搜索）→ 选奖项（按分值）→ 个人/团队（成员检索、按排名）→ 上传证书图片 → 提交**、删除申请；公示按学号 / 姓名 / 班级搜索并翻页，详情区分个人 / 团队（团队出成员表） |
 | 蛟湖阅读 | 阅读学分四部分进度（经典阅读 / 普通阅读 / 入馆教育 / 信息素养），**实际值与服务端值双档进度条**；页面内嵌新生入馆教育闯关（五章学习地图 + App 内答题，后门模式可一键通过全部章节）与学工平台加分记录 |
 | 经典阅读（畅想之星） | 分类书架（中图法 / 学科 / 院系 + 检索）与**原生 PDF 阅读器**：逐页解密渲染、阅读进度云同步、**时长如实计入平台统计**；逐书阅读报告（累计时长 / 阅读天数 / 次数 / 完成时间） |
+| 学习通 | 超星学习通**只读**接入（课程 · 作业 · 通知）：待做作业与截止倒计时、作业状态（待做 / 待批阅 / 已完成含分数）、通知消息与未读数、按课程展开作业、学期筛选；复用 CAS 换证链**零密码**登录，快照本地缓存 + 1 分钟自动刷新节流 |
 | 学生个人数据中心 | dzj 平台聚合概览：学业成绩 · 消费 · 图书 · 校园卡全景 |
 
 ### 自研增强
@@ -119,6 +122,7 @@ SmarterJxUFE（智慧尼采）是一个用 Flutter 从零编写的「智慧江�
 | 材料库 | 证明文件本地归档，两级活动选择向导，自动带入综测计分 |
 | 体测成绩 | 国家学生体质健康测试总分与分项查询，赛康资料归档 |
 | 规章制度 | 校规校纪 · 学分学籍 · 竞赛目录 · 奖助办法等文档库（内置 MD/PDF 资产，可离线阅读与检索） |
+| 网站导航 | 全校 **137 个官网**一站直达（学院与学部 / 职能部门 / 服务系统 / 科研机构 / 其他站点，逐条 DNS + 页面标题双重核实）：搜索（名称 / 域名 / 备注）+ 分类与「常用」筛选 + **星标收藏置顶**（本地持久化）；整行点击**用系统浏览器打开**，行尾可复制链接 |
 | 获取平台标识 | 微信平台 GUID 的 App 内一键捕获（纯 Dart 本地代理），并附向导/粘贴/清除流程，用于配置校园网、请假、校历等实时数据源 |
 | 桌面小组件 | Android 桌面小组件三款：**数据一览**（一卡汇总电费 / 校园网 / 课程加权 / 志愿时长 / 今日课程）、电费余额、课程加权（含专业排名），各提供 **2×1 / 3×1 / 4×1 / 5×1 / 2×2 / 3×2 / 4×2 / 5×2 八档尺寸**（共 24 个独立小组件；单行档只放数值、最窄档自动改用短标题与短数值）；卡片配色走 `values-night` 自动适配系统深色模式；点击直达对应页面，解锁即时刷新 + 周期任务兜底（headless FlutterEngine 后台静默拉取，自研 MethodChannel 数据桥，零第三方依赖） |
 
@@ -177,7 +181,7 @@ cd smarter_jxufe
 
 flutter pub get
 
-# 首次克隆、或模型/接口定义变动后，重新生成序列化与 Riverpod 代码
+# 仅当模型/接口定义（注解）变动后才需要重新生成 —— 产物已入库，普通克隆不必跑
 dart run build_runner build --delete-conflicting-outputs
 
 # 运行：Windows 桌面
@@ -213,7 +217,7 @@ git archive --format=zip --prefix=SmartJXUFE-v<版本>/ -o dist/SmartJXUFE-sourc
 
 ### 注意事项
 
-- 代码生成产物（`*.g.dart`、`*.freezed.dart`）不应手工修改，统一由 `build_runner` 生成。
+- 代码生成产物（`*.g.dart`、`*.freezed.dart`）不应手工修改，统一由 `build_runner` 生成，且**必须提交入库**（本仓无 CI，缺失即编译不过；守卫 = `test/repo_hygiene_test.dart`）。
 - 数据接口均为学校内网/域名服务：能否在校外访问取决于学校网络策略；部分功能（请假审批等）要求按应用内向导完成平台标识配置。
 - 部分历史分支/标签（如 `0.0.7-补充提交`、`252PROC` 等）为开发过程存档，日常开发以 `main` 为准。
 
@@ -231,6 +235,7 @@ smarter_jxufe/
 │  │  ├─ ims/                      #   教务：培养方案/课表/成绩/毕业学分/学籍/选课/公共查询/成绩单
 │  │  ├─ comprehensive_service/    #   志愿服务、第二课堂、学科竞赛、蛟湖阅读
 │  │  ├─ read_credit/ cxstar/      #   阅读学分四部分进度；畅想之星书架与原生 PDF 阅读器
+│  │  ├─ chaoxing/                 #   学习通（超星）：课程 / 作业 / 通知（只读）
 │  │  ├─ library_edu/              #   新生入馆教育（学习地图 + 闯关答题）
 │  │  ├─ zongce/ materials/        #   综合测评测算；证明材料库
 │  │  ├─ score_estimate/ tice/     #   分数估计（含备忘录与截止日期）；体测成绩
@@ -238,6 +243,7 @@ smarter_jxufe/
 │  │  ├─ school_calendar/ campus_address/ competition_award/ recommendation/
 │  │  ├─ home/ home_widget/        #   主页（宫格 / 侧栏 / 仪表盘）；Android 桌面小组件
 │  │  ├─ rules/ settings/ platform_guid/ platform/
+│  │  ├─ site_nav/                 #   网站导航：全校站点目录（137 条）+ 星标收藏（系统浏览器打开）
 │  ├─ shared/                      # 跨模块组件（可拖拽表格等）、通知服务
 │  └─ utils/                       # 通用工具
 ├─ assets/
@@ -257,12 +263,12 @@ smarter_jxufe/
 | --- | --- |
 | 框架 | Flutter · Material 3，校徽红 `#C3282E` 全局主题，内嵌字体（Cascadia Code / 霞鹜文楷 / 仓耳今楷等）+ 自绘 `SmarterJxufeIcons` 图标字体 |
 | 状态管理 | Riverpod 2.x（`riverpod_generator` 代码生成为主） |
-| 网络 | Dio + cookie_jar / dio_cookie_manager 会话管理；HTML/XML 响应解析（含 GBK 解码） |
-| 本地存储 | Hive（业务缓存）+ flutter_secure_storage（凭据）+ get_storage / sqflite 辅助 |
-| 模型与代码生成 | Freezed + json_serializable + hive_generator + riverpod_generator（`build_runner` 统一驱动） |
+| 网络 | Dio（自带 Cookie 管理）+ 自研 Cookie 罐（`lib/core/network/cookie_jar.dart`，认 `Domain` / 按 host 分桶两档）；HTML/XML 响应解析（含 GBK 解码） |
+| 本地存储 | Hive（业务缓存 + 凭据 + 偏好，全部走 `Box<String>`） |
+| 模型与代码生成 | Freezed + json_serializable + hive_generator + riverpod_generator（`build_runner` 统一驱动；**产物入库**，见「注意事项」） |
 | 认证与会话 | CAS 登录流（HTML 解析、302 跟踪）、MFA 二维码/短信、TGC/JSESSIONID/cookie 持久化与自动重登 |
 | 特殊能力 | 纯 Dart 本地代理捕获微信平台 GUID；Android/Windows 本地通知 |
-| AI | OpenAI 兼容 HTTP（Chat Completions + Function Calling），8 家服务商预设，密钥存 flutter_secure_storage |
+| AI | OpenAI 兼容 HTTP（Chat Completions + Function Calling），8 家服务商预设，密钥存 Hive（`aiSettings`） |
 | 文档与阅读 | pdfrx / pdfium 原生渲染加密单页 PDF；Markdown 渲染；规则条款浮层（Overlay + 逐帧跟随） |
 | 桌面小组件 | Android AppWidget（RemoteViews，24 个 provider）+ headless FlutterEngine 后台刷新 + 自研 MethodChannel 数据桥 |
 | 发布与签名 | Android keystore 正式签名（RSA 4096，密钥不入库）；Windows Inno Setup 安装包；`git archive` 源码包 |
@@ -274,7 +280,11 @@ smarter_jxufe/
 - **抗腐化层**：教务等平台的非 JSON 响应（HTML/XML）解析与映射放在各模块 `data/anti_corruption/` 下（parser → mapper → 领域模型），不要在页面里直接解析。
 - **接口改动时**：先改解析/映射层并补充 `test/` 用例；抓包样例与接口说明沉淀到 `reverse_engineering/`，保持文档同步。
 - **配色规范**：新增功能入口的分色统一登记到 `lib/design/feature_palette.dart`，不要在页面里散落魔法色值。
-- **代码生成**：改动任何带注解的模型后运行 `dart run build_runner build --delete-conflicting-outputs`。
+- **依赖纪律**：`pubspec.yaml` 只保留**真的被 import 的包** —— `test/repo_hygiene_test.dart`
+  会断言每个运行期依赖在 `lib/test/tool` 里有 `import/export` 指令，例外必须进白名单并写明理由。
+  2026-09-20 清掉 20 个零引用依赖（`pubspec.lock` 包数 215 → 158）。
+- **代码生成**：改动任何带注解的模型后运行 `dart run build_runner build --delete-conflicting-outputs`；
+  生成物（`*.g.dart` / `*.freezed.dart`）**必须一起提交**（本仓无 CI，缺了全新克隆编译不过）。
 
 ## 相关文档
 
@@ -284,6 +294,7 @@ smarter_jxufe/
   - 教务：[选课接口](reverse_engineering/选课接口.md) · [公共查询接口](reverse_engineering/公共查询接口.md) · [本科生成绩单接口](reverse_engineering/本科生成绩单接口.md)
   - 校园服务：[宿舍电费接口](reverse_engineering/宿舍电费接口.md) · [网费接口](reverse_engineering/网费接口.md) · [网络服务接口](reverse_engineering/网络服务接口.md) · [我的邮箱接口](reverse_engineering/我的邮箱接口.md) · [请假接口](reverse_engineering/请假接口.md) · [校历接口](reverse_engineering/校历接口.md) · [志愿时长接口](reverse_engineering/志愿时长接口.md) · [竞赛接口](reverse_engineering/竞赛接口.md)
   - 阅读：[入馆教育接口](reverse_engineering/入馆教育接口.md) · [阅读学分接口](reverse_engineering/阅读学分接口.md) · [畅想之星接口](reverse_engineering/畅想之星接口.md)
+  - 教学平台：[学习通接口](reverse_engineering/学习通接口.md)
   - 平台与规则：[小程序门户服务接口](reverse_engineering/小程序门户服务接口.md) · [2026 综测规则](reverse_engineering/2026综测规则.md) · [鸿蒙服务卡片可行性](reverse_engineering/鸿蒙服务卡片可行性.md)
 
 ## 免责声明

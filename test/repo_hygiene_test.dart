@@ -1,0 +1,225 @@
+/// 仓库卫生守卫（2026-09-20 立 · 架构审查 ① 工程卫生）。
+///
+/// 守的是**只有本地才看得见、编译器管不到**的那一类问题：
+///
+/// - `*.g.dart` / `*.freezed.dart` 曾是 `.gitignore` 的常客（Flutter 模板默认写法），
+///   而本仓**没有 CI**、也没有「克隆后先跑 build_runner」的强制步骤 →
+///   一旦被忽略，全新克隆会因为 `part '…'` 找不到目标而**连编译都过不去**。
+///   编译器只能守住「本地文件在不在」，守不住「它有没有进 git」→ 故有此测。
+/// - 生成物**孤儿**（源文件已删、`.g.dart` 还留在磁盘上）编译器也不管，
+///   它会被一次次提交进仓库。这里用「part 指令 ↔ 生成物」双向集合相等来兜。
+/// - **未用依赖**：`pubspec.yaml` 里多一个包，`pub get` 就会多拉一整棵依赖树
+///   （2026-09-20 清理时实测：删 20 个直接依赖 → lock 从 **215 掉到 158**），
+///   而**编译器完全不会抱怨**一个没人 import 的包。故用「每个运行期依赖都要
+///   在源码里真的出现 `package:<名字>/`」来守（白名单 = 有理由的例外）。
+///
+/// ⚠ 本测试**只读文本、不跑 git**（源码包 `git archive` 里没有 `.git`，跑 git 会误红）。
+library;
+
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+
+/// 运行期依赖白名单 =「没有源码 import、但确实必须在 pubspec 里」的包。
+///
+/// 新增一条必须写明**为什么**；白名单本身也有守卫（见下方「白名单不许陈旧」）。
+const Map<String, String> _dependencyAllowList = <String, String>{
+  'json_annotation':
+      'freezed 注解层：生成的 `*.freezed.dart` 里写着 `@JsonSerializable()`，而注解由 '
+          '`freezed_annotation.dart` 以 `export` 转发出来；用 `part of` 的 `.g.dart` '
+          '不算 import，纯 import 统计必然漏判，故它没有任何源码 import 也必须留着。',
+};
+
+/// `pubspec.yaml` 的运行期依赖名（`dependencies:` 块，跳过 `flutter: sdk: flutter`）。
+///
+/// 只取**恰好两空格缩进**的 `名字: 约束` 行 —— 注释行（`  # …`）与块内更深的
+/// 缩进天然不匹配；块在遇到第一个顶格行时结束。
+/// ⚠ **必须先归一化行尾**：本仓 `pubspec.yaml` 是 **CRLF**，若按 `split('\n')`
+/// 切分，空行会剩成 `'\r'` → 「非空且不以空格开头」成立 → 解析在第一个空行处
+/// 就 break（实测只认出 `flutter` 一个）。用 `RegExp(r'\r?\n')` 一次切干净。
+/// `dev_dependencies:` **刻意不管**：那里全是 CLI 调用的 codegen 工具
+/// （build_runner / freezed / hive_generator / riverpod_generator / flutter_lints…），
+/// 按设计就没有任何源码 import，扫了只会得到一份全量白名单、等于没守。
+List<String> _runtimeDependencies() {
+  final out = <String>[];
+  var inDeps = false;
+  for (final line in File('pubspec.yaml').readAsStringSync().split(RegExp(r'\r?\n'))) {
+    if (line.startsWith('dependencies:')) {
+      inDeps = true;
+      continue;
+    }
+    if (!inDeps) continue;
+    if (line.isNotEmpty && !line.startsWith(' ')) break; // 离开该块
+    final m = RegExp(r'^  ([a-z0-9_]+):\s*(\S.*)?$').firstMatch(line);
+    if (m == null) continue;
+    if ((m.group(2) ?? '').startsWith('sdk:')) continue;
+    out.add(m.group(1)!);
+  }
+  return out;
+}
+
+/// 一个包被 `lib/` `test/` `tool/` 的 `.dart` 源码 **import/export** 到的文件
+/// （含生成物；`lib/old/` 是 gitignore 的历史存档，跳过）。
+///
+/// ⚠ 必须匹配**指令**而不是裸子串：`contains('package:http/')` 会被
+/// `package:http_parser/…` 命中（审计时真的误判过一次），也会被
+/// 注释/文档/本文件的白名单理由串命中（实测把 `json_annotation` 误判成
+/// 「已被 import」）。只认行首的 `import` / `export` 就都没有这些问题。
+Set<String> _importsOf(String package) {
+  final pattern = RegExp(
+    "^\\s*(?:import|export)\\s+'package:${RegExp.escape(package)}/",
+    multiLine: true,
+  );
+  final hits = <String>{};
+  for (final dir in const ['lib', 'test', 'tool']) {
+    final d = Directory(dir);
+    if (!d.existsSync()) continue;
+    for (final f in d.listSync(recursive: true).whereType<File>()) {
+      final path = f.path.replaceAll(r'\', '/');
+      if (!path.endsWith('.dart')) continue;
+      if (path.contains('/old/')) continue;
+      if (pattern.hasMatch(f.readAsStringSync())) hits.add(path);
+    }
+  }
+  return hits;
+}
+
+/// 仓库根下的 `lib/`（`flutter test` 的工作目录就是包根）。
+Directory get _libDir => Directory('lib');
+
+/// 判断一个文件名是不是代码生成产物。
+bool _isGenerated(String path) =>
+    path.endsWith('.g.dart') || path.endsWith('.freezed.dart');
+
+/// `lib/` 下全部 `.dart`（跳过 `lib/old/`：那是 gitignore 掉的历史存档）。
+List<File> _dartFiles() => _libDir
+    .listSync(recursive: true)
+    .whereType<File>()
+    .where((f) => f.path.endsWith('.dart'))
+    .where((f) => !f.path.replaceAll(r'\', '/').contains('/old/'))
+    .toList();
+
+/// 一个文件里声明的 `part '…'` 目标（相对路径，已解析成归一化形式）。
+///
+/// 只认 `^part '…';` —— `part of '…';` 不会被这条正则命中（`of` 挡在引号前）。
+List<String> _partTargets(File file) {
+  final source = file.readAsStringSync();
+  final base = file.parent.path.replaceAll(r'\', '/');
+  return [
+    for (final m in RegExp(
+      "^part\\s+'([^']+)';",
+      multiLine: true,
+    ).allMatches(source))
+      '$base/${m.group(1)!}'.replaceAll('//', '/'),
+  ];
+}
+
+void main() {
+  final allDart = _dartFiles();
+  final generated = [
+    for (final f in allDart)
+      if (_isGenerated(f.path.replaceAll(r'\', '/'))) f.path.replaceAll(r'\', '/'),
+  ];
+  final declared = <String>[
+    // 生成物自己只写 `part of`，扫它们没有意义（也没有 `part` 指令）。
+    for (final f in allDart)
+      if (!_isGenerated(f.path.replaceAll(r'\', '/'))) ..._partTargets(f),
+  ];
+
+  test('.gitignore 不得忽略代码生成产物（本仓无 CI，缺了全新克隆编译不过）', () {
+    final lines = File('.gitignore')
+        .readAsStringSync()
+        .split('\n')
+        .map((l) => l.trim())
+        .toList();
+    expect(
+      lines.contains('*.g.dart'),
+      isFalse,
+      reason: '`.gitignore` 又忽略了 `*.g.dart` —— 生成物不入库，全新克隆会编译失败。'
+          '本仓无 CI，产物必须与源码一起提交（见 README「注意事项」）。',
+    );
+    expect(
+      lines.contains('*.freezed.dart'),
+      isFalse,
+      reason: '`.gitignore` 又忽略了 `*.freezed.dart` —— 同上，产物必须入库。',
+    );
+  });
+
+  test('生成物齐备：每个 part 指令都有对应文件', () {
+    expect(
+      declared,
+      isNotEmpty,
+      reason: '一个 part 指令都没扫到 —— 正则或目录口径失效了，别让守卫静默空转。',
+    );
+    final missing = [
+      for (final p in declared)
+        if (!File(p).existsSync()) p,
+    ];
+    expect(missing, isEmpty, reason: '缺失的生成物（跑 `dart run build_runner build '
+        '--delete-conflicting-outputs` 重新生成）：\n${missing.join('\n')}');
+  });
+
+  test('无孤儿生成物：磁盘上每个生成物都被某个 part 指令引用', () {
+    final declaredSet = declared.toSet();
+    final orphans = [
+      for (final g in generated)
+        if (!declaredSet.contains(g)) g,
+    ];
+    expect(orphans, isEmpty, reason: '这些生成物没有任何源文件 `part` 它们'
+        '（源文件已删/改名？）：\n${orphans.join('\n')}');
+  });
+
+  test('生成物数量与 part 指令数量一致（1:1，无重复引用）', () {
+    expect(declared.length, declared.toSet().length,
+        reason: '有 part 指令被重复声明（同一生成物被两个源文件 part）。');
+    expect(generated.length, declared.length,
+        reason: '生成物 ${generated.length} 个 vs part 指令 ${declared.length} 条 —— '
+            '两者必须 1:1（多 = 孤儿，少 = 缺失）。');
+  });
+
+  group('依赖都被真的 import（2026-09-20 · 架构审查 ①）', () {
+    final deps = _runtimeDependencies();
+    final hits = {for (final d in deps) d: _importsOf(d)};
+
+    test('pubspec 的每个运行期依赖都在源码里被 import（白名单除外）', () {
+      expect(deps, isNotEmpty,
+          reason: '一个运行期依赖都没解析出来 —— 解析口径失效了，别让守卫静默空转。');
+      final unused = [
+        for (final d in deps)
+          if ((hits[d] ?? const <String>{}).isEmpty &&
+              !_dependencyAllowList.containsKey(d))
+            d,
+      ];
+      expect(
+        unused,
+        isEmpty,
+        reason: '这些包在 lib/test/tool 里一次都没被 import（`import/export '
+            '\'package:<名字>/…\'` 零命中）：\n'
+            '  ${unused.join('\n  ')}\n'
+            '要么删掉（`flutter pub get` 后 lock 会跟着瘦），要么加进 '
+            '`_dependencyAllowList` **并写明理由**。\n'
+            '⚠ 判据是 import 指令、不是子串，所以 `http_parser` 不会把 `http` 带进来；'
+            '反过来说，本文件的白名单理由里随便写包名也不会自证自话。',
+      );
+    });
+
+    test('白名单不许陈旧：允许的包必须真在 pubspec 里、且真没被 import', () {
+      for (final entry in _dependencyAllowList.entries) {
+        expect(deps, contains(entry.key),
+            reason: '${entry.key} 在允许清单里，却不是运行期依赖了 —— 把它从 '
+                '`_dependencyAllowList` 删掉。');
+        expect(hits[entry.key], isEmpty,
+            reason: '${entry.key} 已经被源码 import 了 —— 不再是「白名单例外」，'
+                '把它从 `_dependencyAllowList` 删掉（理由也要删）。');
+      }
+    });
+
+    test('白名单每一条都写了理由（不是空壳）', () {
+      for (final entry in _dependencyAllowList.entries) {
+        expect(entry.value.trim().length, greaterThan(20),
+            reason: '${entry.key} 的理由太短/为空 —— 白名单是「有理由的例外」，'
+                '没理由就该删依赖。');
+      }
+    });
+  });
+}

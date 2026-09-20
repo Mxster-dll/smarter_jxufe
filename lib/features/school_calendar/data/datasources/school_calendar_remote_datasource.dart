@@ -2,6 +2,9 @@ import 'dart:math';
 
 import 'package:dio/dio.dart';
 
+import 'package:smarter_jxufe/core/network/jw_page_decoding.dart';
+import 'package:smarter_jxufe/features/school_calendar/data/school_calendar_exception.dart';
+
 /// 教务系统校历公开页远程数据源（免登录）。
 ///
 /// 服务端按会话发放数据：`SchoolCalendar.show.jsp` 必须复用
@@ -48,12 +51,13 @@ class SchoolCalendarRemoteDataSource {
 
     final html = response.data;
     if (html == null || html.isEmpty) {
-      throw Exception('校历查询无响应数据');
+      throw SchoolCalendarException('校历查询无响应数据');
     }
     // 会话失效时服务端会返回「凭证已失效」提示脚本。
-    if (html.contains('凭证已失效')) {
+    // 判据 = jwSessionExpired（教务页文本口径的唯一实现）。
+    if (jwSessionExpired(html)) {
       _sessionCookie = null;
-      throw Exception('校历会话已失效，请下拉刷新重试');
+      throw const JwSessionExpiredException('校历会话已失效，请下拉刷新重试');
     }
     return html;
   }
@@ -73,7 +77,7 @@ class SchoolCalendarRemoteDataSource {
       _sessionCookie = 'JSESSIONID=${match.group(1)}';
     } else {
       // 服务端不种会话 cookie 时，查询页拿不到同一会话会返回空模板。
-      throw Exception('校历服务未返回会话标识，请稍后重试');
+      throw SchoolCalendarException('校历服务未返回会话标识，请稍后重试');
     }
   }
 }

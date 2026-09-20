@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/core/errors/app_exception.dart';
 import 'package:smarter_jxufe/design/app_card.dart';
+import 'package:smarter_jxufe/design/section_title.dart';
 import 'package:smarter_jxufe/features/leave/data/providers/leave_providers.dart';
 import 'package:smarter_jxufe/features/leave/domain/leave_models.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
@@ -69,7 +71,7 @@ class LeaveDetailScreen extends ConsumerWidget {
                 _errorCard(
                   context,
                   scheme,
-                  '加载失败：${e.toString().replaceAll('Exception: ', '')}',
+                  '加载失败：${friendlyErrorText(e)}',
                 ),
               ],
               data: (bundle) => [
@@ -425,31 +427,8 @@ class LeaveDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _sectionTitle(BuildContext context, String text) {
-    final scheme = Theme.of(context).colorScheme;
-    return Row(
-      children: [
-        Container(
-          width: 3,
-          height: 13,
-          decoration: BoxDecoration(
-            color: scheme.primary,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: 7),
-        Text(
-          text,
-          style: TextStyle(
-            fontSize: 13.5,
-            fontWeight: FontWeight.w600,
-            color: scheme.onSurface,
-            letterSpacing: 0.3,
-          ),
-        ),
-      ],
-    );
-  }
+    Widget _sectionTitle(BuildContext context, String text) =>
+      appSectionTitle(context, text: text);
 
   Widget _whiteCard(BuildContext context, {required Widget child}) {
     return Material(

@@ -42,17 +42,6 @@ Map<String, dynamic> competitionPageRequestParams({
   return params;
 }
 
-/// 响应体是否为登录页 / 会话失效页（3xx 之外的第二道判据）。
-bool competitionLooksLikeLoginRedirect(String body) {
-  final trimmed = body.trimLeft();
-  if (!trimmed.startsWith('<!DOCTYPE html') && !trimmed.startsWith('<html')) {
-    return false;
-  }
-  return trimmed.contains('authFailure') ||
-      trimmed.contains('/sso/login') ||
-      RegExp(r'<title>\s*登录').hasMatch(trimmed);
-}
-
 /// 分页条里的总页数（最大 `$.pageSkip(N)`）；解析不到按 1 页。
 int competitionTotalPages(String html) {
   var max = 1;

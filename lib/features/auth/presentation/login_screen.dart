@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/Icons.dart';
+import 'package:smarter_jxufe/design/status_palette.dart';
 import 'package:smarter_jxufe/features/auth/presentation/login_state.dart';
 import 'package:smarter_jxufe/features/auth/presentation/login_viewmodel.dart';
 import 'package:smarter_jxufe/features/home/presentation/home_screen.dart';
@@ -437,13 +438,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         const SizedBox(width: 32),
         _buildOtherLoginIcon(
           Icons.wechat,
-          const Color(0xFF14c468),
+          StatusPalette.wechatGreen,
           onTap: () => viewModel.wechatLogin(context),
         ),
         const SizedBox(width: 32),
         _buildOtherLoginIcon(
           ExpandIcons.wecon,
-          const Color(0xFF73A9EC),
+          StatusPalette.wechatBlue,
           onTap: () => viewModel.showWecomUnavailable(context),
         ),
       ],

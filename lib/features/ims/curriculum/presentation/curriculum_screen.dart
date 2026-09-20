@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/breakpoints.dart';
 import 'package:smarter_jxufe/features/college/domain/college.dart';
 import 'package:smarter_jxufe/features/ims/course/data/models/course.dart';
 import 'package:smarter_jxufe/features/ims/curriculum/presentation/curriculum_state.dart';
@@ -32,7 +33,7 @@ class CurriculumScreen extends ConsumerWidget {
                   ),
                   child: LayoutBuilder(
                     builder: (context, constraints) {
-                      final isNarrow = constraints.maxWidth < 600;
+                      final isNarrow = constraints.maxWidth < Breakpoints.narrow;
                       final dropdowns = [
                         _buildYearDropdown(context, state, viewModel),
                         _buildCollegeDropdown(context, state, viewModel),

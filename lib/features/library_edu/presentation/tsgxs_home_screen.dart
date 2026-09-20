@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/library_edu/data/providers/tsgxs_providers.dart';
 import 'package:smarter_jxufe/features/library_edu/data/tsgxs_prefs.dart';
@@ -482,10 +483,9 @@ class TsgxsHomeScreen extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: padding ?? const EdgeInsets.all(14),
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
+        shape: appCardShape(context),
         color: scheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.hairline(context, 0.6)),
       ),
       child: child,
     );

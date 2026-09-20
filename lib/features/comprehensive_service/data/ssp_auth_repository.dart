@@ -1,6 +1,7 @@
 import 'package:smarter_jxufe/features/auth/data/auth_repository.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/datasource/ssp_auth_local_datasource.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/datasource/ssp_auth_remote_datasource.dart';
+import 'package:smarter_jxufe/features/comprehensive_service/data/ssp_exception.dart';
 
 /// 综合管理服务平台（ssp）会话仓库。
 ///
@@ -48,7 +49,7 @@ class SspAuthRepository {
       entry.casLoginUrl,
     );
     final callbackUrl = redirectResult.fold(
-      (failure) => throw Exception('获取统一认证票据失败：${failure.message ?? failure}'),
+      (failure) => throw SspApiException('获取统一认证票据失败：${failure.message ?? failure}'),
       (url) => url,
     );
 

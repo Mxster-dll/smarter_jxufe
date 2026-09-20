@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/design/app_theme.dart';
+import 'package:smarter_jxufe/design/status_palette.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/qr_login_viewmodel.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/widgets/qr_code_display_strategies.dart';
 
@@ -125,7 +126,7 @@ class QrCodeCard extends ConsumerWidget {
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFF14c468),
+                            color: StatusPalette.wechatGreen,
                           ),
                         ),
                         TextSpan(
@@ -140,7 +141,7 @@ class QrCodeCard extends ConsumerWidget {
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFF73A9EC),
+                            color: StatusPalette.wechatBlue,
                           ),
                         ),
                         TextSpan(

@@ -81,6 +81,13 @@ class FeaturePalette {
   /// 学生个人数据中心。
   static const dataCenter = Color(0xFFD81B60);
 
+  /// 「我的」页里**来自学校个人数据中心（竹简）**的那一份值。
+  ///
+  /// 用户 2026-09-20 七轮：「我的页不显示从数据中心添加的信息，我希望这部分数据要换
+  /// 个颜色显示」—— 与本地学籍缓存（主题正文色）区分开，用中性墨绿（与
+  /// [dataCenter] 的品红不同：那是入口色，这是「数据来源」标注色）。
+  static const dzjSource = Color(0xFF00695C);
+
   /// 数据一览 / 仪表盘小组件（App 主红，取「总览」语义）。
   static const dashboard = Color(0xFFC3282E);
 
@@ -193,6 +200,27 @@ class FeaturePalette {
 
   /// 竞赛奖励（深橙红 —— 与「志愿 #EF6C00」「调课 #D84315」同族但更深）。
   static const competitionAward = Color(0xFFBF360C);
+
+  /// 学习通（超星）—— 深钢蓝。
+  ///
+  /// 2026-09-19 立项时挑色：蓝族已被课表 `#1565C0`、网费 `#0277BD`、校历 `#039BE5`
+  /// 占了三档，这里取**明度最低的那一档**，四个蓝并排也不会看混。
+  /// 语义 = 「课程平台」，与课表蓝刻意同族（都在说「上课」）。
+  static const chaoxing = Color(0xFF0D47A1);
+
+  /// AA 算账（深橄榄金）。
+  ///
+  /// 2026-09-19 立项时挑色：黄 / 金族只有电费 `#F9A825`（亮琥珀）与竞赛奖励
+  /// `#BF360C`（橙红），中间这档空着；语义 = 「账本 / 钱」，与宿舍电费刻意不同族。
+  static const aaAccount = Color(0xFF827717);
+
+  /// 网站导航（亮紫 A700）。
+  ///
+  /// 2026-09-19 立项时挑色：蓝 / 青 / 绿 / 橙 / 棕 / 蓝灰各族都已占 3 档以上，
+  /// 紫族里 `#4A148C`（推免）/ `#4527A0`（公共查询）/ `#6A1B9A`（请假）都是**低饱和
+  /// 暗紫** —— 这里取同族里**唯一的高饱和亮紫**，语义 = 「入口 / 导航」；
+  /// 目录里它正好排在「公共查询」前一格，两枚紫但一眼分得开。
+  static const siteNav = Color(0xFF6200EA);
 }
 
 /// 深色下功能强调色的**明度下限**。
@@ -306,6 +334,7 @@ class FeatureColors {
   Color get jhRead => _t(FeaturePalette.jhRead);
   Color get libraryEdu => _t(FeaturePalette.libraryEdu);
   Color get dataCenter => _t(FeaturePalette.dataCenter);
+  Color get dzjSource => _t(FeaturePalette.dzjSource);
   Color get dashboard => _t(FeaturePalette.dashboard);
   Color get electricity => _t(FeaturePalette.electricity);
   Color get netFee => _t(FeaturePalette.netFee);
@@ -342,6 +371,9 @@ class FeatureColors {
   Color get deadlineDone => _t(FeaturePalette.deadlineDone);
   Color get recommendation => _t(FeaturePalette.recommendation);
   Color get competitionAward => _t(FeaturePalette.competitionAward);
+  Color get chaoxing => _t(FeaturePalette.chaoxing);
+  Color get aaAccount => _t(FeaturePalette.aaAccount);
+  Color get siteNav => _t(FeaturePalette.siteNav);
 }
 
 /// [FeatureColors.of] 的简写：`fp(context).schedule`。

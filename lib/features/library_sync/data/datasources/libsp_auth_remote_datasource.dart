@@ -26,14 +26,14 @@ library;
 
 import 'package:dio/dio.dart';
 
+import 'package:smarter_jxufe/core/errors/app_exception.dart';
+import 'package:smarter_jxufe/core/network/cas_walk.dart';
+import 'package:smarter_jxufe/core/network/cookie_jar.dart';
+import 'package:smarter_jxufe/core/network/trace_text.dart';
+
 /// 会话建立失败（票据被拒 / 网关不认 / 没拿到图书馆 Cookie）。
-class LibspSessionException implements Exception {
-  LibspSessionException(this.message);
-
-  final String message;
-
-  @override
-  String toString() => message;
+class LibspSessionException extends AppException {
+  LibspSessionException(super.message);
 }
 
 /// 图书馆统一认证数据源。
@@ -80,77 +80,76 @@ class LibspAuthRemoteDataSource {
     String ticketUrl, {
     List<String>? trace,
   }) async {
-    final jar = <String, Map<String, String>>{};
-    var url = ticketUrl;
+    final jar = HostCookieJar();
+    // 循环机制走地基件（`lib/core/network/cas_walk.dart`）；这里只留图书馆私有子协议：
+    // 落在网关域 → 重放桥接接口（**异步，且下一跳地址是页面里算出来的**）→ 改跳回图书馆。
+    // 成功与否仍由**罐里有没有 SESSION** 决定（见方法末尾 —— 与迁移前同一处判据）。
+    final outcome = await walkCasRedirects<void>(
+      startUrl: ticketUrl,
+      jar: jar,
+      send: (url, _) => _get(url, jar),
+      spec: const CasWalkSpec(
+        maxHops: 8,
+        traceUrlMax: 120,
+        traceLocationMax: 110,
+      ),
+      trace: trace,
+      afterResponse: (step) async {
+        // ① 先跟 Location（网关 302 回自己的 index 页 —— 继续跟）。
+        if (step.hasLocation) return null;
 
-    // ① 票据 → 网关回调（可能直接 302，也可能落页）
-    var response = await _get(url, jar);
-    _storeCookies(jar, Uri.parse(url).host, response);
-    trace?.add('跳[0] ${response.statusCode} ${_clip(url, 120)}');
-
-    for (var hop = 1; hop <= 8; hop++) {
-      final location = response.headers.value('location');
-      if (location != null && location.isNotEmpty) {
-        url = Uri.parse(url).resolve(location).toString();
-        // 网关回跳到自己的 index 页（不带 query）—— 继续跟。
-        response = await _get(url, jar);
-        _storeCookies(jar, Uri.parse(url).host, response);
-        trace?.add('跳[$hop] ${response.statusCode} → ${_clip(url, 110)}');
-        continue;
-      }
-
-      final host = Uri.parse(url).host;
-      if (host == gatewayHost) {
         // ② 落到「跳转中…」页：抠出 data/time/enc 与用户信息，重放桥接接口。
-        final body = response.data?.toString() ?? '';
-        final params = parseGatewayBridgeParams(body);
-        if (params.isEmpty) {
-          throw LibspSessionException(
-            '图书馆会话建立失败：网关跳转页里没有找到桥接参数（页面结构可能已改版）',
+        if (step.host == gatewayHost) {
+          final params = parseGatewayBridgeParams(step.bodyText ?? '');
+          if (params.isEmpty) {
+            throw LibspSessionException(
+              '图书馆会话建立失败：网关跳转页里没有找到桥接参数（页面结构可能已改版）',
+            );
+          }
+          trace?.add('   网关桥接参数：${params.keys.join(',')}');
+          final login = await _get(
+            'https://$gatewayHost$gatewayLoginPath',
+            jar,
+            query: params,
+            extraHeaders: {
+              'Referer': step.url,
+              'X-Requested-With': 'XMLHttpRequest',
+              'Accept': 'application/json, text/javascript, */*; q=0.01',
+            },
+          );
+          jar.absorb(gatewayHost, login.headers['set-cookie']);
+          final text = login.data?.toString() ?? '';
+          if (!text.replaceAll(' ', '').contains('"status":true')) {
+            throw LibspSessionException(
+              '图书馆会话建立失败：网关身份桥接被拒（${clipForTrace(text, 160)}）',
+            );
+          }
+          trace?.add('   网关身份桥接 status:true');
+
+          // ③ 按页内 `jumpToRefer` 的规则**改跳**回图书馆（不跟 Location）。
+          return CasHopGoto<void>(
+            '$loginRefer&data=${params['data']}'
+            '&time=${params['time']}&enc=${params['enc']}',
           );
         }
-        trace?.add('   网关桥接参数：${params.keys.join(',')}');
-        final login = await _get(
-          'https://$gatewayHost$gatewayLoginPath',
-          jar,
-          query: params,
-          extraHeaders: {
-            'Referer': url,
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json, text/javascript, */*; q=0.01',
-          },
-        );
-        _storeCookies(jar, gatewayHost, login);
-        final text = login.data?.toString() ?? '';
-        if (!text.replaceAll(' ', '').contains('"status":true')) {
+
+        if (step.host != libraryHost) {
           throw LibspSessionException(
-            '图书馆会话建立失败：网关身份桥接被拒（${_clip(text, 160)}）',
+            '图书馆会话建立失败：换证链走到了意料之外的主机 ${step.host}',
           );
         }
-        trace?.add('   网关身份桥接 status:true');
-
-        // ③ 按页内 jumpToRefer 的规则跳回图书馆。
-        final target =
-            '$loginRefer&data=${params['data']}&time=${params['time']}&enc=${params['enc']}';
-        response = await _get(target, jar);
-        _storeCookies(jar, libraryHost, response);
-        url = target;
-        trace?.add('跳[$hop] 回跳图书馆 ${response.statusCode}');
-        continue;
-      }
-
-      if (host == libraryHost) break;
-
-      throw LibspSessionException(
-        '图书馆会话建立失败：换证链走到了意料之外的主机 $host',
-      );
+        return null; // 落在图书馆域：链路走完，收工
+      },
+    );
+    if (outcome.exhausted) {
+      trace?.add('   ⚠ 换证链跳数超过上限 ${outcome.hops}（一路没见到图书馆域）');
     }
 
-    final cookie = _cookieHeader(jar, libraryHost);
+    final cookie = jar.headerFor(libraryHost);
     if (!hasSession(cookie)) {
       throw LibspSessionException(
         '图书馆会话建立失败：未取得 $sessionCookieName '
-        '（Cookie=[${jar[libraryHost]?.keys.join(',') ?? '空'}]）',
+        '（Cookie=[${jar.namesOf(libraryHost)}]）',
       );
     }
     return cookie;
@@ -187,12 +186,12 @@ class LibspAuthRemoteDataSource {
 
   Future<Response<dynamic>> _get(
     String url,
-    Map<String, Map<String, String>> jar, {
+    HostCookieJar jar, {
     Map<String, String>? query,
     Map<String, String>? extraHeaders,
   }) async {
     final host = Uri.parse(url).host;
-    final cookie = _cookieHeader(jar, host);
+    final cookie = jar.headerFor(host);
     try {
       return await _dio.get<dynamic>(
         url,
@@ -215,30 +214,5 @@ class LibspAuthRemoteDataSource {
     }
   }
 
-  static void _storeCookies(
-    Map<String, Map<String, String>> jar,
-    String host,
-    Response<dynamic> response,
-  ) {
-    final raw = response.headers['set-cookie'];
-    if (raw == null || raw.isEmpty) return;
-    final map = jar.putIfAbsent(host, () => <String, String>{});
-    for (final line in raw) {
-      final first = line.split(';').first.trim();
-      final eq = first.indexOf('=');
-      if (eq > 0) map[first.substring(0, eq).trim()] = first.substring(eq + 1);
-    }
-  }
 
-  static String _cookieHeader(
-    Map<String, Map<String, String>> jar,
-    String host,
-  ) {
-    final map = jar[host];
-    if (map == null || map.isEmpty) return '';
-    return map.entries.map((e) => '${e.key}=${e.value}').join('; ');
-  }
-
-  static String _clip(String value, int max) =>
-      value.length > max ? '${value.substring(0, max)}…' : value;
 }

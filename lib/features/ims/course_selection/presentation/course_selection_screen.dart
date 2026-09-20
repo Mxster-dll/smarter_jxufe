@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/design/pane_chrome.dart';
-import 'package:smarter_jxufe/features/settings/domain/settings_section.dart';
+import 'package:smarter_jxufe/design/settings_section.dart';
 import 'package:smarter_jxufe/features/ims/course_selection/data/datasources/course_selection_remote_datasource.dart';
 import 'package:smarter_jxufe/features/ims/course_selection/presentation/selection_extra_screens.dart';
 import 'package:smarter_jxufe/features/ims/course_selection/presentation/selection_online_view.dart';

@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/core/navigation/refresh_gate.dart';
+
 /// 畅想之星「数据更新」的最小间隔。
 ///
 /// 用户 2026-09-14 要求：「数据更新设置一个最小间隔（1min)」，并明确**仅限畅想之星**。
@@ -23,30 +25,12 @@ const Duration cxstarMinRefreshInterval = Duration(minutes: 1);
 /// 不受限（用户 2026-09-14 拍板）：手动下拉刷新、会话变更（统一认证 / 手工令牌 /
 /// 清除令牌）、错误卡「重试」，以及结算补刷（`cxstarReturnSettleDelays`，专为平台
 /// 批量结算设计）。
-class CxstarRefreshGate {
+///
+/// 机制本体 = [RefreshGate]（`lib/core/navigation/refresh_gate.dart`，2026-09-20 收敛）；
+/// 本类只绑定畅想之星自己的间隔常量，字段与方法全部继承，调用方口径不变。
+class CxstarRefreshGate extends RefreshGate {
   CxstarRefreshGate({DateTime Function()? clock})
-    : _clock = clock ?? DateTime.now;
-
-  /// 取当前时刻（测试可注入假时钟推进窗口）。
-  final DateTime Function() _clock;
-
-  DateTime? _lastUpdatedAt;
-
-  /// 上次**取到新数据**的时刻（`null` = 本次运行还没取到过）。
-  DateTime? get lastUpdatedAt => _lastUpdatedAt;
-
-  /// 自动刷新是否已过最小间隔（`null` = 还没取到过数据 → 放行）。**只读，不记账。**
-  bool get allowsAutoRefresh {
-    final last = _lastUpdatedAt;
-    if (last == null) return true;
-    return _clock().difference(last) >= cxstarMinRefreshInterval;
-  }
-
-  /// 刚取到新数据 → 记账，重新开始一个窗口。
-  void markUpdated() => _lastUpdatedAt = _clock();
-
-  /// 清空记账（测试用）。
-  void reset() => _lastUpdatedAt = null;
+    : super(minInterval: cxstarMinRefreshInterval, now: clock);
 }
 
 /// 闸门实例挂在容器上（非 autoDispose → 生命周期跨越页面重建）。

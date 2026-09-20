@@ -7,7 +7,7 @@ import 'package:smarter_jxufe/features/campus_address/data/my_campus_prefs.dart'
 import 'package:smarter_jxufe/features/campus_address/domain/my_campus.dart';
 import 'package:smarter_jxufe/features/campus_address/presentation/my_campus_widgets.dart';
 import 'package:smarter_jxufe/design/pane_chrome.dart';
-import 'package:smarter_jxufe/features/settings/domain/settings_section.dart';
+import 'package:smarter_jxufe/design/settings_section.dart';
 
 /// 校区地图条目：内置压缩版资源(官网四校区地图,生成脚本 tools/_campus_maps_build.py)。
 class CampusMapEntry {

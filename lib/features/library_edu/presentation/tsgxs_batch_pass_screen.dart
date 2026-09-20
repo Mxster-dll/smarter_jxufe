@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
+import 'package:smarter_jxufe/design/status_palette.dart';
 import 'package:smarter_jxufe/features/library_edu/data/providers/tsgxs_providers.dart';
 import 'package:smarter_jxufe/features/library_edu/data/tsgxs_prefs.dart';
 import 'package:smarter_jxufe/features/library_edu/domain/tsgxs_models.dart';
@@ -358,7 +360,7 @@ class _TsgxsBatchPassScreenState extends ConsumerState<TsgxsBatchPassScreen> {
     final (icon, color, label) = switch (state) {
       _ChapterState.passed => (
         Icons.check_circle,
-        const Color(0xFF0F7B0F),
+        StatusPalette.success,
         '已通过',
       ),
       _ChapterState.failed => (Icons.error_outline, scheme.error, '未通过(已停止)'),
@@ -452,10 +454,9 @@ class _TsgxsBatchPassScreenState extends ConsumerState<TsgxsBatchPassScreen> {
     final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
+        shape: appCardShape(context),
         color: scheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.hairline(context, 0.6)),
       ),
       child: child,
     );

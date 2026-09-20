@@ -1,6 +1,7 @@
 import 'package:html/dom.dart';
 import 'package:html/parser.dart' as html_parser;
 
+import 'package:smarter_jxufe/features/ims/data/ims_exception.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grade.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grades_result.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/semester.dart';
@@ -29,7 +30,7 @@ class GradesHtmlParser {
     }
 
     if (dataTables.isEmpty) {
-      throw Exception('未找到数据 table');
+      throw ImsApiException('未找到数据 table');
     }
 
     // 学期标题表和数据表一一对应：

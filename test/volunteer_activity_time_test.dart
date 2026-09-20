@@ -226,15 +226,20 @@ void main() {
       ).readAsStringSync();
       expect(panel.contains("Key('dash_volunteer_year')"), isTrue);
       expect(panel.contains('本学年'), isTrue);
-      expect(panel.contains('volunteerHoursStats'), isTrue);
+      // 口径（provider 本身）2026-09-20 从 panel 下沉到 data 层 —— 桌面小组件要在
+      // data 层复用同一口径，写在 presentation 里就是 data → 别家 presentation 的越界。
+      final providers = File(
+        'lib/features/home/data/providers/dashboard_providers.dart',
+      ).readAsStringSync();
+      expect(providers.contains('volunteerHoursStats'), isTrue);
       expect(
-        panel.contains('FutureProvider<VolunteerHoursStats>'),
+        providers.contains('FutureProvider<VolunteerHoursStats>'),
         isTrue,
         reason: '仪表盘 provider 必须返回统计结果（总时长 + 本学年），别退回 double',
       );
       expect(
-        panel.contains('currentSchoolTerm(') &&
-            panel.contains('offlineSemesterTermsProvider'),
+        providers.contains('currentSchoolTerm(') &&
+            providers.contains('offlineSemesterTermsProvider'),
         isTrue,
         reason: '本学年 = 当下教学学年（currentSchoolTerm 口径），别用综测的测评学年',
       );

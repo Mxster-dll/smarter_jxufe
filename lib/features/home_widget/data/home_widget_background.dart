@@ -7,6 +7,7 @@ import 'package:flutter/widgets.dart';
 import 'package:smarter_jxufe/core/network/device_profile_repository.dart';
 import 'package:smarter_jxufe/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:smarter_jxufe/features/home_widget/data/home_widget_bridge.dart';
+import 'package:smarter_jxufe/features/home_widget/data/home_widget_exception.dart';
 import 'package:smarter_jxufe/features/home_widget/domain/home_widget_snapshot.dart';
 import 'package:smarter_jxufe/features/ims/auth/data/ims_session_renewal.dart';
 import 'package:smarter_jxufe/features/ims/grades/data/anti_corruption/weighted_grade_html_parser.dart';
@@ -95,12 +96,12 @@ Future<String?> _refreshElectricity({
       queryParameters: {'username': username, 'roomId': roomId},
     );
     final data = response.data;
-    if (data is! Map) throw Exception('响应异常');
+    if (data is! Map) throw HomeWidgetException('响应异常');
     if ((data['code'] as num?)?.toInt() != 1) {
-      throw Exception((data['message'] ?? '查询失败').toString());
+      throw HomeWidgetException((data['message'] ?? '查询失败').toString());
     }
     final result = data['result'];
-    if (result is! Map) throw Exception('缺少电量数据');
+    if (result is! Map) throw HomeWidgetException('缺少电量数据');
 
     final balance = (result['balance'] ?? '--').toString();
     final unit = (result['unit'] ?? '').toString();
@@ -238,7 +239,7 @@ Future<WeightedGrade> _fetchWeightedGrade(Map<String, Object?> auth) async {
   var jsessionId = (auth['jsessionid'] as String?)?.trim() ?? '';
   final tgc = (auth['tgc'] as String?)?.trim() ?? '';
   if (jsessionId.isEmpty && tgc.isEmpty) {
-    throw Exception('缺少教务会话，需在 App 内刷新');
+    throw HomeWidgetException('缺少教务会话，需在 App 内刷新');
   }
 
   final imsDio = _imsDio();
@@ -257,7 +258,7 @@ Future<WeightedGrade> _fetchWeightedGrade(Map<String, Object?> auth) async {
 
   final renewed = await _renewJsessionId(tgc);
   if (renewed == null) {
-    throw Exception('教务会话续期失败，需在 App 内打开一次成绩页');
+    throw HomeWidgetException('教务会话续期失败，需在 App 内打开一次成绩页');
   }
   // 回写新会话，供下次后台刷新直接复用（App 侧也会自行续期，互不冲突）。
   await HomeWidgetBridge.setAuthSnapshot({...auth, 'jsessionid': renewed});

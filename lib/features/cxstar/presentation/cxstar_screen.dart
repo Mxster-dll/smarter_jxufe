@@ -14,6 +14,7 @@ import 'package:smarter_jxufe/core/navigation/page_auto_refresh.dart';
 import 'package:smarter_jxufe/core/network/dio_providers.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
+import 'package:smarter_jxufe/design/section_title.dart';
 import 'package:smarter_jxufe/features/cxstar/data/datasources/cxstar_auth_remote_datasource.dart';
 import 'package:smarter_jxufe/features/cxstar/data/providers/cxstar_providers.dart';
 import 'package:smarter_jxufe/features/cxstar/data/providers/cxstar_reader_providers.dart';
@@ -1108,25 +1109,8 @@ class _SectionTitle extends StatelessWidget {
   const _SectionTitle({required this.text});
 
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 3,
-          height: 14,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primary,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          text,
-          style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) =>
+      appSectionTitle(context, text: text);
 }
 
 class _Card extends StatelessWidget {

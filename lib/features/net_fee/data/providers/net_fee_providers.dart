@@ -1,12 +1,12 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 
 import 'package:smarter_jxufe/core/network/device_profile_repository_provider.dart';
 import 'package:smarter_jxufe/core/network/dio_providers.dart';
 import 'package:smarter_jxufe/features/data_center/data/providers/data_center_providers.dart';
 import 'package:smarter_jxufe/features/net_fee/data/datasources/net_fee_remote_datasource.dart';
 import 'package:smarter_jxufe/features/net_fee/domain/net_fee_models.dart';
+import 'package:smarter_jxufe/features/platform_guid/data/providers/guid_providers.dart';
 
 /// 网费计费域专用 Dio（智慧江财平台，与电费/校历同源反代）。
 ///
@@ -31,22 +31,6 @@ final netFeeDioProvider = Provider<Dio>((ref) {
   );
 });
 
-/// 微信平台配置 Box（与校历 feature 共用同一 Hive box 'wxPlatform'）。
-///
-/// key 'guid' = 智慧江财平台用户标识（GUID）。校历页填写的配置网费直接复用；
-/// 网费页亦可在此读写，两处保持同步。
-final netFeePlatformBoxProvider = FutureProvider<Box<String>>(
-  (ref) => Hive.openBox<String>('wxPlatform'),
-);
-
-/// 已配置的平台 GUID；未配置为 null。
-final netFeeGuidProvider = FutureProvider<String?>((ref) async {
-  final box = await ref.watch(netFeePlatformBoxProvider.future);
-  final guid = box.get('guid');
-  if (guid == null || guid.trim().isEmpty) return null;
-  return guid.trim();
-});
-
 /// 网费远程数据源。
 final netFeeRemoteDataSourceProvider = Provider<NetFeeRemoteDataSource>(
   (ref) => NetFeeRemoteDataSource(ref.watch(netFeeDioProvider)),
@@ -62,7 +46,7 @@ final netFeeSummaryProvider = FutureProvider<NetFeeSummary>((ref) async {
   if (account.isEmpty) {
     throw const NetFeeApiException('请先登录后再查看校园网');
   }
-  final guid = await ref.watch(netFeeGuidProvider.future);
+  final guid = await ref.watch(platformGuidProvider.future);
   if (guid == null) {
     return _fetchPortal(ref, account, hasGuid: false);
   }

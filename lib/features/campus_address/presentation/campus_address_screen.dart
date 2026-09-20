@@ -10,7 +10,7 @@ import 'package:smarter_jxufe/features/campus_address/domain/campus_address.dart
 import 'package:smarter_jxufe/features/campus_address/domain/my_campus.dart';
 import 'package:smarter_jxufe/features/campus_address/presentation/my_campus_widgets.dart';
 import 'package:smarter_jxufe/design/pane_chrome.dart';
-import 'package:smarter_jxufe/features/settings/domain/settings_section.dart';
+import 'package:smarter_jxufe/design/settings_section.dart';
 
 /// 学校地址：展示四个校区（蛟桥园 / 青山园 / 麦庐园 / 枫林园）的
 /// 地址与邮编，点击卡片右上角可一键复制整条校区信息。

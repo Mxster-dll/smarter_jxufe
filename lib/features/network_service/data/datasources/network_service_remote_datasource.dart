@@ -2,19 +2,16 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
+import 'package:smarter_jxufe/core/errors/app_exception.dart';
 import 'package:smarter_jxufe/features/network_service/domain/network_service_models.dart';
 
 /// 网络服务接口异常（message 面向 UI 直显）。
-class NetworkServiceException implements Exception {
-  final String message;
+class NetworkServiceException extends AppException {
 
   /// 是否需要用户先去设置平台标识（GUID）。
   final bool needGuid;
 
-  const NetworkServiceException(this.message, {this.needGuid = false});
-
-  @override
-  String toString() => message;
+  const NetworkServiceException(super.message, {this.needGuid = false});
 }
 
 /// 「网络服务」（智慧江财「生活 > 网络服务」）远程数据源。

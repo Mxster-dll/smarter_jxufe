@@ -269,6 +269,12 @@ String _clean(String raw) => raw
     .trim();
 
 /// 从片段里找 `[2-17]周` / `[1-16]周(单)` / `[3]周`。
+///
+/// ⚠ 单双周**两种写法都要认**（2026-09-19 修）：
+/// - 写在周次里：`[1-16]周(单)`；
+/// - 单独占一个片段：`[2-17]周` + `双周` —— 真实教室课表就是这么给的
+///   （fixture `public_jsikb_rooms.html` 的「数据处理技术基础」），
+///   只认前一种会把双周的课当成每周都上。
 ({int start, int end, WeekParity parity}) _parseWeeks(List<String> parts) {
   for (final p in parts) {
     final m = RegExp(r'\[(\d+)(?:\s*-\s*(\d+))?\]\s*周?').firstMatch(p);
@@ -276,14 +282,21 @@ String _clean(String raw) => raw
     final a = int.tryParse(m.group(1) ?? '');
     if (a == null) continue;
     final b = int.tryParse(m.group(2) ?? '') ?? a;
-    final parity = p.contains('单')
-        ? WeekParity.odd
-        : p.contains('双')
-        ? WeekParity.even
-        : WeekParity.every;
-    return (start: a, end: b, parity: parity);
+    return (start: a, end: b, parity: _parseParity(parts, p));
   }
   return (start: 1, end: 30, parity: WeekParity.every);
+}
+
+/// 单双周：先看周次片段自己（`[1-16]周(单)`），再看**独立片段**（`单周` / `双周`）。
+WeekParity _parseParity(List<String> parts, String weekPart) {
+  if (weekPart.contains('单')) return WeekParity.odd;
+  if (weekPart.contains('双')) return WeekParity.even;
+  for (final p in parts) {
+    final token = p.trim();
+    if (token == '单周' || token == '单') return WeekParity.odd;
+    if (token == '双周' || token == '双') return WeekParity.even;
+  }
+  return WeekParity.every;
 }
 
 /// 表尾备注（`备注1[…]：…`、`注1：…`），整段文本原样保留。

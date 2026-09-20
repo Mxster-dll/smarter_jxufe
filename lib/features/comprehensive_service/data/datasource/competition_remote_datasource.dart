@@ -3,9 +3,11 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
 
+import 'package:smarter_jxufe/core/network/sso_login_page.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/anti_corruption/competition_parser.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/datasource/ssp_auth_remote_datasource.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/competition.dart';
+import 'package:smarter_jxufe/features/comprehensive_service/data/ssp_exception.dart';
 
 /// 第二课堂「学科竞赛」数据源（综合管理服务平台 · 团委模块）。
 ///
@@ -260,7 +262,7 @@ class CompetitionRemoteDataSource {
     final reply = CompetitionJsonReply.parse(response);
     final ids = reply.attachmentIds;
     if (!reply.ok || ids.isEmpty) {
-      throw Exception(reply.message.isEmpty ? '证书上传失败' : reply.message);
+      throw SspApiException(reply.message.isEmpty ? '证书上传失败' : reply.message);
     }
     return ids.first;
   }
@@ -291,7 +293,7 @@ class CompetitionRemoteDataSource {
     );
     final reply = CompetitionJsonReply.parse(response);
     if (!reply.ok) {
-      throw Exception(reply.message.isEmpty ? '提交失败' : reply.message);
+      throw SspApiException(reply.message.isEmpty ? '提交失败' : reply.message);
     }
     return reply.message.isEmpty ? '提交成功' : reply.message;
   }
@@ -312,7 +314,7 @@ class CompetitionRemoteDataSource {
     );
     final reply = CompetitionJsonReply.parse(response);
     if (!reply.ok) {
-      throw Exception(reply.message.isEmpty ? '删除失败' : reply.message);
+      throw SspApiException(reply.message.isEmpty ? '删除失败' : reply.message);
     }
   }
 
@@ -378,7 +380,7 @@ class CompetitionRemoteDataSource {
       throw SspSessionExpiredException();
     }
     if (status != 200) {
-      throw Exception('请求失败: $status');
+      throw SspApiException('请求失败: $status');
     }
     final data = response.data;
     final body = switch (data) {
@@ -387,7 +389,7 @@ class CompetitionRemoteDataSource {
       Map() || List() => jsonEncode(data),
       _ => data.toString(),
     };
-    if (competitionLooksLikeLoginRedirect(body)) {
+    if (ssoLoginPage(body)) {
       throw SspSessionExpiredException();
     }
     return body;

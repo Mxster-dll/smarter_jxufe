@@ -6,8 +6,10 @@ import '../../../design/app_theme.dart';
 import '../domain/doc_blocks.dart';
 import '../domain/rule_doc.dart';
 import '../data/rules_repository.dart';
+import 'package:smarter_jxufe/design/breakpoints.dart';
 import 'widgets/doc_table.dart';
 import 'widgets/notice_card.dart';
+import 'package:smarter_jxufe/design/app_states.dart';
 
 /// 规则文件阅读器：按文档模板深度定制渲染。
 ///
@@ -101,7 +103,7 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
         ],
       ),
       body: articleAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const AppLoadingState(),
         error: (e, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -147,7 +149,7 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
     final family = catalog?.familyOf(widget.doc.id);
     final layout = LayoutBuilder(
       builder: (context, constraints) {
-        final wide = constraints.maxWidth >= 1000 && toc.length >= 2;
+        final wide = constraints.maxWidth >= Breakpoints.extraWide && toc.length >= 2;
         final listView = ListView(
           padding: const EdgeInsets.fromLTRB(24, 18, 24, 80),
           children: [

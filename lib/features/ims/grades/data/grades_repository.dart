@@ -2,6 +2,7 @@ import 'package:dartz/dartz.dart';
 
 import 'package:smarter_jxufe/core/errors/failures.dart';
 import 'package:smarter_jxufe/core/exception/sync_failure.dart';
+import 'package:smarter_jxufe/core/network/jw_page_decoding.dart';
 import 'package:smarter_jxufe/features/ims/auth/data/ims_auth_repository.dart';
 import 'package:smarter_jxufe/features/ims/grades/data/anti_corruption/grades_html_parser.dart';
 import 'package:smarter_jxufe/features/ims/grades/data/datasources/grades_local_datasource.dart';
@@ -89,7 +90,7 @@ class GradesRepository {
       final result = _htmlParser.parseHtml(html);
       return Right(result);
     } catch (e) {
-      if (e.toString().contains('凭证已失效')) {
+      if (isJwSessionExpiredError(e)) {
         // 刷新 JSESSIONID 并重试一次
         final refreshResult = await _imsAuthRepo.getJsessionId(
           forceRefresh: true,
@@ -110,7 +111,7 @@ class GradesRepository {
           final result = _htmlParser.parseHtml(html);
           return Right(result);
         } catch (retryError) {
-          if (retryError.toString().contains('凭证已失效')) {
+          if (isJwSessionExpiredError(retryError)) {
             return Left(InvalidCredentialsFailure('凭证已失效，请重新登录!'));
           }
           return Left(SyncFailure('获取成绩失败: $retryError'));

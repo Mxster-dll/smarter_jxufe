@@ -4,6 +4,7 @@ import 'package:smarter_jxufe/core/network/dio_providers.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/datasource/volunteer_hours_remote_datasource.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/volunteer_activity.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/providers/ssp_auth_providers.dart';
+import 'package:smarter_jxufe/features/comprehensive_service/data/ssp_exception.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/volunteer_hours_repository.dart';
 
 /// 志愿服务时长数据源提供者。
@@ -32,7 +33,7 @@ final volunteerActivitiesProvider = FutureProvider<List<VolunteerActivity>>((
 ) async {
   final account = ref.watch(currentAccountProvider);
   if (account.isEmpty) {
-    throw Exception('请先登录后再查看志愿服务时长');
+    throw SspApiException('请先登录后再查看志愿服务时长');
   }
   final repository = await ref.watch(volunteerHoursRepositoryProvider.future);
   return repository.fetchActivities(account);

@@ -24,8 +24,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
-import 'package:smarter_jxufe/features/settings/domain/settings_section.dart';
-import 'package:smarter_jxufe/features/settings/presentation/settings_entry.dart';
+import 'package:smarter_jxufe/design/settings_section.dart';
+import 'package:smarter_jxufe/design/settings_entry.dart';
 import 'package:smarter_jxufe/features/settings/presentation/settings_screen.dart';
 
 /// 设置页会读若干 Hive 偏好 box（校区 / 校历 / 入馆教育 / 主页布局），
@@ -224,6 +224,16 @@ void main() {
         ],
         'lib/features/ims/public_query/presentation/public_query_screen.dart': [
           'SettingsSection.imsSession',
+          // 找空闲教室 / 找无课时间 / 默认教学楼都在「公共查询」节（2026-09-19 加）。
+          'SettingsSection.publicQuery',
+        ],
+        'lib/features/ims/public_query/presentation/classroom_free_screen.dart': [
+          'SettingsSection.imsSession',
+          'SettingsSection.publicQuery',
+        ],
+        'lib/features/ims/public_query/presentation/free_time_screen.dart': [
+          'SettingsSection.imsSession',
+          'SettingsSection.publicQuery',
         ],
         'lib/features/ims/course_selection/presentation/course_selection_screen.dart':
             ['SettingsSection.imsSession'],

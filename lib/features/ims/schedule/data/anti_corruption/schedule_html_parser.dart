@@ -2,6 +2,7 @@ import 'package:html/dom.dart';
 import 'package:html/parser.dart' as parser;
 
 import 'package:smarter_jxufe/core/network/jw_page_decoding.dart';
+import 'package:smarter_jxufe/features/ims/data/ims_exception.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/class_time.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/schedule_entry.dart';
 import 'package:smarter_jxufe/utils/Log.dart';
@@ -69,14 +70,14 @@ class ScheduleHtmlParser {
     // 这正是 2026-09-15 踩过的坑）→ 用与其它教务页同一口径 [jwSessionExpired] 先排除。
     if (tables.isEmpty) {
       if (jwSessionExpired(html)) {
-        throw Exception('凭证已失效，请重新登录！');
+        throw const JwSessionExpiredException('凭证已失效，请重新登录！');
       }
       return const [];
     }
 
     if (tables.length != 1) {
       logInfo(html);
-      throw Exception('期望有1个 table，但找到了${tables.length}个 table');
+      throw ImsApiException('期望有1个 table，但找到了${tables.length}个 table');
     }
 
     final table = tables.first;

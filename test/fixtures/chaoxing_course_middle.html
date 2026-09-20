@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>261学期 计算机组成原理-首页</title>
+</head>
+<body>
+<!-- 2026-09-19 实抓脱敏：课程详情页里与「作业入口」相关的片段。
+     关键点：真实页面里同时存在 ①带完整签名（enc + openc）的 data 属性、
+     ②只有 enc 的 href、③页内 JS 里 &status= / &pageNum= 的变体 ——
+     解析必须挑带 openc 的那条。 -->
+<div class="c-header">
+	<div class="navshow">
+		<ul>
+			<li><a href="/mooc-ans/coursedata?classId=200000001&courseId=100000001&type=1&ut=s&enc=0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f&cpi=900000001&openc=1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e">统计</a></li>
+			<li><a href="/mooc-ans/schoolCourseInfo/getNotifyList?courseId=100000001&classId=200000001&ut=s&enc=0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f&cpi=900000001&openc=1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e" title="通知">通知</a></li>
+			<li><a href="javascript:void(0)" title="">我的作业</a></li>
+			<li><a onclick="rmWorkDot('200000001','work',this);" href="javascript:;" data="/work/getAllWork?classId=200000001&courseId=100000001&isdisplaytable=2&mooc=1&ut=s&enc=0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f&cpi=900000001&openc=1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e" title="作业">作业</a><i class="workTip"></i></li>
+			<li><a href="/mooc-ans/work/evaluation?classId=200000001&courseId=100000001&isdisplaytable=2&mooc=1&ut=s&enc=0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f&cpi=900000001&openc=1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e" title="待批作业">待批作业</a></li>
+		</ul>
+	</div>
+</div>
+<script>
+	var _HOST_ = "//mooc1.chaoxing.com";
+	var _CP_ = "/mooc-ans";
+	var _HOST_CP2_ = _CP_;
+	// 变体：少 openc、带 status / pageNum —— 都不能拿去当作业入口
+	var workUrl1 = _HOST_CP2_ + "/work/getAllWork?classId=200000001&courseId=100000001&status=1&ut=s&cpi=900000001";
+	var workUrl2 = "/work/getAllWork?courseId=100000001&classId=200000001&pageNum=1";
+</script>
+</body>
+</html>

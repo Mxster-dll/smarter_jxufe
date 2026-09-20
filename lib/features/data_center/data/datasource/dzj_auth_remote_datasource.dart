@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 
+import 'package:smarter_jxufe/core/errors/app_exception.dart';
+
 /// 竹简数据中台一次会话的凭证。
 ///
 /// [session] 为服务端签发的 SESSION cookie 值；
@@ -20,12 +22,8 @@ class DzjSession {
 }
 
 /// 竹简数据中台会话已失效（需重新走统一认证换取）。
-class DzjSessionExpiredException implements Exception {
-  final String message;
-  DzjSessionExpiredException([this.message = '个人数据中心会话已过期']);
-
-  @override
-  String toString() => 'DzjSessionExpiredException: $message';
+class DzjSessionExpiredException extends SessionExpiredException {
+  DzjSessionExpiredException([super.message = '个人数据中心会话已过期']);
 }
 
 /// 竹简数据中台会话建立远程数据源。

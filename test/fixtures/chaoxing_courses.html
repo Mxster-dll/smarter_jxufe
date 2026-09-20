@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>学生端</title>
+</head>
+<body>
+<!-- 2026-09-19 实抓脱敏：真实结构，courseId/classId/cpi 已换成假号，课程名保留 -->
+<div class="ulDiv">
+	<ul>
+		<li class="courseItem">
+			<input type="hidden" name="courseId" value="100000001" />
+			<input type="hidden" name="classId" value="200000001" />
+			<div class="courseInfo">
+				<a href='/visit/stucoursemiddle?courseid=100000001&clazzid=200000001&vc=1&cpi=900000001' target="_blank" class="cover"></a>
+				<h3><a class="courseName" href='/visit/stucoursemiddle?courseid=100000001&clazzid=200000001&vc=1&cpi=900000001' target="_blank" title="261学期&nbsp;计算机组成原理">261学期&nbsp;计算机组成原理</a><i></i></h3>
+			</div>
+		</li>
+		<li class="courseItem">
+			<input type="hidden" name="courseId" value="100000002" />
+			<input type="hidden" name="classId" value="200000002" />
+			<div class="courseInfo">
+				<a href='/visit/stucoursemiddle?courseid=100000002&clazzid=200000002&vc=1&cpi=900000001' target="_blank" class="cover"></a>
+				<h3><a class="courseName" href='/visit/stucoursemiddle?courseid=100000002&clazzid=200000002&vc=1&cpi=900000001' target="_blank" title="261学期&nbsp;线性代数(工)">261学期&nbsp;线性代数(工)</a><i></i></h3>
+			</div>
+		</li>
+		<li class="courseItem">
+			<input type="hidden" name="courseId" value="100000003" />
+			<input type="hidden" name="classId" value="200000003" />
+			<div class="courseInfo">
+				<a href='/visit/stucoursemiddle?courseid=100000003&clazzid=200000003&vc=1&cpi=900000001' target="_blank" class="cover"></a>
+				<h3><a class="courseName" href='/visit/stucoursemiddle?courseid=100000003&clazzid=200000003&vc=1&cpi=900000001' target="_blank" title="253程序设计实训">253程序设计实训</a><i></i></h3>
+			</div>
+		</li>
+		<li class="courseItem">
+			<input type="hidden" name="courseId" value="100000004" />
+			<input type="hidden" name="classId" value="200000004" />
+			<div class="courseInfo">
+				<a href='/visit/stucoursemiddle?courseid=100000004&clazzid=200000004&vc=1&cpi=900000001' target="_blank" class="cover"></a>
+				<h3><a class="courseName" href='/visit/stucoursemiddle?courseid=100000004&clazzid=200000004&vc=1&cpi=900000001' target="_blank" title="大学生国家安全教育">大学生国家安全教育</a><i></i></h3>
+			</div>
+		</li>
+	</ul>
+</div>
+<!-- 占位项：没有 stucoursemiddle 链接，解析时必须被跳过 -->
+<li class="addLi"><a href="javascript:;">新建课程</a></li>
+<script>
+$(function(){
+   var classIds=[];
+	var liList=$(".ulDiv li");
+	var length=liList.length;
+	liList.each(function(index,me){
+	var classid= $(me).find('input[name="classId"]').val();
+	 if(index!=length-1){
+	     classIds.push(classid);
+		 }
+	});
+	jQuery.ajax({
+    	type: "post",
+    	url : _HOST_CP2_ + "/api/workTestPendingNew",
+    	data: {
+        	  classIds:classIds.join(",")
+    		},
+    	success: function(data){}
+    });
+});
+</script>
+</body>
+</html>

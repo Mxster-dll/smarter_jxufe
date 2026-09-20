@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/design/app_theme.dart';
+import 'package:smarter_jxufe/features/platform_guid/data/providers/guid_providers.dart';
 import 'package:smarter_jxufe/features/platform_guid/presentation/guid_guide_screen.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/calendar_prefs_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/school_calendar_providers.dart';
@@ -11,8 +12,9 @@ import 'package:smarter_jxufe/features/school_calendar/domain/calendar_day_mark.
 import 'package:smarter_jxufe/features/school_calendar/domain/school_calendar.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/wxcal_semester.dart';
 import 'package:smarter_jxufe/features/school_calendar/presentation/calendar_day_sheet.dart';
-import 'package:smarter_jxufe/features/settings/domain/settings_section.dart';
+import 'package:smarter_jxufe/design/settings_section.dart';
 import 'package:smarter_jxufe/design/pane_chrome.dart';
+import 'package:smarter_jxufe/design/app_states.dart';
 
 /// 校历页：按「学年 × 学段」展示教务公开校历。
 ///
@@ -48,7 +50,7 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
     final calendarAsync = ref.watch(schoolCalendarProvider(_term));
     // 小程序源学期安排（实时优先 / 内置兜底）。
     final wxArrangements = ref.watch(wxArrangementsProvider);
-    final guid = ref.watch(wxGuidProvider).valueOrNull;
+    final guid = ref.watch(platformGuidProvider).valueOrNull;
     // 「假/班」角标：显示偏好 + 由官方安排构建的判定索引。
     final prefs = ref.watch(calendarPrefsStoreProvider).prefs;
     final markIndex = ref.watch(calendarMarkIndexProvider);
@@ -73,7 +75,7 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
                 await ref.read(wxArrangementsProvider.future);
               },
               child: calendarAsync.when(
-                loading: () => const Center(child: CircularProgressIndicator()),
+                loading: () => const AppLoadingState(),
                 error: (error, _) => _buildError(context, error),
                 data: (calendar) => _buildCalendar(
                   context,
@@ -630,13 +632,13 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
           FilledButton(
             onPressed: () async {
               final value = controller.text.trim();
-              final box = await ref.read(wxPlatformBoxProvider.future);
+              final box = await ref.read(platformGuidBoxProvider.future);
               if (value.isEmpty) {
                 await box.delete('guid');
               } else {
                 await box.put('guid', value);
               }
-              ref.invalidate(wxGuidProvider);
+              ref.invalidate(platformGuidProvider);
               ref.invalidate(wxArrangementsProvider);
               if (ctx.mounted) Navigator.of(ctx).pop();
               _toast(value.isEmpty ? '已使用内置快照' : '已启用实时数据源');

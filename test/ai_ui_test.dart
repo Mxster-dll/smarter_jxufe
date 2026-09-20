@@ -15,7 +15,7 @@ import 'package:smarter_jxufe/features/ai/presentation/ai_floating_ball.dart';
 import 'package:smarter_jxufe/features/ai/presentation/widgets/ai_settings_section.dart';
 import 'package:smarter_jxufe/features/ai/presentation/widgets/ai_write_confirm.dart';
 import 'package:smarter_jxufe/features/ai/tools/ai_tool.dart';
-import 'package:smarter_jxufe/features/settings/domain/settings_section.dart';
+import 'package:smarter_jxufe/design/settings_section.dart';
 import 'package:smarter_jxufe/features/settings/presentation/settings_screen.dart';
 
 const _ready = AiConfig(

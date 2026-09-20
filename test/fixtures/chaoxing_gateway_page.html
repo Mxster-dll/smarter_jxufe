@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head><title>跳转中...</title></head>
+<body></body>
+<script type="text/javascript" src="/js/jquery-3.6.0.min.js"></script>
+<script>
+$(function () {
+var isXxtLogin = "";
+var url = "/login_auth/cas/jxufe/login";
+var msg = "";
+var firstReferer = "https://i.chaoxing.com";
+var data = "0123456789abcdef0123456789abcdef";
+var time = "1789753140082";
+var enc = "AABBCCDDEEFF00112233445566778899";
+var res = 0;
+jQuery.ajax({
+type: "get",
+url: url,
+async: false,
+data: {
+data: data,
+time: time,
+enc: enc,
+displayName: '张三',
+userRole: '3',
+group1: '',
+mobilePhone: '',
+gender: '',
+userid: ''
+},
+dataType: "json",
+success: function (data) {
+if (data.status) {
+if (navigator.userAgent.indexOf("ChaoXingStudy") > -1) { res = 1; } else { res = 2; }
+} else {
+if (msg.length > 0) { alert(msg); } else { alert(data.msg); }
+}
+}
+, error: function () { alert("网络错误，请稍侯"); }
+});
+if (res == 1) {
+if (isXxtLogin !== "1" && isXxtLogin !== "") { jumpToRefer(firstReferer, data, time, enc); }
+else { setTimeout(jumpXxtLogin, 600); }
+} else if (res == 2) { jumpToRefer(firstReferer, data, time, enc); }
+});
+function jumpXxtLogin() {}
+</script>
+</html>

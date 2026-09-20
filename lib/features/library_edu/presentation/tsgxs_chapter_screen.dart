@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/core/network/dio_providers.dart';
+import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/library_edu/data/providers/tsgxs_providers.dart';
 import 'package:smarter_jxufe/features/library_edu/data/tsgxs_api_remote_datasource.dart';
@@ -9,6 +10,7 @@ import 'package:smarter_jxufe/features/library_edu/data/tsgxs_prefs.dart';
 import 'package:smarter_jxufe/features/library_edu/domain/tsgxs_models.dart';
 import 'package:smarter_jxufe/features/library_edu/presentation/tsgxs_content_screen.dart';
 import 'package:smarter_jxufe/features/library_edu/presentation/tsgxs_exam_screen.dart';
+import 'package:smarter_jxufe/design/app_states.dart';
 
 /// 章节地图:展示本章全部线索,点击进入内容页;底部为闯关入口状态。
 class TsgxsChapterScreen extends ConsumerWidget {
@@ -35,7 +37,7 @@ class TsgxsChapterScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: Text(headTitle)),
       body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const AppLoadingState(),
         error: (e, _) => e is TsgxsAccessDeniedException
             ? _lockedView(context, ref, chapters, index)
             : Center(
@@ -299,10 +301,9 @@ class TsgxsChapterScreen extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
     final done = visited.contains(node.id);
     return Container(
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
+        shape: appCardShape(context),
         color: scheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.hairline(context, 0.6)),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -363,10 +364,9 @@ class TsgxsChapterScreen extends ConsumerWidget {
     final examAsync = ref.watch(tsgxsExamStatusProvider(chapter.id));
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
+        shape: appCardShape(context),
         color: scheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.hairline(context, 0.6)),
       ),
       child: examAsync.when(
         loading: () => const SizedBox(

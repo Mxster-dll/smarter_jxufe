@@ -19,6 +19,7 @@ import 'package:smarter_jxufe/features/comprehensive_service/data/providers/comp
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/competition_apply_form_screen.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/competition_detail_screen.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/competition_widgets.dart';
+import 'package:smarter_jxufe/design/app_states.dart';
 
 class CompetitionScreen extends ConsumerStatefulWidget {
   const CompetitionScreen({super.key});
@@ -259,7 +260,7 @@ class _CompetitionScreenState extends ConsumerState<CompetitionScreen>
         ),
         Expanded(
           child: async.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
+            loading: () => const AppLoadingState(),
             error: (error, _) => SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: CompetitionErrorCard(
@@ -466,7 +467,7 @@ class _CompetitionScreenState extends ConsumerState<CompetitionScreen>
         ),
         Expanded(
           child: async.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
+            loading: () => const AppLoadingState(),
             error: (error, _) => SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: CompetitionErrorCard(

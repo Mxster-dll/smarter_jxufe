@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import 'package:smarter_jxufe/features/qr_login/data/qr_login_exception.dart';
 import 'package:smarter_jxufe/features/qr_login/data/providers/qr_code_repository_provider.dart';
 import 'package:smarter_jxufe/features/qr_login/data/repositories/qr_code_repository.dart';
 import 'package:smarter_jxufe/features/qr_login/domain/entities/qr_code_status.dart';
@@ -200,13 +201,13 @@ class QrLoginViewModel extends _$QrLoginViewModel {
       },
       onSendCode: () async {
         if (smsAttestServer == null || smsGid == null) {
-          throw Exception('请先切换至短信验证模式');
+          throw QrLoginException('请先切换至短信验证模式');
         }
         await _repository.sendMobileMfaCode(smsAttestServer!, smsGid!);
       },
       onValidate: (code) {
         if (smsAttestServer == null || smsGid == null) {
-          throw Exception('请先切换至短信验证模式');
+          throw QrLoginException('请先切换至短信验证模式');
         }
         return _repository.validateMobileMfaCode(
           smsAttestServer!,

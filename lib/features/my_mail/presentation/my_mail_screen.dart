@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/core/errors/app_exception.dart';
 import 'package:smarter_jxufe/core/navigation/page_auto_refresh.dart';
 import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
@@ -271,7 +272,7 @@ class _MyMailScreenState extends ConsumerState<MyMailScreen> {
 
   Widget _errorCard(BuildContext context, ColorScheme scheme, Object error) {
     final message = error is Exception
-        ? error.toString().replaceFirst('Exception: ', '')
+        ? friendlyErrorText(error)
         : '$error';
     return Container(
       padding: const EdgeInsets.all(14),

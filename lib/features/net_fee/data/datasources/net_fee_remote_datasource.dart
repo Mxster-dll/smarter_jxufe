@@ -2,16 +2,13 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
+import 'package:smarter_jxufe/core/errors/app_exception.dart';
 import 'package:smarter_jxufe/features/net_fee/domain/net_fee_models.dart';
 
 /// 网费接口异常（message 面向 UI 直显）。
-class NetFeeApiException implements Exception {
-  final String message;
+class NetFeeApiException extends AppException {
 
-  const NetFeeApiException(this.message);
-
-  @override
-  String toString() => message;
+  const NetFeeApiException(super.message);
 }
 
 /// 智慧江财「网费充值」H5 数据源（wfcz 模块）。

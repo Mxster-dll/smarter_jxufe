@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/competition.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/providers/competition_providers.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/competition_widgets.dart';
+import 'package:smarter_jxufe/design/app_states.dart';
 
 /// 打开比赛目录选择器；返回 null = 用户取消。
 Future<CompetitionGame?> showCompetitionGamePicker(BuildContext context) {
@@ -109,7 +110,7 @@ class _CompetitionGamePickerScreenState
           ),
           Expanded(
             child: async.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => const AppLoadingState(),
               error: (error, _) => Center(
                 child: CompetitionErrorCard(
                   error: error,
@@ -277,7 +278,7 @@ class _CompetitionStudentPickerScreenState
           ),
           Expanded(
             child: async.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => const AppLoadingState(),
               error: (error, _) => Center(
                 child: CompetitionErrorCard(
                   error: error,

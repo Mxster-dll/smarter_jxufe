@@ -5,8 +5,8 @@ import 'package:smarter_jxufe/core/network/current_account_provider.dart';
 import 'package:smarter_jxufe/core/network/device_profile_repository_provider.dart';
 import 'package:smarter_jxufe/features/my_mail/data/datasources/my_mail_remote_datasource.dart';
 import 'package:smarter_jxufe/features/my_mail/domain/student_mailbox.dart';
-import 'package:smarter_jxufe/features/school_calendar/data/providers/wxcal_providers.dart'
-    show wxGuidProvider;
+import 'package:smarter_jxufe/features/platform_guid/data/providers/guid_providers.dart'
+    show platformGuidProvider;
 
 /// 未配置平台标识（GUID）时的固定文案（UI 据此显示「去获取平台标识」入口）。
 const String kMyMailNeedGuid = '未配置微信平台标识（GUID），无法读取邮箱账号';
@@ -49,7 +49,7 @@ final myMailboxProvider = FutureProvider<StudentMailbox>((ref) async {
   if (account.isEmpty) {
     throw const MyMailApiException('请先登录后再查看我的邮箱');
   }
-  final guid = (await ref.watch(wxGuidProvider.future))?.trim();
+  final guid = (await ref.watch(platformGuidProvider.future))?.trim();
   if (guid == null || guid.isEmpty) {
     throw const MyMailApiException(kMyMailNeedGuid);
   }

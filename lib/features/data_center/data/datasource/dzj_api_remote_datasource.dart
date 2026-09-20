@@ -1,17 +1,18 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 
+import 'package:smarter_jxufe/core/errors/app_exception.dart';
 import 'package:smarter_jxufe/features/data_center/data/datasource/dzj_auth_remote_datasource.dart';
 import 'package:smarter_jxufe/features/data_center/data/datasource/dzj_crypto.dart';
+import 'package:smarter_jxufe/features/data_center/domain/dzj_basic_info.dart';
+import 'package:smarter_jxufe/features/data_center/domain/dzj_extra.dart';
+import 'package:smarter_jxufe/features/data_center/domain/dzj_peer.dart';
 
 /// 个人数据中心组件接口通用异常（业务失败，非会话过期）。
-class DzjApiException implements Exception {
-  final String message;
-  DzjApiException(this.message);
-
-  @override
-  String toString() => 'DzjApiException: $message';
+class DzjApiException extends AppException {
+  DzjApiException(super.message);
 }
 
 /// 竹简数据中台个人首页组件接口数据源。
@@ -59,7 +60,7 @@ class DzjApiRemoteDataSource {
             'Content-Type': 'application/json',
             'From': 'dzj-pc',
             'Referer': _referer,
-            'Cookie': _cookieHeader(session),
+            'Cookie': _sessionCookieHeader(session),
           },
         ),
       );
@@ -98,7 +99,12 @@ class DzjApiRemoteDataSource {
     }
   }
 
-  static String _cookieHeader(DzjSession session) {
+  /// 把 [DzjSession] 里那两个具名 Cookie 拼成请求头。
+  ///
+  /// ⚠ **刻意不用 `HostCookieJar`**（2026-09-20 架构审查）：dzj 的会话是**类型化**的
+  /// —— 它只认 `SESSION` / `fixedSalt` 两个名字，`fixedSalt` 还要拿去解密响应体，
+  /// 塞进「host → 名字 → 值」的通用桶反而丢掉类型与用途。见 §33.3 反例表。
+  static String _sessionCookieHeader(DzjSession session) {
     final parts = <String>[];
     session.cookieHeader.forEach((k, v) => parts.add('$k=$v'));
     return parts.join('; ');
@@ -556,10 +562,113 @@ ORDER BY w.day_date''',
     }).toList();
   });
 
+  /// 补充模块：本学期选修课程（门数 + 课程清单）。
+  ///
+  /// 实测（2026-09-19）：组件 `u:94cf8d7765b0` 的 `data/get` 回 `{ms: 21}`（门数），
+  /// 同一个 componentId 的 `data/search`（**带 `index: 0`**）回课程行集
+  /// `{kcmc 课程名, kclb 类别, khfs 考核方式, xdxz 修读性质, kcxf 学分}` + `total`。
+  /// 该组件内嵌 SQL 里写死过一个旧学号（`ykth='2202300001'`），但**请求体里的 sql 会被
+  /// 服务端忽略**（组件绑定），所以取回来的是当前登录人自己的课 —— 实测 21 门。
+  Future<({int total, List<DzjInfoItem> items})?> fetchSemesterCourses(
+    DzjSession s, {
+    int limit = 50,
+  }) => _guard(() async {
+    final data = await _postComponent('/api/app/component/data/search', {
+      'datasourceID': '1',
+      'filterConfig': <Object?>[],
+      'pageNo': 1,
+      'pageSize': limit,
+      'sortConfig': <Object?>[],
+      'appId': 140,
+      'componentId': _courseComponentId,
+      'index': 0,
+    }, s);
+    final rows = _rowsOf(data) ?? const <Map<String, dynamic>>[];
+    final items = dzjItemsOf(rows, dzjCourseItem);
+    return (total: _totalOf(data, items.length), items: items);
+  });
+
+  /// 补充模块：图书馆座位预约（本年）。
+  ///
+  /// 实测（2026-09-19）：组件 `u:9b48c5bf91ad` 的 `data/search`（`index: 0`）回 52 条
+  /// `{khnd 时间段 '2026-08-07 12:03:03~22:00:00', ndkh '麦庐园图书馆-麦庐园-三楼东', mc '自动签到'}`；
+  /// 同组件的 `data/get` 会 50000（该组件没有聚合位）。
+  Future<({int total, List<DzjInfoItem> items})?> fetchSeatBookings(
+    DzjSession s, {
+    int limit = 30,
+  }) => _guard(() async {
+    final data = await _postComponent('/api/app/component/data/search', {
+      'datasourceID': '1',
+      'filterConfig': <Object?>[],
+      'pageNo': 1,
+      'pageSize': limit,
+      'sortConfig': <Object?>[],
+      'appId': 140,
+      'componentId': _seatComponentId,
+      'index': 0,
+    }, s);
+    final rows = _rowsOf(data) ?? const <Map<String, dynamic>>[];
+    final items = dzjItemsOf(rows, dzjSeatItem);
+    return (total: _totalOf(data, items.length), items: items);
+  });
+
+  /// 补充模块：助学金（`u:631a812c461d`）+ 勤工助学（`u:b54d6f93ff2e`）。
+  ///
+  /// 两个组件与**已实现的奖学金**（[fetchAwards]）同型（`card-info-renderer`）：
+  /// `data/search` + `componentId`，**不带 `index`**（带 index 会回空，奖学金实测如此）。
+  /// 单边失败不影响另一边（各自 _guard）。
+  Future<({int total, List<DzjInfoItem> items})?> fetchAidRecords(
+    DzjSession s, {
+    int limit = 20,
+  }) async {
+    final grant = await _aidRows(s, _grantComponentId, limit);
+    final work = await _aidRows(s, _workStudyComponentId, limit);
+    if (grant == null && work == null) return null;
+    final items = [
+      ...dzjItemsOf(grant ?? const [], dzjGrantItem),
+      ...dzjItemsOf(work ?? const [], dzjWorkStudyItem),
+    ];
+    return (total: items.length, items: items);
+  }
+
+  Future<List<Map<String, dynamic>>?> _aidRows(
+    DzjSession s,
+    String componentId,
+    int limit,
+  ) => _guard(() async {
+    final data = await _postComponent('/api/app/component/data/search', {
+      'datasourceID': '1',
+      'filterConfig': <Object?>[],
+      'pageNo': 1,
+      'pageSize': limit,
+      'sortConfig': <Object?>[],
+      'appId': 140,
+      'componentId': componentId,
+    }, s);
+    return _rowsOf(data);
+  });
+
+  /// 组件 id（实测确认，见各方法注释）。
+  static const String _courseComponentId = 'u:94cf8d7765b0';
+  static const String _seatComponentId = 'u:9b48c5bf91ad';
+  static const String _grantComponentId = 'u:631a812c461d';
+  static const String _workStudyComponentId = 'u:b54d6f93ff2e';
+
+  /// 行集总数：优先用响应里的 `total`，取不到时退回**已解析条数**。
+  static int _totalOf(dynamic data, int fallback) {
+    if (data is Map) {
+      final t = data['total'];
+      if (t is num) return t.toInt();
+      if (t is String) return int.tryParse(t) ?? fallback;
+    }
+    return fallback;
+  }
+
   /// 同侪对比：同年级 / 同班级 / 同专业 / 同宿舍 / 同学院同生日人数
   /// （组件 u:fcd2d17a9131，同一 componentId 用 index 区分维度。
   /// 注意：该组件按 index 执行服务端内置 SQL，**忽略请求体内的 sql 字段**，
-  /// 故只能取内置 5 维，无法新增自定义口径，如「同学院同年级」）。
+  /// 故只能取内置 5 维；自定义口径（如「同年级同学院」）走
+  /// [DzjPeerDimension.filterSql] 的 `filterConfig` 谓词，不是在这里加 SQL。
   ///
   /// 返回 [DzjPeerCounts]；任一维度失败则该维度为 -1（不展示）。
   Future<Map<String, int>?> fetchPeerCounts(DzjSession s) async {
@@ -623,6 +732,169 @@ where csrq=(select csrq from t_xssj_bzks
     // 以便上层正确触发会话刷新（否则非 null 会破坏 allFailed 判定）。
     if (result.values.every((v) => v == -1)) return null;
     return result;
+  }
+
+  /// 同侪 / 相关人员**名单**：`data/search` + `componentId` + `index`，回**该维度的行集**。
+  ///
+  /// 实测（2026-09-19 · 真会话）——
+  /// **这个端点是「组件绑定」的：请求体里的 `sql` 一律被忽略**，区别只在 endpoint 与 index：
+  /// - `data/get` + `index` → 一行聚合值 `{sj/zs: N}`（[fetchPeerCounts] 用的就是它）；
+  /// - `data/search` + `index` → **该指标的行集** + `total`，列随维度走：
+  ///   组件 `u:fcd2d17a9131`（校内关系）index 0 同年级 7905 人（`ssdw` 学院）/ 1 同班级 48 人
+  ///   （`ssbj`）/ 2 同年级同专业 201 人（`sszy`）/ 3 **同宿舍 3 人（`ssxq` 校区）** /
+  ///   4 同学院同生日 0 人；全部带 `ykth`（学号）+ `username`（姓名）+ `sznj`（年级）+ `sex`。
+  ///   组件 `u:af43933a919c`（相关人员）index 0 同宿舍 3 人 / 1 同学院 1897 人 / 2 同专业 746 人 /
+  ///   3 同班级 48 人 / 4 同天入校 7716 人 / 5 同天生日 17 人（**姓名脱敏** `甲**`），
+  ///   行只有 `username` / `sex` / `userid`|`kh` / `dept`（无班级年级学号列 → 学校页面
+  ///   本来也只显示「姓名 + 学院」）。
+  /// - `filterConfig` 也认：`filterType:'sql'` 的谓词会被原样拼进 WHERE
+  ///   （`username='同学己'` → total 1；`ssdw='会计学院'` → total 1057），
+  ///   且**可以用 `#{U_用户名}` 占位**（服务端按会话解析成本人）——
+  ///   「同年级同学院」就是这么来的（[DzjPeerDimension.gradeCollege] 自带的
+  ///   [DzjPeerDimension.filterSql]，实测一次请求回 total 726）。
+  ///
+  /// [DzjPeerDimension.limit] 是 `pageSize`；服务端上限 [dzjMaxPeerPageSize]，
+  /// 超了直接报 `50000 分数数据量不能大于500`（同年级 7905 人 → 客户端只取前 500 行，
+  /// 但要**人数**请走 [fetchPeerCount]，别翻页去数）。
+  ///
+  /// 返回 null = 该维度整体失败（会话失效等），上层据此刷新会话后重试一次；
+  /// 返回 [] = 服务端确实没有这个人（如「同学院同生日」实测 0 人）。
+  Future<List<DzjPeer>?> fetchPeers(
+    DzjSession s,
+    DzjPeerDimension dimension, {
+    int? limit,
+  }) => _guard(() async {
+    final size = limit ?? dimension.limit;
+    final data = await _postComponent('/api/app/component/data/search', {
+      'datasourceID': '1',
+      'filterConfig': peerFilterOf(dimension),
+      'pageNo': 1,
+      'pageSize': size,
+      'sortConfig': <Object?>[],
+      'appId': 140,
+      'componentId': dimension.source.componentId,
+      'index': dimension.slot,
+    }, s);
+    return _peersOf(data, size);
+  });
+
+  /// 某个维度（可带服务端过滤）的**行数**：`data/search` + `pageSize: 1`，只读 `total`。
+  ///
+  /// 用来拿「同年级同学院」的人数：同年级行集 7905 行、`pageSize` 上限 500，
+  /// 自己翻页要 16 个请求；而 `total` 本来就是过滤后的总数 → **一次请求**拿到。
+  ///
+  /// 返回 null = 取不到（网络 / 会话失效 / 回包形状不认识）——「取不到」与「真的是 0 人」
+  /// 必须分开，故 **0 原样返回、异常才 null**（界面据此决定是回退固定值还是不显示）。
+  Future<int?> fetchPeerCount(
+    DzjSession s,
+    DzjPeerDimension dimension,
+  ) => _guard(() async {
+    final data = await _postComponent('/api/app/component/data/search', {
+      'datasourceID': '1',
+      'filterConfig': peerFilterOf(dimension),
+      'pageNo': 1,
+      'pageSize': 1,
+      'sortConfig': <Object?>[],
+      'appId': 140,
+      'componentId': dimension.source.componentId,
+      'index': dimension.slot,
+    }, s);
+    final total = _totalOf(data, -1);
+    return total < 0 ? null : total;
+  });
+
+  /// 维度的 `filterConfig`：没声明 [DzjPeerDimension.filterSql] 就是空表（原样行集）。
+  ///
+  /// 公开给测试（请求体形状 = 「点同班看舍友」这类事故的防线）；运行时只由
+  /// [fetchPeers] / [fetchPeerCount] 调。
+  @visibleForTesting
+  static List<Object?> peerFilterOf(DzjPeerDimension dimension) {
+    final sql = dimension.filterSql;
+    if (sql == null || sql.isEmpty) return const <Object?>[];
+    return <Object?>[
+      <String, Object?>{
+        'columnName': '',
+        'filterType': 'sql',
+        'tableName': '',
+        'type': 'VARCHAR2',
+        'values': <Object?>[sql],
+      },
+    ];
+  }
+
+  /// 「相关人员」六维的**人数**（`data/get` + index 0..5，六个请求并发）。
+  ///
+  /// 与 [fetchPeerCounts]（校内关系五维，已并进 `dataCenterOverviewProvider`）分开取：
+  /// 首屏已经有 20 个请求，再加 6 个只会让「数据一览」更慢，而这张卡本身就是次级信息
+  /// → 由 `dzjRelatedCountsProvider` 按需拉，卡片先显示「…」占位。
+  ///
+  /// 返回 null = 六维**全部**失败（会话失效等，上层据此不画数）；单个维度失败记 `-1`
+  /// （界面把它当「这格没有数据」而不是谎报 0 人）。
+  Future<Map<String, int>?> fetchRelatedCounts(DzjSession s) async {
+    final dims = DzjPeerDimension.relatedDims;
+    final values = await Future.wait([
+      for (final d in dims) _relatedCount(s, d),
+    ]);
+    final result = {
+      for (var i = 0; i < dims.length; i++) dims[i].key: values[i],
+    };
+    if (result.values.every((v) => v == -1)) return null;
+    return result;
+  }
+
+  Future<int> _relatedCount(DzjSession s, DzjPeerDimension d) async {
+    final value = await _guard(
+      () async => _firstNum(
+        await _postComponent('/api/app/component/data/get', {
+          'datasourceID': '1',
+          'appId': 140,
+          'componentId': d.source.componentId,
+          'index': d.slot,
+        }, s),
+        _countKeys,
+      ),
+    );
+    return value?.round() ?? -1;
+  }
+
+  /// 计数 SQL 的别名候选（`select count(*) as zs/sj/sl/…`，别名没人管得住）。
+  static const List<String> _countKeys = [
+    'zs',
+    'sj',
+    'sl',
+    'rs',
+    'num',
+    'count',
+    'total',
+    'cnt',
+  ];
+
+  /// 响应 → 名单（去重、排序、上限 [limit]）。
+  ///
+  /// 兼容三种载荷：`{data:[{行}]}`（data/get）、`{pageInfo:[{行}]}`（data/search）、
+  /// 裸行数组；认不出人名的行丢弃。返回 null = 载荷形状完全不像行集。
+  static List<DzjPeer>? _peersOf(dynamic data, int limit) {
+    final rows = <Map<String, dynamic>>[];
+    if (data is Map && data['data'] is List) {
+      for (final r in data['data'] as List) {
+        if (r is Map) rows.add(r.map((k, v) => MapEntry(k.toString(), v)));
+      }
+    } else {
+      final list = _rowsOf(data);
+      if (list == null) return null;
+      rows.addAll(list);
+    }
+    final seen = <String>{};
+    final peers = <DzjPeer>[];
+    for (final row in rows) {
+      final peer = DzjPeer.fromRow(row);
+      if (peer == null) continue;
+      // 同一个人可能有多行（`dke_op_type` 软删标记留下的历史行）→ 去重
+      if (!seen.add(peer.userId.isEmpty ? peer.name : peer.userId)) continue;
+      peers.add(peer);
+      if (peers.length >= limit) break;
+    }
+    return DzjPeer.sorted(peers);
   }
 
   /// 动态身份文本（姓名/学号/学院/班主任/班主任电话）。
@@ -690,6 +962,152 @@ where csrq=(select csrq from t_xssj_bzks
     }
     return 0;
   });
+
+  // ---- 子页面（页面树 / 页面定义 / 通用取数） ----
+
+  /// 应用**页面树**（十个子页面的唯一出处）。
+  ///
+  /// `POST /api/page/manageTreeByVersion`
+  /// `{"url": "66eef481a9a3", "accessFlag": 1, "type": "web"}` → `{"tree": [...]}`。
+  /// ⚠ 入参抄自学校前端（`js_umi` 的 `o6`）：**「应用唯一标识」字段名是 `url`**，
+  /// appId/appUrl/appUniqueId/appCode 一律被判「应用唯一标识不能为空」；
+  /// `accessFlag` 传数字 1 或字符串 `"1"` 都行；`type` = `web`（`mobile` 回包相同）。
+  /// 用 **ByVersion** 而不是 `manageTree`：后者回的是**全量**（含「（研）」「备份」
+  /// 「纠错管理」等未发布页，实测 25 个节点），前者只回当前发布版（11 个节点）。
+  Future<Object?> fetchPageTree(DzjSession s) =>
+      _postComponent('/api/page/manageTreeByVersion', {
+        'url': appUrl,
+        'accessFlag': 1,
+        'type': 'web',
+      }, s);
+
+  /// 任意子页面的**页面定义**（amis body），供通用渲染器解析。
+  Future<Object?> fetchPageBody(DzjSession s, String pageKey) =>
+      _postComponent('/api/page/searchBodyByVersion', {
+        'appId': 140,
+        'accessFlag': '1',
+        'pageKey': pageKey,
+        'appUrl': appUrl,
+      }, s);
+
+  /// 单个组件的**聚合值**（`data/get`，`index: 0`）—— kpi / 文本类卡片。
+  ///
+  /// 空结果返回 null（不回空 Map，方便上层换端点兜底）。
+  Future<Map<String, dynamic>?> fetchBlockValue(
+    DzjSession s,
+    String componentId, {
+    int index = 0,
+  }) => _postComponent('/api/app/component/data/get', {
+    'datasourceID': '1',
+    'appId': 140,
+    'componentId': componentId,
+    'index': index,
+  }, s).then((d) => d is Map && d.isNotEmpty ? d.cast<String, dynamic>() : null);
+
+  /// 单个组件的**行集**。
+  ///
+  /// - `slot == null`（普通表格 / 图表）：走 `data/list` —— 表格类组件**只认它**
+  ///   （同一个 componentId 打 `data/search` 恒回 `{"pageInfo": [], "total": 0}`，
+  ///   实测「任课教师情况」；换 `data/list` 立刻回 37 行）。**不需要 `index`**，
+  ///   回包是**裸数组**（不是 pageInfo 包装）。
+  /// - `slot != null`（名单类组件的第几路，如 `data-xiangguan-render` 的 `timeList[i]`）：
+  ///   走 `data/search` + `index: slot`（与 `fetchPeers` 同一姿势），回
+  ///   `{pageInfo: [...], total}`。
+  Future<List<Map<String, dynamic>>?> fetchBlockRows(
+    DzjSession s,
+    String componentId, {
+    int pageSize = 60,
+    int? slot,
+  }) => _postComponent(
+    slot == null ? '/api/app/component/data/list' : '/api/app/component/data/search',
+    {
+      'datasourceID': '1',
+      'appId': 140,
+      'componentId': componentId,
+      'index': ?slot,
+      'pageNo': 1,
+      'pageSize': pageSize,
+      'sortConfig': <Object?>[],
+      'filterConfig': <Object?>[],
+    },
+    s,
+  ).then((d) {
+    final raw = switch (d) {
+      List() => d,
+      Map() => d['pageInfo'] ?? d['list'] ?? d['rows'],
+      _ => null,
+    };
+    if (raw is! List) return null;
+    final rows = raw.whereType<Map>().map((r) => r.cast<String, dynamic>()).toList();
+    return rows.isEmpty ? null : rows;
+  });
+
+  /// **数据对象**行集 —— 学校页面上所有表格明细的唯一可用通道。
+  ///
+  /// 用户 2026-09-20 八轮：「还是看不到详细参加了哪些竞赛，这些竞赛的分级、时间」。
+  /// 学科竞赛明细（`u:f85c95577ecf`）用 `data/list` 恒 `[]`、`data/search` 恒
+  /// `{pageInfo:[],total:0}`，只有这条端点回 15 行真实记录：
+  ///
+  /// ```text
+  /// POST /api/app/component/data/dataList
+  /// {dataObjectId:'1215f9f0…', datasourceID:'1', dbType:'postgresql',
+  ///  schemaName:'usr_bsp', fieldList:[…], filterConfig:[],
+  ///  dataFilterSql:'userid=#{U_用户名}', componentId, appId:140}
+  /// ```
+  ///
+  /// ⚠ `filterSql` **必须带**（形如 `userid=#{U_用户名}`，服务端解析成本人）：留空会
+  /// 回传全校几万行 —— 端点没有行级权限兜底。
+  /// 回包列名是**小写**的数据库列名（`bsmc` / `hdsj` …）。
+  Future<List<Map<String, dynamic>>?> fetchDataObjectRows(
+    DzjSession s, {
+    required String componentId,
+    required String dataObjectId,
+    required String filterSql,
+    required List<Map<String, Object?>> fieldList,
+    int pageSize = 60,
+  }) {
+    if (dataObjectId.isEmpty || filterSql.isEmpty || fieldList.isEmpty) {
+      return Future.value(null);
+    }
+    return _postComponent('/api/app/component/data/dataList', {
+      'dataObjectId': dataObjectId,
+      'datasourceID': '1',
+      'dbType': 'postgresql',
+      'schemaName': 'usr_bsp',
+      'fieldList': fieldList,
+      'filterConfig': <Object?>[],
+      'dataFilterSql': filterSql,
+      'componentId': componentId,
+      'appId': 140,
+      'pageNo': 1,
+      'pageSize': pageSize,
+    }, s).then((d) {
+      final raw = switch (d) {
+        List() => d,
+        Map() => d['pageInfo'] ?? d['list'] ?? d['rows'] ?? d['data'],
+        _ => null,
+      };
+      if (raw is! List) return null;
+      final rows = raw
+          .whereType<Map>()
+          .map((r) => r.cast<String, dynamic>())
+          .toList();
+      return rows.isEmpty ? null : rows;
+    });
+  }
+
+  /// 「基本信息」表单的 39 项字段值 —— 走 `tsa/getFormData`（见 [DzjBasicField]）。
+  ///
+  /// `account` 用于**串号校验**：这个端点在 `filterConfig` 缺失时会回别的学生的整份资料
+  /// （实测回成留学生 留学生甲），`dzjBasicInfoFromJson` 会因此丢掉整份回包。
+  Future<Map<String, String>?> fetchBasicInfo(
+    DzjSession s, {
+    required String account,
+  }) => _postComponent('/api/app/component/tsa/getFormData',
+              dzjBasicInfoRequest(), s)
+          .then(
+            (d) => d == null ? null : dzjBasicInfoFromJson(d, account: account),
+          );
 
   // ---- 解析辅助 ----
 

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smarter_jxufe/features/net_fee/data/providers/net_fee_providers.dart';
 import 'package:smarter_jxufe/features/network_service/data/datasources/network_service_remote_datasource.dart';
 import 'package:smarter_jxufe/features/network_service/domain/network_service_models.dart';
+import 'package:smarter_jxufe/features/platform_guid/data/providers/guid_providers.dart';
 
 /// 未配置平台标识时的提示（与网费段口径一致，页面据此给「启用实时源」入口）。
 const String kNetworkServiceNeedGuid = '未配置微信平台标识（GUID），无法读取网络服务数据';
@@ -15,7 +16,7 @@ final networkServiceDataSourceProvider =
 
 /// 平台 GUID（与网费 / 校历共用 Hive `wxPlatform` 的 `guid` 键）。
 final networkServiceGuidProvider = FutureProvider<String?>((ref) async {
-  final guid = await ref.watch(netFeeGuidProvider.future);
+  final guid = await ref.watch(platformGuidProvider.future);
   final trimmed = guid?.trim();
   return (trimmed == null || trimmed.isEmpty) ? null : trimmed;
 });

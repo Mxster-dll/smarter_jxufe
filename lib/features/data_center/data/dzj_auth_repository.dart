@@ -1,4 +1,5 @@
 import 'package:smarter_jxufe/features/auth/data/auth_repository.dart';
+import 'package:smarter_jxufe/features/data_center/data/datasource/dzj_api_remote_datasource.dart';
 import 'package:smarter_jxufe/features/data_center/data/datasource/dzj_auth_local_datasource.dart';
 import 'package:smarter_jxufe/features/data_center/data/datasource/dzj_auth_remote_datasource.dart';
 
@@ -47,7 +48,7 @@ class DzjAuthRepository {
       casServiceUrl,
     );
     final ticketUrl = redirectResult.fold(
-      (failure) => throw Exception('获取统一认证票据失败：${failure.message ?? failure}'),
+      (failure) => throw DzjApiException('获取统一认证票据失败：${failure.message ?? failure}'),
       (url) => url,
     );
 

@@ -18,26 +18,17 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
+import 'package:smarter_jxufe/core/errors/app_exception.dart';
 import 'package:smarter_jxufe/features/library_sync/domain/libsp_remote.dart';
 
 /// 会话失效（401 / 落到登录页）。
-class LibspSessionExpiredException implements Exception {
-  LibspSessionExpiredException([this.message = '图书馆会话已失效']);
-
-  final String message;
-
-  @override
-  String toString() => message;
+class LibspSessionExpiredException extends SessionExpiredException {
+  LibspSessionExpiredException([super.message = '图书馆会话已失效']);
 }
 
 /// 写入被服务端拒绝（配额 / 参数）。
-class LibspWriteRejectedException implements Exception {
-  LibspWriteRejectedException(this.message);
-
-  final String message;
-
-  @override
-  String toString() => message;
+class LibspWriteRejectedException extends AppException {
+  LibspWriteRejectedException(super.message);
 }
 
 /// 订阅词远端数据源。

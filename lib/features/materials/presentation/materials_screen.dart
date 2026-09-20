@@ -1,6 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:smarter_jxufe/design/section_title.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:smarter_jxufe/design/app_card.dart';
@@ -17,6 +18,7 @@ import 'package:smarter_jxufe/features/materials/presentation/material_tags.dart
 import 'package:smarter_jxufe/design/pane_chrome.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/calendar_prefs_providers.dart';
 import 'package:smarter_jxufe/shared/widgets/grid_date_picker.dart';
+import 'package:smarter_jxufe/design/app_states.dart';
 
 /// 材料库：独立于综测的证明文件档案（竞赛证书/奖状/评优证明等），
 /// 作为综测计算的数据源之一（同 Hive box 'zongce' key 'materials'）。
@@ -49,26 +51,12 @@ class _MaterialsScreenState extends ConsumerState<MaterialsScreen> {
     final scheme = Theme.of(context).colorScheme;
     final matsAsync = ref.watch(zcMaterialsProvider);
     return matsAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '材料加载失败：$e',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: scheme.error),
-              ),
-              const SizedBox(height: 12),
-              FilledButton.tonal(
-                onPressed: () => ref.invalidate(zcMaterialsProvider),
-                child: const Text('重试'),
-              ),
-            ],
-          ),
-        ),
+      loading: () => const AppLoadingState(),
+      error: (e, _) => AppErrorState(
+        title: '材料加载失败',
+        error: e,
+        retryIcon: false,
+        onRetry: () => ref.invalidate(zcMaterialsProvider),
       ),
       data: (all) {
         // 材料**不分学年**（用户 2026-09-17：「所有的材料本身不分学年，只手动填入
@@ -136,31 +124,11 @@ class _MaterialsScreenState extends ConsumerState<MaterialsScreen> {
   /// （用户 2026-09-18：「不要按综测分类，而是直接按二级分类分类」）；组内顺序由
   /// [groupMaterialsByType] 定（发生时间倒序），这里不再排序。
   List<Widget> _materialSection(BuildContext context, MaterialGroup group) {
-    final scheme = Theme.of(context).colorScheme;
     return [
       Padding(
         key: group.groupKey,
         padding: const EdgeInsets.fromLTRB(4, 12, 4, 8),
-        child: Row(
-          children: [
-            Container(
-              width: 3,
-              height: 13,
-              decoration: BoxDecoration(
-                color: scheme.primary,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              '${group.label} · ${group.count}',
-              style: const TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
+        child: appSectionTitle(context, text: '${group.label} · ${group.count}'),
       ),
       for (final m in group.materials) _materialRow(context, m),
       const SizedBox(height: 4),
@@ -173,10 +141,7 @@ class _MaterialsScreenState extends ConsumerState<MaterialsScreen> {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(kAppCardRadius),
-        side: BorderSide(color: AppColors.hairline(context, 0.6)),
-      ),
+      shape: appCardShape(context),
       child: InkWell(
         borderRadius: BorderRadius.circular(kAppCardRadius),
         onTap: () => _editMaterial(m),
@@ -983,10 +948,9 @@ class _MaterialEditDialogState extends State<_MaterialEditDialog> {
     final catName = zcCatNames[item.cat];
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
+        shape: appCardShape(context),
         color: AppColors.fill(context),
-        borderRadius: BorderRadius.circular(kAppCardRadius),
-        border: Border.all(color: AppColors.hairline(context, 0.8)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1302,21 +1266,9 @@ class _MaterialTypePickerPage extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(4, 12, 4, 6),
         child: Row(
           children: [
-            Container(
-              width: 3,
-              height: 13,
-              decoration: BoxDecoration(
-                color: scheme.primary,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              '${_dimLabel(dim)} · ${specs.length}',
-              style: const TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w600,
-              ),
+            appSectionTitle(
+              context,
+              text: '${_dimLabel(dim)} · ${specs.length}',
             ),
           ],
         ),
@@ -1325,12 +1277,7 @@ class _MaterialTypePickerPage extends StatelessWidget {
         Card(
           margin: const EdgeInsets.only(bottom: 8),
           elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(kAppCardRadius),
-            side: BorderSide(
-              color: AppColors.hairline(context, 0.6),
-            ),
-          ),
+          shape: appCardShape(context),
           child: ListTile(
             contentPadding: const EdgeInsets.fromLTRB(12, 4, 8, 4),
             leading: Container(
@@ -1517,10 +1464,7 @@ class _ActivityPickPageState extends State<_ActivityPickPage> {
     return Card(
       margin: const EdgeInsets.only(bottom: 6),
       elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(kAppCardRadius),
-        side: BorderSide(color: AppColors.hairline(context, 0.6)),
-      ),
+      shape: appCardShape(context),
       child: ListTile(
         dense: true,
         contentPadding: const EdgeInsets.fromLTRB(12, 2, 8, 2),
@@ -1560,10 +1504,7 @@ class _ActivityPickPageState extends State<_ActivityPickPage> {
     return Card(
       margin: EdgeInsets.zero,
       elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(kAppCardRadius),
-        side: BorderSide(color: AppColors.hairline(context, 0.6)),
-      ),
+      shape: appCardShape(context),
       child: InkWell(
         borderRadius: BorderRadius.circular(kAppCardRadius),
         onTap: _direct,

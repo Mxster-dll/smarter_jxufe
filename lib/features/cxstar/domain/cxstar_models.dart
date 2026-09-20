@@ -8,14 +8,11 @@
 ///   或个人 JWT（学校统一身份认证换取，`Authorization: Bearer <JWT>`）。
 library;
 
+import 'package:smarter_jxufe/core/errors/app_exception.dart';
 /// 畅想之星接口异常（message 直接可展示）。
-class CxstarApiException implements Exception {
-  final String message;
+class CxstarApiException extends AppException {
 
-  const CxstarApiException(this.message);
-
-  @override
-  String toString() => message;
+  const CxstarApiException(super.message);
 }
 
 /// 当前畅想之星会话。

@@ -3,10 +3,12 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:html/parser.dart' as html_parser;
 
+import 'package:smarter_jxufe/core/network/sso_login_page.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/anti_corruption/volunteer_detail_parser.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/datasource/ssp_auth_remote_datasource.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/volunteer_activity.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/volunteer_export_file.dart';
+import 'package:smarter_jxufe/features/comprehensive_service/data/ssp_exception.dart';
 
 class VolunteerHoursRemoteDataSource {
   final Dio _dio;
@@ -50,11 +52,11 @@ class VolunteerHoursRemoteDataSource {
     }
 
     if (status != 200) {
-      throw Exception('请求失败: $status');
+      throw SspApiException('请求失败: $status');
     }
 
     final body = response.data?.toString() ?? '';
-    if (_looksLikeLoginRedirect(body)) {
+    if (ssoLoginPage(body)) {
       throw SspSessionExpiredException();
     }
 
@@ -90,11 +92,11 @@ class VolunteerHoursRemoteDataSource {
       throw SspSessionExpiredException();
     }
     if (status != 200) {
-      throw Exception('请求失败: $status');
+      throw SspApiException('请求失败: $status');
     }
 
     final body = response.data ?? '';
-    if (_looksLikeLoginRedirect(body)) {
+    if (ssoLoginPage(body)) {
       throw SspSessionExpiredException();
     }
 
@@ -133,7 +135,7 @@ class VolunteerHoursRemoteDataSource {
     }
 
     if (status != 200) {
-      throw Exception('下载失败: $status');
+      throw SspApiException('下载失败: $status');
     }
 
     final bytes = switch (response.data) {
@@ -142,11 +144,11 @@ class VolunteerHoursRemoteDataSource {
     };
 
     if (bytes.isEmpty) {
-      throw Exception('下载失败：服务器返回空文件');
+      throw SspApiException('下载失败：服务器返回空文件');
     }
 
     // 会话失效时服务器可能用 200 返回登录页 HTML，而不是文件字节
-    if (_looksLikeHtmlBytes(bytes)) {
+    if (ssoLoginPageBytes(bytes)) {
       throw SspSessionExpiredException();
     }
 
@@ -156,32 +158,6 @@ class VolunteerHoursRemoteDataSource {
         response.headers.value('content-disposition'),
       ),
     );
-  }
-
-  /// 判断响应体是否为登录页/失效页 HTML（只看开头一小段）。
-  ///
-  /// 真实的登记表是 OOXML 压缩包（`PK\x03\x04`）或旧版 OLE（`D0 CF 11 E0`），
-  /// 都不会以 `<` 开头。
-  bool _looksLikeHtmlBytes(Uint8List bytes) {
-    final head = bytes
-        .take(512)
-        .map((byte) => byte < 0x80 ? String.fromCharCode(byte) : ' ')
-        .join()
-        .trimLeft();
-    if (head.startsWith('<')) return true;
-    return head.contains('authFailure') || head.contains('/sso/login');
-  }
-
-  /// 判断响应体是否为登录页/失效页（authFailure 或 SSO 登录入口）。
-  /// 仅当页面以 HTML 开头时才检测，避免误判业务数据。
-  bool _looksLikeLoginRedirect(String body) {
-    final trimmed = body.trimLeft();
-    if (!trimmed.startsWith('<!DOCTYPE html') && !trimmed.startsWith('<html')) {
-      return false;
-    }
-    return trimmed.contains('authFailure') ||
-        trimmed.contains('/sso/login') ||
-        RegExp(r'<title>\s*登录').hasMatch(trimmed);
   }
 
   List<VolunteerActivity> _parseHtml(String html) {

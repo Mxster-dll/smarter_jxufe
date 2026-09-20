@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/design/app_theme.dart';
+import 'package:smarter_jxufe/design/breakpoints.dart';
+import 'package:smarter_jxufe/design/status_palette.dart';
 import 'package:smarter_jxufe/features/data_center/data/providers/data_center_providers.dart';
 import 'package:smarter_jxufe/features/ims/course/data/models/course_importance.dart';
+import 'package:smarter_jxufe/features/ims/data/ims_exception.dart';
 import 'package:smarter_jxufe/features/ims/grades/data/providers/curriculum_importance_provider.dart';
 import 'package:smarter_jxufe/features/ims/grades/data/providers/grades_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/grades/data/providers/weighted_grade_repository_provider.dart';
@@ -21,6 +24,7 @@ import 'package:smarter_jxufe/features/ims/grades/presentation/transcript_sheet.
 
 
 import 'package:smarter_jxufe/shared/widgets/academic_year_picker.dart';
+import 'package:smarter_jxufe/design/app_states.dart';
 
 class GradesScreen extends ConsumerStatefulWidget {
   final bool showAppBar;
@@ -160,9 +164,13 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
         (peerCounts[key] ?? -1) > 0 ? peerCounts[key]! : fallback;
     final classTotal = totalOf('class', 46);
     final majorTotal = totalOf('major', 199);
-    // 年级：暂无动态数据源（个人数据中心同侪组件只内置同年级/班级/专业
-    // 等口径，且忽略自定义 SQL，无法提供「同学院同年级」人数），暂用固定值。
-    const gradeTotal = 7902;
+    // 年级：分母改用数据中心算出来的**「同年级同学院」人数**
+    // （用户 2026-09-20 立项：「把此项的人数，用作成绩页里，第三项排名的基数
+    // 取代掉硬编码的 7900」——教务的年级排名本来就是同学院同年级口径，
+    // 拿全校 7902 当分母会把比例算小一个数量级）。
+    // 取不到（未登录 / 会话失效 / 数据中心不可用）时才回退到那个固定值。
+    final gradeTotal =
+        ref.watch(dzjGradeCollegeCountProvider).valueOrNull ?? 7902;
 
     // 监听成绩变更（新增 / 撤回），通过 SnackBar 提示
     ref.listen(gradesProvider(state.params), (prev, next) {
@@ -654,7 +662,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
           final extra = (totalWidth - intrinsicSum) / cardData.length;
           final extraPerCard = extra > 0 ? extra : 0.0;
 
-          if (constraints.maxWidth < 400) {
+          if (constraints.maxWidth < Breakpoints.tight) {
             // 窄屏：共享外侧框线，竖线分隔，沿用原宽度计算
             // 扣除 Card 内边距和竖线宽度
             final narrowWidth = totalWidth - 16 - (cardData.length - 1) * 1.0;
@@ -961,7 +969,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          if (constraints.maxWidth < 400) {
+          if (constraints.maxWidth < Breakpoints.tight) {
             // 计算最宽行的排名和百分比宽度，使进度条对齐
             final tp = TextPainter(textDirection: TextDirection.ltr);
             double maxRankW = 0, maxPctW = 0;
@@ -1278,25 +1286,17 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     final resultAsync = ref.watch(gradesProvider(state.params));
 
     return resultAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('$e', textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                ref.read(refreshRequestedProvider.notifier).state = true;
-                ref.invalidate(gradesProvider(state.params));
-              },
-              child: const Text('重试'),
-            ),
-          ],
-        ),
+      loading: () => const AppLoadingState(),
+      error: (e, _) => AppErrorState(
+        error: e,
+        retryIcon: false,
+        onRetry: () {
+          ref.read(refreshRequestedProvider.notifier).state = true;
+          ref.invalidate(gradesProvider(state.params));
+        },
       ),
       data: (result) => result.grades.isEmpty
-          ? const Center(child: Text('暂无成绩数据'))
+          ? const AppEmptyState(message: '暂无成绩数据')
           : _buildGradeTableWidget(
               context,
               _sortGrades(result.grades, avgScore),
@@ -1501,7 +1501,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
                     text: '*',
                     style: TextStyle(
                       // 深红「重修」标记：浅色原值不变，深色按 `AppColors.tone` 提亮。
-                      color: AppColors.tone(context, const Color(0xFF800000)),
+                      color: AppColors.tone(context, StatusPalette.retake),
                     ),
                   ),
               ],
@@ -1527,7 +1527,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: hasRetake
-                        ? AppColors.tone(context, const Color(0xFF800000))
+                        ? AppColors.tone(context, StatusPalette.retake)
                         : null,
                   ),
                 ),
@@ -1560,7 +1560,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
         borderRadius: BorderRadius.circular(12),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final isNarrow = constraints.maxWidth < 600;
+            final isNarrow = constraints.maxWidth < Breakpoints.narrow;
             final headers = buildHeaders(isNarrow);
             final nCols = headers.length;
 
@@ -1834,7 +1834,7 @@ final gradesProvider = FutureProvider.family<GradesResult, GradesQueryParams>((
   final forceRefresh = ref.read(refreshRequestedProvider);
   final result = await repo.getGrades(params, forceRefresh: forceRefresh);
   return result.fold(
-    (failure) => throw Exception(failure.message ?? '获取成绩失败'),
+    (failure) => throw ImsApiException(failure.message ?? '获取成绩失败'),
     (gradesResult) => gradesResult,
   );
 });

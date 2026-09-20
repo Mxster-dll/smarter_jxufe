@@ -2,6 +2,9 @@ import 'dart:math';
 
 import 'package:dio/dio.dart';
 
+import 'package:smarter_jxufe/core/network/jw_page_decoding.dart';
+import 'package:smarter_jxufe/features/ims/data/ims_exception.dart';
+
 /// 教务作息时间表公开页远程数据源（免登录）。
 ///
 /// 与 `SchoolCalendarRemoteDataSource` 同构：`SchoolTimetable.show.jsp`
@@ -50,11 +53,11 @@ class PeriodTableRemoteDataSource {
 
     final html = response.data;
     if (html == null || html.isEmpty) {
-      throw Exception('作息时间查询无响应数据');
+      throw ImsApiException('作息时间查询无响应数据');
     }
-    if (html.contains('凭证已失效')) {
+    if (jwSessionExpired(html)) {
       _sessionCookie = null;
-      throw Exception('作息时间会话已失效，请重试');
+      throw const JwSessionExpiredException('作息时间会话已失效，请重试');
     }
     return html;
   }
@@ -73,7 +76,7 @@ class PeriodTableRemoteDataSource {
     if (match != null) {
       _sessionCookie = 'JSESSIONID=${match.group(1)}';
     } else {
-      throw Exception('作息时间服务未返回会话标识，请稍后重试');
+      throw ImsApiException('作息时间服务未返回会话标识，请稍后重试');
     }
   }
 }

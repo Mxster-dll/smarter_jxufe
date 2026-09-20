@@ -2,6 +2,7 @@ import 'package:smarter_jxufe/features/comprehensive_service/data/datasource/sec
 import 'package:smarter_jxufe/features/comprehensive_service/data/datasource/ssp_auth_remote_datasource.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/second_class_credit.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/ssp_auth_repository.dart';
+import 'package:smarter_jxufe/features/comprehensive_service/data/ssp_exception.dart';
 
 /// 第二课堂学分业务仓库。
 ///
@@ -31,7 +32,7 @@ class SecondClassCreditRepository {
       try {
         return await _fetchWithSession(freshSessionId);
       } on SspSessionExpiredException {
-        throw Exception('综合管理平台会话刷新失败，请稍后重试');
+        throw SspApiException('综合管理平台会话刷新失败，请稍后重试');
       }
     }
   }

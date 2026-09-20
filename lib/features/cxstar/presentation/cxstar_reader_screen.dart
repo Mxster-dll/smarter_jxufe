@@ -19,9 +19,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pdfrx/pdfrx.dart';
 
+import 'package:smarter_jxufe/design/status_palette.dart';
 import 'package:smarter_jxufe/features/cxstar/data/providers/cxstar_providers.dart';
 import 'package:smarter_jxufe/features/cxstar/data/providers/cxstar_reader_providers.dart';
 import 'package:smarter_jxufe/features/cxstar/domain/cxstar_reader.dart';
+import 'package:smarter_jxufe/design/app_states.dart';
 
 /// 心跳间隔（实测该间隔可持续入账）。
 const Duration cxstarReaderHeartbeat = Duration(seconds: 60);
@@ -250,7 +252,7 @@ class _CxstarReaderScreenState extends ConsumerState<CxstarReaderScreen>
           initialChildSize: 0.7,
           maxChildSize: 0.92,
           builder: (_, scrollController) => nodesAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
+            loading: () => const AppLoadingState(),
             error: (e, _) => Padding(
               padding: const EdgeInsets.all(20),
               child: Text('目录获取失败:$e'),
@@ -343,7 +345,7 @@ class _CxstarReaderScreenState extends ConsumerState<CxstarReaderScreen>
         : '在线阅读';
 
     return Scaffold(
-      backgroundColor: const Color(0xFF2B2B2B),
+      backgroundColor: StatusPalette.readerBackdrop,
       appBar: AppBar(
         title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
         actions: [
@@ -369,7 +371,7 @@ class _CxstarReaderScreenState extends ConsumerState<CxstarReaderScreen>
 
   Widget _buildBody(ColorScheme scheme) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const AppLoadingState();
     }
     final error = _error;
     if (error != null) {
@@ -400,7 +402,7 @@ class _CxstarReaderScreenState extends ConsumerState<CxstarReaderScreen>
     final context = _context;
     final controller = _controller;
     if (context == null || controller == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const AppLoadingState();
     }
 
     return CallbackShortcuts(
@@ -595,7 +597,7 @@ class _CxstarPageViewState extends ConsumerState<_CxstarPageView> {
     }
     final document = _document;
     if (document == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const AppLoadingState();
     }
     return InteractiveViewer(
       transformationController: _transform,
@@ -657,7 +659,7 @@ class _BottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFF1F1F1F),
+      color: StatusPalette.readerInk,
       child: SafeArea(
         top: false,
         child: Padding(

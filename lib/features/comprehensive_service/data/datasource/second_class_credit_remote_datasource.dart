@@ -2,8 +2,10 @@ import 'package:dio/dio.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:html/dom.dart';
 
+import 'package:smarter_jxufe/core/network/sso_login_page.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/datasource/ssp_auth_remote_datasource.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/second_class_credit.dart';
+import 'package:smarter_jxufe/features/comprehensive_service/data/ssp_exception.dart';
 
 /// 第二课堂学分数据源。
 ///
@@ -57,26 +59,14 @@ class SecondClassCreditRemoteDataSource {
     }
 
     if (status != 200) {
-      throw Exception('请求失败: $status');
+      throw SspApiException('请求失败: $status');
     }
 
     final body = response.data?.toString() ?? '';
-    if (_looksLikeLoginRedirect(body)) {
+    if (ssoLoginPage(body)) {
       throw SspSessionExpiredException();
     }
     return body;
-  }
-
-  /// 判断响应体是否为登录页/失效页（authFailure 或 SSO 登录入口）。
-  /// 仅当页面以 HTML 开头时才检测，避免误判业务数据。
-  bool _looksLikeLoginRedirect(String body) {
-    final trimmed = body.trimLeft();
-    if (!trimmed.startsWith('<!DOCTYPE html') && !trimmed.startsWith('<html')) {
-      return false;
-    }
-    return trimmed.contains('authFailure') ||
-        trimmed.contains('/sso/login') ||
-        RegExp(r'<title>\s*登录').hasMatch(trimmed);
   }
 
   // ---- 成绩单解析 ----
@@ -93,7 +83,7 @@ class SecondClassCreditRemoteDataSource {
       }
     }
     if (mainTable == null) {
-      throw Exception('成绩单页面结构异常：未找到主表格');
+      throw SspApiException('成绩单页面结构异常：未找到主表格');
     }
 
     final rows = mainTable.querySelectorAll('tr');
@@ -162,7 +152,7 @@ class SecondClassCreditRemoteDataSource {
     }
 
     if (studentId.isEmpty) {
-      throw Exception('成绩单页面结构异常：未找到学生信息');
+      throw SspApiException('成绩单页面结构异常：未找到学生信息');
     }
 
     student = SecondClassStudent(
@@ -225,7 +215,7 @@ class SecondClassCreditRemoteDataSource {
       }
     }
     if (boardTable == null) {
-      throw Exception('首页结构异常：未找到学分预警表格');
+      throw SspApiException('首页结构异常：未找到学分预警表格');
     }
 
     final rows = boardTable.querySelectorAll('tr');

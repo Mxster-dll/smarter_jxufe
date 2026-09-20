@@ -2,6 +2,7 @@ import 'package:smarter_jxufe/features/comprehensive_service/data/datasource/com
 import 'package:smarter_jxufe/features/comprehensive_service/data/datasource/ssp_auth_remote_datasource.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/competition.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/ssp_auth_repository.dart';
+import 'package:smarter_jxufe/features/comprehensive_service/data/ssp_exception.dart';
 
 /// 第二课堂「学科竞赛」业务仓库。
 ///
@@ -180,7 +181,7 @@ class CompetitionRepository {
       try {
         return await run(fresh);
       } on SspSessionExpiredException {
-        throw Exception('综合管理平台会话刷新失败，请稍后重试');
+        throw SspApiException('综合管理平台会话刷新失败，请稍后重试');
       }
     }
   }

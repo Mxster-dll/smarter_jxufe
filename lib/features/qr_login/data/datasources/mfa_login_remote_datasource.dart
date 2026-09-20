@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 
+import 'package:smarter_jxufe/features/qr_login/data/qr_login_exception.dart';
 import 'package:smarter_jxufe/features/qr_login/domain/entities/qr_code_status.dart';
 import 'package:smarter_jxufe/utils/Log.dart';
 
@@ -32,7 +33,7 @@ class MfaLoginRemoteDataSource {
 
       return (need, mfaState);
     } catch (e) {
-      throw Exception('MFA检测失败: $e');
+      throw QrLoginException('MFA检测失败: $e');
     }
   }
 
@@ -53,7 +54,7 @@ class MfaLoginRemoteDataSource {
 
       return (attestServer, gid);
     } catch (e) {
-      throw Exception('二维码信息初始化失败: $e');
+      throw QrLoginException('二维码信息初始化失败: $e');
     }
   }
 
@@ -69,12 +70,12 @@ class MfaLoginRemoteDataSource {
       );
       final result = response.data;
       if (result == null || result is! Map<String, dynamic>) {
-        throw Exception('手机验证码初始化失败: 返回数据为空或格式不正确');
+        throw QrLoginException('手机验证码初始化失败: 返回数据为空或格式不正确');
       }
 
       final data = result['data'];
       if (data == null || data is! Map<String, dynamic>) {
-        throw Exception('手机验证码初始化失败: data 字段为空或格式不正确');
+        throw QrLoginException('手机验证码初始化失败: data 字段为空或格式不正确');
       }
 
       final attestServer = data['attestServerUrl'] as String?;
@@ -82,12 +83,12 @@ class MfaLoginRemoteDataSource {
       final securePhone = data['securePhone'] as String?;
 
       if (attestServer == null || gid == null || securePhone == null) {
-        throw Exception('手机验证码初始化失败: 响应缺少必要字段');
+        throw QrLoginException('手机验证码初始化失败: 响应缺少必要字段');
       }
 
       return (attestServer, gid, securePhone);
     } catch (e) {
-      throw Exception('手机验证码初始化失败: $e');
+      throw QrLoginException('手机验证码初始化失败: $e');
     }
   }
 
@@ -101,7 +102,7 @@ class MfaLoginRemoteDataSource {
     final result = response.data as Map<String, dynamic>;
     if (result['code'] != 0) {
       final msg = result['data']?['result'] as String?;
-      throw Exception(msg ?? '验证码发送失败');
+      throw QrLoginException(msg ?? '验证码发送失败');
     }
   }
 
@@ -141,7 +142,7 @@ class MfaLoginRemoteDataSource {
 
       return (verifyCode, imgUrl);
     } catch (e) {
-      throw Exception('获取二维码信息失败: $e');
+      throw QrLoginException('获取二维码信息失败: $e');
     }
   }
 
@@ -154,12 +155,12 @@ class MfaLoginRemoteDataSource {
       );
 
       if (response.statusCode != 200) {
-        throw Exception('连接错误${response.statusCode}: $imgUrl');
+        throw QrLoginException('连接错误${response.statusCode}: $imgUrl');
       }
 
       return response.data as Uint8List;
     } catch (e) {
-      throw Exception('下载二维码失败: $e');
+      throw QrLoginException('下载二维码失败: $e');
     }
   }
 
@@ -190,7 +191,7 @@ class MfaLoginRemoteDataSource {
       );
 
       if (response.statusCode != 200) {
-        throw Exception('连接错误${response.statusCode}');
+        throw QrLoginException('连接错误${response.statusCode}');
       }
 
       return _extractStatus(response.data);
@@ -208,7 +209,7 @@ class MfaLoginRemoteDataSource {
     final statusCode = data['statusCode'] as String;
 
     if (_statusCodeMap[status] != statusCode) {
-      throw Exception(
+      throw QrLoginException(
         '意外的 status: $status, statusCode: $statusCode '
         '(应为 ${_statusCodeMap[status]})\n$responseBody',
       );

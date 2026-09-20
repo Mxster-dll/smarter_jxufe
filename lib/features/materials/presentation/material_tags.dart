@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:smarter_jxufe/design/app_theme.dart';
+import 'package:smarter_jxufe/design/status_palette.dart';
 import 'package:smarter_jxufe/features/zongce/domain/zc_catalog.dart';
 import 'package:smarter_jxufe/features/zongce/domain/zc_foreign.dart';
 import 'package:smarter_jxufe/features/zongce/domain/zc_models.dart';
@@ -17,14 +18,14 @@ import 'package:smarter_jxufe/features/zongce/domain/zc_models.dart';
 ///
 /// 颜色只给**浅色值**，深色由 [AppColors.tone] 提亮、底色由
 /// [AppColors.statusFill] 出（与全站深色口径一致，见 AGENTS §22）。
-const Color materialTypeColor = Color(0xFF455A64);
+const Color materialTypeColor = MaterialsTone.typeNeutral;
 
 /// Ⅰ~Ⅳ 类赛配色（key = `ZcMaterial.cat`，即 `zcCatNames` 的 c1~c4）。
 const Map<String, Color> materialCategoryColors = <String, Color>{
-  'c1': Color(0xFFB3261E), // Ⅰ类：深红
-  'c2': Color(0xFFE65100), // Ⅱ类：橙
-  'c3': Color(0xFF1565C0), // Ⅲ类：蓝
-  'c4': Color(0xFF00695C), // Ⅳ类：青
+  'c1': MaterialsTone.category1, // Ⅰ类：深红
+  'c2': MaterialsTone.category2, // Ⅱ类：橙
+  'c3': MaterialsTone.category3, // Ⅲ类：蓝
+  'c4': MaterialsTone.category4, // Ⅳ类：青
 };
 
 /// 属性文字 → 颜色（级别优先，其次奖项；都不中 = 中性）。
@@ -35,19 +36,19 @@ Color materialAttributeColor(String text) {
   final t = text.trim();
   if (t.isEmpty) return materialTypeColor;
   // 级别
-  if (t.contains('国家') || t.contains('全国')) return const Color(0xFFB3261E);
-  if (t.contains('省') || t.contains('部')) return const Color(0xFFE65100);
-  if (t.contains('市') || t.contains('校')) return const Color(0xFF1565C0);
-  if (t.contains('院')) return const Color(0xFF00695C);
-  if (t.contains('班')) return const Color(0xFF6A1B9A);
+  if (t.contains('国家') || t.contains('全国')) return MaterialsTone.category1;
+  if (t.contains('省') || t.contains('部')) return MaterialsTone.category2;
+  if (t.contains('市') || t.contains('校')) return MaterialsTone.category3;
+  if (t.contains('院')) return MaterialsTone.category4;
+  if (t.contains('班')) return MaterialsTone.levelClass;
   // 奖项
   if (t.contains('特等') || t.contains('一等') || t.contains('金奖')) {
-    return const Color(0xFFB8860B);
+    return MaterialsTone.awardGold;
   }
-  if (t.contains('二等') || t.contains('银奖')) return const Color(0xFF607D8B);
-  if (t.contains('三等') || t.contains('铜奖')) return const Color(0xFF8D6E63);
-  if (t.contains('优胜') || t.contains('优秀')) return const Color(0xFF00838F);
-  if (t.contains('未获奖') || t.contains('合格')) return const Color(0xFF757575);
+  if (t.contains('二等') || t.contains('银奖')) return MaterialsTone.awardSilver;
+  if (t.contains('三等') || t.contains('铜奖')) return MaterialsTone.awardBronze;
+  if (t.contains('优胜') || t.contains('优秀')) return MaterialsTone.awardHonor;
+  if (t.contains('未获奖') || t.contains('合格')) return MaterialsTone.awardNone;
   return materialTypeColor;
 }
 
@@ -76,7 +77,7 @@ List<Widget> materialLevelTags(BuildContext context, ZcMaterial m) {
     // 等级类证书 / 没填分 → 没有可显示的成绩，这一枚不出现（标题已写证书名）。
     final raw = zcForeignRawScoreText(m.manualScore);
     if (raw.isNotEmpty) {
-      out.add(MaterialTag(text: raw, color: const Color(0xFF00838F)));
+      out.add(MaterialTag(text: raw, color: MaterialsTone.awardHonor));
     }
     return out;
   }

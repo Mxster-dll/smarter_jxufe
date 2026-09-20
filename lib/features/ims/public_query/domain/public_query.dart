@@ -217,9 +217,6 @@ List<PublicQueryOption> parseComboBoxXml(String body) {
 bool isEmptyReport(String html) =>
     html.contains('没有检索到记录') || html.contains('没有符合检索条件的记录');
 
-/// 会话失效判定（547 字节的 alert 页）。
-bool isExpiredSession(String html) =>
-    html.contains('凭证已失效') || html.contains('请重新登录');
 
 /// `KB_ExpTeacherSchedualAction.do?hidOption=getpkts` 的响应（纯文本数字）。
 String parsePkts(String body) =>

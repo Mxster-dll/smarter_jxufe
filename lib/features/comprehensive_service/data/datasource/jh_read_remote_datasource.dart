@@ -1,8 +1,10 @@
 import 'package:dio/dio.dart';
 import 'package:html/parser.dart' as html_parser;
 
+import 'package:smarter_jxufe/core/network/sso_login_page.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/datasource/ssp_auth_remote_datasource.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/jh_read_record.dart';
+import 'package:smarter_jxufe/features/comprehensive_service/data/ssp_exception.dart';
 
 /// 蛟湖阅读详单远程数据源（SSP 学工平台）。
 ///
@@ -51,26 +53,15 @@ class JhReadRemoteDataSource {
     }
 
     if (status != 200) {
-      throw Exception('请求失败: $status');
+      throw SspApiException('请求失败: $status');
     }
 
     final body = response.data?.toString() ?? '';
-    if (_looksLikeLoginRedirect(body)) {
+    if (ssoLoginPage(body)) {
       throw SspSessionExpiredException();
     }
 
     return _parseHtml(body);
-  }
-
-  /// 判断响应体是否为登录页/失效页（authFailure 或 SSO 登录入口）。
-  bool _looksLikeLoginRedirect(String body) {
-    final trimmed = body.trimLeft();
-    if (!trimmed.startsWith('<!DOCTYPE html') && !trimmed.startsWith('<html')) {
-      return false;
-    }
-    return trimmed.contains('authFailure') ||
-        trimmed.contains('/sso/login') ||
-        RegExp(r'<title>\s*登录').hasMatch(trimmed);
   }
 
   List<JhReadRecord> _parseHtml(String html) {

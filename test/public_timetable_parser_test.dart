@@ -154,6 +154,20 @@ void main() {
         }
       }
     });
+
+    test('单双周写在**独立片段**里（`[2-17]周` + `双周`）也要认', () {
+      // 真实教室课表把单双周单列一段（fixture 里的「数据处理技术基础」）；只认
+      // `[1-16]周(单)` 会把这门双周的课当成每周都上（2026-09-19 修）。
+      final cells = tables.expand((t) => t.cells);
+      final cell = cells.firstWhere((c) => c.parts.contains('双周'));
+      expect(cell.startWeek, 2);
+      expect(cell.endWeek, 17);
+      expect(cell.parity, WeekParity.even);
+      final slots = slotsOfTimetables(tables);
+      final slot = slots.firstWhere((s) => s.courseName == '数据处理技术基础');
+      expect(slot.coversWeek(3), isFalse, reason: '第 3 周（单周）不该生效');
+      expect(slot.coversWeek(4), isTrue);
+    });
   });
 
   group('异常输入', () {

@@ -5,10 +5,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/design/app_card.dart';
-import 'package:smarter_jxufe/features/leave/data/providers/leave_providers.dart';
-import 'package:smarter_jxufe/features/net_fee/data/providers/net_fee_providers.dart';
+import 'package:smarter_jxufe/design/section_title.dart';
 import 'package:smarter_jxufe/features/platform_guid/data/guid_capture_session.dart';
-import 'package:smarter_jxufe/features/school_calendar/data/providers/wxcal_providers.dart';
+import 'package:smarter_jxufe/features/platform_guid/data/providers/guid_providers.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
 
 /// 从任意文本中提取平台 GUID（UUID v4 形态）。
@@ -78,12 +77,9 @@ class _GuidGuideScreenState extends ConsumerState<GuidGuideScreen> {
   }
 
   Future<void> _saveGuid(String guid) async {
-    final box = await ref.read(wxPlatformBoxProvider.future);
+    final box = await ref.read(platformGuidBoxProvider.future);
     await box.put('guid', guid.trim());
-    ref.invalidate(wxGuidProvider);
-    ref.invalidate(wxArrangementsProvider);
-    ref.invalidate(netFeeSummaryProvider);
-    ref.invalidate(leaveListProvider);
+    ref.invalidate(platformGuidProvider);
     if (mounted) {
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
@@ -136,7 +132,7 @@ class _GuidGuideScreenState extends ConsumerState<GuidGuideScreen> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final guid = ref.watch(wxGuidProvider).valueOrNull;
+    final guid = ref.watch(platformGuidProvider).valueOrNull;
 
     return Scaffold(
       appBar: AppBar(
@@ -573,12 +569,9 @@ class _GuidGuideScreenState extends ConsumerState<GuidGuideScreen> {
       ),
     );
     if (ok != true) return;
-    final box = await ref.read(wxPlatformBoxProvider.future);
+    final box = await ref.read(platformGuidBoxProvider.future);
     await box.delete('guid');
-    ref.invalidate(wxGuidProvider);
-    ref.invalidate(wxArrangementsProvider);
-    ref.invalidate(netFeeSummaryProvider);
-    ref.invalidate(leaveListProvider);
+    ref.invalidate(platformGuidProvider);
     if (mounted) {
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
@@ -712,31 +705,8 @@ class _GuidGuideScreenState extends ConsumerState<GuidGuideScreen> {
 
   // ---------- 通用小块 ----------
 
-  Widget _sectionTitle(BuildContext context, String text) {
-    final scheme = Theme.of(context).colorScheme;
-    return Row(
-      children: [
-        Container(
-          width: 3,
-          height: 13,
-          decoration: BoxDecoration(
-            color: scheme.primary,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: 7),
-        Text(
-          text,
-          style: TextStyle(
-            fontSize: 13.5,
-            fontWeight: FontWeight.w600,
-            color: scheme.onSurface,
-            letterSpacing: 0.3,
-          ),
-        ),
-      ],
-    );
-  }
+    Widget _sectionTitle(BuildContext context, String text) =>
+      appSectionTitle(context, text: text);
 
   Widget _whiteCard(
     BuildContext context, {

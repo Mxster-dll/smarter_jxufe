@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart'
 import 'package:flutter/material.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:smarter_jxufe/core/errors/failures.dart';
+import 'package:smarter_jxufe/design/breakpoints.dart';
+import 'package:smarter_jxufe/features/auth/data/auth_exception.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/account_repository_provider.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_for_account_provider.dart';
 import 'package:smarter_jxufe/features/auth/domain/entities/account.dart';
@@ -72,7 +74,7 @@ class LoginViewModel extends _$LoginViewModel {
           defaultTargetPlatform != TargetPlatform.android;
       authRepo.onMfaRequired = (mfaState) async {
         final ctx = navigatorKey.currentContext;
-        if (ctx == null) throw Exception('无法获取当前页面上下文');
+        if (ctx == null) throw AuthException('无法获取当前页面上下文');
         final result = await qrVm.unifiedMfaVerify(
           ctx,
           account,
@@ -80,13 +82,13 @@ class LoginViewModel extends _$LoginViewModel {
           mfaState,
           startInQrMode: isDesktop,
         );
-        if (!result.authorized) throw Exception('用户取消 MFA 验证');
+        if (!result.authorized) throw AuthException('用户取消 MFA 验证');
         // 把「信任此设备」带回 AuthRepository → 自动重登时继续登记到 CAS。
         return result.trustDevice;
       };
       mfaReloginService.setHandler((mfaState) async {
         final ctx = navigatorKey.currentContext;
-        if (ctx == null) throw Exception('无法获取当前页面上下文');
+        if (ctx == null) throw AuthException('无法获取当前页面上下文');
         final result = await qrVm.unifiedMfaVerify(
           ctx,
           account,
@@ -95,7 +97,7 @@ class LoginViewModel extends _$LoginViewModel {
           startInQrMode: isDesktop,
         );
         if (!result.authorized) {
-          throw Exception('用户取消 MFA 验证');
+          throw AuthException('用户取消 MFA 验证');
         }
         return result.trustDevice;
       });
@@ -230,5 +232,5 @@ bool _isMobilePlatform(BuildContext context) {
   }
   // 桌面端窗口较窄时也走手机模式（方便调试）
   final size = MediaQuery.of(context).size;
-  return size.width < 600;
+  return size.width < Breakpoints.narrow;
 }

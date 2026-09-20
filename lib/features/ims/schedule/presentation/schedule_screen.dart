@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/pane_chrome.dart';
-import 'package:smarter_jxufe/features/settings/domain/settings_section.dart';
+import 'package:smarter_jxufe/features/ims/data/ims_exception.dart';
+import 'package:smarter_jxufe/design/settings_section.dart';
 import 'package:smarter_jxufe/features/ims/schedule/data/providers/live_class_providers.dart';
 import 'package:smarter_jxufe/features/ims/schedule/data/providers/schedule_display_providers.dart';
 import 'package:smarter_jxufe/features/ims/schedule/data/providers/reschedule_providers.dart';
@@ -28,6 +29,7 @@ import 'package:smarter_jxufe/features/school_calendar/data/providers/school_cal
 import 'package:smarter_jxufe/features/school_calendar/data/providers/wxcal_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/teaching_week.dart';
 import 'package:smarter_jxufe/shared/widgets/academic_year_picker.dart';
+import 'package:smarter_jxufe/design/app_states.dart';
 
 /// 课表页相关的三节：教务会话（课表数据）+ 上课实况窗（入口在设置页）
 /// + 课表显示（周六 / 周日 / 表格线开关，用户 2026-09-17 要求）。
@@ -259,7 +261,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     });
 
     try {
-      if (_serialNo.isEmpty) throw Exception('未获取到学籍信息');
+      if (_serialNo.isEmpty) throw ImsApiException('未获取到学籍信息');
 
       // 调课记录：纯本地，先load（失败也不该拦住课表）
       await _rescheduleStore.ensureLoaded(_term);
@@ -618,7 +620,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
 
   Widget _buildBody(bool horizontal) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const AppLoadingState();
     }
     if (_error != null) {
       return Center(

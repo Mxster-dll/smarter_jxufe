@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/library_edu/data/providers/tsgxs_providers.dart';
 import 'package:smarter_jxufe/features/library_edu/domain/tsgxs_models.dart';
+import 'package:smarter_jxufe/design/app_states.dart';
 
 /// 学习内容页阅读器:正文为平台下发的图片,支持缩放与上一节/下一节导航。
 class TsgxsContentScreen extends ConsumerStatefulWidget {
@@ -57,7 +58,7 @@ class _TsgxsContentScreenState extends ConsumerState<TsgxsContentScreen> {
         ),
       ),
       body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const AppLoadingState(),
         error: (e, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24),

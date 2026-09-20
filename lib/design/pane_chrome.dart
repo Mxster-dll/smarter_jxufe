@@ -16,8 +16,8 @@ library;
 
 import 'package:flutter/material.dart';
 
-import 'package:smarter_jxufe/features/settings/domain/settings_section.dart';
-import 'package:smarter_jxufe/features/settings/presentation/settings_entry.dart';
+import 'package:smarter_jxufe/design/settings_section.dart';
+import 'package:smarter_jxufe/design/settings_entry.dart';
 
 /// 标记「本子树位于侧栏右侧面板内」。由 `HomeDetailPane` 在面板 Navigator **之上**注入，
 /// 因此面板内所有路由（含二级页）都能查到。

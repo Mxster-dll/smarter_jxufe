@@ -2,6 +2,9 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
+import 'package:smarter_jxufe/core/network/jw_page_decoding.dart';
+import 'package:smarter_jxufe/features/ims/data/ims_exception.dart';
+
 class ScheduleRemoteDataSource {
   final Dio _dio;
 
@@ -35,8 +38,10 @@ class ScheduleRemoteDataSource {
     );
 
     final html = response.data as String?;
-    if (html == null) throw Exception('空的响应体');
-    if (html.contains('凭证已失效')) throw Exception('凭证已失效，请重新登录！');
+    if (html == null) throw ImsApiException('空的响应体');
+    if (jwSessionExpired(html)) {
+      throw const JwSessionExpiredException('凭证已失效，请重新登录！');
+    }
 
     return html;
   }

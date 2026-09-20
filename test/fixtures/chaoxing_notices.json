@@ -1,0 +1,73 @@
+{
+  "status": true,
+  "notices": {
+    "lastPage": 0,
+    "lastGetId": "D12FFD9DF3E40B58D1E9C9E5D46E6354",
+    "list": [
+      {
+        "uuid": "$CACG$aaaaaaaa-1111-2222-3333-444444444444",
+        "idCode": "CD6071288347CC4DC1A0E2EEC441AAAA",
+        "title": "261学前测通知及注意事项",
+        "content": "各位同学：\r     261学前测于下周（校历第三周）随堂进行，采用学习通在线测试，大家务必按时参加。",
+        "createrName": "张三",
+        "sendTime": "2026-09-17 20:18:37",
+        "completeTime": "2026-09-17 20:18:38",
+        "isread": 1,
+        "redDot": 1,
+        "top": 0,
+        "sourceType": 14,
+        "tag": "courseId100000001",
+        "collect": 0,
+        "clickPraise": true,
+        "showPraise": false,
+        "logo": "",
+        "personStatus": 0,
+        "sendTag": 0,
+        "recycle": 0
+      },
+      {
+        "uuid": "$CACG$bbbbbbbb-1111-2222-3333-444444444444",
+        "idCode": "CD6071288347CC4DC1A0E2EEC441BBBB",
+        "title": "作业:《261学期 线性代数（工）》9月20日24:00前提交作业",
+        "content": "老师发布了新作业，请及时完成。",
+        "createrName": "学习通知",
+        "sendTime": "2026-09-17 14:28:19",
+        "completeTime": "2026-09-17 14:28:19",
+        "isread": 0,
+        "redDot": 1,
+        "top": 1,
+        "sourceType": 14,
+        "tag": "courseId100000002",
+        "collect": 0,
+        "personStatus": 0,
+        "sendTag": 0
+      },
+      {
+        "uuid": "",
+        "idCode": "CD6071288347CC4DC1A0E2EEC441CCCC",
+        "title": "课程截止时间",
+        "content": "本课程所有作业统一在 12 月 31 日前完成。",
+        "createrName": "李四",
+        "sendTime": "",
+        "completeTime": "2026-09-14 09:47:02",
+        "isread": "0",
+        "redDot": 0,
+        "top": 0,
+        "sourceType": 14,
+        "tag": "courseId100000003"
+      },
+      {
+        "uuid": "$CACG$dddddddd-1111-2222-3333-444444444444",
+        "idCode": "",
+        "title": "系统公告",
+        "content": "这是一条与课程无关的公告（tag 里没有 courseId）。",
+        "createrName": "系统",
+        "sendTime": "2026-09-01 08:00:00",
+        "isread": true,
+        "top": false,
+        "tag": "system",
+        "sourceType": 1
+      }
+    ]
+  }
+}

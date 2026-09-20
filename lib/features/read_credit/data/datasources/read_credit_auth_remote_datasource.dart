@@ -18,14 +18,14 @@ library;
 
 import 'package:dio/dio.dart';
 
+import 'package:smarter_jxufe/core/errors/app_exception.dart';
+import 'package:smarter_jxufe/core/network/cas_walk.dart';
+import 'package:smarter_jxufe/core/network/cookie_jar.dart';
+
 /// 阅读学分平台会话失效（被重定向回 CAS 登录入口）。
-class ReadCreditSessionExpiredException implements Exception {
-  final String message;
+class ReadCreditSessionExpiredException extends SessionExpiredException {
 
-  ReadCreditSessionExpiredException([this.message = '阅读学分平台会话已失效']);
-
-  @override
-  String toString() => message;
+  ReadCreditSessionExpiredException([super.message = '阅读学分平台会话已失效']);
 }
 
 /// 阅读学分平台会话建立数据源。
@@ -56,84 +56,35 @@ class ReadCreditAuthRemoteDataSource {
     String ticketUrl, {
     List<String>? trace,
   }) async {
-    final jar = <String, Map<String, String>>{};
-    var url = ticketUrl;
-    for (var hop = 0; hop < 12; hop++) {
-      final currentHost = Uri.parse(url).host;
-      final cookieHeader = _cookieHeader(jar, currentHost);
-      final response = await _dio.get<dynamic>(
-        url,
-        options: Options(
-          followRedirects: false,
-          validateStatus: (status) => true,
-          headers: {
-            if (cookieHeader.isNotEmpty) 'Cookie': cookieHeader,
-            'Referer': 'https://$currentHost/',
-          },
-        ),
-      );
-      _store(jar, currentHost, response.headers['set-cookie']);
-      final location = response.headers.value('location');
-      if (trace != null) {
-        final names = (response.headers['set-cookie'] ?? const <String>[])
-            .map((c) => c.split(';').first.split('=').first)
-            .join(',');
-        trace.add(
-          '跳[$hop] ${response.statusCode} ${_clip(url, 130)}'
-          '${location != null && location.isNotEmpty ? ' -> ${_clip(location, 90)}' : ''}'
-          '${names.isNotEmpty ? '  Set-Cookie($currentHost): $names' : ''}',
-        );
-      }
-      if (location == null || location.isEmpty) {
-        final session = _cookieHeader(jar, host);
-        if (!hasSession(session)) {
-          throw ReadCreditSessionExpiredException(
-            '建立阅读学分会话失败：未取得平台会话 Cookie'
-            '（得到 [${_cookieNamesOf(jar, host)}]，HTTP ${response.statusCode}）',
-          );
-        }
-        return session;
-      }
-      url = Uri.parse(url).resolve(location).toString();
+    final jar = HostCookieJar();
+    // 循环机制走地基件（`lib/core/network/cas_walk.dart`）；这里只留本平台的语义：
+    // 12 跳上限、trace 宽度（url 130 / location 90）、以及「没有 Location 且
+    // Cookie 已带 uid+token 才算成功」这道判据。
+    final outcome = await walkCasRedirects<String>(
+      startUrl: ticketUrl,
+      jar: jar,
+      send: casDioSender(_dio),
+      spec: const CasWalkSpec(
+        maxHops: 12,
+        traceUrlMax: 130,
+        traceLocationMax: 90,
+      ),
+      trace: trace,
+      afterResponse: (step) {
+        if (step.hasLocation) return null;
+        final session = jar.headerFor(host);
+        return hasSession(session) ? CasHopFinish(session) : null;
+      },
+    );
+
+    final session = outcome.result;
+    if (session != null) return session;
+    if (outcome.exhausted) {
+      throw ReadCreditSessionExpiredException('建立阅读学分会话失败：重定向次数过多');
     }
-    throw ReadCreditSessionExpiredException('建立阅读学分会话失败：重定向次数过多');
+    throw ReadCreditSessionExpiredException(
+      '建立阅读学分会话失败：未取得平台会话 Cookie'
+      '（得到 [${jar.namesOf(host)}]，HTTP ${outcome.lastStatusCode}）',
+    );
   }
-
-  static String _cookieNamesOf(
-    Map<String, Map<String, String>> jar,
-    String host,
-  ) {
-    final map = jar[host];
-    if (map == null || map.isEmpty) return '(空)';
-    return map.keys.join(',');
-  }
-
-  static String _cookieHeader(
-    Map<String, Map<String, String>> jar,
-    String host,
-  ) {
-    final map = jar[host];
-    if (map == null || map.isEmpty) return '';
-    return map.entries.map((e) => '${e.key}=${e.value}').join('; ');
-  }
-
-  /// 把某 host 响应的 Set-Cookie 存入其专属 jar（同名覆盖）。
-  static void _store(
-    Map<String, Map<String, String>> jar,
-    String host,
-    List<String>? setCookies,
-  ) {
-    if (setCookies == null || setCookies.isEmpty) return;
-    final map = jar.putIfAbsent(host, () => <String, String>{});
-    for (final raw in setCookies) {
-      final first = raw.split(';').first.trim();
-      final eq = first.indexOf('=');
-      if (eq > 0) {
-        map[first.substring(0, eq).trim()] = first.substring(eq + 1);
-      }
-    }
-  }
-
-  static String _clip(String value, int max) =>
-      value.length > max ? '${value.substring(0, max)}…' : value;
 }

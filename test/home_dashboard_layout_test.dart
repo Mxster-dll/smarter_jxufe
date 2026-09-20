@@ -6,10 +6,13 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/domain/volunteer_hours_stats.dart';
+import 'package:smarter_jxufe/features/home/data/providers/dashboard_providers.dart';
 import 'package:smarter_jxufe/features/home/presentation/dashboard_panel.dart';
 import 'package:smarter_jxufe/features/ims/grades/data/providers/weighted_grade_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/schedule/data/providers/live_class_providers.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/period_time.dart';
+import 'package:smarter_jxufe/features/network_service/data/providers/network_service_providers.dart';
+import 'package:smarter_jxufe/features/network_service/domain/network_service_models.dart';
 
 /// 主页宫格视图的仪表盘版式（用户 2026-09-18 四轮裁定）：
 /// ① 去掉「数据一览」「全部服务」两个小标题；
@@ -83,8 +86,36 @@ void main() {
         isFalse,
         reason: '旧的「12 个固定格子」已按用户二轮裁定撤掉（空节不显示）',
       );
-      expect(panel.contains("Key('dashRefresh')"), isTrue);
       expect(panel.contains('今天没有课，好好休息吧'), isTrue);
+      // ---- 用户 2026-09-19 裁定：撤刷新按钮 / 下拉刷新 / 流量胶囊 / 等高 ----
+      expect(
+        panel.contains("Key('dashRefresh')"),
+        isFalse,
+        reason: '「去除主页课表卡片的刷新按钮」→ 面板内不再有刷新按钮',
+      );
+      expect(
+        panel.contains('Future<void> refreshDashboard(WidgetRef ref)'),
+        isTrue,
+        reason: '刷新逻辑唯一实现（首页下拉 + 小组件同步共用）',
+      );
+      expect(
+        home.contains('RefreshIndicator') &&
+            home.contains('refreshDashboard(ref)'),
+        isTrue,
+        reason: '「主页视图下拉刷新所有卡片」→ 刷新走首页下拉（宫格与侧栏概览两处）',
+      );
+      expect(
+        panel.contains("Key('dash_netflow')") &&
+            panel.contains('networkFormatFlow(account.useFlow)'),
+        isTrue,
+        reason: '「首页校园网卡片右上角显示当前使用流量数」',
+      );
+      expect(
+        panel.contains('dashboardMetricCardHeight') &&
+            panel.contains('metricsLayout(metricsWidth)'),
+        isTrue,
+        reason: '今日课程卡与指标卡区等高 / 最小高度一致（指标卡高为常量，高度可计算）',
+      );
       expect(
         panel.contains("Key('dashTodayTimeline')"),
         isTrue,
@@ -553,6 +584,89 @@ void main() {
       expect(tester.widget<Text>(find.text(longName)).maxLines, 1);
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets('校园网卡片右上角显示本周期已用流量（用户 2026-09-19）', (tester) async {
+      tester.view.physicalSize = const Size(1400, 1200);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(_app(_courses));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byKey(const Key('dash_netflow')), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('dash_netflow')),
+          matching: find.text('3.00 GB'),
+        ),
+        findsOneWidget,
+        reason: '3072 MB → 3.00 GB，与校园网页同一格式化口径',
+      );
+      expect(
+        find.textContaining('已用'),
+        findsNothing,
+        reason: '用户 2026-09-19：「校园网卡片右上角不要显示"已用"二字」',
+      );
+    });
+
+    testWidgets('移动端：今日课程卡与指标卡区等高（用户 2026-09-19）', (tester) async {
+      tester.view.physicalSize = const Size(400, 2400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(_app(_courses));
+      await tester.pump();
+      await tester.pump();
+
+      // 400dp → 面板 352 → 指标栏 (~228dp) 单列 4 行 = 4 × 132 + 3 × 12。
+      const metricsHeight = 4 * 132.0 + 3 * 12.0;
+      expect(
+        tester.getSize(find.byKey(const Key('dashMetrics'))).height,
+        closeTo(metricsHeight, 0.5),
+        reason: '指标卡高是常量、行数由 metricsLayout 算出',
+      );
+      expect(
+        tester.getSize(find.byKey(const Key('dashTodayCard'))).height,
+        closeTo(metricsHeight, 0.5),
+        reason: '移动端：课程卡片高度 = 其余卡片总高度',
+      );
+      // 窄档**不显示图标**（用户 2026-09-19 先要求「移动端不隐藏icon」、
+      // 试过之后当场改口「还是去除图标吧」）—— 卡宽仅约 100dp，图标会挤掉标题。
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('dashTodayCard')),
+          matching: find.byIcon(Icons.today_outlined),
+        ),
+        findsNothing,
+        reason: '窄档（400dp → 今日课程卡约 100dp 宽）不显示图标',
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('桌面端：今日课程卡最小高度 = 指标卡区高度（用户 2026-09-19）', (tester) async {
+      tester.view.physicalSize = const Size(700, 2400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(_app(_courses));
+      await tester.pump();
+      await tester.pump();
+
+      // 700dp（> 620 断点 → 桌面档）：指标栏单列 4 行 = 564dp，高于今日课程卡
+      // 的自然高度 → 由 `minHeight` 撑到等高。
+      const metricsHeight = 4 * 132.0 + 3 * 12.0;
+      expect(
+        tester.getSize(find.byKey(const Key('dashMetrics'))).height,
+        closeTo(metricsHeight, 0.5),
+      );
+      expect(
+        tester.getSize(find.byKey(const Key('dashTodayCard'))).height,
+        closeTo(metricsHeight, 0.5),
+        reason: '桌面端只要求最小高度一致，这里自然高度不足 → 被撑到指标区高度',
+      );
+      expect(tester.takeException(), isNull);
+    });
   });
 }
 
@@ -629,6 +743,15 @@ const _eveningPeriods = PeriodTable(
   ],
 );
 
+/// 网络服务账号替身：本周期已用 3072 MB（= 3.00 GB）。
+final _fakeNetworkAccount = NetworkAccount.fromUserJson({
+  'userName': '2000000000',
+  'useFlow': 3072,
+  'useTime': 125,
+  'userGroup': {'payStyle': 3, 'userGroupName': '包月'},
+  'serviceDefault': {'defaultName': 'GPON学生12.5元/月'},
+});
+
 Widget _app(
   List<TodayCourse> courses, {
   bool withPeriodTable = true,
@@ -653,6 +776,9 @@ Widget _app(
       cachedPeriodTableProvider.overrideWith(
         (ref) async => withPeriodTable ? table : throw StateError('作息表不可用'),
       ),
+      // 校园网卡片右上角的流量胶囊走网络服务总览；不 override 它会去开 Hive box
+      // （未 init 时抛未处理异步错误把测试打挂）。
+      networkAccountProvider.overrideWith((ref) async => _fakeNetworkAccount),
     ],
     child: MaterialApp(
       theme: appLightTheme,

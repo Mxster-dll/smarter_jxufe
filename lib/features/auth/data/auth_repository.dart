@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import 'package:smarter_jxufe/core/errors/failures.dart';
+import 'package:smarter_jxufe/core/network/cas_redirect.dart';
 import 'package:smarter_jxufe/core/network/device_profile_repository.dart';
 import 'package:smarter_jxufe/features/auth/data/datasources/auth_local_datasource.dart';
 import 'package:smarter_jxufe/features/auth/data/datasources/auth_remote_datasource.dart';
@@ -110,11 +111,12 @@ class AuthRepository {
     try {
       final (url, _) = await _remoteDataSource.getRedirectImsUrl(tgc);
       // ⚠️ 光「有 Location」不算数：CAS 在会话已失效时会把请求 302 打回
-      // `/cas/login?...`（带 service 参数），`getRedirectImsUrl` 对任何
-      // Location 都返回成功 → 会变成「假阳性 = 拿死票免登录」。
-      // 真正登录态的回跳地址是**服务端**的回调（带 ticket），不会指回登录页。
-      final path = Uri.tryParse(url)?.path ?? '';
-      if (path.contains('/cas/login')) {
+      // `/cas/login?...`（带 service 参数）。真正登录态的回跳地址是**服务端**
+      // 的回调（带 ticket），不会指回登录页。
+      // 2026-09-19 起这条判定与 `getRedirectImsUrl` 共用同一个纯函数
+      // （[isCasLoginRedirect]）—— 那边现在同样会抛 [TgcExpiredException]，
+      // 「假阳性 = 拿死票免登录 / 换票成功但全线凭证已失效」两条路一起堵住。
+      if (isCasLoginRedirect(url)) {
         debugPrint('[AuthRepo] isTgcAlive：CAS 打回登录页，判定为已失效');
         return false;
       }

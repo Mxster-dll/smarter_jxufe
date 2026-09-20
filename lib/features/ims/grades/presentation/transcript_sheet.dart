@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/core/errors/app_exception.dart';
 import 'package:smarter_jxufe/core/web/external_url.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
@@ -95,7 +96,7 @@ class _TranscriptSheetState extends ConsumerState<TranscriptSheet> {
         );
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      setState(() => _error = friendlyErrorText(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -269,7 +270,7 @@ class _TranscriptSheetState extends ConsumerState<TranscriptSheet> {
   }
 
   Widget _typeError(ColorScheme scheme, Object error) {
-    final message = error.toString().replaceFirst('Exception: ', '');
+    final message = friendlyErrorText(error);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

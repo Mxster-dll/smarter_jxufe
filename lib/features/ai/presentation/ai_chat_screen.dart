@@ -23,7 +23,7 @@ import 'package:smarter_jxufe/features/ai/presentation/ai_floating_ball.dart';
 import 'package:smarter_jxufe/features/ai/presentation/ai_page_launcher.dart';
 import 'package:smarter_jxufe/features/ai/presentation/widgets/ai_markdown_view.dart';
 import 'package:smarter_jxufe/features/ai/presentation/widgets/ai_write_confirm.dart';
-import 'package:smarter_jxufe/features/settings/domain/settings_section.dart';
+import 'package:smarter_jxufe/design/settings_section.dart';
 import 'package:smarter_jxufe/features/settings/presentation/settings_screen.dart';
 
 /// 首次进入时的建议问题（点一下直接发）。

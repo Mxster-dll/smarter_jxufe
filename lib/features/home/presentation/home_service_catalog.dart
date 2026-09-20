@@ -10,8 +10,10 @@ library;
 import 'package:flutter/material.dart';
 
 import 'package:smarter_jxufe/design/feature_palette.dart';
+import 'package:smarter_jxufe/features/aa/presentation/aa_screen.dart';
 import 'package:smarter_jxufe/features/campus_address/presentation/campus_address_screen.dart';
 import 'package:smarter_jxufe/features/campus_address/presentation/campus_map_screen.dart';
+import 'package:smarter_jxufe/features/chaoxing/presentation/chaoxing_screen.dart';
 import 'package:smarter_jxufe/features/competition_award/presentation/competition_award_screen.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/competition_screen.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/jh_read_screen.dart';
@@ -21,6 +23,7 @@ import 'package:smarter_jxufe/features/data_center/presentation/data_center_scre
 import 'package:smarter_jxufe/features/electricity/presentation/electricity_screen.dart';
 import 'package:smarter_jxufe/features/ims/course_selection/presentation/course_selection_screen.dart';
 import 'package:smarter_jxufe/features/ims/menu/domain/ims_tab.dart';
+import 'package:smarter_jxufe/features/ims/public_query/presentation/classroom_free_screen.dart';
 import 'package:smarter_jxufe/features/ims/public_query/presentation/public_query_screen.dart';
 import 'package:smarter_jxufe/features/ims/splash/presentation/ims_splash_screen.dart';
 import 'package:smarter_jxufe/features/leave/presentation/leave_screen.dart';
@@ -32,6 +35,7 @@ import 'package:smarter_jxufe/features/rules/presentation/rules_home_screen.dart
 import 'package:smarter_jxufe/features/recommendation/presentation/recommendation_screen.dart';
 import 'package:smarter_jxufe/features/school_calendar/presentation/school_calendar_screen.dart';
 import 'package:smarter_jxufe/features/score_estimate/presentation/score_estimate_screen.dart';
+import 'package:smarter_jxufe/features/site_nav/presentation/site_nav_screen.dart';
 import 'package:smarter_jxufe/features/tice/presentation/tice_screen.dart';
 import 'package:smarter_jxufe/features/zongce/presentation/zongce_screen.dart';
 
@@ -275,6 +279,15 @@ List<HomeServiceEntry> homeServiceEntries({
       f.leave,
       () => const LeaveScreen(),
     ),
+    // AA 算账（用户 2026-09-19 立项）：纯本地记账，与教务无关，归「校园生活」。
+    entry(
+      Icons.receipt_long_outlined,
+      'AA 算账',
+      '聚餐 / 出行分摊 · 自动算出谁该给谁转多少钱',
+      HomeServiceGroup.campus,
+      f.aaAccount,
+      () => const AaScreen(),
+    ),
     entry(
       Icons.workspace_premium_outlined,
       '综合测评',
@@ -323,6 +336,18 @@ List<HomeServiceEntry> homeServiceEntries({
       f.rules,
       () => const RulesHomeScreen(),
     ),
+    // 网站导航（用户 2026-09-19 立项：「我希望添加一个网站导航的功能」，给了 8 条
+    // 起点并要求「各学院你去找，然后非学院官网的应该也还要很多其他网站」）。
+    // 138 条站点目录 + 搜索 / 分类筛选 + 星标收藏（Hive）——
+    // **一律用系统浏览器打开**（用户同日拍板否掉内嵌 WebView）。
+    entry(
+      Icons.hub_outlined,
+      '网站导航',
+      '全校官网一站直达 · 学院 / 部门 / 服务系统 / 科研机构',
+      HomeServiceGroup.info,
+      f.siteNav,
+      () => const SiteNavScreen(),
+    ),
     // 「上课实况窗」2026-09-15 从宫格迁到设置页（用户裁定：主页不要显示）。
     entry(
       Icons.travel_explore_outlined,
@@ -332,6 +357,17 @@ List<HomeServiceEntry> homeServiceEntries({
       f.publicQuery,
       () => const PublicQueryScreen(),
     ),
+    // 「找空闲教室」2026-09-19 二轮**独立成磁贴** —— 用户原话：「我希望是把查空教室独立，
+    // 而不是查无课时间独立」（上一版做反了对象）。原网页 SB11 / SB12 两个子功能，
+    // 公共查询页也留了一张入口卡；「多班对照找无课时间」仍走公共查询页那张卡。
+    entry(
+      Icons.meeting_room_outlined,
+      '找空闲教室',
+      '按时间挑教室 · 按教室看整学期空闲时段',
+      HomeServiceGroup.ims,
+      f.publicQuery,
+      () => const ClassroomFreeScreen(),
+    ),
     entry(
       Icons.how_to_reg_outlined,
       '选课',
@@ -339,6 +375,18 @@ List<HomeServiceEntry> homeServiceEntries({
       HomeServiceGroup.ims,
       f.courseSelection,
       () => const CourseSelectionScreen(),
+    ),
+    // 学习通（超星）（用户 2026-09-19 立项：从「智慧江财 → 网络教学 → 江财教学网 →
+    // 学习空间」这条路发现可以接进来 —— 实测不必绕教学网，直接复用超星统一认证网关
+    // 换证即可，详见 `reverse_engineering/学习通接口.md`）。
+    // **只读**：课程 / 作业 / 通知，不写任何学习通数据。
+    entry(
+      Icons.assignment_outlined,
+      '学习通',
+      '课程 · 待做作业与截止时间 · 通知消息（只读）',
+      HomeServiceGroup.study,
+      f.chaoxing,
+      () => const ChaoxingScreen(),
     ),
   ];
 }

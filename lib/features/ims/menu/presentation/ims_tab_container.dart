@@ -9,7 +9,7 @@ import 'package:smarter_jxufe/features/ims/grades/presentation/grades_screen.dar
 import 'package:smarter_jxufe/features/ims/grades/presentation/grades_viewmodel.dart';
 import 'package:smarter_jxufe/features/ims/graduation_requirements/presentation/graduation_requirements_screen.dart';
 import 'package:smarter_jxufe/design/pane_chrome.dart';
-import 'package:smarter_jxufe/features/settings/domain/settings_section.dart';
+import 'package:smarter_jxufe/design/settings_section.dart';
 
 /// 单项教务功能容器：进入即全屏展示 [initialTab] 对应的功能页，
 /// 仅保留返回与（成绩页）刷新能力。不再提供五功能底部切换栏、

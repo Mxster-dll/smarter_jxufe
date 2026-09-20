@@ -1,6 +1,7 @@
 import 'package:html/parser.dart' as parser;
 import 'package:html/dom.dart';
 
+import 'package:smarter_jxufe/features/school_calendar/data/school_calendar_exception.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/school_calendar.dart';
 
 /// 把教务系统 `SchoolCalendar.show.jsp` 返回的校历 HTML 解析为 [SchoolCalendar]。
@@ -34,7 +35,7 @@ class SchoolCalendarHtmlParser {
         .where((table) => _hasMonthHeader(table))
         .toList();
     if (monthTables.isEmpty) {
-      throw Exception(
+      throw SchoolCalendarException(
         '校历 HTML 解析失败：未找到月份表（共 ${document.querySelectorAll('table').length} 张表）',
       );
     }
@@ -71,7 +72,7 @@ class SchoolCalendarHtmlParser {
   CalendarMonth _parseMonthTable(Element table) {
     final rows = table.querySelectorAll('tr');
     if (rows.length < 3) {
-      throw Exception('校历月份表行数异常：${rows.length}');
+      throw SchoolCalendarException('校历月份表行数异常：${rows.length}');
     }
 
     // 行 0：月份（第 2 个 td 是「2026-03」）。
@@ -79,7 +80,7 @@ class SchoolCalendarHtmlParser {
     final ym = _text(headerCells.length > 1 ? headerCells[1] : null);
     final ymMatch = RegExp(r'^(\d{4})-(\d{1,2})$').firstMatch(ym);
     if (ymMatch == null) {
-      throw Exception('校历月份头无法解析："$ym"');
+      throw SchoolCalendarException('校历月份头无法解析："$ym"');
     }
     final year = int.parse(ymMatch.group(1)!);
     final month = int.parse(ymMatch.group(2)!);

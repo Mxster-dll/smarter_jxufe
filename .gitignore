@@ -5,8 +5,14 @@ app_data/
 tools/
 lib/old/
 .vscode
-*.g.dart
-*.freezed.dart
+# 探针残骸：353 MB / 4000+ 文件，内含 Chrome 密码库与 JSESSIONID/TGC 字面量（2026-09-19 立）
+.scratch/
+.probe/
+test/failures/
+# ⚠ 代码生成产物（*.g.dart / *.freezed.dart）**必须入库**（2026-09-20 立）：
+# 本仓无 CI，全新克隆若缺这 68 个文件就连编译都过不去（`part '…'` 找不到目标）。
+# 改动注解模型后仍要跑 `dart run build_runner build --delete-conflicting-outputs`，
+# 然后**把产物一起提交**。守卫 = test/repo_hygiene_test.dart。
 
 # 发布签名（绝不入库；见 <仓库外的密钥目录>\smarter_jxufe-release.jks）
 android/key.properties

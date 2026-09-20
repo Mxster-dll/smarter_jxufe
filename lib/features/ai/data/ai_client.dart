@@ -9,6 +9,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:smarter_jxufe/core/network/trace_text.dart';
 
 import '../domain/ai_config.dart';
 import '../domain/ai_message.dart';
@@ -172,11 +173,11 @@ class AiClient {
     try {
       decoded = jsonDecode(raw);
     } catch (_) {
-      yield AiErrorEvent('响应不是合法 JSON：${_clip(raw)}');
+      yield AiErrorEvent('响应不是合法 JSON：${clipForTrace200(raw)}');
       return;
     }
     if (decoded is! Map) {
-      yield AiErrorEvent('响应格式不对：${_clip(raw)}');
+      yield AiErrorEvent('响应格式不对：${clipForTrace200(raw)}');
       return;
     }
     final json = Map<String, dynamic>.from(decoded);
@@ -279,7 +280,7 @@ class AiClient {
         }
         return AiConnectionTest(
           true,
-          '连接成功，可用模型 ${models.length} 个：${_clip(models.take(6).join('、'))}'
+          '连接成功，可用模型 ${models.length} 个：${clipForTrace200(models.take(6).join('、'))}'
               '${models.length > 6 ? ' 等' : ''}',
           models: models,
         );
@@ -381,5 +382,3 @@ class AiConnectionTest {
   const AiConnectionTest(this.ok, this.message, {this.models = const []});
 }
 
-String _clip(String text, [int max = 200]) =>
-    text.length <= max ? text : '${text.substring(0, max)}…';

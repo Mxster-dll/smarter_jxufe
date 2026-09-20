@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/library_edu/data/providers/tsgxs_providers.dart';
 import 'package:smarter_jxufe/features/library_edu/domain/tsgxs_models.dart';
+import 'package:smarter_jxufe/design/app_states.dart';
 
 /// 排行榜:全校闯关成绩排名(未通过不上榜)。
 class TsgxsRankingScreen extends ConsumerWidget {
@@ -26,7 +28,7 @@ class TsgxsRankingScreen extends ConsumerWidget {
         ],
       ),
       body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const AppLoadingState(),
         error: (e, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -43,12 +45,9 @@ class TsgxsRankingScreen extends ConsumerWidget {
             _header(context, ranking),
             const SizedBox(height: 12),
             Container(
-              decoration: BoxDecoration(
+              decoration: ShapeDecoration(
+                shape: appCardShape(context),
                 color: scheme.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AppColors.hairline(context, 0.6),
-                ),
               ),
               child: Column(
                 children: [

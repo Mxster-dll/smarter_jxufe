@@ -2,6 +2,7 @@ import 'package:smarter_jxufe/features/comprehensive_service/data/datasource/jh_
 import 'package:smarter_jxufe/features/comprehensive_service/data/datasource/ssp_auth_remote_datasource.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/jh_read_record.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/ssp_auth_repository.dart';
+import 'package:smarter_jxufe/features/comprehensive_service/data/ssp_exception.dart';
 
 /// 蛟湖阅读业务仓库。
 ///
@@ -38,7 +39,7 @@ class JhReadRepository {
           studentName: studentName,
         );
       } on SspSessionExpiredException {
-        throw Exception('综合管理平台会话刷新失败，请稍后重试');
+        throw SspApiException('综合管理平台会话刷新失败，请稍后重试');
       }
     }
   }

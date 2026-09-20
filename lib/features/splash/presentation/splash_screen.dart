@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/core/network/dio_providers.dart';
 import 'package:smarter_jxufe/core/storage/hive_initializer.dart';
+import 'package:smarter_jxufe/features/auth/data/auth_exception.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/account_repository_provider.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_for_account_provider.dart';
 import 'package:smarter_jxufe/features/auth/presentation/login_screen.dart';
@@ -60,7 +61,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           defaultTargetPlatform != TargetPlatform.android;
       final mfaHandler = (String mfaState) async {
         final ctx = navigatorKey.currentContext;
-        if (ctx == null) throw Exception('无法获取当前页面上下文');
+        if (ctx == null) throw AuthException('无法获取当前页面上下文');
         final result = await qrVm.unifiedMfaVerify(
           ctx,
           account.cardNumber,
@@ -69,7 +70,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           startInQrMode: isDesktop,
           displayName: account.displayName,
         );
-        if (!result.authorized) throw Exception('用户取消 MFA 验证');
+        if (!result.authorized) throw AuthException('用户取消 MFA 验证');
         // 把「信任此设备」带回 AuthRepository → 自动重登时继续登记到 CAS。
         return result.trustDevice;
       };

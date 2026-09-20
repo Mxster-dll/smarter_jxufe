@@ -7,6 +7,7 @@ import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_for_a
 import 'package:smarter_jxufe/features/ims/auth/data/datasource/ims_auth_local_datasource.dart';
 import 'package:smarter_jxufe/features/ims/auth/data/ims_session.dart';
 import 'package:smarter_jxufe/features/ims/auth/data/providers/ims_auth_local_datasource_provider.dart';
+import 'package:smarter_jxufe/features/ims/data/ims_exception.dart';
 
 /// **全局唯一的 IMS 会话实例**（成绩 / 课表 / 毕业学分 / 培养方案 / 我的 共用）。
 ///
@@ -60,7 +61,7 @@ Future<({String url, String? gid})> _resolveRedirect(
   final cas = await ref.read(authRepositoryForAccountProvider(account).future);
   final result = await cas.getImsRedirectInfo();
   return result.fold(
-    (failure) => throw Exception('IMS 重定向失败：${failure.message}'),
+    (failure) => throw ImsApiException('IMS 重定向失败：${failure.message}'),
     (info) => (url: info.$1, gid: info.$2),
   );
 }

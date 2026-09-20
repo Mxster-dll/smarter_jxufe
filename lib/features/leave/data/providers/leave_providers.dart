@@ -5,7 +5,7 @@ import 'package:smarter_jxufe/core/network/device_profile_repository_provider.da
 import 'package:smarter_jxufe/core/network/dio_providers.dart';
 import 'package:smarter_jxufe/features/leave/data/datasources/leave_remote_datasource.dart';
 import 'package:smarter_jxufe/features/leave/domain/leave_models.dart';
-import 'package:smarter_jxufe/features/school_calendar/data/providers/wxcal_providers.dart';
+import 'package:smarter_jxufe/features/platform_guid/data/providers/guid_providers.dart';
 
 /// 请假接口专用 Dio（平台管理域 .edu.cn，与校历/网费同款来源头）。
 ///
@@ -34,12 +34,6 @@ final leaveRemoteDataSourceProvider = Provider<LeaveRemoteDataSource>(
   (ref) => LeaveRemoteDataSource(ref.watch(leaveDioProvider)),
 );
 
-/// 平台 GUID（与校历/网费共用 Hive box 'wxPlatform' key 'guid'）。
-///
-/// 直接复用 school_calendar 的 [wxGuidProvider]——网费/校历页填写的配置
-/// 在此同样生效，无需重复定义。
-final leaveGuidProvider = wxGuidProvider;
-
 /// 「我的请假」记录列表。
 ///
 /// 前置条件：已登录（学号）+ 已配置平台 GUID。GUID 缺失时抛出面向 UI 的
@@ -49,7 +43,7 @@ final leaveListProvider = FutureProvider<List<LeaveListRecord>>((ref) async {
   if (account.isEmpty) {
     throw const LeaveApiException('请先登录后再查看请假记录');
   }
-  final guid = await ref.watch(wxGuidProvider.future);
+  final guid = await ref.watch(platformGuidProvider.future);
   if (guid == null || guid.trim().isEmpty) {
     throw const LeaveApiException('未配置平台标识（GUID），无法读取请假记录');
   }
@@ -64,7 +58,7 @@ final leaveDetailBundleProvider =
   if (account.isEmpty) {
     throw const LeaveApiException('请先登录后再查看请假详情');
   }
-  final guid = await ref.watch(wxGuidProvider.future);
+  final guid = await ref.watch(platformGuidProvider.future);
   if (guid == null || guid.trim().isEmpty) {
     throw const LeaveApiException('未配置平台标识（GUID），无法读取请假详情');
   }

@@ -5,7 +5,9 @@ import 'package:smarter_jxufe/design/pane_chrome.dart';
 
 import '../data/rules_repository.dart';
 import '../domain/rule_doc.dart';
+import 'package:smarter_jxufe/design/section_title.dart';
 import 'rules_reader_screen.dart';
+import 'package:smarter_jxufe/design/app_states.dart';
 
 /// 规章制度入口页：全量目录（分类分组 + 搜索）。
 class RulesHomeScreen extends ConsumerStatefulWidget {
@@ -80,7 +82,7 @@ class _RulesHomeScreenState extends ConsumerState<RulesHomeScreen> {
           const SizedBox(height: 4),
           Expanded(
             child: catalogAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => const AppLoadingState(),
               error: (e, _) => Center(
                 child: Text(
                   '目录加载失败：$e',
@@ -158,19 +160,7 @@ class _RulesHomeScreenState extends ConsumerState<RulesHomeScreen> {
       padding: const EdgeInsets.fromLTRB(2, 14, 2, 8),
       child: Row(
         children: [
-          Container(
-            width: 3,
-            height: 13,
-            decoration: BoxDecoration(
-              color: scheme.primary,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(width: 7),
-          Text(
-            name,
-            style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
-          ),
+          appSectionTitle(context, text: name),
           const SizedBox(width: 8),
           Text(
             '$count 份',

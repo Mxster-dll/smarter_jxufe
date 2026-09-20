@@ -9,9 +9,11 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/core/errors/app_exception.dart';
 import 'package:smarter_jxufe/features/read_credit/data/providers/read_credit_providers.dart';
 import 'package:smarter_jxufe/features/read_credit/domain/read_credit_models.dart';
 import 'package:smarter_jxufe/features/read_credit/presentation/widgets/read_credit_detail_view.dart';
+import 'package:smarter_jxufe/design/app_states.dart';
 
 class ReadCreditDetailScreen extends ConsumerWidget {
   const ReadCreditDetailScreen({super.key, required this.kind});
@@ -24,12 +26,13 @@ class ReadCreditDetailScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: Text('${kind.label}明细'), centerTitle: true),
       body: detailAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const AppLoadingState(),
         error: (error, _) => _message(
           context,
           icon: Icons.error_outline,
           title: '明细读取失败',
-          body: '$error',
+          // 文案经 friendlyErrorText（唯一出口）：`'$error'` 会把 `Exception: ` 前缀印给用户。
+          body: friendlyErrorText(error),
           onRetry: () => ref.invalidate(readCreditDetailProvider(kind)),
         ),
         data: (detail) {

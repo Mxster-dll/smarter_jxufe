@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:smarter_jxufe/features/auth/data/auth_repository.dart';
+import 'package:smarter_jxufe/features/library_edu/data/tsgxs_api_remote_datasource.dart';
 import 'package:smarter_jxufe/features/library_edu/data/tsgxs_auth_local_datasource.dart';
 import 'package:smarter_jxufe/features/library_edu/data/tsgxs_auth_remote_datasource.dart';
 
@@ -64,7 +65,7 @@ class TsgxsAuthRepository {
         );
         final ticketUrl = redirectResult.fold(
           (failure) =>
-              throw Exception('获取统一认证票据失败：${failure.message ?? failure}'),
+              throw TsgxsApiException('获取统一认证票据失败：${failure.message ?? failure}'),
           (url) => url,
         );
         lines.add('票据地址(${attempt + 1}): ${_mask(ticketUrl)}');

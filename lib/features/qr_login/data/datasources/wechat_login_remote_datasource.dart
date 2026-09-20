@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 
+import 'package:smarter_jxufe/features/qr_login/data/qr_login_exception.dart';
 import 'package:smarter_jxufe/features/qr_login/domain/entities/qr_code_status.dart';
 import 'package:smarter_jxufe/utils/Log.dart';
 
@@ -37,7 +38,7 @@ class WechatLoginRemoteDataSource {
       return _extractUuid(response.data);
     } catch (e) {
       logError('$e');
-      throw Exception('二维码信息初始化失败: $e');
+      throw QrLoginException('二维码信息初始化失败: $e');
     }
   }
 
@@ -56,7 +57,7 @@ class WechatLoginRemoteDataSource {
       return match2.group(1)?.trim() ?? '';
     }
 
-    throw Exception('无法匹配到 uuid: $responseBody');
+    throw QrLoginException('无法匹配到 uuid: $responseBody');
   }
 
   /// 下载微信二维码图片
@@ -69,7 +70,7 @@ class WechatLoginRemoteDataSource {
 
       return response.data as Uint8List;
     } catch (e) {
-      throw Exception('二维码下载失败: $e');
+      throw QrLoginException('二维码下载失败: $e');
     }
   }
 
@@ -91,21 +92,21 @@ class WechatLoginRemoteDataSource {
       );
 
       if (response.statusCode != 200) {
-        throw Exception('连接错误${response.statusCode}');
+        throw QrLoginException('连接错误${response.statusCode}');
       }
 
       final regex = RegExp(r'window\.wx_errcode\s*=\s*([^;]+)');
       final match = regex.firstMatch(response.data as String);
 
       if (match == null || match.groupCount == 0) {
-        throw Exception('无法匹配到wx_errcode: ${response.data}');
+        throw QrLoginException('无法匹配到wx_errcode: ${response.data}');
       }
 
       final String status = match.group(1)?.trim() ?? '';
 
       return _statusMap[status];
     } catch (e) {
-      throw Exception('轮询失败: $e');
+      throw QrLoginException('轮询失败: $e');
     }
   }
 

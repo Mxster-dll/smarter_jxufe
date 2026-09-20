@@ -16,15 +16,14 @@
 library;
 
 import 'package:dio/dio.dart';
+import 'package:smarter_jxufe/core/errors/app_exception.dart';
+import 'package:smarter_jxufe/core/network/cas_walk.dart';
+import 'package:smarter_jxufe/core/network/cookie_jar.dart';
 
 /// 畅想之星会话建立失败。
-class CxstarSessionException implements Exception {
-  final String message;
+class CxstarSessionException extends AppException {
 
-  CxstarSessionException([this.message = '畅想之星会话建立失败']);
-
-  @override
-  String toString() => message;
+  CxstarSessionException([super.message = '畅想之星会话建立失败']);
 }
 
 /// 畅想之星会话建立数据源。
@@ -105,118 +104,58 @@ class CxstarAuthRemoteDataSource {
     String ticketUrl, {
     List<String>? trace,
   }) async {
-    final jar = <String, Map<String, String>>{};
-    var url = ticketUrl;
-    for (var hop = 0; hop < 15; hop++) {
-      final uri = Uri.parse(url);
-      final host = uri.host;
-
-      // ① 回跳地址本身带 token（CAS → ua.cxstar.com → m.cxstar.com?token=…）。
-      final inUrl = tokenFromUri(uri);
-      if (inUrl != null) {
-        trace?.add('跳[$hop] 回跳地址已带个人 token（${maskToken(inUrl)}）');
-        return inUrl;
-      }
-
-      final cookieHeader = _cookieHeader(jar, host);
-      final Response<dynamic> response;
-      try {
-        response = await _dio.get<dynamic>(
-          url,
-          options: Options(
-            followRedirects: false,
-            validateStatus: (status) => true,
-            responseType: ResponseType.plain,
-            headers: {
-              if (cookieHeader.isNotEmpty) 'Cookie': cookieHeader,
-              'Referer': 'https://$host/',
-            },
-          ),
-        );
-      } on DioException catch (e) {
-        throw CxstarSessionException(
-          '畅想之星换证请求失败（$host）：${e.message ?? e.type.name}',
-        );
-      }
-
-      final setCookies = response.headers['set-cookie'];
-      _store(jar, host, setCookies);
-
-      // ② Set-Cookie 里带 token（实测回跳域会下发 mtoken）。
-      final inCookie = tokenFromCookies(setCookies);
-      final location = response.headers.value('location');
-      if (trace != null) {
-        final names = (setCookies ?? const <String>[])
-            .map((c) => c.split(';').first.split('=').first)
-            .join(',');
-        trace.add(
-          '跳[$hop] ${response.statusCode} ${_clip(url, 120)}'
-          '${location != null && location.isNotEmpty ? ' -> ${_clip(location, 80)}' : ''}'
-          '${names.isNotEmpty ? '  Set-Cookie($host): $names' : ''}',
-        );
-      }
-      if (inCookie != null) {
-        trace?.add('  取得个人 token（cookie，${maskToken(inCookie)}）');
-        return inCookie;
-      }
-
-      // ③ 正文里带 token（JSON 回执 / 非 SPA 页面）。
-      final raw = response.data;
-      final inBody = tokenFromBody(raw is String ? raw : raw?.toString());
-      if (inBody != null) {
-        trace?.add('  取得个人 token（正文，${maskToken(inBody)}）');
-        return inBody;
-      }
-
-      if (location == null || location.isEmpty) {
-        // 链路终止却没拿到 token：多半是落到未登录页（票被拒 / 需要重新登录）。
-        throw CxstarSessionException(
-          '畅想之星会话建立失败：换证链结束时未取得个人 token'
-          '（最后停在 $host，HTTP ${response.statusCode}，'
-          'Cookie=[${_cookieNamesOf(jar, host)}]）。'
-          '若刚在别处登录过，可能是票据一次性或会话被顶；重试即可。',
-        );
-      }
-      url = uri.resolve(location).toString();
+    final jar = HostCookieJar();
+    // 循环机制走地基件（`lib/core/network/cas_walk.dart`）；这里只留本平台的语义：
+    // 15 跳上限、plain 响应、以及三种「哪一跳会带 token」的取法（回跳地址 / Set-Cookie / 正文）。
+    final CasWalkOutcome<String> outcome;
+    try {
+      outcome = await walkCasRedirects<String>(
+        startUrl: ticketUrl,
+        jar: jar,
+        send: casDioSender(_dio, responseType: ResponseType.plain),
+        spec: const CasWalkSpec(maxHops: 15),
+        trace: trace,
+        beforeRequest: (step) {
+          // ① 回跳地址本身带 token（CAS → ua.cxstar.com → m.cxstar.com?token=…）。
+          final inUrl = tokenFromUri(Uri.parse(step.url));
+          if (inUrl == null) return null;
+          trace?.add('跳[${step.index}] 回跳地址已带个人 token（${maskToken(inUrl)}）');
+          return CasHopFinish(inUrl);
+        },
+        afterResponse: (step) {
+          // ② Set-Cookie 里带 token（实测回跳域会下发 mtoken）。
+          final inCookie = tokenFromCookies(step.setCookies);
+          if (inCookie != null) {
+            trace?.add('  取得个人 token（cookie，${maskToken(inCookie)}）');
+            return CasHopFinish(inCookie);
+          }
+          // ③ 正文里带 token（JSON 回执 / 非 SPA 页面）。
+          final inBody = tokenFromBody(step.bodyText);
+          if (inBody != null) {
+            trace?.add('  取得个人 token（正文，${maskToken(inBody)}）');
+            return CasHopFinish(inBody);
+          }
+          return null;
+        },
+      );
+    } on DioException catch (e) {
+      throw CxstarSessionException(
+        '畅想之星换证请求失败（${e.requestOptions.uri.host}）：${e.message ?? e.type.name}',
+      );
     }
-    throw CxstarSessionException('畅想之星会话建立失败：重定向次数过多');
-  }
 
-  static String _cookieNamesOf(
-    Map<String, Map<String, String>> jar,
-    String host,
-  ) {
-    final map = jar[host];
-    if (map == null || map.isEmpty) return '(空)';
-    return map.keys.join(',');
-  }
-
-  static String _cookieHeader(
-    Map<String, Map<String, String>> jar,
-    String host,
-  ) {
-    final map = jar[host];
-    if (map == null || map.isEmpty) return '';
-    return map.entries.map((e) => '${e.key}=${e.value}').join('; ');
-  }
-
-  /// 把某 host 响应的 Set-Cookie 存入其专属 jar（同名覆盖）。
-  static void _store(
-    Map<String, Map<String, String>> jar,
-    String host,
-    List<String>? setCookies,
-  ) {
-    if (setCookies == null || setCookies.isEmpty) return;
-    final map = jar.putIfAbsent(host, () => <String, String>{});
-    for (final raw in setCookies) {
-      final first = raw.split(';').first.trim();
-      final eq = first.indexOf('=');
-      if (eq > 0) {
-        map[first.substring(0, eq).trim()] = first.substring(eq + 1);
-      }
+    final token = outcome.result;
+    if (token != null) return token;
+    if (outcome.exhausted) {
+      throw CxstarSessionException('畅想之星会话建立失败：重定向次数过多');
     }
+    final host = Uri.parse(outcome.finalUrl).host;
+    // 链路终止却没拿到 token：多半是落到未登录页（票被拒 / 需要重新登录）。
+    throw CxstarSessionException(
+      '畅想之星会话建立失败：换证链结束时未取得个人 token'
+      '（最后停在 $host，HTTP ${outcome.lastStatusCode}，'
+      'Cookie=[${jar.namesOf(host)}]）。'
+      '若刚在别处登录过，可能是票据一次性或会话被顶；重试即可。',
+    );
   }
-
-  static String _clip(String value, int max) =>
-      value.length > max ? '${value.substring(0, max)}…' : value;
 }

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
+import 'package:smarter_jxufe/design/section_title.dart';
+import 'package:smarter_jxufe/design/status_palette.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/school_calendar_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/wxcal_providers.dart';
 import 'package:smarter_jxufe/features/tice/data/models/tice_models.dart';
@@ -400,7 +402,7 @@ class _TiceScreenState extends ConsumerState<TiceScreen> {
     // 女 = 玫红，未登记进功能色板 → 走 `AppColors.tone` 深色下自动提亮。
     final color = isMale
         ? AppColors.info(context)
-        : AppColors.tone(context, const Color(0xFFAD1457));
+        : AppColors.tone(context, StatusPalette.ticeFemale);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1.5),
       decoration: BoxDecoration(
@@ -482,7 +484,7 @@ class _TiceScreenState extends ConsumerState<TiceScreen> {
       (AppColors.critical(context), '不及格'),
       (AppColors.caution(context), '及格'),
       // `Colors.lightBlue.shade700`，未登记进功能色板 → tone 提亮。
-      (AppColors.tone(context, const Color(0xFF0288D1)), '良好'),
+      (AppColors.tone(context, TiceTone.good), '良好'),
       (AppColors.success(context), '优秀'),
     ];
     return Wrap(
@@ -518,7 +520,7 @@ class _TiceScreenState extends ConsumerState<TiceScreen> {
     final segments = <(int, Color)>[
       (60, AppColors.critical(context)),
       (20, AppColors.caution(context)),
-      (10, AppColors.tone(context, const Color(0xFF0288D1))),
+      (10, AppColors.tone(context, TiceTone.good)),
       (10, AppColors.success(context)),
     ];
     final value = score.clamp(0.0, 100.0);
@@ -582,30 +584,8 @@ class _TiceScreenState extends ConsumerState<TiceScreen> {
     );
   }
 
-  Widget _buildSectionTitle(String text) {
-    final scheme = Theme.of(context).colorScheme;
-    return Row(
-      children: [
-        Container(
-          width: 3,
-          height: 13,
-          decoration: BoxDecoration(
-            color: scheme.primary,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: 7),
-        Text(
-          text,
-          style: TextStyle(
-            fontSize: 13.5,
-            fontWeight: FontWeight.w600,
-            color: scheme.onSurface,
-          ),
-        ),
-      ],
-    );
-  }
+    Widget _buildSectionTitle(String text) =>
+      appSectionTitle(context, text: text);
 
   /// 分项明细卡：每行 名称+原始值 | 得分 | 等级 chip。
   Widget _buildItemsCard(List<TiceItem> items) {

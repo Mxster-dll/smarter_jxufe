@@ -1,3 +1,4 @@
+import 'package:smarter_jxufe/core/network/jw_page_decoding.dart';
 import 'package:smarter_jxufe/features/ims/auth/data/ims_auth_repository.dart';
 import 'package:smarter_jxufe/features/ims/schedule/data/anti_corruption/schedule_html_parser.dart';
 import 'package:smarter_jxufe/features/ims/schedule/data/datasources/schedule_remote_datasource.dart';
@@ -25,9 +26,9 @@ class ScheduleRepository {
     required String studentId,
   }) async {
     final jsessionResult = await _imsAuthRepo.getJsessionId();
-    if (jsessionResult.isLeft()) throw Exception('获取 JSESSIONID 失败');
+    if (jsessionResult.isLeft()) throw JwSessionException('获取 JSESSIONID 失败');
     final jsessionId = jsessionResult.getOrElse(() => '') ?? '';
-    if (jsessionId.isEmpty) throw Exception('JSESSIONID 为空');
+    if (jsessionId.isEmpty) throw JwSessionException('JSESSIONID 为空');
 
     final html = await _remoteDataSource.getScheduleInTableHtml(
       jsessionId: jsessionId,

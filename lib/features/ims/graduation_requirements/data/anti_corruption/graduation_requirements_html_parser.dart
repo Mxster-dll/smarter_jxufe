@@ -1,6 +1,7 @@
 import 'package:html/dom.dart';
 import 'package:html/parser.dart' as html_parser;
 
+import 'package:smarter_jxufe/features/ims/data/ims_exception.dart';
 import 'package:smarter_jxufe/features/ims/graduation_requirements/domain/graduation_requirement.dart';
 
 /// 解析毕业学分要求 HTML 响应。
@@ -8,7 +9,7 @@ class GraduationRequirementsHtmlParser {
   List<GraduationRequirement> parseHtml(String html) {
     final document = html_parser.parse(html);
     final tbody = document.querySelector('#sdTable_tbody');
-    if (tbody == null) throw Exception('未找到数据表格');
+    if (tbody == null) throw ImsApiException('未找到数据表格');
 
     final rows = tbody.querySelectorAll('tr');
     final requirements = <GraduationRequirement>[];
@@ -49,7 +50,7 @@ class GraduationRequirementsHtmlParser {
       );
     }
 
-    if (requirements.isEmpty) throw Exception('未解析到任何数据');
+    if (requirements.isEmpty) throw ImsApiException('未解析到任何数据');
 
     return requirements;
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/painting.dart' show Color;
+import 'package:smarter_jxufe/design/status_palette.dart';
 
 /// 国家学生体质健康测试（赛康精益 www.skjycx.com）数据模型。
 ///
@@ -116,17 +117,17 @@ class TiceResult {
 
 /// 单分项等级 → 语义色。优秀绿 / 良好蓝 / 及格橙 / 不及格红。
 class TiceGradeStyle {
-  static const excellent = Color(0xFF2E7D32);
-  static const good = Color(0xFF0288D1);
-  static const pass = Color(0xFFEF6C00);
-  static const fail = Color(0xFFC62828);
+  static const excellent = TiceTone.excellent;
+  static const good = TiceTone.good;
+  static const pass = TiceTone.pass;
+  static const fail = TiceTone.fail;
 
   static Color colorOf(String grade) => switch (grade.trim()) {
         '优秀' => excellent,
         '良好' => good,
         '及格' => pass,
         '不及格' => fail,
-        _ => const Color(0xFF9E9E9E),
+        _ => TiceTone.unknown,
       };
 }
 

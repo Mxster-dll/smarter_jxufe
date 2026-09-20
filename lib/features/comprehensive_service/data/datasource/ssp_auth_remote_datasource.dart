@@ -1,5 +1,9 @@
 import 'package:dio/dio.dart';
 
+import 'package:smarter_jxufe/core/errors/app_exception.dart';
+import 'package:smarter_jxufe/core/network/cas_redirect.dart';
+import 'package:smarter_jxufe/features/comprehensive_service/data/ssp_exception.dart';
+
 /// 综合管理平台（ssp.jxufe.edu.cn）SSO 入口信息。
 ///
 /// 访问 `/sso/login.html` 会返回重定向到统一认证 CAS 的地址
@@ -18,12 +22,8 @@ class SspSsoEntry {
 /// 综合管理平台会话已失效（被重定向回登录页 / CAS）。
 ///
 /// 由上层仓库捕获后自动执行「刷新会话 + 重试一次」。
-class SspSessionExpiredException implements Exception {
-  final String message;
-  SspSessionExpiredException([this.message = '综合管理平台会话已过期']);
-
-  @override
-  String toString() => message;
+class SspSessionExpiredException extends SessionExpiredException {
+  SspSessionExpiredException([super.message = '综合管理平台会话已过期']);
 }
 
 /// 综合管理平台认证相关的远端数据源。
@@ -50,13 +50,13 @@ class SspAuthRemoteDataSource {
     final jsessionId = _extractJsessionId(response.headers);
 
     if (status == null || status < 300 || status >= 400) {
-      throw Exception('获取综合管理平台登录入口失败（status=$status）');
+      throw SspApiException('获取综合管理平台登录入口失败（status=$status）');
     }
     if (location == null || location.isEmpty) {
-      throw Exception('获取综合管理平台登录入口失败：未收到重定向地址');
+      throw SspApiException('获取综合管理平台登录入口失败：未收到重定向地址');
     }
     if (jsessionId == null || jsessionId.isEmpty) {
-      throw Exception('获取综合管理平台登录入口失败：未收到 JSESSIONID');
+      throw SspApiException('获取综合管理平台登录入口失败：未收到 JSESSIONID');
     }
 
     return SspSsoEntry(casLoginUrl: location, jsessionId: jsessionId);
@@ -68,8 +68,9 @@ class SspAuthRemoteDataSource {
   /// - 服务端通过 `Set-Cookie` 下发了新 ID → 使用新 ID；
   /// - 未下发 → 沿用调用方传入的 [jsessionId]（会话建在它之上）。
   ///
-  /// 若响应把请求引回登录页（Location 含 `/sso/login` 或 `cas/login`），
-  /// 说明激活失败，抛出 [SspSessionExpiredException]。
+  /// 若响应把请求引回登录页（平台自己的 `/sso/login`，或学校 CAS 登录页
+  /// —— 后者由 `isCasLoginRedirect` 判定），说明激活失败，抛出
+  /// [SspSessionExpiredException]。
   Future<String> activateSession({
     required String callbackUrl,
     required String jsessionId,
@@ -84,7 +85,10 @@ class SspAuthRemoteDataSource {
     );
 
     final location = response.headers.value('location') ?? '';
-    if (location.contains('/sso/login') || location.contains('cas/login')) {
+    // 平台自己的 `/sso/login` 用平台标记判；学校 CAS 用共用判据判
+    // （2026-09-20 前这里是宽松的 `contains('cas/login')`，会把 `/cas/loginfo`
+    // 与「查询串里带 /cas/login」误判成会话失效）。
+    if (location.contains('/sso/login') || isCasLoginRedirect(location)) {
       throw SspSessionExpiredException();
     }
 

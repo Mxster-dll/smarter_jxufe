@@ -28,7 +28,7 @@ import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/features/home/presentation/home_sidebar.dart';
 import 'package:smarter_jxufe/features/settings/data/theme_prefs.dart';
-import 'package:smarter_jxufe/features/settings/domain/settings_section.dart';
+import 'package:smarter_jxufe/design/settings_section.dart';
 import 'package:smarter_jxufe/features/settings/presentation/settings_screen.dart';
 
 /// 0xAARRGGBB 里取出 RGB 三元组（忽略 alpha，与预览的 `hex2rgb` 同口径）。
@@ -1346,6 +1346,35 @@ void main() {
         isEmpty,
         reason: '这些文件的淡描边 / 分隔线还没收口到 AppColors.hairline：$offenders',
       );
+    });
+  });
+
+  // ── ⑨ 分段按钮（SegmentedButton）选中段：深色 = 红实心件 ──────────────────
+  // 用户 2026-09-20 四轮：「我希望按钮选中后也要显示 c62828，而不是黑色」——
+  // M3 深色默认选中段取 `secondaryContainer`，在本主题里是窗口像素实测的 `#5D3F3D`
+  // 那种发闷深褐（用户读作「黑色」）。
+  group('⑨ 分段按钮选中段：深色红实心件，浅色冻结（2026-09-20）', () {
+    Color? darkSegBg(Set<WidgetState> states) =>
+        appDarkTheme.segmentedButtonTheme.style?.backgroundColor?.resolve(
+          states,
+        );
+
+    test('深色：选中段 = AppLadder.darkErrorFill（#C62828），前景 = 白', () {
+      expect(AppLadder.darkErrorFill, const Color(0xFFC62828));
+      expect(darkSegBg({WidgetState.selected}), AppLadder.darkErrorFill);
+      final fg = appDarkTheme.segmentedButtonTheme.style?.foregroundColor
+          ?.resolve({WidgetState.selected});
+      expect(fg, const Color(0xFFFFFFFF));
+      expect(fg, AppLadder.darkOnErrorFill);
+    });
+
+    test('未选中的段不设底色（回到 M3 默认：透明 + 组描边）', () {
+      expect(darkSegBg(const <WidgetState>{}), isNull);
+      expect(darkSegBg({WidgetState.hovered}), isNull);
+    });
+
+    test('浅色一个字段都不加（逐像素冻结）', () {
+      expect(appLightTheme.segmentedButtonTheme.style, isNull);
     });
   });
 }

@@ -3,20 +3,21 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/features/ims/public_query/data/providers/public_query_profile_provider.dart';
 import 'package:smarter_jxufe/features/ims/public_query/data/providers/public_query_providers.dart';
 import 'package:smarter_jxufe/features/ims/public_query/domain/public_query.dart';
 import 'package:smarter_jxufe/features/ims/public_query/domain/public_query_defaults.dart';
-import 'package:smarter_jxufe/features/ims/public_query/domain/public_timetable.dart';
-import 'package:smarter_jxufe/features/ims/public_query/presentation/free_time_view.dart';
+import 'package:smarter_jxufe/features/ims/public_query/presentation/classroom_free_screen.dart';
+import 'package:smarter_jxufe/features/ims/public_query/presentation/free_time_screen.dart';
+import 'package:smarter_jxufe/features/ims/public_query/presentation/public_query_option_sheet.dart';
 import 'package:smarter_jxufe/features/ims/public_query/presentation/public_timetable_view.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/wxcal_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/school_term.dart';
-import 'package:smarter_jxufe/features/school_calendar/domain/teaching_week.dart';
 import 'package:smarter_jxufe/features/score_estimate/presentation/ge_common.dart';
 import 'package:smarter_jxufe/design/pane_chrome.dart';
-import 'package:smarter_jxufe/features/settings/domain/settings_section.dart';
+import 'package:smarter_jxufe/design/settings_section.dart';
 
 /// 教务「公共查询」聚合页：按课程 / 教师 / 班级 / 教室查课表，
 /// 并可把多个班级拉到一起**对照出共同空闲时间**。
@@ -51,12 +52,6 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
   /// 班级课表选中的单个班级（看课表用）。
   PublicQueryOption? _class;
 
-  /// 多班对照选中的班级（找共同无课时间用）——允许含 [_class] 之外的班。
-  final List<PublicQueryOption> _compareClasses = [];
-
-  int _week = 1;
-  int _minPeriods = 1;
-  bool _includeWeekend = false;
   bool _showAllResults = false;
 
   /// 账号默认筛选（打开页面时解析一次；切回「班级 / 教室」时用它补齐被清空的项）。
@@ -70,15 +65,6 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
       terms: ref.read(offlineSemesterTermsProvider),
     );
     _grade = '${resolve.xn}';
-    final teachingWeek = resolveTeachingWeek(
-      DateTime.now(),
-      terms: ref.read(offlineSemesterTermsProvider),
-    );
-    if (teachingWeek != null &&
-        teachingWeek.term.matches(xn: resolve.xn, xq: resolve.xq) &&
-        teachingWeek.week > 0) {
-      _week = teachingWeek.week;
-    }
     // 打开页面即按当前账号预填筛选条件（校区 / 年级 / 学院 / 专业 / 班级）。
     // 口径见 `domain/public_query_defaults.dart`；用户 2026-09-14 裁定
     // 「每次打开页面都重置成账号默认」——手动改过的值不跨次保留。
@@ -185,7 +171,10 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
         context,
         title: const Text('公共查询'),
         actions: _headerActions(),
-        settingsSections: const [SettingsSection.imsSession],
+        settingsSections: const [
+          SettingsSection.imsSession,
+          SettingsSection.publicQuery,
+        ],
       ),
       body: PaneBody(
         actions: _headerActions(),
@@ -227,20 +216,182 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
               // ⚠️ 班级课表**也要**显示结果区（曾用 `_kind != klass` 挡掉 →
               // 选了班级查出来只看到对照卡、看不到那张班的课表，用户报「查到了但看不到课表」）。
               _resultSection(context, scheme),
-              const SizedBox(height: 12),
-              _compareCard(context),
-            ],
-            if (_kind == PublicQueryKind.klass &&
-                _compareClasses.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              _freeTimeSection(context),
             ],
             if (_kind != PublicQueryKind.klass) ...[
               const SizedBox(height: 12),
               _resultSection(context, scheme),
             ],
+            const SizedBox(height: 12),
+            _freeTimeCard(context),
+            const SizedBox(height: 12),
+            _findClassroomCard(context),
           ],
         ),
+      ),
+    );
+  }
+
+  // ---------------- 找无课时间（2026-09-19 从本页独立出去） ----------------
+
+  /// 入口卡：多班对照找共同无课时间 → [FreeTimeScreen]。
+  ///
+  /// 用户 2026-09-19：「查无课时间的功能应该独立出来」—— 从前它是本页的一张内联卡，
+  /// 而且只在「班级」类别下出现（切到教室 / 教师 / 课程就整块消失）；
+  /// 现在独立成页面，本页只留这个入口（首页也有一个磁贴）。
+  Widget _freeTimeCard(BuildContext context) {
+    return Card(
+      elevation: 0,
+      shape: geCardShape(context),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            geCardTitle(
+              context,
+              text: '找无课时间',
+              accent: fp(context).cardAccent,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '把几个班拉到一起，算出它们同时都没有课的连续时段'
+              '（可按周次、最短连续、是否含周末筛）。',
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.5,
+                color: AppColors.textMuted(context),
+              ),
+            ),
+            const SizedBox(height: 4),
+            ListTile(
+              key: const Key('publicQueryFindFreeTime'),
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(
+                Icons.event_available_outlined,
+                size: 20,
+                color: fp(context).cardAccent,
+              ),
+              title: const Text(
+                '多班对照 · 找共同无课时间',
+                style: TextStyle(fontSize: 13.5),
+              ),
+              subtitle: Text(
+                '选班级 → 看周网格与空闲时段清单',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  color: AppColors.textMuted(context),
+                ),
+              ),
+              trailing: Icon(
+                Icons.chevron_right,
+                size: 18,
+                color: AppColors.textMuted(context),
+              ),
+              onTap: () => _openFreeTime(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openFreeTime(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const FreeTimeScreen()),
+    );
+  }
+
+  // ---------------- 找空闲教室（原网页 SB11 / SB12） ----------------
+
+  /// 入口卡：两个子功能各一行，push 到 [ClassroomFreeScreen]。
+  ///
+  /// 放在页面**最后**且与当前类别无关 —— 它是「不挑班级、直接找空教室」的独立工具。
+  Widget _findClassroomCard(BuildContext context) {
+    return Card(
+      elevation: 0,
+      shape: geCardShape(context),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            geCardTitle(
+              context,
+              text: '找空闲教室',
+              accent: fp(context).publicQuery,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '不用先挑班级 —— 直接按「周次 + 节次」翻出空教室，或者反过来查某间教室什么时候空。',
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.5,
+                color: AppColors.textMuted(context),
+              ),
+            ),
+            const SizedBox(height: 4),
+            ListTile(
+              key: const Key('publicQueryFindClassroomByTime'),
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(
+                Icons.schedule_outlined,
+                size: 20,
+                color: fp(context).publicQuery,
+              ),
+              title: const Text('按时间找教室', style: TextStyle(fontSize: 13.5)),
+              subtitle: Text(
+                '第几周 · 周几 · 第几节 —— 这些时段哪些教室是空的',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  color: AppColors.textMuted(context),
+                ),
+              ),
+              trailing: Icon(
+                Icons.chevron_right,
+                size: 18,
+                color: AppColors.textMuted(context),
+              ),
+              onTap: () =>
+                  _openClassroomFree(context, ClassroomFreeMode.byTime),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              key: const Key('publicQueryFindClassroomByRoom'),
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(
+                Icons.meeting_room_outlined,
+                size: 20,
+                color: fp(context).publicQuery,
+              ),
+              title: const Text('按教室查空闲', style: TextStyle(fontSize: 13.5)),
+              subtitle: Text(
+                '某间教室每一周什么时候空、整学期哪些时段固定空',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  color: AppColors.textMuted(context),
+                ),
+              ),
+              trailing: Icon(
+                Icons.chevron_right,
+                size: 18,
+                color: AppColors.textMuted(context),
+              ),
+              onTap: () =>
+                  _openClassroomFree(context, ClassroomFreeMode.byRoom),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openClassroomFree(BuildContext context, ClassroomFreeMode mode) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ClassroomFreeScreen(mode: mode),
       ),
     );
   }
@@ -461,7 +612,6 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
                     _department = '';
                     _major = '';
                     _class = null;
-                    _compareClasses.clear();
                     _teacher = null;
                     _course = null;
                     _roomEntry = null;
@@ -510,7 +660,6 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
                     _course = null;
                     _class = null;
                     _roomEntry = null;
-                    _compareClasses.clear();
                   }),
                 ),
               ),
@@ -669,7 +818,6 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
                 _building = '';
                 _class = null;
                 _roomEntry = null;
-                _compareClasses.clear();
               }),
             ),
           ),
@@ -701,7 +849,6 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
               _department = '';
               _major = '';
               _class = null;
-              _compareClasses.clear();
             }),
           ),
         ),
@@ -883,7 +1030,6 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
       _department = picked.code;
       _major = '';
       _class = null;
-      _compareClasses.clear();
       _showAllResults = false;
     });
   }
@@ -912,7 +1058,6 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
     setState(() {
       _major = picked.code;
       _class = null;
-      _compareClasses.clear();
       _showAllResults = false;
     });
   }
@@ -1052,186 +1197,6 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
         );
       },
     );
-  }
-
-  // ---------------- 多班对照找无课时间 ----------------
-
-  Widget _compareCard(BuildContext context) {
-    return Card(
-      elevation: 0,
-      shape: geCardShape(context),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            geCardTitle(
-              context,
-              text: '多班对照 · 找共同无课时间',
-              accent: fp(context).cardAccent,
-              trailing: TextButton.icon(
-                onPressed: _kind == PublicQueryKind.klass
-                    ? () => _pickCompareClasses(context)
-                    : null,
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('添加班级'),
-              ),
-            ),
-            if (_compareClasses.isEmpty)
-              _hint(
-                context,
-                '把要一起排时间的几个班加进来（先按校区 / 学院 / 专业缩小范围，可跨班多选），'
-                '会算出「这些班同时都没有课」的连续时段。',
-              )
-            else
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  for (final c in _compareClasses)
-                    InputChip(
-                      label: Text(c.displayName),
-                      onDeleted: () =>
-                          setState(() => _compareClasses.remove(c)),
-                    ),
-                ],
-              ),
-            if (_compareClasses.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: _rowShell(
-                      context,
-                      icon: Icons.calendar_view_week_outlined,
-                      label: '教学周',
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<int>(
-                          isExpanded: true,
-                          value: _week,
-                          items: [
-                            for (var w = 1; w <= 20; w++)
-                              DropdownMenuItem(value: w, child: Text('第 $w 周')),
-                          ],
-                          onChanged: (v) => setState(() => _week = v ?? 1),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _rowShell(
-                      context,
-                      icon: Icons.timelapse_outlined,
-                      label: '最短连续',
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<int>(
-                          isExpanded: true,
-                          value: _minPeriods,
-                          items: [
-                            for (var n = 1; n <= 4; n++)
-                              DropdownMenuItem(value: n, child: Text('$n 节')),
-                          ],
-                          onChanged: (v) =>
-                              setState(() => _minPeriods = v ?? 1),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              SwitchListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                value: _includeWeekend,
-                onChanged: (v) => setState(() => _includeWeekend = v),
-                title: const Text('把周末也算进来'),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _freeTimeSection(BuildContext context) {
-    // 每个班一个请求（provider family 会各自缓存）
-    final columns = <PublicScheduleColumn>[];
-    var loading = 0;
-    for (final c in _compareClasses) {
-      final request = _buildRequest(overrideClass: c);
-      if (request == null) continue;
-      final async = ref.watch(publicQueryReportProvider(request));
-      final result = async.valueOrNull;
-      if (result == null) {
-        loading++;
-        continue;
-      }
-      columns.add(
-        PublicScheduleColumn(
-          owner: c.displayName,
-          slots: slotsOfTimetables(
-            result.timetables,
-            ownerOf: (_) => c.displayName,
-          ),
-        ),
-      );
-    }
-    if (columns.isEmpty) {
-      return _loadingCard(context, '正在拉取 ${_compareClasses.length} 个班的课表…');
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (loading > 0)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text(
-              '还有 $loading 个班的课表在加载…',
-              style: Theme.of(context).textTheme.labelSmall,
-            ),
-          ),
-        FreeTimeView(
-          columns: columns,
-          week: _week,
-          maxPeriod: 12,
-          includeWeekend: _includeWeekend,
-          minPeriods: _minPeriods,
-          periodStarts: const {},
-        ),
-      ],
-    );
-  }
-
-  Future<void> _pickCompareClasses(BuildContext context) async {
-    final term = _effectiveTerm(
-      ref.read(publicQueryTermsProvider).valueOrNull ?? const [],
-    );
-    if (term == null) return;
-    // 校区不再是硬条件：年级 / 学院 / 专业任一非空也能列出班级（实测都可查）。
-    if (_campus.isEmpty && _department.isEmpty && _major.isEmpty) {
-      _toast('先选「校区」或「学院」或「专业」，再添加要对照的班级');
-      return;
-    }
-    final request = _buildRequest()?.copyWith(term: term);
-    if (request == null) return;
-    final list = await _loadOptions(
-      ref.read(publicQueryComboBoxProvider(request).future),
-    );
-    if (!context.mounted) return;
-    if (list.isEmpty) {
-      _toast('该条件下没有班级：换年级 / 学院 / 专业，或选校区');
-      return;
-    }
-    final picked = await _pickOptions(context, '选择要对照的班级（可多选）', list);
-    if (picked.isEmpty) return;
-    setState(() {
-      for (final o in picked) {
-        if (!_compareClasses.any((c) => c.code == o.code)) {
-          _compareClasses.add(o);
-        }
-      }
-    });
   }
 
   // ---------------- 通用小组件 ----------------
@@ -1432,157 +1397,17 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
   }
 
   /// 可搜索的选择面板（长列表：教师 5000+ / 课程 1000+ / 班级 1000+）。
+  ///
+  /// 面板本身是共享件（public_query_option_sheet.dart）——「找无课时间」页用它多选班级。
   Future<List<PublicQueryOption>> _pickOptions(
     BuildContext context,
     String title,
     List<PublicQueryOption> options, {
     bool single = false,
-  }) async {
-    final result = await showModalBottomSheet<List<PublicQueryOption>>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (sheetContext) =>
-          _OptionSheet(title: title, options: options, single: single),
-    );
-    return result ?? const [];
-  }
-}
-
-/// 可搜索的选择面板。
-class _OptionSheet extends StatefulWidget {
-  final String title;
-  final List<PublicQueryOption> options;
-  final bool single;
-
-  const _OptionSheet({
-    required this.title,
-    required this.options,
-    required this.single,
-  });
-
-  @override
-  State<_OptionSheet> createState() => _OptionSheetState();
-}
-
-class _OptionSheetState extends State<_OptionSheet> {
-  final _controller = TextEditingController();
-  final _selected = <String>{};
-  String _keyword = '';
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  List<PublicQueryOption> get _filtered {
-    final key = _keyword.trim().toLowerCase();
-    if (key.isEmpty) return widget.options;
-    return widget.options
-        .where(
-          (o) =>
-              o.name.toLowerCase().contains(key) ||
-              o.code.toLowerCase().contains(key),
-        )
-        .toList();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final list = _filtered;
-    return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.8,
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    '${widget.title}（共 ${widget.options.length} 项'
-                    '${list.length == widget.options.length ? '' : ' · 命中 ${list.length}'}）',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                if (!widget.single)
-                  TextButton(
-                    onPressed: _selected.isEmpty
-                        ? null
-                        : () {
-                            final picked = widget.options
-                                .where((o) => _selected.contains(o.code))
-                                .toList();
-                            Navigator.of(context).pop(picked);
-                          },
-                    child: Text('确定（${_selected.length}）'),
-                  ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: TextField(
-              controller: _controller,
-              autofocus: false,
-              decoration: const InputDecoration(
-                isDense: true,
-                prefixIcon: Icon(Icons.search, size: 18),
-                hintText: '输入名称或代码搜索',
-                border: OutlineInputBorder(),
-              ),
-              onChanged: (v) => setState(() => _keyword = v),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Expanded(
-            child: list.isEmpty
-                ? Center(
-                    child: Text(
-                      '没有匹配项',
-                      style: TextStyle(color: scheme.onSurfaceVariant),
-                    ),
-                  )
-                : ListView.builder(
-                    itemCount: list.length,
-                    itemBuilder: (context, i) {
-                      final o = list[i];
-                      final checked = _selected.contains(o.code);
-                      return ListTile(
-                        dense: true,
-                        selected: checked,
-                        leading: widget.single
-                            ? null
-                            : Checkbox(
-                                value: checked,
-                                onChanged: (_) => setState(() {
-                                  if (checked) {
-                                    _selected.remove(o.code);
-                                  } else {
-                                    _selected.add(o.code);
-                                  }
-                                }),
-                              ),
-                        title: Text(o.displayName),
-                        subtitle: o.bracketCode.isEmpty
-                            ? null
-                            : Text(
-                                o.bracketCode,
-                                style: Theme.of(context).textTheme.labelSmall,
-                              ),
-                        onTap: () => Navigator.of(
-                          context,
-                        ).pop(widget.single ? [o] : null),
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
+  }) => pickPublicQueryOptions(
+    context,
+    title: title,
+    options: options,
+    single: single,
+  );
 }

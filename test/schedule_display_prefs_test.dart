@@ -21,7 +21,7 @@ import 'package:smarter_jxufe/features/ims/schedule/domain/schedule_display_days
 import 'package:smarter_jxufe/features/ims/schedule/domain/schedule_entry.dart';
 import 'package:smarter_jxufe/features/ims/schedule/presentation/schedule_grid_view.dart';
 import 'package:smarter_jxufe/features/ims/schedule/presentation/schedule_horizontal_view.dart';
-import 'package:smarter_jxufe/features/settings/domain/settings_section.dart';
+import 'package:smarter_jxufe/design/settings_section.dart';
 import 'package:smarter_jxufe/features/settings/presentation/settings_screen.dart';
 
 /// 一条课（默认周一第 1-2 节，1-16 周）。
@@ -549,9 +549,7 @@ void main() {
       expect(settings.contains('scheduleCachedEntriesProvider'), isTrue);
       expect(settings.contains('scheduleDayCourseCount('), isTrue);
       expect(settings.contains('仍然隐藏'), isTrue);
-      final section = read(
-        'lib/features/settings/domain/settings_section.dart',
-      );
+      final section = read('lib/design/settings_section.dart');
       expect(section.contains("schedule('课表')"), isTrue);
     });
   });

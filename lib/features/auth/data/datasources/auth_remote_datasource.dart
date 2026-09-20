@@ -2,14 +2,25 @@ import 'dart:math';
 
 import 'package:dio/dio.dart';
 
-/// 表示 TGC（统一登录凭证）已过期，需重新执行 CAS 登录流程。
-class TgcExpiredException implements Exception {
-  final String? responseBody;
-  TgcExpiredException([this.responseBody]);
+import 'package:smarter_jxufe/core/errors/app_exception.dart';
+import 'package:smarter_jxufe/core/network/cas_redirect.dart';
+import 'package:smarter_jxufe/features/auth/data/auth_exception.dart';
 
-  @override
-  String toString() => 'TgcExpiredException: TGC 已过期，需要重新登录';
+/// 表示 TGC（统一登录凭证）已过期，需重新执行 CAS 登录流程。
+class TgcExpiredException extends SessionExpiredException {
+  final String? responseBody;
+  TgcExpiredException([this.responseBody])
+      : super('TGC 已过期，需要重新登录');
 }
+
+/// ⚠ CAS 在 TGC 失效时会把请求 **302 打回登录页**（`…/cas/login?service=…`）——
+/// 这种「有 Location」**不是成功**，否则换票拿到的是未认证的匿名 JSESSIONID，
+/// 日志里却一直打印「换票成功」（2026-09-19 实测：首页课表卡片红字）。
+///
+/// 判据本体已收口到 `lib/core/network/cas_redirect.dart` 的 [isCasLoginRedirect]
+/// （2026-09-20 架构审查：同一判据被 3 个站点各写一份，其中两份是宽松的
+/// `contains('cas/login')` 版）。判定口径与 `AuthRepository.isTgcAlive` 共用同一个
+/// 函数，别再在文件里内联 `Uri.tryParse(url)?.path`。
 
 /// CAS 登录页面的关键信息，从 HTML 中提取。
 class CasLoginPageInfo {
@@ -63,7 +74,7 @@ class AuthRemoteDataSource {
 
     final casLoginUrl = ehallResponse.headers.value('location');
     if (casLoginUrl == null) {
-      throw Exception('ehall 未返回 CAS 重定向 URL，状态码=${ehallResponse.statusCode}');
+      throw AuthException('ehall 未返回 CAS 重定向 URL，状态码=${ehallResponse.statusCode}');
     }
 
     // 第二步：访问 CAS 登录页，提取 execution 和 SESSION
@@ -81,7 +92,7 @@ class AuthRemoteDataSource {
       if (status != null && status >= 300 && status < 400) {
         final location = response.headers.value('location');
         if (location == null) {
-          throw Exception('重定向缺少 Location 头: $currentUrl');
+          throw AuthException('重定向缺少 Location 头: $currentUrl');
         }
         currentUrl = _resolveUrl(currentUrl, location);
         continue;
@@ -90,7 +101,7 @@ class AuthRemoteDataSource {
       // 非重定向 → 视为终到页，尝试提取 execution
       final html = response.data?.toString() ?? '';
       if (html.isEmpty) {
-        throw Exception('空响应: $currentUrl (status=$status)');
+        throw AuthException('空响应: $currentUrl (status=$status)');
       }
 
       // 从 HTML 中提取 execution token
@@ -120,10 +131,10 @@ class AuthRemoteDataSource {
 
       // 页面不含 execution 且不是重定向 → 异常
       final preview = html.substring(0, min(300, html.length));
-      throw Exception('非 CAS 登录页: $currentUrl (status=$status)\n$preview');
+      throw AuthException('非 CAS 登录页: $currentUrl (status=$status)\n$preview');
     }
 
-    throw Exception('重定向次数过多，最后 URL: $currentUrl');
+    throw AuthException('重定向次数过多，最后 URL: $currentUrl');
   }
 
   /// 将相对 URL 解析为绝对 URL
@@ -291,6 +302,8 @@ class AuthRemoteDataSource {
     // 302 重定向 → 成功，提取 Location 和 gid_
     final location = response.headers.value('location');
     if (location != null) {
+      // ⚠ 打回登录页 = TGC 已失效（不是成功）→ 抛出去，让调用方走静默重登。
+      if (isCasLoginRedirect(location)) throw TgcExpiredException(location);
       final gid = Uri.parse(location).queryParameters['gid_'];
       return (location, gid);
     }
@@ -303,7 +316,7 @@ class AuthRemoteDataSource {
       }
     }
 
-    throw Exception(
+    throw AuthException(
       'IMS 重定向失败（status=${response.statusCode}）\n${response.data}',
     );
   }
@@ -344,6 +357,8 @@ class AuthRemoteDataSource {
       final location = response.headers.value('location');
       if (location != null) {
         final resolved = _resolveUrl(currentUrl, location);
+        // ⚠ 又被打回登录页 = TGC 已失效（别在 CAS 域内白转 5 次）。
+        if (isCasLoginRedirect(resolved)) throw TgcExpiredException(resolved);
         if (!resolved.contains('ssl.jxufe.edu.cn')) {
           return resolved;
         }
@@ -362,10 +377,10 @@ class AuthRemoteDataSource {
         }
       }
 
-      throw Exception('CAS 重定向失败（status=$status）');
+      throw AuthException('CAS 重定向失败（status=$status）');
     }
 
-    throw Exception('CAS 重定向次数过多，最后 URL: $currentUrl');
+    throw AuthException('CAS 重定向次数过多，最后 URL: $currentUrl');
   }
 
   // ---- 请求头构建 ----

@@ -3,18 +3,16 @@ library;
 
 import 'package:dio/dio.dart';
 
+import 'package:smarter_jxufe/core/errors/app_exception.dart';
+import 'package:smarter_jxufe/core/network/cas_redirect.dart';
 import 'package:smarter_jxufe/features/read_credit/data/anti_corruption/read_credit_parser.dart';
 import 'package:smarter_jxufe/features/read_credit/data/datasources/read_credit_auth_remote_datasource.dart';
 import 'package:smarter_jxufe/features/read_credit/domain/read_credit_models.dart';
 
 /// 阅读学分平台业务请求失败。
-class ReadCreditApiException implements Exception {
-  final String message;
+class ReadCreditApiException extends AppException {
 
-  const ReadCreditApiException(this.message);
-
-  @override
-  String toString() => message;
+  const ReadCreditApiException(super.message);
 }
 
 /// 业务数据源：带会话 Cookie 取页面并交给解析器。
@@ -52,7 +50,8 @@ class ReadCreditApiRemoteDataSource {
     final body = response.data?.toString() ?? '';
     if (status >= 300 && status < 400) {
       // 会话失效时平台一律 302 回 CASLogin(再 302 到统一认证)。
-      if (location.contains('CASLogin') || location.contains('cas/login')) {
+      // CASLogin 是平台私有入口（保留本标记），学校 CAS 走共用判据。
+      if (location.contains('CASLogin') || isCasLoginRedirect(location)) {
         throw ReadCreditSessionExpiredException(
           '阅读学分平台会话已失效(HTTP $status)，已尝试刷新',
         );

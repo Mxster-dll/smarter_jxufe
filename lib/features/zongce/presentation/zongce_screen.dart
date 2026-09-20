@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/core/storage/local_data_revision.dart';
+import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
+import 'package:smarter_jxufe/design/status_palette.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/providers/volunteer_hours_providers.dart';
 import 'package:smarter_jxufe/features/materials/presentation/materials_screen.dart';
 import 'package:smarter_jxufe/features/score_estimate/data/ge_providers.dart';
@@ -26,6 +28,7 @@ import 'package:smarter_jxufe/features/zongce/presentation/widgets/weight_sheet.
 import 'package:smarter_jxufe/design/pane_chrome.dart';
 import 'package:smarter_jxufe/shared/widgets/academic_year_picker.dart';
 import 'package:smarter_jxufe/shared/widgets/count_stepper.dart';
+import 'package:smarter_jxufe/design/app_states.dart';
 
 /// 综合测评 · 自动测算（单页）。
 ///
@@ -65,11 +68,11 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
 
   /// 五育语义色（同原网页：德红 / 智蓝 / 体绿 / 美紫 / 劳青）。
   static const _yuColors = <String, Color>{
-    'd': Color(0xFFC42B1C),
-    'z': Color(0xFF0078D4),
-    't': Color(0xFF0F7B0F),
-    'm': Color(0xFF744DA9),
-    'l': Color(0xFF0F766E),
+    'd': ZongceTone.deyu,
+    'z': ZongceTone.zhiyu,
+    't': ZongceTone.tiyu,
+    'm': ZongceTone.meiyu,
+    'l': ZongceTone.laoyu,
   };
 
   /// 材料类型 → 条款依据规则点（材料行悬停显示分值表，便于核对加分口径）。
@@ -239,13 +242,13 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
   Color _gradeColor(BuildContext context, ZcGrade g) {
     switch (g) {
       case ZcGrade.ok:
-        return const Color(0xFF00A870);
+        return ZongceTone.gradeOk;
       case ZcGrade.good:
-        return const Color(0xFF2F7BFF);
+        return ZongceTone.gradeGood;
       case ZcGrade.pass:
-        return const Color(0xFFED7B2F);
+        return ZongceTone.gradePass;
       case ZcGrade.fail:
-        return const Color(0xFFE5484D);
+        return ZongceTone.gradeFail;
     }
   }
 
@@ -294,7 +297,7 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
   Widget _buildBody(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     if (!_ready) {
-      return const Center(child: CircularProgressIndicator());
+      return const AppLoadingState();
     }
     if (_loadError != null) {
       return Center(
@@ -2320,10 +2323,9 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
   Widget _card(BuildContext context, Widget child) {
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
+        shape: appCardShape(context),
         color: AppColors.card(context),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.hairline(context, 0.6)),
       ),
       child: child,
     );

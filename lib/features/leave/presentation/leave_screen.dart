@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/core/errors/app_exception.dart';
 import 'package:smarter_jxufe/design/app_card.dart';
+import 'package:smarter_jxufe/design/section_title.dart';
 import 'package:smarter_jxufe/features/leave/data/providers/leave_providers.dart';
 import 'package:smarter_jxufe/features/leave/domain/leave_models.dart';
 import 'package:smarter_jxufe/features/leave/presentation/leave_detail_screen.dart';
 import 'package:smarter_jxufe/features/platform_guid/presentation/guid_guide_screen.dart';
-import 'package:smarter_jxufe/features/school_calendar/data/providers/wxcal_providers.dart';
+import 'package:smarter_jxufe/features/platform_guid/data/providers/guid_providers.dart';
 import 'package:smarter_jxufe/design/pane_chrome.dart';
-import 'package:smarter_jxufe/features/settings/domain/settings_section.dart';
+import 'package:smarter_jxufe/design/settings_section.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
 
 /// 「我的请假」：学生请假申请记录列表（只读，用户拍板本轮范围）。
@@ -32,7 +34,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final listAsync = ref.watch(leaveListProvider);
-    final guid = ref.watch(wxGuidProvider).valueOrNull;
+    final guid = ref.watch(platformGuidProvider).valueOrNull;
 
     return Scaffold(
       appBar: paneAppBar(
@@ -73,7 +75,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen> {
                     context,
                     scheme,
                     Icons.error_outline,
-                    '加载失败：${e.toString().replaceAll('Exception: ', '')}',
+                    '加载失败：${friendlyErrorText(e)}',
                   ),
               ],
               data: (records) => [
@@ -345,7 +347,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen> {
 
   Future<void> _showGuidDialog() async {
     if (!mounted) return;
-    final box = await ref.read(wxPlatformBoxProvider.future);
+    final box = await ref.read(platformGuidBoxProvider.future);
     if (!mounted) return;
     final existing = box.get('guid') ?? '';
     final controller = TextEditingController(text: existing);
@@ -431,7 +433,7 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen> {
         await box.put('guid', action.guid);
       }
     }
-    ref.invalidate(wxGuidProvider);
+    ref.invalidate(platformGuidProvider);
     ref.invalidate(leaveListProvider);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -451,31 +453,8 @@ class _LeaveScreenState extends ConsumerState<LeaveScreen> {
 
   // ---------- 通用小块 ----------
 
-  Widget _sectionTitle(BuildContext context, String text) {
-    final scheme = Theme.of(context).colorScheme;
-    return Row(
-      children: [
-        Container(
-          width: 3,
-          height: 13,
-          decoration: BoxDecoration(
-            color: scheme.primary,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: 7),
-        Text(
-          text,
-          style: TextStyle(
-            fontSize: 13.5,
-            fontWeight: FontWeight.w600,
-            color: scheme.onSurface,
-            letterSpacing: 0.3,
-          ),
-        ),
-      ],
-    );
-  }
+    Widget _sectionTitle(BuildContext context, String text) =>
+      appSectionTitle(context, text: text);
 
   Widget _errorCard(
     BuildContext context,

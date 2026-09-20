@@ -16,6 +16,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:fast_gbk/fast_gbk.dart';
 
+import 'package:smarter_jxufe/core/errors/app_exception.dart';
 import 'package:smarter_jxufe/core/network/jw_page_decoding.dart';
 import 'package:smarter_jxufe/features/ims/course_selection/domain/kingo_des.dart';
 import 'package:smarter_jxufe/features/ims/course_selection/domain/selection_models.dart';
@@ -46,11 +47,8 @@ enum SelectionChannel {
 }
 
 /// 教务会话失效（547 字节 `凭证已失效` alert 页）—— 仓库层据此续期并重试一次。
-class SelectionSessionExpired implements Exception {
-  const SelectionSessionExpired();
-
-  @override
-  String toString() => 'SelectionSessionExpired(教务会话已失效)';
+class SelectionSessionExpired extends SessionExpiredException {
+  const SelectionSessionExpired([super.message = '选课会话已失效']);
 }
 
 String _gbkPercentEncode(String value) {

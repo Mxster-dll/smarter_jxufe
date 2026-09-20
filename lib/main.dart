@@ -10,8 +10,11 @@ import 'package:smarter_jxufe/core/navigation/page_auto_refresh.dart';
 import 'package:smarter_jxufe/core/storage/hive_initializer.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/ai/presentation/ai_floating_ball.dart';
+import 'package:smarter_jxufe/features/auth/data/auth_exception.dart';
+import 'package:smarter_jxufe/features/auth/data/mfa_relogin_service.dart';
 import 'package:smarter_jxufe/features/home_widget/data/home_widget_background.dart';
 import 'package:smarter_jxufe/features/home_widget/presentation/home_widget_launcher.dart';
+import 'package:smarter_jxufe/features/qr_login/presentation/qr_login_viewmodel.dart';
 import 'package:smarter_jxufe/features/settings/data/theme_prefs.dart';
 import 'package:smarter_jxufe/features/splash/presentation/splash_screen.dart';
 import 'package:smarter_jxufe/shared/services/notification_service.dart';
@@ -26,6 +29,27 @@ import 'package:smarter_jxufe/shared/services/notification_service.dart';
 /// → 后台刷新静默失败（快照永远不更新）。这里只做转发，实现仍在子库。
 @pragma('vm:entry-point')
 Future<void> homeWidgetBackgroundMain() => runHomeWidgetBackground();
+
+/// MFA 兜底处理器注册（**组装根职责**，2026-09-20 · 架构审查 ⑦）。
+///
+/// `MfaReloginService` 的兜底从前直接写在 auth 的数据层里 —— 那段代码要弹
+/// `features/qr_login` 的 MFA 对话框，等于让 data 层 import 别家 presentation。
+/// 现在数据层只留一个注册位（`setFallback`），实现放在这里：
+/// 组装根本来就该知道所有模块，feature 之间因此少一条 `qr_login → auth` 的环。
+void _installMfaFallback() {
+  mfaReloginService.setFallback((ctx, account, password, mfaState) async {
+    final container = ProviderScope.containerOf(ctx);
+    final qrVm = container.read(qrLoginViewModelProvider.notifier);
+    final result = await qrVm.unifiedMfaVerify(
+      ctx,
+      account,
+      password,
+      mfaState,
+    );
+    if (!result.authorized) throw AuthException('用户取消 MFA 验证');
+    return result.trustDevice;
+  });
+}
 
 /// 主题（浅色 / 深色 / 卡片语言 / 转场 / 字体）唯一出处 = `lib/design/app_theme.dart`。
 /// 底色阶梯的取值与口径见 `lib/design/app_ladder.dart`。
@@ -56,6 +80,8 @@ void main() async {
 
   // 桌面小组件：注册「点小组件唤起 App」的回调（冷启动的待处理路由由首页消费）。
   HomeWidgetLauncher.install();
+
+  _installMfaFallback();
 
   // ── 外观偏好预热（深色模式适配，2026-09-16）──────────────────────────────
   // 必须在 `runApp` **之前**把用户选定的 ThemeMode 读出来，否则首帧会先按

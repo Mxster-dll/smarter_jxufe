@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
+import 'package:smarter_jxufe/core/errors/app_exception.dart';
+import 'package:smarter_jxufe/core/network/trace_text.dart';
 import 'package:smarter_jxufe/features/tice/data/models/tice_models.dart';
 
 /// 「赛康精益」国家体测成绩远程数据源。
@@ -80,10 +82,10 @@ class TiceRemoteDataSource {
     try {
       decoded = jsonDecode(text);
     } on FormatException {
-      throw TiceRequestException('响应不是有效 JSON：${_clip(text)}');
+      throw TiceRequestException('响应不是有效 JSON：${clipForTrace200(text)}');
     }
     if (decoded is! Map) {
-      throw TiceRequestException('响应结构异常：${_clip(text)}');
+      throw TiceRequestException('响应结构异常：${clipForTrace200(text)}');
     }
     final map = decoded.map((k, v) => MapEntry(k.toString(), v));
 
@@ -164,8 +166,6 @@ class TiceRemoteDataSource {
     };
   }
 
-  static String _clip(String text) =>
-      text.length > 200 ? '${text.substring(0, 200)}…' : text;
 }
 
 /// 响应体若是服务端的**纯文本提示**（查询时段限制、系统维护公告等），
@@ -182,10 +182,6 @@ String? ticePlainNotice(String body) {
 }
 
 /// 体测查询的网络/解析错误（文案可直接展示给用户）。
-class TiceRequestException implements Exception {
-  final String message;
-  const TiceRequestException(this.message);
-
-  @override
-  String toString() => message;
+class TiceRequestException extends AppException {
+  const TiceRequestException(super.message);
 }

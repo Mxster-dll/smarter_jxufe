@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:smarter_jxufe/design/Icons.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
+import 'package:smarter_jxufe/design/status_palette.dart';
 
 /// 手机验证码 MFA 对话框。
 ///
@@ -170,11 +171,11 @@ class _MobileMfaDialogState extends State<MobileMfaDialog> {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF73A9EC),
+                    color: StatusPalette.wechatBlue,
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF73A9EC).withAlpha(50),
+                        color: StatusPalette.wechatBlue.withAlpha(50),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
@@ -218,7 +219,7 @@ class _MobileMfaDialogState extends State<MobileMfaDialog> {
                     vertical: 10,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF73A9EC).withAlpha(15),
+                    color: StatusPalette.wechatBlue.withAlpha(15),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -227,7 +228,7 @@ class _MobileMfaDialogState extends State<MobileMfaDialog> {
                       const Icon(
                         ExpandIcons.wecon,
                         size: 18,
-                        color: Color(0xFF73A9EC),
+                        color: StatusPalette.wechatBlue,
                       ),
                       const SizedBox(width: 8),
                       Text.rich(
@@ -245,7 +246,7 @@ class _MobileMfaDialogState extends State<MobileMfaDialog> {
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
-                                color: Color(0xFF73A9EC),
+                                color: StatusPalette.wechatBlue,
                               ),
                             ),
                             TextSpan(
@@ -297,7 +298,7 @@ class _MobileMfaDialogState extends State<MobileMfaDialog> {
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(
-                              color: Color(0xFF73A9EC),
+                              color: StatusPalette.wechatBlue,
                               width: 1.5,
                             ),
                           ),
@@ -329,7 +330,7 @@ class _MobileMfaDialogState extends State<MobileMfaDialog> {
                             ? null
                             : _sendCode,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF73A9EC),
+                          backgroundColor: StatusPalette.wechatBlue,
                           foregroundColor: Colors.white,
                           disabledBackgroundColor: const Color(
                             0xFF73A9EC,

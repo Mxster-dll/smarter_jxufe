@@ -2,16 +2,13 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
+import 'package:smarter_jxufe/core/errors/app_exception.dart';
 import 'package:smarter_jxufe/features/my_mail/domain/student_mailbox.dart';
 
 /// 我的邮箱接口异常（message 面向 UI 直显）。
-class MyMailApiException implements Exception {
-  final String message;
+class MyMailApiException extends AppException {
 
-  const MyMailApiException(this.message);
-
-  @override
-  String toString() => message;
+  const MyMailApiException(super.message);
 }
 
 /// 智慧江财「我的邮箱」数据源（门户 `platForm` 域的邮箱接口）。

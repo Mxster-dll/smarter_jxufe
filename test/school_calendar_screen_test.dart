@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smarter_jxufe/features/platform_guid/data/providers/guid_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/calendar_prefs.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/calendar_prefs_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/school_calendar_providers.dart';
@@ -44,7 +45,7 @@ void main() {
             xq: 0,
           )).overrideWith((ref) async => calendar),
           wxArrangementsProvider.overrideWith((ref) async => terms),
-          wxGuidProvider.overrideWith((ref) async => null),
+          platformGuidProvider.overrideWith((ref) async => null),
           calendarViewerProvider.overrideWith((ref) async => who),
           // initial 给定的 store 不读也不写 Hive，测试无需初始化存储。
           calendarPrefsStoreProvider.overrideWith(

@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 
+import 'package:smarter_jxufe/core/network/jw_page_decoding.dart';
+
 /// IMS 教务系统 Dio 拦截器 —— 自动检测「凭证失效」并刷新 JSESSIONID 重试。
 ///
 /// 与 [Dio] **一一对应**：拦截器由 `createImsDio` 随 Dio 一起创建，并把
@@ -19,13 +21,11 @@ class ImsAuthInterceptor extends Interceptor {
     _refreshCallback = callback;
   }
 
-  /// IMS 服务端返回的凭证失效提示前缀（精确匹配）。
-  static const _expiredPrefix = "<script>alert('温馨提示：凭证已失效，请重新登录!');";
-
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
     final data = response.data;
-    if (data is String && data.startsWith(_expiredPrefix)) {
+    // 判据（含 alert 文案本身）的唯一出处 = jw_page_decoding.dart。
+    if (data is String && data.startsWith(jwSessionExpiredPrefix)) {
       _handleRetry(response, handler);
       return;
     }
@@ -46,6 +46,9 @@ class ImsAuthInterceptor extends Interceptor {
           requestOptions: response.requestOptions,
           response: response,
           message: '凭证已失效，请重新登录',
+          // 仓库层据此**按类型**判别（`isJwSessionExpiredError`），不再拿 message
+          // 当类型去 `toString().contains(...)`。message 保留原样给界面用。
+          error: const JwSessionExpiredException('凭证已失效，请重新登录'),
         ),
       );
       return;
@@ -78,6 +81,9 @@ class ImsAuthInterceptor extends Interceptor {
           requestOptions: response.requestOptions,
           response: response,
           message: '凭证已失效，请重新登录',
+          // 仓库层据此**按类型**判别（`isJwSessionExpiredError`），不再拿 message
+          // 当类型去 `toString().contains(...)`。message 保留原样给界面用。
+          error: const JwSessionExpiredException('凭证已失效，请重新登录'),
         ),
       );
     } catch (_) {
@@ -86,6 +92,9 @@ class ImsAuthInterceptor extends Interceptor {
           requestOptions: response.requestOptions,
           response: response,
           message: '凭证已失效，请重新登录',
+          // 仓库层据此**按类型**判别（`isJwSessionExpiredError`），不再拿 message
+          // 当类型去 `toString().contains(...)`。message 保留原样给界面用。
+          error: const JwSessionExpiredException('凭证已失效，请重新登录'),
         ),
       );
     }

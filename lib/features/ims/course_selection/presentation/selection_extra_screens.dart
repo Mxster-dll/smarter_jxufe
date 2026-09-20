@@ -8,6 +8,7 @@ import 'package:smarter_jxufe/features/ims/course_selection/data/datasources/cou
 import 'package:smarter_jxufe/features/ims/course_selection/data/providers/course_selection_providers.dart';
 import 'package:smarter_jxufe/features/ims/course_selection/domain/data_table_page.dart';
 import 'package:smarter_jxufe/features/score_estimate/presentation/ge_common.dart';
+import 'package:smarter_jxufe/design/app_states.dart';
 
 /// 查询课表（`tableId=5327042`）：本学期开出的课程 + 教学班。
 class SelectionTimetableScreen extends ConsumerWidget {
@@ -21,7 +22,7 @@ class SelectionTimetableScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('查询课表')),
       body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const AppLoadingState(),
         error: (error, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -73,7 +74,7 @@ class SelectionExpandScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('申请扩容')),
       body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const AppLoadingState(),
         error: (error, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -133,7 +134,7 @@ class SelectionCancelledScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('被取消课程')),
       body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const AppLoadingState(),
         error: (error, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24),

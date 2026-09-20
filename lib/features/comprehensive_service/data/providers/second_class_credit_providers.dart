@@ -5,6 +5,7 @@ import 'package:smarter_jxufe/features/comprehensive_service/data/datasource/sec
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/second_class_credit.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/providers/ssp_auth_providers.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/second_class_credit_repository.dart';
+import 'package:smarter_jxufe/features/comprehensive_service/data/ssp_exception.dart';
 
 /// 第二课堂学分数据源提供者。
 final secondClassCreditDataSourceProvider =
@@ -32,7 +33,7 @@ final secondClassCreditOverviewProvider = FutureProvider<SecondClassOverview>((
 ) async {
   final account = ref.watch(currentAccountProvider);
   if (account.isEmpty) {
-    throw Exception('请先登录后再查看第二课堂学分');
+    throw SspApiException('请先登录后再查看第二课堂学分');
   }
   final repository = await ref.watch(
     secondClassCreditRepositoryProvider.future,

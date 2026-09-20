@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:fast_gbk/fast_gbk.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:smarter_jxufe/core/network/jw_page_decoding.dart';
 import 'package:smarter_jxufe/features/ims/public_query/data/datasources/public_query_remote_datasource.dart';
 import 'package:smarter_jxufe/features/ims/public_query/domain/public_query.dart';
 
@@ -149,10 +150,10 @@ void main() {
 
     test('会话失效判定', () {
       expect(
-        isExpiredSession("<script>alert('温馨提示：凭证已失效，请重新登录!')</script>"),
+        jwSessionExpired("<script>alert('温馨提示：凭证已失效，请重新登录!')</script>"),
         isTrue,
       );
-      expect(isExpiredSession('<table>课程</table>'), isFalse);
+      expect(jwSessionExpired('<table>课程</table>'), isFalse);
     });
   });
 
@@ -172,9 +173,9 @@ void main() {
           "<script>alert('温馨提示：凭证已失效，请重新登录!');"
           "if (window.frmbody){ window.top.location.href='/'; }</script>";
       final decoded = decodeGbkBytes(utf8.encode(alertBody));
-      expect(isExpiredSession(decoded), isTrue);
+      expect(jwSessionExpired(decoded), isTrue);
       // 反例：先按 GBK 解 = 乱码，判据全灭。
-      expect(isExpiredSession(gbk.decode(utf8.encode(alertBody))), isFalse);
+      expect(jwSessionExpired(gbk.decode(utf8.encode(alertBody))), isFalse);
     });
 
     test('表单体是 x-www-form-urlencoded（不能是 multipart）', () {

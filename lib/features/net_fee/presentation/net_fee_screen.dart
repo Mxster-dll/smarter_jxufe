@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:smarter_jxufe/core/errors/app_exception.dart';
 import 'package:smarter_jxufe/core/navigation/page_auto_refresh.dart';
 import 'package:smarter_jxufe/design/app_card.dart';
+import 'package:smarter_jxufe/design/section_title.dart';
 import 'package:smarter_jxufe/features/net_fee/data/providers/net_fee_providers.dart';
 import 'package:smarter_jxufe/features/net_fee/domain/net_fee_models.dart';
 import 'package:smarter_jxufe/features/network_service/data/providers/network_service_providers.dart';
 import 'package:smarter_jxufe/features/network_service/presentation/network_service_section.dart';
+import 'package:smarter_jxufe/features/platform_guid/data/providers/guid_providers.dart';
 import 'package:smarter_jxufe/features/platform_guid/presentation/guid_guide_screen.dart';
 import 'package:smarter_jxufe/design/pane_chrome.dart';
-import 'package:smarter_jxufe/features/settings/domain/settings_section.dart';
+import 'package:smarter_jxufe/design/settings_section.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
 
 /// 校园网（原「网费」）：账户余额充值 + 网络服务。
@@ -100,7 +103,7 @@ class _NetFeeScreenState extends ConsumerState<NetFeeScreen> {
                   context,
                   scheme,
                   Icons.error_outline,
-                  '加载失败：${e.toString().replaceAll('Exception: ', '')}',
+                  '加载失败：${friendlyErrorText(e)}',
                 ),
               ],
               data: (summary) => [
@@ -421,7 +424,7 @@ class _NetFeeScreenState extends ConsumerState<NetFeeScreen> {
 
   Future<void> _showGuidDialog() async {
     if (!mounted) return;
-    final box = await ref.read(netFeePlatformBoxProvider.future);
+    final box = await ref.read(platformGuidBoxProvider.future);
     if (!mounted) return;
     final existing = box.get('guid') ?? '';
     final controller = TextEditingController(text: existing);
@@ -507,7 +510,7 @@ class _NetFeeScreenState extends ConsumerState<NetFeeScreen> {
         await box.put('guid', action.guid);
       }
     }
-    ref.invalidate(netFeeGuidProvider);
+    ref.invalidate(platformGuidProvider);
     ref.invalidate(netFeeSummaryProvider);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -527,31 +530,8 @@ class _NetFeeScreenState extends ConsumerState<NetFeeScreen> {
 
   // ---------- 通用小块 ----------
 
-  Widget _sectionTitle(BuildContext context, String text) {
-    final scheme = Theme.of(context).colorScheme;
-    return Row(
-      children: [
-        Container(
-          width: 3,
-          height: 13,
-          decoration: BoxDecoration(
-            color: scheme.primary,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: 7),
-        Text(
-          text,
-          style: TextStyle(
-            fontSize: 13.5,
-            fontWeight: FontWeight.w600,
-            color: scheme.onSurface,
-            letterSpacing: 0.3,
-          ),
-        ),
-      ],
-    );
-  }
+    Widget _sectionTitle(BuildContext context, String text) =>
+      appSectionTitle(context, text: text);
 
   Widget _whiteCard(
     BuildContext context, {

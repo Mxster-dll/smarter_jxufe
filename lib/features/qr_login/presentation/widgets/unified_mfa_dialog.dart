@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/Icons.dart';
+import 'package:smarter_jxufe/design/status_palette.dart';
 import 'package:smarter_jxufe/features/qr_login/domain/entities/qr_code_status.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/qr_login_viewmodel.dart';
 import 'package:smarter_jxufe/features/qr_login/presentation/widgets/qr_code_card.dart';
@@ -459,12 +460,12 @@ class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: const Color(0xFF73A9EC).withAlpha(15),
+          color: StatusPalette.wechatBlue.withAlpha(15),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 17, color: const Color(0xFF73A9EC)),
+            Icon(icon, size: 17, color: StatusPalette.wechatBlue),
             const SizedBox(width: 8),
             Expanded(child: Text.rich(TextSpan(children: spans))),
           ],
@@ -493,7 +494,7 @@ class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
       style: TextStyle(
         fontSize: 13,
         fontWeight: FontWeight.w600,
-        color: Color(0xFF14c468),
+        color: StatusPalette.wechatGreen,
       ),
     ),
     TextSpan(
@@ -505,7 +506,7 @@ class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
       style: TextStyle(
         fontSize: 13,
         fontWeight: FontWeight.w600,
-        color: Color(0xFF73A9EC),
+        color: StatusPalette.wechatBlue,
       ),
     ),
     TextSpan(
@@ -527,7 +528,7 @@ class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
       style: TextStyle(
         fontSize: 13,
         fontWeight: FontWeight.w600,
-        color: Color(0xFF73A9EC),
+        color: StatusPalette.wechatBlue,
       ),
     ),
     TextSpan(
@@ -860,7 +861,7 @@ class _UnifiedMfaPageState extends ConsumerState<UnifiedMfaPage>
                         const SizedBox(width: 14),
                         _buildModeButton(
                           icon: ExpandIcons.wecon,
-                          color: const Color(0xFF73A9EC),
+                          color: StatusPalette.wechatBlue,
                           active: !_qrMode,
                           onTap: !_qrMode ? null : _switchToSms,
                         ),

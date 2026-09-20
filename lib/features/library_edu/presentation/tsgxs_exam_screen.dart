@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/core/network/dio_providers.dart';
+import 'package:smarter_jxufe/design/app_card.dart';
+import 'package:smarter_jxufe/design/status_palette.dart';
 import 'package:smarter_jxufe/features/library_edu/data/providers/tsgxs_providers.dart';
 import 'package:smarter_jxufe/features/library_edu/data/tsgxs_answer_bank.dart';
 import 'package:smarter_jxufe/features/library_edu/data/tsgxs_api_remote_datasource.dart';
@@ -14,6 +16,7 @@ import 'package:smarter_jxufe/features/library_edu/presentation/tsgxs_chapter_sc
 import 'package:smarter_jxufe/features/library_edu/presentation/tsgxs_clue_sweep_action.dart';
 import 'package:smarter_jxufe/features/library_edu/presentation/tsgxs_grade_screen.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
+import 'package:smarter_jxufe/design/app_states.dart';
 
 /// 入馆教育「闯关答题」页。
 ///
@@ -753,7 +756,7 @@ class _TsgxsExamScreenState extends ConsumerState<TsgxsExamScreen> {
         ),
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const AppLoadingState()
           : ListView(
               padding: const EdgeInsets.fromLTRB(20, 14, 20, 40),
               children: [
@@ -792,10 +795,9 @@ class _TsgxsExamScreenState extends ConsumerState<TsgxsExamScreen> {
 
   Widget _card(ColorScheme scheme, List<Widget> children) => Container(
     padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
+    decoration: ShapeDecoration(
+      shape: appCardShape(context),
       color: scheme.surface,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: AppColors.hairline(context, 0.6)),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1020,7 +1022,7 @@ class _TsgxsExamScreenState extends ConsumerState<TsgxsExamScreen> {
                       .where((e) => e.isNotEmpty),
                 ));
     final ok = result.isCorrect;
-    final color = ok ? const Color(0xFF0F7B0F) : scheme.error;
+    final color = ok ? StatusPalette.success : scheme.error;
     return _card(scheme, [
       Row(
         children: [
@@ -1202,7 +1204,7 @@ class _TsgxsExamScreenState extends ConsumerState<TsgxsExamScreen> {
               Icon(
                 result.ok ? Icons.check_circle : Icons.warning_amber_rounded,
                 size: 15,
-                color: result.ok ? const Color(0xFF0F7B0F) : scheme.error,
+                color: result.ok ? StatusPalette.success : scheme.error,
               ),
               const SizedBox(width: 6),
               Expanded(
@@ -1211,7 +1213,7 @@ class _TsgxsExamScreenState extends ConsumerState<TsgxsExamScreen> {
                   style: TextStyle(
                     fontSize: 11.5,
                     height: 1.5,
-                    color: result.ok ? const Color(0xFF0F7B0F) : scheme.error,
+                    color: result.ok ? StatusPalette.success : scheme.error,
                   ),
                 ),
               ),
@@ -1298,7 +1300,7 @@ class _TsgxsExamScreenState extends ConsumerState<TsgxsExamScreen> {
 
   Widget _finishCard(ColorScheme scheme, TsgxsExamFinishResult result) {
     final passed = result.passed;
-    final color = passed ? const Color(0xFF0F7B0F) : scheme.error;
+    final color = passed ? StatusPalette.success : scheme.error;
     return _card(scheme, [
       Row(
         children: [
@@ -1379,7 +1381,7 @@ class _TsgxsExamScreenState extends ConsumerState<TsgxsExamScreen> {
   Widget _passedCard(ColorScheme scheme) => _card(scheme, [
     Row(
       children: [
-        const Icon(Icons.verified_outlined, size: 20, color: Color(0xFF0F7B0F)),
+        const Icon(Icons.verified_outlined, size: 20, color: StatusPalette.success),
         const SizedBox(width: 8),
         const Text(
           '本章考试已通过',

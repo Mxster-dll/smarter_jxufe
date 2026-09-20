@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/core/network/dio_providers.dart';
+import 'package:smarter_jxufe/design/breakpoints.dart';
+import 'package:smarter_jxufe/design/section_title.dart';
 import 'package:smarter_jxufe/features/campus_address/data/my_campus_prefs.dart';
 import 'package:smarter_jxufe/features/campus_address/domain/my_campus.dart';
 import 'package:smarter_jxufe/features/electricity/data/datasources/electricity_remote_datasource.dart';
@@ -111,22 +113,6 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
     } catch (_) {
       // 写盘失败不影响本次查询。
     }
-  }
-
-  /// 学号变更（回车）后按新学号重查记忆。
-  void _onUsernameSubmitted(String _) {
-    setState(() {
-      _binding = null;
-      _picking = false;
-      _campusId = null;
-      _buildingId = null;
-      _roomId = null;
-      _balance = null;
-      _error = null;
-      _needBind = false;
-      _records = [];
-    });
-    _restoreBinding();
   }
 
   // ---------- 加载（目录） ----------
@@ -483,7 +469,7 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
       context: context,
       builder: (dialogContext) {
         final size = MediaQuery.of(dialogContext).size;
-        final width = size.width > 600 ? 480.0 : size.width - 48;
+        final width = size.width > Breakpoints.narrow ? 480.0 : size.width - 48;
         final height = size.height * 0.72;
         final scheme = Theme.of(dialogContext).colorScheme;
         final text = Theme.of(dialogContext).textTheme;
@@ -655,41 +641,14 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: paneAppBar(context, title: const Text('宿舍电费'), centerTitle: true),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
         children: [
-          TextField(
-            controller: _usernameController,
-            keyboardType: TextInputType.number,
-            textInputAction: TextInputAction.done,
-            onSubmitted: _onUsernameSubmitted,
-            style: const TextStyle(fontSize: 15),
-            decoration: InputDecoration(
-              labelText: '学号',
-              hintText: '默认当前登录账号 · 回车切换',
-              prefixIcon: const Icon(Icons.badge_outlined, size: 20),
-              filled: true,
-              fillColor: scheme.surface,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: scheme.outlineVariant),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: scheme.outlineVariant),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: scheme.primary, width: 1.4),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          _sectionLabel(context, '我的宿舍'),
-          const SizedBox(height: 10),
+          // 学号沿用当前登录账号（用户 2026-09-19 裁定：「不显示学号输入框，
+          // 不显示『我的宿舍』文本，直接显示我的宿舍卡片」）——不再给手改入口，
+          // 页面第一屏就是宿舍卡。换账号走顶部账号切换。
           _buildDormCard(context),
           if (_picking) ...[
             const SizedBox(height: 20),
@@ -897,31 +856,8 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
     );
   }
 
-  Widget _sectionLabel(BuildContext context, String text) {
-    final scheme = Theme.of(context).colorScheme;
-    return Row(
-      children: [
-        Container(
-          width: 3,
-          height: 13,
-          decoration: BoxDecoration(
-            color: scheme.primary,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: 7),
-        Text(
-          text,
-          style: TextStyle(
-            fontSize: 13.5,
-            fontWeight: FontWeight.w600,
-            color: scheme.onSurface,
-            letterSpacing: 0.3,
-          ),
-        ),
-      ],
-    );
-  }
+    Widget _sectionLabel(BuildContext context, String text) =>
+      appSectionTitle(context, text: text);
 
   // ---------- 选择卡 ----------
 
@@ -1153,7 +1089,7 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  '点上方「我的宿舍」选择或绑定宿舍后，将自动显示剩余电量。',
+                  '点上方宿舍卡片选择或绑定宿舍后，将自动显示剩余电量。',
                   style: TextStyle(
                     fontSize: 12.5,
                     height: 1.5,

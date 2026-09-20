@@ -1,131 +1,49 @@
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:smarter_jxufe/core/network/dio_providers.dart';
+import 'package:smarter_jxufe/core/errors/app_exception.dart';
 import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
-import 'package:smarter_jxufe/features/comprehensive_service/data/providers/volunteer_hours_providers.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/domain/volunteer_hours_stats.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/volunteer_hours_screen.dart';
 import 'package:smarter_jxufe/features/electricity/data/models/electricity_models.dart';
-import 'package:smarter_jxufe/features/electricity/data/providers/electricity_providers.dart';
 import 'package:smarter_jxufe/features/electricity/presentation/electricity_screen.dart';
+import 'package:smarter_jxufe/features/home/data/providers/dashboard_providers.dart';
 import 'package:smarter_jxufe/features/home/domain/grade_rank_badge.dart';
 import 'package:smarter_jxufe/features/home_widget/data/home_widget_sync.dart';
 import 'package:smarter_jxufe/features/ims/grades/data/providers/weighted_grade_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/weighted_grade.dart';
 import 'package:smarter_jxufe/features/ims/menu/domain/ims_tab.dart';
 import 'package:smarter_jxufe/features/ims/schedule/data/providers/live_class_providers.dart';
-import 'package:smarter_jxufe/features/ims/schedule/data/providers/schedule_repository_provider.dart';
+
 import 'package:smarter_jxufe/features/ims/schedule/domain/period_time.dart';
 import 'package:smarter_jxufe/features/ims/splash/presentation/ims_splash_screen.dart';
 import 'package:smarter_jxufe/features/net_fee/data/providers/net_fee_providers.dart';
 import 'package:smarter_jxufe/features/net_fee/domain/net_fee_models.dart';
 import 'package:smarter_jxufe/features/net_fee/presentation/net_fee_screen.dart';
-import 'package:smarter_jxufe/features/school_calendar/data/providers/wxcal_providers.dart';
-import 'package:smarter_jxufe/features/school_calendar/domain/school_term.dart';
+import 'package:smarter_jxufe/features/network_service/data/providers/network_service_providers.dart';
+import 'package:smarter_jxufe/features/network_service/domain/network_service_format.dart';
+import 'package:smarter_jxufe/features/network_service/domain/network_service_models.dart';
 
-/// 今日课程条目（从课表按「今天」过滤后抽出）。
-class TodayCourse {
-  final String courseName;
-  final int startPeriod;
-  final int endPeriod;
-  final String classroom;
-  final String? campus;
-
-  const TodayCourse({
-    required this.courseName,
-    required this.startPeriod,
-    required this.endPeriod,
-    required this.classroom,
-    this.campus,
-  });
-
-  String get periodLabel => '$startPeriod-$endPeriod节';
-}
-
-String todayLabel(DateTime now) {
-  const weekCn = ['一', '二', '三', '四', '五', '六', '日'];
-  return '${now.month}月${now.day}日 周${weekCn[now.weekday - 1]}';
-}
-
-/// 电费：当前账号若有本地绑定记忆，取服务端实时余额；否则为 null（未绑定）。
-final dashboardElectricityProvider = FutureProvider<ElectricityBalance?>((
-  ref,
-) async {
-  final account = ref.watch(currentAccountProvider);
-  if (account.isEmpty) return null;
-  final box = await ref.read(electricityBindingBoxProvider.future);
-  final raw = box.get(account);
-  if (raw == null || raw.isEmpty) return null;
-  final decoded = jsonDecode(raw);
-  if (decoded is! Map) return null;
-  final record = RoomBindingRecord.fromJson(
-    decoded.map((k, v) => MapEntry(k.toString(), v)),
-  );
-  if (record.roomId <= 0) return null;
-  final dataSource = ref.watch(electricityRemoteDataSourceProvider);
-  return dataSource.fetchBalance(username: account, roomId: record.roomId);
-});
-
-/// 志愿时长：当前账号活动记录 `recognizedHours` 求和，并额外给出**本学年**口径
-/// （用户 2026-09-16 要求「志愿时长的仪表盘里还要显示本学年志愿时长」）。
+/// 刷新首页仪表盘的全部卡片数据（**唯一实现**）。
 ///
-/// 本学年 = **当下教学学年**（`currentSchoolTerm` 的 `xn`，与课表/校历同口径）；
-/// 活动日期来自列表逐行详情页，取不到时 `yearKnown` 为 false → 卡片显示「—」。
-final dashboardVolunteerHoursProvider = FutureProvider<VolunteerHoursStats>((
-  ref,
-) async {
-  final activities = await ref.watch(volunteerActivitiesProvider.future);
-  final now = DateTime.now();
-  final term = currentSchoolTerm(
-    now,
-    terms: ref.watch(offlineSemesterTermsProvider),
-  );
-  return volunteerHoursStats(activities, xn: term.xn);
-});
-
-/// 今日课程：取当前学期课表，按今天星期过滤并按时段排序。
-final dashboardTodayCoursesProvider = FutureProvider<List<TodayCourse>>((
-  ref,
-) async {
-  final account = ref.watch(currentAccountProvider);
-  if (account.isEmpty) return const [];
-  final now = DateTime.now();
-  // 当前学期口径 = 课表页同一函数（校历区间优先，假期取下一学期）。
-  final term = currentSchoolTerm(
-    now,
-    terms: ref.watch(offlineSemesterTermsProvider),
-  );
-  final repository = await ref.watch(scheduleRepositoryProvider.future);
-  final entries = await repository.getSchedule(
-    year: '${term.xn}',
-    semester: '${term.xq}',
-    studentId: account,
-  );
-  final weekday = now.weekday; // 1=周一 … 7=周日
-  final result = <TodayCourse>[];
-  for (final entry in entries) {
-    for (final ct in entry.classTimes) {
-      if (ct.dayOfWeek.dayIndex == weekday) {
-        result.add(
-          TodayCourse(
-            courseName: entry.courseName,
-            startPeriod: ct.startPeriod,
-            endPeriod: ct.endPeriod,
-            classroom: ct.classroom,
-            campus: ct.campus,
-          ),
-        );
-      }
-    }
-  }
-  result.sort((a, b) => a.startPeriod.compareTo(b.startPeriod));
-  return result;
-});
+/// 用户 2026-09-19 裁定：「去除主页课表卡片的刷新按钮」「主页视图下拉刷新所有
+/// 卡片」—— 面板内不再有刷新按钮，改为首页 `RefreshIndicator` 调本函数；
+/// 顺手把桌面小组件的数字也推一遍（原来点刷新按钮时就是这么做的）。
+Future<void> refreshDashboard(WidgetRef ref) async {
+  ref.invalidate(dashboardElectricityProvider);
+  ref.invalidate(dashboardVolunteerHoursProvider);
+  ref.invalidate(weightedGradeRankingProvider(1));
+  ref.invalidate(dashboardTodayCoursesProvider);
+  ref.invalidate(netFeeSummaryProvider);
+  // 校园网卡片右上角要显示「本周期已用流量」。
+  ref.invalidate(networkAccountProvider);
+  final widgetSync = ref.read(homeWidgetSyncProvider);
+  await widgetSync.pushAuthSnapshot();
+  await widgetSync.syncAll(force: true);
+}
 
 /// 首页仪表盘总览面板：电费 / 校园网 / 成绩（累计加权）/ 志愿时长 + 今日课程。
 ///
@@ -145,18 +63,6 @@ class DashboardPanel extends ConsumerWidget {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
   }
 
-  Future<void> _refresh(WidgetRef ref) async {
-    ref.invalidate(dashboardElectricityProvider);
-    ref.invalidate(dashboardVolunteerHoursProvider);
-    ref.invalidate(weightedGradeRankingProvider(1));
-    ref.invalidate(dashboardTodayCoursesProvider);
-    ref.invalidate(netFeeSummaryProvider);
-    // 顺手同步桌面小组件：用户点「刷新」时，桌面上的数字也应跟着更新。
-    final widgetSync = ref.read(homeWidgetSyncProvider);
-    await widgetSync.pushAuthSnapshot();
-    await widgetSync.syncAll(force: true);
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
@@ -168,6 +74,7 @@ class DashboardPanel extends ConsumerWidget {
     final gradeAsync = ref.watch(weightedGradeRankingProvider(1));
     final coursesAsync = ref.watch(dashboardTodayCoursesProvider);
     final netFeeAsync = ref.watch(netFeeSummaryProvider);
+    final networkAsync = ref.watch(networkAccountProvider);
 
     // 用户 2026-09-18 裁定：去掉「数据一览」小标题；其他卡片在左、今日课程在右，
     // 窄屏上下堆叠。
@@ -181,6 +88,7 @@ class DashboardPanel extends ConsumerWidget {
           volunteerAsync,
           gradeAsync,
           netFeeAsync,
+          networkAsync,
         );
         // 作息表（与课表页同源：实时优先、缓存/内置兜底）——
         // 「间隔超过 1 小时」的分隔线要按它把节次换算成钟点。
@@ -189,7 +97,6 @@ class DashboardPanel extends ConsumerWidget {
             ref.watch(cachedPeriodTableProvider).valueOrNull;
         final today = _buildTodayCourses(
           context,
-          ref,
           scheme,
           now,
           coursesAsync,
@@ -197,12 +104,27 @@ class DashboardPanel extends ConsumerWidget {
         );
         // 恒为左右两栏（用户 2026-09-18 四轮裁定：「即使移动端，也是这种
         // 左右 2 : 1 的显示」）—— 窄屏不再上下堆叠，指标卡自动退成单列。
+        // 今日课程卡高度对齐（用户 2026-09-19 裁定）：**移动端与指标卡区总高
+        // 度等高、桌面端最小高度与之一致**。指标卡高度是固定常量、行数由
+        // [metricsLayout] 算出 → 指标区总高可直接算，无需二次布局测量。
+        final metricsWidth =
+            (constraints.maxWidth - DashboardPanel.dashboardColumnGap) * 2 / 3;
+        final metricsHeight = DashboardPanel.metricsLayout(metricsWidth).height;
+        final compact =
+            MediaQuery.sizeOf(context).width <
+            DashboardPanel.dashboardCompactBreakpoint;
+        final sizedToday = compact
+            ? SizedBox(height: metricsHeight, child: today)
+            : ConstrainedBox(
+                constraints: BoxConstraints(minHeight: metricsHeight),
+                child: today,
+              );
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(flex: 2, child: metrics),
             const SizedBox(width: DashboardPanel.dashboardColumnGap),
-            Expanded(child: today),
+            Expanded(child: sizedToday),
           ],
         );
       },
@@ -218,16 +140,14 @@ class DashboardPanel extends ConsumerWidget {
     AsyncValue<VolunteerHoursStats> volunteerAsync,
     AsyncValue<WeightedGrade?> gradeAsync,
     AsyncValue<NetFeeSummary> netFeeAsync,
+    AsyncValue<NetworkAccount> networkAsync,
   ) {
     return LayoutBuilder(
       key: const Key('dashMetrics'),
       builder: (context, constraints) {
-        const minCard = 210.0;
-        const gap = 12.0;
-        // 窄屏（手机端 2:1 后左栏只有 ~200dp）算出来会是 0 列 →
-        // `gap * (cols - 1)` 变负数、`/ cols` 变 NaN，必须兜到 1 列。
-        var cols = (constraints.maxWidth + gap) ~/ (minCard + gap);
-        if (cols < 1) cols = 1;
+        // 列数公式与 [metricsLayout] 同一套（今日课程卡要用它算等高）。
+        const gap = DashboardPanel.dashboardMetricGap;
+        final cols = DashboardPanel.metricsLayout(constraints.maxWidth).cols;
         final width = (constraints.maxWidth - gap * (cols - 1)) / cols;
         return Wrap(
           spacing: gap,
@@ -235,6 +155,7 @@ class DashboardPanel extends ConsumerWidget {
           children: [
             SizedBox(
               width: width,
+              height: DashboardPanel.dashboardMetricCardHeight,
               child: _MetricCard(
                 icon: Icons.electrical_services,
                 color: f.electricity,
@@ -252,11 +173,15 @@ class DashboardPanel extends ConsumerWidget {
             ),
             SizedBox(
               width: width,
+              height: DashboardPanel.dashboardMetricCardHeight,
               child: _MetricCard(
                 icon: Icons.wifi_outlined,
                 color: f.netFee,
                 label: '校园网',
                 onTap: () => _push(context, const NetFeeScreen()),
+                // 本周期已用流量塞右上角胶囊（用户 2026-09-19：「首页校园网卡片
+                // 右上角显示当前使用流量数」），与排名 / 本学年胶囊同位置。
+                trailing: _networkTrafficCapsule(context, networkAsync),
                 child: _valueArea<NetFeeSummary>(
                   scheme,
                   netFeeAsync,
@@ -270,6 +195,7 @@ class DashboardPanel extends ConsumerWidget {
             ),
             SizedBox(
               width: width,
+              height: DashboardPanel.dashboardMetricCardHeight,
               child: _MetricCard(
                 icon: Icons.auto_graph_outlined,
                 color: f.grade,
@@ -287,6 +213,7 @@ class DashboardPanel extends ConsumerWidget {
             ),
             SizedBox(
               width: width,
+              height: DashboardPanel.dashboardMetricCardHeight,
               child: _MetricCard(
                 icon: Icons.volunteer_activism,
                 color: f.volunteer,
@@ -420,6 +347,48 @@ class DashboardPanel extends ConsumerWidget {
     );
   }
 
+  /// 校园网卡片右上角胶囊：本计费周期已用流量。
+  ///
+  /// 数据源 = 网络服务总览 `networkAccountProvider`（`NetworkAccount.useFlow`，MB；
+  /// 与「校园网」页顶部同一口径），**不是**网费充值域的余额。
+  Widget _networkTrafficCapsule(
+    BuildContext context,
+    AsyncValue<NetworkAccount> async,
+  ) {
+    final account = async.valueOrNull;
+    if (account == null) return const SizedBox.shrink();
+    final f = fp(context);
+    final message = StringBuffer('本计费周期已用流量')
+      ..write(account.planName.isEmpty ? '' : ' · 套餐 ${account.planName}')
+      ..write(
+        account.useTime > 0
+            ? ' · 已用 ${networkFormatMinutes(account.useTime)}'
+            : '',
+      );
+    return Tooltip(
+      message: message.toString(),
+      child: Container(
+        key: const Key('dash_netflow'),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: AppColors.tint(context, f.netFee, 0.12),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          // 只留流量数字（用户 2026-09-19：「校园网卡片右上角不要显示
+          // "已用"二字」）；「本计费周期已用流量」的口径说明在 tooltip 里。
+          networkFormatFlow(account.useFlow),
+          style: TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w600,
+            color: f.netFee,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+      ),
+    );
+  }
+
   /// 单行自适应数值行：卡宽不足时整体等比缩小，保证完整显示不换行。
   Widget _fittedValueRow(
     ColorScheme scheme, {
@@ -523,7 +492,6 @@ class DashboardPanel extends ConsumerWidget {
 
   Widget _buildTodayCourses(
     BuildContext context,
-    WidgetRef ref,
     ColorScheme scheme,
     DateTime now,
     AsyncValue<List<TodayCourse>> async,
@@ -544,6 +512,16 @@ class DashboardPanel extends ConsumerWidget {
             // 否则「图标盒 40 + 间距 12 + 刷新按钮 40」本身就超过可用宽度。
             final narrow =
                 constraints.maxWidth < todayCourseCardNarrowBreakpoint;
+            // 高度是否被外层限定（移动端等高 = `SizedBox`、桌面端最小高度 =
+            // `ConstrainedBox` 都会给有限高度；面板放进滚动列表时则不受限）。
+            final bounded = constraints.hasBoundedHeight;
+            final slots = _todayCourseSlots(
+              context,
+              scheme,
+              async,
+              periods,
+              narrow: narrow,
+            );
             return Padding(
               padding: narrow
                   ? const EdgeInsets.fromLTRB(10, 10, 6, 10)
@@ -553,6 +531,9 @@ class DashboardPanel extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
+                      // 窄档（手机 2:1 分栏，卡宽约 100dp）**不显示图标**：用户
+                      // 2026-09-19 先要求「移动端不隐藏icon」，试过之后当场改口
+                      // 「还是去除图标吧」→ 恢复为仅宽档显示（40×40）。
                       if (!narrow) ...[
                         Container(
                           width: 40,
@@ -594,26 +575,28 @@ class DashboardPanel extends ConsumerWidget {
                           ],
                         ),
                       ),
-                      // 全面板唯一的刷新入口：原来是「数据一览」标题行右侧那个；
-                      // 小标题撤掉后搬到这里（卡片本体仍是「点开课表」）。
-                      IconButton(
-                        key: const Key('dashRefresh'),
-                        tooltip: '刷新数据',
-                        visualDensity: VisualDensity.compact,
-                        padding: narrow ? EdgeInsets.zero : null,
-                        icon: Icon(Icons.refresh, size: narrow ? 16 : 18),
-                        onPressed: () => _refresh(ref),
-                      ),
+                      // 刷新按钮已撤（用户 2026-09-19：「去除主页课表卡片的
+                      // 刷新按钮」）—— 刷新改由首页下拉完成（`refreshDashboard`）。
                     ],
                   ),
                   SizedBox(height: narrow ? 8 : 10),
-                  ..._todayCourseSlots(
-                    context,
-                    scheme,
-                    async,
-                    periods,
-                    narrow: narrow,
-                  ),
+                  // 高度受限时把剩余空间给时间轴、不够就滚动（卡片高度可能被压到
+                  // 比时间轴还矮 —— 移动端要与指标卡区等高）；**高度不受限时一律
+                  // 不挂 flex** —— 无限高约束 + 非零 flex 子项会直接抛
+                  // 「RenderFlex children have non-zero flex but incoming height
+                  // constraints are unbounded.」（实测踩到，别再改回 Flexible）。
+                  if (bounded)
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: EdgeInsets.zero,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: slots,
+                        ),
+                      ),
+                    )
+                  else
+                    ...slots,
                 ],
               ),
             );
@@ -657,6 +640,39 @@ class DashboardPanel extends ConsumerWidget {
   /// 「今日课程」卡片窄档断点：低于它（手机端 2 : 1 的右栏）收一档内边距与字号。
   static const double todayCourseCardNarrowBreakpoint = 210;
 
+  /// 单张指标卡的统一高度。
+  ///
+  /// 四张卡内容行数不同（成绩卡多一行排名）会让卡片高矮不一、Wrap 参差；更要紧的是
+  /// 用户 2026-09-19 裁定「课程卡片在移动端要与其余卡片总高度等高，桌面端最小高度
+  /// 要与其余卡片一致」需要一个**可计算**的指标区高度（`IntrinsicHeight` 在这里
+  /// 用不了：两侧都含 `LayoutBuilder`，它不支持 intrinsic 尺寸）。
+  static const double dashboardMetricCardHeight = 132;
+
+  /// 指标卡张数（电费 / 校园网 / 课程加权 / 志愿时长）。
+  static const int dashboardMetricCount = 4;
+
+  /// 指标卡之间的横竖间距（与 [metricsLayout] 同一套公式）。
+  static const double dashboardMetricGap = 12;
+
+  /// 手机档断点：低于它按「与指标卡区等高」，高于它按「最小高度 = 指标卡区」。
+  static const double dashboardCompactBreakpoint = 620;
+
+  /// 指标卡区的列数 / 行数 / 总高度（**唯一公式**，`build` 与 `_buildMetrics` 共用）。
+  static ({int cols, int rows, double height}) metricsLayout(double maxWidth) {
+    const minCard = 210.0;
+    // 窄屏（手机端 2:1 后左栏只有 ~200dp）算出来会是 0 列 →
+    // `gap * (cols - 1)` 变负数、`/ cols` 变 NaN，必须兜到 1 列。
+    var cols = (maxWidth + dashboardMetricGap) ~/ (minCard + dashboardMetricGap);
+    if (cols < 1) cols = 1;
+    final rows = (dashboardMetricCount + cols - 1) ~/ cols;
+    return (
+      cols: cols,
+      rows: rows,
+      height:
+          rows * dashboardMetricCardHeight + (rows - 1) * dashboardMetricGap,
+    );
+  }
+
   /// 今日课程 = **绝对定位的时间轴**：每门课一块（按节次合并，块高 ∝ 节数），
   /// 位置 = `(起始节 - 1) × todayCourseTrackHeight` + 前面大间隔撑开的位移，所以无课
   /// 节次虽然不画格子，却仍然占着对应的高度（第 7 节的课永远在第 3 节的课下方 4 个
@@ -698,7 +714,7 @@ class DashboardPanel extends ConsumerWidget {
         _inlineStatus(
           scheme,
           Icons.error_outline,
-          '课表获取失败：${e.toString().replaceAll('Exception: ', '')}',
+          '课表获取失败：${friendlyErrorText(e)}',
         ),
       ],
       data: (courses) {

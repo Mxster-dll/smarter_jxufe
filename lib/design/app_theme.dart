@@ -120,6 +120,25 @@ ThemeData _themeOf(ColorScheme scheme, {required bool dark}) {
     // 未显式指定颜色的 `Divider()` 默认值。
     dividerTheme: const DividerThemeData(color: AppLadder.darkDivider),
     dividerColor: AppLadder.darkDivider,
+    // 分段按钮（`SegmentedButton`）的选中段：M3 深色默认取 `secondaryContainer`，
+    // 在本主题里是 `#5D3F3D` 那种发闷的深褐/近黑（窗口像素实测）—— 用户 2026-09-20
+    // 四轮裁定「按钮选中后也要显示 c62828，而不是黑色」，这里统一换成与成绩页、
+    // 课表节次同一档的**红实心件**（`AppLadder.darkErrorFill` + 白字）。
+    // 只写在深色分支：浅色仍是 M3 默认的浅粉底，逐像素冻结。
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: ButtonStyle(
+        backgroundColor: WidgetStateProperty.resolveWith<Color?>(
+          (states) => states.contains(WidgetState.selected)
+              ? AppLadder.darkErrorFill
+              : null,
+        ),
+        foregroundColor: WidgetStateProperty.resolveWith<Color?>(
+          (states) => states.contains(WidgetState.selected)
+              ? AppLadder.darkOnErrorFill
+              : null,
+        ),
+      ),
+    ),
   );
 }
 

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
+import 'package:smarter_jxufe/features/ims/data/ims_exception.dart';
 import 'package:smarter_jxufe/features/ims/schedule/data/providers/live_class_providers.dart';
 import 'package:smarter_jxufe/features/ims/schedule/data/providers/reschedule_providers.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/live_session.dart';
@@ -19,6 +20,7 @@ import 'package:smarter_jxufe/features/school_calendar/data/providers/wxcal_prov
 import 'package:smarter_jxufe/features/school_calendar/domain/teaching_week.dart';
 import 'package:smarter_jxufe/features/score_estimate/presentation/ge_common.dart';
 import 'package:smarter_jxufe/shared/services/notification_service.dart';
+import 'package:smarter_jxufe/design/app_states.dart';
 
 /// 上课实况窗 —— 「上课中 / 下一节课」的常驻倒计时。
 ///
@@ -112,7 +114,7 @@ class _LiveClassScreenState extends ConsumerState<LiveClassScreen> {
       );
       StudentInfo? info;
       studentInfoRepo.getCachedStudentInfo().fold((_) {}, (i) => info = i);
-      if (info == null) throw Exception('未获取到学籍信息，请先登录教务系统');
+      if (info == null) throw ImsApiException('未获取到学籍信息，请先登录教务系统');
 
       final si = info!;
       _serialNo = si.serialNo;
@@ -264,7 +266,7 @@ class _LiveClassScreenState extends ConsumerState<LiveClassScreen> {
   }
 
   Widget _buildBody(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) return const AppLoadingState();
     if (_error != null) return _buildError(context);
 
     return ListView(

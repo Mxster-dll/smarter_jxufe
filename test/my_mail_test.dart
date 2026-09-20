@@ -11,8 +11,8 @@ import 'package:smarter_jxufe/features/my_mail/data/datasources/my_mail_remote_d
 import 'package:smarter_jxufe/features/my_mail/data/providers/my_mail_providers.dart';
 import 'package:smarter_jxufe/features/my_mail/domain/student_mailbox.dart';
 import 'package:smarter_jxufe/features/my_mail/presentation/my_mail_screen.dart';
-import 'package:smarter_jxufe/features/school_calendar/data/providers/wxcal_providers.dart'
-    show wxGuidProvider;
+import 'package:smarter_jxufe/features/platform_guid/data/providers/guid_providers.dart'
+    show platformGuidProvider;
 
 /// 记录请求并按脚本作答的 Dio 适配器（不打真实网络）。
 class _FakeAdapter implements HttpClientAdapter {
@@ -170,7 +170,7 @@ void main() {
     test('未登录 → 提示先登录', () async {
       final container = ProviderContainer(
         overrides: [
-          wxGuidProvider.overrideWith((ref) async => 'GUID-1'),
+          platformGuidProvider.overrideWith((ref) async => 'GUID-1'),
         ],
       );
       addTearDown(container.dispose);
@@ -191,7 +191,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           currentAccountProvider.overrideWith((ref) => '2000000000'),
-          wxGuidProvider.overrideWith((ref) async => null),
+          platformGuidProvider.overrideWith((ref) async => null),
         ],
       );
       addTearDown(container.dispose);

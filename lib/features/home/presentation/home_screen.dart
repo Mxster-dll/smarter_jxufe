@@ -91,18 +91,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// 宫格视图：仪表盘（左：指标卡；右：今日课程 12 格）+ 服务宫格。
   ///
   /// 两个小标题（原「数据一览」「全部服务」）已按用户 2026-09-18 裁定撤掉。
+  /// **下拉刷新整页卡片**（用户 2026-09-19：「主页视图下拉刷新所有卡片」）——
+  /// 面板里的刷新按钮已撤，这里是唯一刷新入口。
   Widget _buildGridBody(BuildContext context, List<HomeServiceEntry> entries) {
-    return ListView(
-      // 底部内边距只留 12：Android 已铺满整屏（edge-to-edge），导航栏那一栏
-      // 归 App 绘制；留 48 会让列表末尾空出一条通屏宽白带（用户 2026-09-16
-      // 两次追问「主页宫格底部为什么只显示白色」，并裁定「铺到最底」）。
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
-      children: [
-        // 桌面小组件同步触发点（首帧推送 + 回前台重推 + 冷启动路由）
-        const HomeWidgetSyncScope(child: DashboardPanel()),
-        const SizedBox(height: 26),
-        HomeServiceGrid(entries: entries),
-      ],
+    return RefreshIndicator(
+      onRefresh: () => refreshDashboard(ref),
+      child: ListView(
+        // 恒可下拉（内容不足一屏时也要能触发刷新）。
+        physics: const AlwaysScrollableScrollPhysics(),
+        // 底部内边距只留 12：Android 已铺满整屏（edge-to-edge），导航栏那一栏
+        // 归 App 绘制；留 48 会让列表末尾空出一条通屏宽白带（用户 2026-09-16
+        // 两次追问「主页宫格底部为什么只显示白色」，并裁定「铺到最底」）。
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+        children: [
+          // 桌面小组件同步触发点（首帧推送 + 回前台重推 + 冷启动路由）
+          const HomeWidgetSyncScope(child: DashboardPanel()),
+          const SizedBox(height: 26),
+          HomeServiceGrid(entries: entries),
+        ],
+      ),
     );
   }
 
@@ -184,12 +191,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  /// 右侧默认内容：数据一览概览。
+  /// 右侧默认内容：数据一览概览（同样支持下拉刷新所有卡片）。
   Widget _buildOverviewPane() {
-    return ListView(
-      key: const Key('homeOverviewPane'),
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 48),
-      children: const [HomeWidgetSyncScope(child: DashboardPanel())],
+    return RefreshIndicator(
+      onRefresh: () => refreshDashboard(ref),
+      child: ListView(
+        key: const Key('homeOverviewPane'),
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 48),
+        children: const [HomeWidgetSyncScope(child: DashboardPanel())],
+      ),
     );
   }
 

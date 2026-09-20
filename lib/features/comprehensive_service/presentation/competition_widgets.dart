@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
+import 'package:smarter_jxufe/design/status_palette.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/competition.dart';
 
 /// 分页条：官网列表是服务端分页，客户端只翻页、不做本地切片。
@@ -76,7 +77,7 @@ class CompetitionTypeChip extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final team = type == CompetitionType.team;
     final color = team
-        ? AppColors.tone(context, const Color(0xFF6A1B9A))
+        ? AppColors.tone(context, StatusPalette.competitionTeam)
         : scheme.primary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
