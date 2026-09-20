@@ -553,6 +553,146 @@ void main() {
       ]);
     });
   });
+
+  group('节次「连接 / 断开」过渡（用户 2026-09-20 九轮要的动画）', () {
+    /// 两条**端点恒等式**：过渡分段在 t=0 / t=1 必须分别等于两态的稳态分段。
+    /// 否则动画的第一帧与最后一帧都会跟稳态差一点点 —— 肉眼就是「跳一下」。
+    void expectEndpoints(Set<int> from, Set<int> to) {
+      expect(
+        classroomPeriodJointSegments(from, from),
+        classroomPeriodRuns(from),
+        reason: 't=0 必须等于「按下前」的稳态分段',
+      );
+      expect(
+        classroomPeriodJointSegments(to, to),
+        classroomPeriodRuns(to),
+        reason: 't=1 必须等于「按下后」的稳态分段',
+      );
+    }
+
+    test('端点恒等式：任意两态都对得上（含空集 / 全集 / 完全换一套）', () {
+      const cases = <(Set<int>, Set<int>)>[
+        ({1, 2, 3, 4, 5}, {1, 2, 3, 4, 5}),
+        (<int>{}, {1}),
+        ({1, 2, 4, 5}, {1, 2, 3, 4, 5}),
+        ({1, 2, 3, 4, 5}, {1, 2, 4, 5}),
+        ({1, 3, 5}, {2, 4, 6}),
+        ({1, 2, 3, 4, 5}, {1, 2, 3, 4, 5, 7, 8, 9, 10}),
+        ({1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}, <int>{}),
+      ];
+      for (final (from, to) in cases) {
+        expectEndpoints(from, to);
+      }
+    });
+
+    test('两段被接上 / 一段被拆开：分段都是 [1,2] + [3] + [4,5] + 每格独立', () {
+      const merge = <int>{1, 2, 4, 5};
+      const merged = <int>{1, 2, 3, 4, 5};
+      for (final (from, to) in [(merge, merged), (merged, merge)]) {
+        final segments = classroomPeriodJointSegments(from, to);
+        expect(segments.take(3).toList(), const [
+          <int>[1, 2],
+          <int>[3],
+          <int>[4, 5],
+        ]);
+        expect(segments.length, 10, reason: '3 段 + 6..12 七格各自独立');
+        expect(
+          segments.expand((s) => s),
+          [for (var p = 1; p <= schedulePeriodCount; p++) p],
+          reason: '每格都要有归属、且不重不漏',
+        );
+      }
+    });
+
+    test('缝：接上时 0→1、拆开时 1→0；两态一样的缝不返回', () {
+      const merge = <int>{1, 2, 4, 5};
+      const merged = <int>{1, 2, 3, 4, 5};
+
+      final growing = classroomPeriodJoints(
+        merge,
+        merged,
+        classroomPeriodJointSegments(merge, merged),
+      );
+      expect(growing.map((j) => (j.left, j.right)).toList(), const [
+        (2, 3),
+        (3, 4),
+      ]);
+      expect(growing.every((j) => j.fromRed == 0 && j.toRed == 1), isTrue);
+
+      final shrinking = classroomPeriodJoints(
+        merged,
+        merge,
+        classroomPeriodJointSegments(merged, merge),
+      );
+      expect(shrinking.map((j) => (j.left, j.right)).toList(), const [
+        (2, 3),
+        (3, 4),
+      ]);
+      expect(shrinking.every((j) => j.fromRed == 1 && j.toRed == 0), isTrue);
+      // 第 5 节两态都选中、且和第 6 节两态都没连上 → 5|6 那条缝没有动画可做。
+      expect(shrinking.any((j) => j.left == 5 && j.right == 6), isFalse);
+    });
+
+    test('整体换一套（点「按现在时间」）：只有真正变了态的缝才动', () {
+      final segments = classroomPeriodJointSegments(
+        const {1, 2, 3, 4, 5},
+        const {3, 4, 5},
+      );
+      expect(segments.take(3).toList(), const [
+        <int>[1],
+        <int>[2],
+        <int>[3, 4, 5],
+      ]);
+      final joints = classroomPeriodJoints(
+        const {1, 2, 3, 4, 5},
+        const {3, 4, 5},
+        segments,
+      );
+      // 1 和 2 一起退掉 → 两条缝都在收：1|2（本来连着）与 2|3（本来连着）。
+      expect(joints.map((j) => (j.left, j.right)).toList(), const [
+        (1, 2),
+        (2, 3),
+      ]);
+      expect(joints.every((j) => j.fromRed == 1 && j.toRed == 0), isTrue);
+      // 段内（3|4、4|5）与 5|6 都不返回。
+      expect(joints.length, 2);
+    });
+
+    test('拖动一次选中好几格：新段内部的缝一起长出来', () {
+      const from = <int>{1, 2, 3, 4, 5};
+      const to = <int>{1, 2, 3, 4, 5, 7, 8, 9, 10};
+      final joints = classroomPeriodJoints(
+        from,
+        to,
+        classroomPeriodJointSegments(from, to),
+      );
+      expect(joints.map((j) => (j.left, j.right)).toList(), const [
+        (7, 8),
+        (8, 9),
+        (9, 10),
+      ]);
+      expect(joints.every((j) => j.fromRed == 0 && j.toRed == 1), isTrue);
+      // 6 号格两态都没选中 → 5|6 与 6|7 都不是「红连过去」。
+      expect(joints.any((j) => j.left == 5 || j.right == 6), isFalse);
+    });
+
+    test('越界值与 count 覆盖都容错', () {
+      expect(
+        classroomPeriodJointSegments(const {0, 13}, const {0, 13}),
+        classroomPeriodRuns(const {}),
+      );
+      expect(classroomPeriodJointSegments(const {1, 2}, const {1, 2}, count: 3), const [
+        <int>[1, 2],
+        <int>[3],
+      ]);
+      expect(classroomPeriodJoints(const {}, const {}, const []), isEmpty);
+      expect(
+        classroomPeriodJoints(const {}, const {1}, classroomPeriodRuns(const {})),
+        isEmpty,
+        reason: '没有相邻段就没有缝',
+      );
+    });
+  });
   group('源码守卫：不许回去打原网页那两个端点', () {
     String read(String path) => File(path).readAsStringSync();
 

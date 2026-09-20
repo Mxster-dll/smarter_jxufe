@@ -713,6 +713,71 @@ List<List<int>> classroomPeriodRuns(
   if (current != null) runs.add(current);
   return runs;
 }
+
+/// 节次「连接 / 断开」过渡的**分段**：只把「两态都勾中」的连续节次合成一段，
+/// 其余（两态都没选、或正好在两态之间变了态的）各自独立成段。
+///
+/// 用户 2026-09-20 九轮：「我希望为查无课时间功能内的节数选择器添加动画，
+/// 尤其是两段连续选中的段被连接时，以及单一连续段被分开时」——过渡里**几何一格都不动**
+/// （见 `kClassroomChipGap` 的总宽不变式），变的只是「哪一块红连着哪一块」，
+/// 于是把不变的部分照原样成段、把变了态的那些格拆成单格，同一个分段就同时画得出
+/// 两个端点：
+///
+/// - `classroomPeriodJointSegments(a, a)` ≡ `classroomPeriodRuns(a)`；
+/// - `classroomPeriodJointSegments(b, b)` ≡ `classroomPeriodRuns(b)`。
+///
+/// 两条恒等式意味着动画的**第一帧与按下前的画面、最后一帧与按下后的画面逐段相同**
+/// （守卫见 `test/classroom_free_test.dart`），所以起止都不会「跳一下」。
+List<List<int>> classroomPeriodJointSegments(
+  Iterable<int> from,
+  Iterable<int> to, {
+  int count = schedulePeriodCount,
+}) {
+  final stable = from
+      .where((p) => p >= 1 && p <= count)
+      .toSet()
+      .intersection(to.where((p) => p >= 1 && p <= count).toSet());
+  final segments = <List<int>>[];
+  for (var p = 1; p <= count; p++) {
+    // 连续**且两态都选中**才并进上一段 —— 这就是上面两条恒等式成立的原因。
+    final previous = segments.isEmpty ? null : segments.last.last;
+    if (stable.contains(p) && previous == p - 1 && stable.contains(p - 1)) {
+      segments.last.add(p);
+    } else {
+      segments.add(<int>[p]);
+    }
+  }
+  return segments;
+}
+
+/// 过渡里一条「缝」：两侧的节次 + 它在两态下**是不是同一块红的一部分**（1 / 0）。
+///
+/// 值只有 1 和 0（不是插值），调用方按进度取：`fromRed + (toRed - fromRed) * t`
+/// —— t = 0 / 1 时浮点上正好落回端点值，收尾不会差一点点。
+typedef ClassroomPeriodJoint = ({int left, int right, double fromRed, double toRed});
+
+/// 逐条缝地算「这块红要不要连过去」，只在 [segments] 的**相邻两段之间**才有缝。
+///
+/// 两态一致的缝（本来就段内、或本来就没连上）**不返回** —— 它们没有动画可做。
+List<ClassroomPeriodJoint> classroomPeriodJoints(
+  Iterable<int> from,
+  Iterable<int> to,
+  List<List<int>> segments,
+) {
+  final on = from.toSet();
+  final target = to.toSet();
+  final joints = <ClassroomPeriodJoint>[];
+  for (var i = 0; i + 1 < segments.length; i++) {
+    final left = segments[i].last;
+    final right = segments[i + 1].first;
+    final fromRed = on.contains(left) && on.contains(right) ? 1.0 : 0.0;
+    final toRed = target.contains(left) && target.contains(right) ? 1.0 : 0.0;
+    if (fromRed == toRed) continue;
+    joints.add((left: left, right: right, fromRed: fromRed, toRed: toRed));
+  }
+  return joints;
+}
+
 /// 节次区间的展示文案：`1-5 节` / 单节 `3 节` / 多段 `1 节 + 3 节`（空列表 → `—`）。
 ///
 /// 大节档（`1-2 节` 这种）只是它的特例，见 [kClassroomFreePeriodPresets]。

@@ -174,6 +174,23 @@ void main() {
       expect(src, contains("'计入总分'"));
       expect(src, contains("'未计入'"));
     });
+
+    test('结果卡不再显示「五育平均」（用户 2026-09-20：「综测页不要显示"五育平均"」）', () {
+      // 判据必须**剥掉注释**：文件里那句「没有再显示『五育平均』」的说明本身就带这四个字。
+      final code = src
+          .split('\n')
+          .map((l) => l.split('//').first)
+          .join('\n');
+      expect(code.contains('五育平均'), isFalse, reason: '那行小字已经删掉');
+      expect(code.contains('r.average'), isFalse, reason: '连取值都不该再取');
+      // 引擎里的对照值**留着**（只给引擎测试当口径），别顺手一起删。
+      expect(
+        File(
+          'lib/features/zongce/domain/zc_engine.dart',
+        ).readAsStringSync(),
+        contains('double get average'),
+      );
+    });
   });
 }
 

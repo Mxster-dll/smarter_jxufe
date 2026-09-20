@@ -49,6 +49,18 @@ import 'package:smarter_jxufe/design/settings_section.dart';
 /// （用户 2026-09-20 六轮：「相连的节数按钮之间不要显示分割线」）。
 const double kClassroomChipGap = 6;
 
+/// 「连接 / 断开」过渡的时长（用户 2026-09-20 九轮：「我希望为查无课时间功能内的节数
+/// 选择器添加动画，尤其是两段连续选中的段被连接时，以及单一连续段被分开时」）。
+///
+/// 200–250ms 是「看得清过程、又不挡手」的档：比这慢，连点几格会排队；
+/// 比这快，眼睛只会看到一次闪。
+const Duration kClassroomJointDuration = Duration(milliseconds: 220);
+
+/// 过渡中的桥接件向两侧各侵入多少像素 —— 取 `_chipFill` 的**圆角半径**：
+/// 把两侧格子的圆角缺口也一并盖住，于是「缝填满」那一刻与「合并段」的单一圆角红块
+/// **逐像素等价**（否则收尾会在四个角上留下 1px 的白缺，正是用户八轮报过的那类细线）。
+const double kClassroomJointInset = 8;
+
 /// 两个子功能。
 enum ClassroomFreeMode {
   byTime('按时间找教室'),
@@ -82,7 +94,8 @@ class ClassroomFreeScreen extends ConsumerStatefulWidget {
       _ClassroomFreeScreenState();
 }
 
-class _ClassroomFreeScreenState extends ConsumerState<ClassroomFreeScreen> {
+class _ClassroomFreeScreenState extends ConsumerState<ClassroomFreeScreen>
+    with SingleTickerProviderStateMixin {
   late ClassroomFreeMode _mode = widget.mode;
   PublicQueryTerm? _term;
   String _campus = '';
@@ -125,6 +138,32 @@ class _ClassroomFreeScreenState extends ConsumerState<ClassroomFreeScreen> {
   final Map<int, GlobalKey> _periodCellKeys = {
     for (var p = 1; p <= schedulePeriodCount; p++) p: GlobalKey(),
   };
+
+  /// 「连接 / 断开」过渡的节拍（用户 2026-09-20 九轮）。
+  ///
+  /// 红色「连过去 / 断开」的过程全部由它驱动：分段与每格的红都是**每帧按
+  /// [_jointAnim].value 现算**的（选择器那一段包在 `AnimatedBuilder` 里），
+  /// 所以整棵子树之外的东西一帧都不重建。
+  late final AnimationController _jointAnim = AnimationController(
+    vsync: this,
+    duration: kClassroomJointDuration,
+  )..addStatusListener(_onJointStatus);
+
+  /// 过渡的**起点集合**（null = 没有过渡在跑，直接按当前集合画稳态）。
+  ///
+  /// 起点的选取口径：**按下前那一帧真正画出来的集合**。它有三个来源，都是「点/拖之前
+  /// 那一刻的屏幕」：
+  /// - 点某一格 → `_togglePeriod` 收到的 `periods`（生效集合，可能来自自动选段）；
+  /// - 拖动起手 → `_beginPeriodDrag` 收到的 `effective`；
+  /// - 点「按现在时间」 → [_renderedPeriods]（那一刻 `_periodsTouched` 正要翻牌，
+  ///   别处已经拿不到旧值了）。
+  Set<int>? _jointFrom;
+
+  /// 上一次真正画出来的节次集合，只服务于上面第三个来源。
+  Set<int> _renderedPeriods = const <int>{};
+
+  /// 桥接覆盖层的坐标原点（`CustomPaint` 自己的 RenderBox 空间）。
+  final GlobalKey _jointLayerKey = GlobalKey();
 
   bool _includeWeekend = true;
   int _minPeriods = 1;
@@ -171,10 +210,36 @@ class _ClassroomFreeScreenState extends ConsumerState<ClassroomFreeScreen> {
 
   /// 点「按现在时间」：回到自动选段（注入 `now` 的测试保持确定性，不刷新时钟）。
   void _resetPeriodsToNow() {
+    // 整套换段也让它「化」过去：起点 = 这一帧屏幕上画着的那一套。
+    _startJointTransition(_renderedPeriods);
     setState(() {
       _periodsTouched = false;
       if (widget.now == null) _now = DateTime.now();
     });
+  }
+
+  @override
+  void dispose() {
+    _jointAnim.dispose();
+    super.dispose();
+  }
+
+  void _onJointStatus(AnimationStatus status) {
+    // 过渡结束 = 端点已经与稳态逐值相同（见 `classroomPeriodJointSegments` 的两条
+    // 恒等式），所以这一下 `setState` 只是把「过渡态」这层壳摘掉，画面不会变。
+    if (status == AnimationStatus.completed && mounted && _jointFrom != null) {
+      setState(() => _jointFrom = null);
+    }
+  }
+
+  /// 起一次「连接 / 断开」过渡：把 [from]（按下前那一刻的集合）记成起点。
+  ///
+  /// **已经在跑就不重起** —— 拖动时每一格都会调到这里，重起会让 t 归零、画面往回弹
+  /// 一下；不重起则只是把「终点」换成新集合，t 继续往前推，视觉是连着的。
+  void _startJointTransition(Set<int> from) {
+    if (_jointFrom != null) return;
+    _jointFrom = <int>{...from};
+    _jointAnim.forward(from: 0);
   }
 
   String _clockText(DateTime time) =>
@@ -339,6 +404,9 @@ class _ClassroomFreeScreenState extends ConsumerState<ClassroomFreeScreen> {
     final periodTable = _periodTable();
     final autoPeriods = classroomAutoPeriodRange(table: periodTable, now: _now);
     final periods = _effectivePeriods(autoPeriods);
+    // 记下「这一帧画出去的是哪一套」——「按现在时间」那一下要靠它当过渡起点
+    // （那一刻 `_periodsTouched` 正要翻牌，别处已经拿不到旧集合了）。
+    _renderedPeriods = periods;
     final infos = _mode == ClassroomFreeMode.byRoom || _building.isEmpty
         ? _classroomInfos()
         : const <ClassroomInfo>[];
@@ -555,6 +623,12 @@ class _ClassroomFreeScreenState extends ConsumerState<ClassroomFreeScreen> {
   /// 因此跳变。这里一律 `showCheckmark: false`，并且把底色交出去：选中态的红色由外层
   /// 那一块 `_chipFill` 出，胶囊自己只涂一层 [kClassroomChipFillAlpha] 的红（≈看不见，
   /// 但**不能真给透明色** —— 见该常量的说明），[label] 的前景由 [selectedLabel] 给。
+  ///
+  /// 另外三个参数是给「连接 / 断开」过渡用的（球在 `_periodRun` 手上）：
+  /// [fill] 让格子**自己**涂一层带 alpha 的红（过渡里红有多实由进度决定，那时不能走
+  /// `_chipFill` 的 canvasColor 路子 —— 会把同一块红叠两次、深浅不匀），
+  /// [labelColor] / [labelWeight] 则把文字从灰到白、从常规到半粗地插值过去。
+  /// 三者都为 null 时行为与从前逐值相同。
   Widget _classroomChoiceChip(
     BuildContext context, {
     required Key key,
@@ -564,6 +638,9 @@ class _ClassroomFreeScreenState extends ConsumerState<ClassroomFreeScreen> {
     BorderSide? side,
     Color? selectedLabel,
     Color? selectedFill,
+    Color? fill,
+    Color? labelColor,
+    FontWeight? labelWeight,
   }) {
     final accent = fp(context).publicQuery;
     return FilterChip(
@@ -576,11 +653,10 @@ class _ClassroomFreeScreenState extends ConsumerState<ClassroomFreeScreen> {
       visualDensity: VisualDensity.compact,
       elevation: 0,
       pressElevation: 0,
-      // 底色：选中 = 真透明 —— 红由外层 `_chipFill` 出，而**那层红同时被写进了
-      // `canvasColor`**（见 `_chipFill` 的说明）：chip 内部那个没有显式颜色的 `Material`
-      // 于是也是红的，格子边缘的抗锯齿再也混不出异色细线。
-      backgroundColor: selected ? selectedFill : Colors.transparent,
-      selectedColor: selectedFill,
+      // 底色：稳态选中 = 真透明（红由外层 `_chipFill` 出，而**那层红同时被写进了
+      // `canvasColor`**：见 `_chipFill` 的说明）；过渡中则由 [fill] 自己涂一层带 alpha 的红。
+      backgroundColor: fill ?? (selected ? selectedFill : Colors.transparent),
+      selectedColor: fill ?? selectedFill,
       disabledColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       shadowColor: Colors.transparent,
@@ -590,10 +666,12 @@ class _ClassroomFreeScreenState extends ConsumerState<ClassroomFreeScreen> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       labelStyle: TextStyle(
         fontSize: 13,
-        fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-        color: selected
-            ? (selectedLabel ?? accent)
-            : AppColors.textMuted(context),
+        fontWeight:
+            labelWeight ?? (selected ? FontWeight.w600 : FontWeight.w400),
+        color: labelColor ??
+            (selected
+                ? (selectedLabel ?? accent)
+                : AppColors.textMuted(context)),
       ),
     );
   }
@@ -641,13 +719,133 @@ class _ClassroomFreeScreenState extends ConsumerState<ClassroomFreeScreen> {
     );
   }
 
-  Widget _periodRun(BuildContext context, List<int> run, Set<int> periods) {
+  /// 节次选择器：分段 + 段间那几条「缝」的桥接覆盖层（连接 / 断开动画的画笔）。
+  ///
+  /// 结构上仍是**一张 Wrap**（几何一格都不动），桥接件画在 Wrap **之上**的一层
+  /// `CustomPaint` 里：缝那一带本来就没有任何胶囊（格子之间的间隔是透明占位，
+  /// `_chipFill` 也只画到格子边缘），画在上面既能补缝、也能顺手把两侧格子的圆角缺口
+  /// 盖住（[kClassroomJointInset]）。
+  ///
+  /// 整段包在 `AnimatedBuilder` 里 —— 红每帧现算，树以外的东西一帧都不重建。
+  Widget _periodSelector(BuildContext context, Set<int> periods) => AnimatedBuilder(
+    animation: _jointAnim,
+    builder: (context, _) => _buildPeriodSelector(context, periods),
+  );
+
+  Widget _buildPeriodSelector(BuildContext context, Set<int> periods) {
+    final from = _jointFrom;
+    final progress = _jointAnim.value;
+    final segments = from == null
+        ? classroomPeriodRuns(periods)
+        : classroomPeriodJointSegments(from, periods);
+    final joints = from == null
+        ? const <ClassroomPeriodJoint>[]
+        : classroomPeriodJoints(from, periods, segments);
+    return Stack(
+      children: [
+        Wrap(
+          spacing: kClassroomChipGap,
+          runSpacing: 4,
+          children: [
+            for (final segment in segments)
+              _periodRun(
+                context,
+                segment,
+                periods,
+                alpha: _segmentAlpha(segment, periods, from, progress),
+              ),
+          ],
+        ),
+        if (joints.isNotEmpty)
+          Positioned.fill(
+            child: IgnorePointer(
+              key: const Key('classroomFreePeriodJoints'),
+              child: CustomPaint(
+                key: _jointLayerKey,
+                painter: _PeriodJointPainter(
+                  layerKey: _jointLayerKey,
+                  cellKeys: _periodCellKeys,
+                  joints: joints,
+                  progress: progress,
+                  color: AppColors.errorFill(context),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// 某一段此刻的「红」有多实。
+  ///
+  /// 段内所有格子在两态下同态（见 [classroomPeriodJointSegments] 的构造），所以取首格
+  /// 即可。[from] 为 null（没有过渡）时就是稳态的 0 / 1。
+  double _segmentAlpha(
+    List<int> segment,
+    Set<int> to,
+    Set<int>? from,
+    double progress,
+  ) {
+    final cell = segment.first;
+    if (from == null) return to.contains(cell) ? 1 : 0;
+    final a = from.contains(cell) ? 1.0 : 0.0;
+    final b = to.contains(cell) ? 1.0 : 0.0;
+    // a、b 只有 1 / 0 两种取值 —— progress = 0 / 1 时这一步落回**精确**的端点值。
+    return a + (b - a) * progress;
+  }
+
+  /// 一段节次（[classroomPeriodRuns] / [classroomPeriodJointSegments] 的输出）。
+  ///
+  /// - 长度 1：独立一格（选中 → 自己一张圆角淡底，未选中 → 只有描边）；
+  /// - 长度 > 1：**合并成一张卡片** —— 外层一张连续圆角淡底，内部每格仍是独立
+  ///   的胶囊，可以单独点（用户三轮原话）；格子之间**不画分格线**，整段连成一块红
+  ///   （用户 2026-09-20 六轮原话）。
+  ///
+  /// 宽度不变式：段内的间隔 = [kClassroomChipGap]，与外层 `Wrap.spacing` 同值，
+  /// 所以合并前后总宽不变（—— 正是这条不变式让「连接 / 断开」可以在**几何一格都不动**
+  /// 的前提下画出来）。
+  ///
+  /// [alpha] = 这一段此刻的「红」有多实：**1 = 稳态选中、0 = 稳态未选中**（两条路都与
+  /// 从前逐值相同、连 `canvasColor` 都照旧染红），中间值只出现在「连接 / 断开」过渡里。
+  /// ⚠ 视觉一律由 [alpha] 决定，**不是**由胶囊的 `selected`（那是提交态）——
+  /// 过渡第一帧上「刚被点掉的那一格」在数据上已经不选了，可它这一帧看起来还是红的。
+  Widget _periodRun(
+    BuildContext context,
+    List<int> run,
+    Set<int> periods, {
+    required double alpha,
+  }) {
     // 用户 2026-09-20：「单个按钮被选中，显示为 #C62828 底；连续选中的按钮之间要显示为
     // 用 #C62828 连接」—— 就是成绩页那套**红实心件**（`AppColors.errorFill`：浅色 =
     // scheme.error、深色 = 深红 #C62828；前景走 `onErrorFill`，两侧都是白字）。
     final fill = AppColors.errorFill(context);
     final onFill = AppColors.onErrorFill(context);
     final merged = run.length > 1;
+
+    // 文字与描边同样按 alpha 插值：端点走**常量**（不经过 Color.lerp 的浮点近似），
+    // 否则收尾那一帧会比稳态差一丁点，肉眼就是「跳一下」。
+    // ⚠ 三者都必须**显式**给（不能交给胶囊按 `selected` 自己判）：过渡第一帧上
+    // 「刚被点上的那一格」提交态已经是选中，可它这一帧看起来还得是「没选中」的样子。
+    final Color labelColor = alpha >= 1
+        ? onFill
+        : alpha <= 0
+        ? AppColors.textMuted(context)
+        : Color.lerp(AppColors.textMuted(context), onFill, alpha)!;
+    final FontWeight labelWeight = alpha >= 1
+        ? FontWeight.w600
+        : alpha <= 0
+        ? FontWeight.w400
+        : FontWeight.lerp(FontWeight.w400, FontWeight.w600, alpha)!;
+    // 用户 2026-09-20 六轮：「被选中的节数按钮不要显示边框」—— 选中态只留那块红实心件，
+    // 描边一律透明；未选中保留细描边；过渡里描边随红一起淡出。
+    final BorderSide? side = alpha >= 1
+        ? const BorderSide(color: Colors.transparent)
+        : alpha <= 0
+        ? null // null = 胶囊默认那条细描边
+        : BorderSide(
+            color: AppColors.stroke(context).withValues(alpha: 1 - alpha),
+          );
+
     Widget cell(int p) {
       final selected = periods.contains(p);
       return _periodDragCell(
@@ -658,49 +856,56 @@ class _ClassroomFreeScreenState extends ConsumerState<ClassroomFreeScreen> {
           key: Key('classroomFreePeriod-$p'),
           label: '$p',
           selected: selected,
-          // 用户 2026-09-20 六轮：「被选中的节数按钮不要显示边框」—— 选中态只留那块红实心件，
-          // 描边一律透明（否则红底上还要套一圈灰框）；未选中仍保留细描边。
-          side: selected ? const BorderSide(color: Colors.transparent) : null,
+          side: side,
           selectedLabel: onFill,
-          // 格子自己一格红都不画（真透明）：整块红由外层 `_chipFill` 出，而它也把这块红
-          // 写进了 `canvasColor` —— chip 内部那个没有显式颜色的 `Material` 因此同样是红的，
-          // 格子边缘的抗锯齿再也混不出异色细线（用户 2026-09-20 八轮：「被连续选中的按钮
-          // 视觉上要是一个矩形，但是现有的实现会导致中间有细线影响效果」）。
+          labelColor: labelColor,
+          labelWeight: labelWeight,
+          // 稳态选中时格子自己一格红都不画（真透明）：整块红由外层 `_chipFill` 出，而它也把
+          // 这块红写进了 `canvasColor` —— chip 内部那个没有显式颜色的 `Material` 因此同样是
+          // 红的，格子边缘的抗锯齿再也混不出异色细线（用户 2026-09-20 八轮：「被连续选中的
+          // 按钮视觉上要是一个矩形，但是现有的实现会导致中间有细线影响效果」）。
+          // 过渡里则反过来：格子自己涂一层带 alpha 的红 —— 那时不能借 `canvasColor`
+          // （同一块红会被叠两次、深浅不匀），而 alpha < 1 的接缝本来就看不出来。
           selectedFill: Colors.transparent,
+          fill: alpha > 0 && alpha < 1 ? fill.withValues(alpha: alpha) : null,
           onTap: () => _togglePeriod(p, periods),
         ),
       );
     }
 
-    if (!merged) {
-      final only = run.first;
-      final chip = cell(only);
-      if (!periods.contains(only)) return chip;
+    if (alpha >= 1) {
+      // 稳态「选中」：与从前逐值相同。
+      if (!merged) {
+        return _chipFill(
+          context,
+          color: fill,
+          key: Key('classroomFreePeriodFill-${run.first}'),
+          child: cell(run.first),
+        );
+      }
+
+      // 合并段 = **一整块圆角红**：外层 `_chipFill` 是**唯一**的绘制方（8 圆角），
+      // 段内格子全透明、连圆角也不画（它们的 `shape` 只剩水波纹用），格子之间那 6px
+      // 仍是透明占位 —— 于是屏幕上就是一块矩形，中间不可能出现细线。
       return _chipFill(
         context,
         color: fill,
-        key: Key('classroomFreePeriodFill-${run.first}'),
-        child: chip,
+        key: Key('classroomFreePeriodRun-${run.first}-${run.last}'),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < run.length; i++) ...[
+              if (i > 0) _runGap(),
+              cell(run[i]),
+            ],
+          ],
+        ),
       );
     }
-
-    // 合并段 = **一整块圆角红**：外层 `_chipFill` 是**唯一**的绘制方（8 圆角），
-    // 段内格子全透明、连圆角也不画（它们的 `shape` 只剩水波纹用），格子之间那 6px
-    // 仍是透明占位 —— 于是屏幕上就是一块矩形，中间不可能出现细线。
-    return _chipFill(
-      context,
-      color: fill,
-      key: Key('classroomFreePeriodRun-${run.first}-${run.last}'),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (var i = 0; i < run.length; i++) ...[
-            if (i > 0) _runGap(),
-            cell(run[i]),
-          ],
-        ],
-      ),
-    );
+    // 其余情况全是**单格**：多格段只在两态都选中时才成立（那时 alpha 恒为 1）。
+    // 红与文字/描边都已按 [alpha] 算好 —— 过渡中的那一格（正要接上 / 正要拆掉）
+    // 就走这条路，格子自带一层带 alpha 的红。
+    return cell(run.first);
   }
 
   /// 节次格的**拖动选择**包（用户 2026-09-20 八轮：「我希望支持拖动选择」）。
@@ -767,6 +972,8 @@ class _ClassroomFreeScreenState extends ConsumerState<ClassroomFreeScreen> {
     } else {
       next.add(p);
     }
+    // 「两段被接上 / 一段被拆开」的过程要看得见（用户 2026-09-20 九轮）。
+    _startJointTransition(periods);
     setState(() {
       _periodsTouched = true;
       _periods
@@ -781,6 +988,9 @@ class _ClassroomFreeScreenState extends ConsumerState<ClassroomFreeScreen> {
     _periodDragBase = <int>{...effective};
     _periodDragSelecting = !effective.contains(period);
     _periodDragTarget = period;
+    // 整段拖动也从起手那一刻开始「化」：`_startJointTransition` 在过渡没跑完时**不重起**，
+    // 于是后续每一次落到新格子都只是换终点、t 继续往前推，红是连续长出来的。
+    _startJointTransition(effective);
   }
 
   /// 指针移到别的一格才重算（同一格内继续移动是空操作）。
@@ -950,14 +1160,7 @@ class _ClassroomFreeScreenState extends ConsumerState<ClassroomFreeScreen> {
               ],
             ),
             const SizedBox(height: 6),
-            Wrap(
-              spacing: kClassroomChipGap,
-              runSpacing: 4,
-              children: [
-                for (final run in classroomPeriodRuns(periods))
-                  _periodRun(context, run, periods),
-              ],
-            ),
+            _periodSelector(context, periods),
             if (auto != null && !_periodsTouched) ...[
               const SizedBox(height: 6),
               Text(
@@ -1499,4 +1702,72 @@ class _RoomPickerSheetState extends State<_RoomPickerSheet> {
       ),
     );
   }
+}
+
+/// 「连接 / 断开」过渡里那几块**跨缝的红**（用户 2026-09-20 九轮）。
+///
+/// 缝只有 [kClassroomChipGap] 宽，两侧格子各有 8px 圆角 —— 想让「连成一整块」在收尾时
+/// 不留下四个角的白色缺口，就得把这条缝连同两侧各 [kClassroomJointInset] 一起涂红。
+/// 那一带没有任何胶囊（格子之间的间隔是透明占位，`_chipFill` 也只画到格子边缘），
+/// 所以直接画在 Wrap **之上**是安全的，也不会盖住任何文字。
+///
+/// 进度 0 → 1 时按**缝的中心**向两边生长，而不是整体淡入：实心红长出来比半透明红叠在
+/// 白底上干净得多，而且「两块红互相够过去」正是这一步要表达的意思。
+class _PeriodJointPainter extends CustomPainter {
+  _PeriodJointPainter({
+    required this.layerKey,
+    required this.cellKeys,
+    required this.joints,
+    required this.progress,
+    required this.color,
+  });
+
+  /// 覆盖层自己的 RenderBox（画布坐标的原点）。
+  final GlobalKey layerKey;
+
+  /// 每一节次格的几何句柄（与拖动选择共用同一份）。
+  final Map<int, GlobalKey> cellKeys;
+
+  final List<ClassroomPeriodJoint> joints;
+  final double progress;
+  final Color color;
+
+  static RenderBox? _boxOf(GlobalKey? key) =>
+      key?.currentContext?.findRenderObject() as RenderBox?;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final layer = _boxOf(layerKey);
+    if (layer == null) return;
+    final paint = Paint()..color = color;
+    for (final joint in joints) {
+      final leftBox = _boxOf(cellKeys[joint.left]);
+      final rightBox = _boxOf(cellKeys[joint.right]);
+      if (leftBox == null || rightBox == null) continue;
+      final left =
+          leftBox.localToGlobal(Offset.zero, ancestor: layer) & leftBox.size;
+      final right =
+          rightBox.localToGlobal(Offset.zero, ancestor: layer) & rightBox.size;
+      // 窄屏上 12 个格子会折行：这两格不在同一行时，它们之间没有那条缝，这一帧不画。
+      if ((left.top - right.top).abs() > 0.5) continue;
+      final alpha = joint.fromRed + (joint.toRed - joint.fromRed) * progress;
+      if (alpha <= 0) continue;
+      final center = (left.right + right.left) / 2;
+      // 半边宽 = （缝的一半 + 侵入量）× 进度 —— 进度 1 时正好盖满缝与两侧圆角缺口。
+      final half = ((right.left - left.right) / 2 + kClassroomJointInset) * alpha;
+      canvas.drawRect(
+        Rect.fromLTRB(center - half, left.top, center + half, left.bottom),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _PeriodJointPainter old) =>
+      old.progress != progress ||
+      old.color != color ||
+      // 每次 build 都是一份新 list（`classroomPeriodJoints` 现算），所以这一条等价于
+      // 「重建了就重画」—— 光比长度会漏掉「缝的条数没变但位置变了」那一档
+      // （连点两下同一帧里就会撞上），漏掉的代价是桥接件晚一帧跟上。
+      old.joints != joints;
 }

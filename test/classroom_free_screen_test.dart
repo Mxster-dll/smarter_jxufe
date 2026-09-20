@@ -699,8 +699,10 @@ void main() {
     await tester.pump();
     final loose = tester.getTopLeft(find.byKey(const Key('classroomFreePeriod-6')));
     // 再勾回第 5 节 → 3-5 合并成一张卡片。
+    // ⚠ 必须 `pumpAndSettle`：合并现在有个 220ms 的「连过去」过渡，合并段本身要等它跑完
+    // 才成立（`kClassroomJointDuration`）；几何判据不受影响 —— 过渡期间总宽就不变。
     await tester.tap(find.byKey(const Key('classroomFreePeriod-5')));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.byKey(const Key('classroomFreePeriodRun-3-5')), findsOneWidget);
     final merged = tester.getTopLeft(find.byKey(const Key('classroomFreePeriod-6')));
     expect(
@@ -806,6 +808,167 @@ void main() {
           .side
           ?.color,
       isNot(Colors.transparent),
+    );
+  });
+
+  testWidgets('连接 / 断开的过渡：第一帧 = 按下前、末帧 = 稳态（两端都不跳）', (tester) async {
+    // 用户 2026-09-20 九轮：「我希望为查无课时间功能内的节数选择器添加动画，尤其是两段
+    // 连续选中的段被连接时，以及单一连续段被分开时」。
+    await _pumpPage(tester); // 00:00 → 自动选中 1-5
+    final ctx = tester.element(find.byKey(const Key('classroomFreePeriod-3')));
+    final red = AppColors.errorFill(ctx);
+    final onRed = AppColors.onErrorFill(ctx);
+    final muted = AppColors.textMuted(ctx);
+
+    // 先拆开：点掉第 3 节 → 1-2 与 4-5 两段，中间那格没选中。
+    await tester.tap(find.byKey(const Key('classroomFreePeriod-3')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('classroomFreePeriodRun-1-2')), findsOneWidget);
+    expect(find.byKey(const Key('classroomFreePeriodRun-4-5')), findsOneWidget);
+    expect(find.byKey(const Key('classroomFreePeriodFill-3')), findsNothing);
+    expect(
+      find.byKey(const Key('classroomFreePeriodJoints')),
+      findsNothing,
+      reason: '稳态没有缝要画',
+    );
+
+    // 再点回来 → 开始「连接」。
+    await tester.tap(find.byKey(const Key('classroomFreePeriod-3')));
+    await tester.pump(); // t = 0
+
+    // ① 第一帧：画面必须还是按下前那一帧 —— 两段仍在、中间那格仍是「没选中」的样子。
+    expect(find.byKey(const Key('classroomFreePeriodRun-1-2')), findsOneWidget);
+    expect(find.byKey(const Key('classroomFreePeriodRun-4-5')), findsOneWidget);
+    expect(find.byKey(const Key('classroomFreePeriodFill-3')), findsNothing);
+    expect(periodLabelColor(tester, 3), muted, reason: '这一帧它还不红，文字是灰的');
+    expect(
+      periodChip(tester, 3).side?.color,
+      isNot(Colors.transparent),
+      reason: '这一帧也还带着描边',
+    );
+    // 提交态已经翻了（数据上它已经选中）—— 视觉由进度决定，两者刻意分开。
+    expect(periodChip(tester, 3).selected, isTrue);
+    expect(
+      find.byKey(const Key('classroomFreePeriodJoints')),
+      findsOneWidget,
+      reason: '两条缝的桥接覆盖层这时已就位（宽度从 0 长起）',
+    );
+
+    // ② 中段：中间那格自己带上一层带 alpha 的红，正是「连过去」的过程。
+    await tester.pump(const Duration(milliseconds: 110));
+    final mid = periodChip(tester, 3).backgroundColor!;
+    expect(mid.a, greaterThan(0));
+    expect(mid.a, lessThan(1));
+    expect(periodLabelColor(tester, 3), isNot(muted));
+    expect(periodLabelColor(tester, 3), isNot(onRed), reason: '文字在灰 → 白之间');
+    expect(
+      find.byKey(const Key('classroomFreePeriodFill-3')),
+      findsNothing,
+      reason: '过渡里不走 `_chipFill`（红由格子自己按 alpha 涂，免得同一块红叠两次）',
+    );
+
+    // ③ 末帧：与稳态逐值相同。
+    final run = find.byKey(const Key('classroomFreePeriodRun-1-5'));
+    await tester.pumpAndSettle();
+    expect(run, findsOneWidget);
+    expect(
+      (tester.widget<Container>(run).decoration! as BoxDecoration).color,
+      red,
+      reason: '合并后就是一整块实心红',
+    );
+    expect(periodLabelColor(tester, 3), onRed);
+    expect(periodChip(tester, 3).backgroundColor, Colors.transparent);
+    expect(periodChip(tester, 3).side?.color, Colors.transparent);
+    expect(
+      find.byKey(const Key('classroomFreePeriodJoints')),
+      findsNothing,
+      reason: '过渡一结束就把覆盖层摘掉',
+    );
+  });
+
+  testWidgets('拆开时同理：第一帧中间那格看起来仍是选中的（提交态已经翻了）', (tester) async {
+    await _pumpPage(tester); // 00:00 → 自动选中 1-5（一整段）
+    final ctx = tester.element(find.byKey(const Key('classroomFreePeriod-3')));
+    final onRed = AppColors.onErrorFill(ctx);
+    expect(find.byKey(const Key('classroomFreePeriodRun-1-5')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('classroomFreePeriod-3')));
+    await tester.pump(); // t = 0
+
+    // 结构上那一段已经拆成「两段 + 中间一格」，但**观感**必须还是原来那一整块红 ——
+    // 中间那格仍是红底白字、无描边，两侧的缝由桥接件补上。
+    expect(find.byKey(const Key('classroomFreePeriodRun-1-5')), findsNothing);
+    expect(find.byKey(const Key('classroomFreePeriodRun-1-2')), findsOneWidget);
+    expect(find.byKey(const Key('classroomFreePeriodRun-4-5')), findsOneWidget);
+    final first = tester.widget<Container>(
+      find.byKey(const Key('classroomFreePeriodFill-3')),
+    );
+    expect(
+      (first.decoration! as BoxDecoration).color,
+      AppColors.errorFill(ctx),
+      reason: '第一帧它看起来仍然是选中的（走稳态那条逐值相同的路）',
+    );
+    expect(periodLabelColor(tester, 3), onRed);
+    expect(periodChip(tester, 3).side?.color, Colors.transparent);
+    // ⚠ 视觉 ≠ 提交态：数据上这一格已经没选中了，可这一帧它还是红的。
+    expect(periodChip(tester, 3).selected, isFalse);
+    expect(
+      find.byKey(const Key('classroomFreePeriodJoints')),
+      findsOneWidget,
+    );
+
+    // 中段：红在退（格子自带一层带 alpha 的红），缝在收。
+    await tester.pump(const Duration(milliseconds: 110));
+    final mid = periodChip(tester, 3).backgroundColor!;
+    expect(mid.a, greaterThan(0));
+    expect(mid.a, lessThan(1));
+    expect(find.byKey(const Key('classroomFreePeriodFill-3')), findsNothing);
+
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('classroomFreePeriodRun-1-2')), findsOneWidget);
+    expect(find.byKey(const Key('classroomFreePeriodRun-4-5')), findsOneWidget);
+    expect(find.byKey(const Key('classroomFreePeriodFill-3')), findsNothing);
+    expect(find.byKey(const Key('classroomFreePeriodJoints')), findsNothing);
+  });
+
+  testWidgets('拆开的第一帧在像素上仍是一整块红（桥接件盖住了缝与圆角缺口）', (tester) async {
+    // 这条是「不许跳一下」的硬证据：过渡第一帧把 1..5 整块区域扫一遍，任何一列冒出
+    // 别的颜色都算「起手就跳了」（两侧格子各有 8px 圆角，桥接件不侵入就一定会露白）。
+    const shotKey = Key('classroomFreeShot');
+    await _pumpPage(
+      tester,
+      physicalSize: const Size(1501, 2601),
+      dpr: 1.5,
+      boundaryKey: shotKey,
+    );
+    await tester.pumpAndSettle();
+    final run = find.byKey(const Key('classroomFreePeriodRun-1-5'));
+    final fill = (tester.widget<Container>(run).decoration! as BoxDecoration)
+        .color!;
+
+    await tester.tap(find.byKey(const Key('classroomFreePeriod-3')));
+    await tester.pump(); // 过渡第一帧
+
+    final pixels = await _capturePixels(tester, shotKey, ratio: 1.5);
+    final cellRects = [
+      for (final p in const [1, 2, 3, 4, 5])
+        tester.getRect(find.byKey(Key('classroomFreePeriod-$p'))),
+    ];
+    expect(
+      _scanSolidRect(
+        pixels,
+        Rect.fromLTRB(
+          cellRects.first.left,
+          cellRects.first.top,
+          cellRects.last.right,
+          cellRects.last.bottom,
+        ),
+        fill,
+        ratio: 1.5,
+        glyphRects: cellRects,
+      ),
+      isEmpty,
+      reason: '这一帧看起来必须还是按下前那一整块红',
     );
   });
 

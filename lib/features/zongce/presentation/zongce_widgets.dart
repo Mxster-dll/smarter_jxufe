@@ -114,7 +114,6 @@ Widget zcResultCard(
   required void Function(ZcWeights) onEditWeights,
 }) {
   final scheme = Theme.of(context).colorScheme;
-  final avg = r.average;
   final rows = [
     ('德育', r.deyu, r.gD),
     ('智育', r.zhiyu, r.gZ),
@@ -230,7 +229,10 @@ Widget zcResultCard(
               children: [
                 // 总评成绩 = 五育加权（用户 2026-09-18：「综测不是直接算平均分，
                 // 而是有一个总评成绩，这个成绩的占比由班主任定，应该让用户自行
-                // 设置」）→ 点胶囊弹占比设置；平均分降级为下面那行小字。
+                // 设置」）→ 点胶囊弹占比设置。
+                // ⚠ 下面是「占比 + 加权成绩 + 材料条数」三行，**没有再显示「五育平均」**
+                // （用户 2026-09-20：「综测页不要显示"五育平均"」）—— `ZcCalcResult.average`
+                // 只留给引擎与测试当对照值，界面不再露它。
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -257,12 +259,6 @@ Widget zcResultCard(
                   '占比 ${r.weights.label}',
                   key: const Key('zcTotalWeightsLabel'),
                   style: TextStyle(fontSize: 10, color: scheme.outline),
-                ),
-                const SizedBox(height: 4),
-                zcStatLine(
-                  '五育平均',
-                  '${zcFmt(avg)} 分',
-                  context: context,
                 ),
                 const SizedBox(height: 4),
                 zcStatLine(
