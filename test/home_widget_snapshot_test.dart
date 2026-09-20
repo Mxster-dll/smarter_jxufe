@@ -14,7 +14,14 @@ const _values = '$_res/values';
 const _night = '$_res/values-night';
 const _kt = 'android/app/src/main/kotlin/com/example/smarter_jxufe/widget';
 
-String read(String path) => File(path).readAsStringSync();
+String read(String path) {
+  // ⚠ 2026-09-20 架构审查 ⑥：设置页的 14 个分节卡已外提到 `widgets/settings_cards.dart`，
+  // 读设置页时并上它（原意不变，只是不再假设两者住在同一个文件里）。
+  final paths = path.endsWith('settings/presentation/settings_screen.dart')
+      ? [path, 'lib/features/settings/presentation/widgets/settings_cards.dart']
+      : [path];
+  return paths.map((p) => File(p).readAsStringSync()).join('\n');
+}
 
 /// 尺寸档全集（宽 × 高，单位 = 桌面格子）—— 与原生 `WidgetSize.tag` 一致。
 const _tags = <String>['2x1', '3x1', '4x1', '5x1', '2x2', '3x2', '4x2', '5x2'];

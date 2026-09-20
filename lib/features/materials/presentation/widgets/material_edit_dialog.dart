@@ -115,6 +115,8 @@ class MaterialEditDialog extends StatefulWidget {
   final ZcActivityItem? initialActivity;
 
   const MaterialEditDialog({
+      super.key,
+    
     required this.store,
     required this.existing,
     required this.firstDate,

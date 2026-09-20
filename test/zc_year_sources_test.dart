@@ -159,9 +159,7 @@ void main() {
     });
 
     test('页面用 _year 作参数，刷新时连带失效底层数据源', () {
-      final src = File(
-        'lib/features/zongce/presentation/zongce_screen.dart',
-      ).readAsStringSync();
+      final src = _zcSrc();
       expect(src, contains('ref.watch(zcAutoWeightProvider(_year))'));
       expect(src, contains('ref.watch(zcAutoVolunteerProvider(_year))'));
       expect(src, contains('ref.invalidate(zcAutoWeightProvider(_year))'));
@@ -171,9 +169,7 @@ void main() {
     });
 
     test('行内文案按学年口径', () {
-      final src = File(
-        'lib/features/zongce/presentation/zongce_screen.dart',
-      ).readAsStringSync();
+      final src = _zcSrc();
       expect(src, contains('学年志愿时长(h)'));
       // 用户 2026-09-18 五轮：「加权和体测成绩不要显示『自动』字样」
       expect(
@@ -194,9 +190,18 @@ void main() {
       // 用户 2026-09-18 四轮：行内说明（含课程加权口径那句）已随「纯文字悬停」
       // 一起撤掉 → 口径改由上面的数据链路守卫，这里只守「加权仍是 2 位」与
       // 「页面不留纯文字悬停」。
-      expect(src, contains('_fmt2(r.weightUsed)'));
+      expect(src, contains('zcFmt2(r.weightUsed)'));
       expect(src, isNot(contains('Tooltip(')));
       expect(src.contains('自动累计'), isFalse, reason: '「自动累计」是跨学年口径的旧文案');
     });
   });
 }
+
+/// 综测页源码（2026-09-20 架构审查 ⑥：渲染工具箱已外提到 `zongce_widgets.dart`）。
+///
+/// 守卫改读**两文件并集** —— 原意不变（这些形态必须存在于综测页这一族里），
+/// 只是不再假设它们住在同一个文件里。
+String _zcSrc() => const [
+  'lib/features/zongce/presentation/zongce_screen.dart',
+  'lib/features/zongce/presentation/zongce_widgets.dart',
+].map((p) => File(p).readAsStringSync()).join('\n');

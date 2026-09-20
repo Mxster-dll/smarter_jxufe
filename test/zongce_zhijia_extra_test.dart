@@ -81,9 +81,7 @@ void main() {
   });
 
   group('源码守卫：智育卡四小项', () {
-    final src = File(
-      'lib/features/zongce/presentation/zongce_screen.dart',
-    ).readAsStringSync();
+    final src = _zcSrc();
 
     test('四个小项标签与各自的明细前缀都在', () {
       for (final label in const [
@@ -97,14 +95,14 @@ void main() {
       for (final prefix in labels) {
         expect(
           src,
-          contains("_sumDetail(r, const ['$prefix'])"),
+          contains("zcSumDetail(r, const ['$prefix'])"),
           reason: '「$prefix」的分值必须取自引擎明细（前缀要与引擎一致）',
         );
       }
     });
 
-    test('四小项各挂一份材料筛选，且用 _extraItem 渲染', () {
-      expect('_extraItem('.allMatches(src).length, greaterThanOrEqualTo(5)); // 定义 1 + 调用 4
+    test('四小项各挂一份材料筛选，且用 zcExtraItem 渲染', () {
+      expect('zcExtraItem('.allMatches(src).length, greaterThanOrEqualTo(5)); // 定义 1 + 调用 4
       expect(src.contains('x.typeId == ZcTypeId.contest'), isTrue);
       expect(src.contains('x.typeId == ZcTypeId.paper'), isTrue);
       expect(src.contains('x.typeId == ZcTypeId.foreign'), isTrue);
@@ -120,3 +118,12 @@ void main() {
     });
   });
 }
+
+/// 综测页源码（2026-09-20 架构审查 ⑥：渲染工具箱已外提到 `zongce_widgets.dart`）。
+///
+/// 守卫改读**两文件并集** —— 原意不变（这些形态必须存在于综测页这一族里），
+/// 只是不再假设它们住在同一个文件里。
+String _zcSrc() => const [
+  'lib/features/zongce/presentation/zongce_screen.dart',
+  'lib/features/zongce/presentation/zongce_widgets.dart',
+].map((p) => File(p).readAsStringSync()).join('\n');

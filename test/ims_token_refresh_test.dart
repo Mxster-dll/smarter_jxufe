@@ -17,7 +17,14 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:smarter_jxufe/features/ims/auth/domain/ims_token_refresh.dart';
 
-String _read(String path) => File(path).readAsStringSync();
+String _read(String path) {
+  // ⚠ 2026-09-20 架构审查 ⑥：设置页的 14 个分节卡已外提到 `widgets/settings_cards.dart`，
+  // 读设置页时并上它（原意不变，只是不再假设两者住在同一个文件里）。
+  final paths = path.endsWith('settings/presentation/settings_screen.dart')
+      ? [path, 'lib/features/settings/presentation/widgets/settings_cards.dart']
+      : [path];
+  return paths.map((p) => File(p).readAsStringSync()).join('\n');
+}
 
 /// 去掉注释后的源码（注释里允许解释被废弃的写法，只禁**代码里**出现）。
 String _code(String path) {

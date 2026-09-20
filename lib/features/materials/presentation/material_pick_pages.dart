@@ -47,7 +47,7 @@ IconData materialTypeIcon(ZcTypeId id) => switch (id) {
 
 /// 第一级页：19 类活动（材料类型）按五育分组，点选返回 [ZcTypeId]。
 class MaterialTypePickerPage extends StatelessWidget {
-  const MaterialTypePickerPage();
+  const MaterialTypePickerPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -138,7 +138,9 @@ class ActivityPickPage extends StatefulWidget {
   /// 由本页调用而不是 `pop` 返回值：本页要**留在路由栈上**以便连续添加。
   final Future<bool> Function(ZcActivityItem? item) onPicked;
 
-  const ActivityPickPage({required this.spec, required this.onPicked});
+  const ActivityPickPage({
+      super.key,
+      required this.spec, required this.onPicked});
 
   @override
   State<ActivityPickPage> createState() => ActivityPickPageState();

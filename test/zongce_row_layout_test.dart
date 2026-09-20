@@ -8,31 +8,29 @@ import 'package:smarter_jxufe/features/zongce/domain/zc_tip_data.dart';
 /// 1. 基础分 / 民主评议分**各自只有一行**，标题在左、分数在最右（评议可点改）；
 /// 2. 所有悬停提示的 `?` **紧跟在左端标签文字右侧**（不再被推到行尾）。
 void main() {
-  final src = File(
-    'lib/features/zongce/presentation/zongce_screen.dart',
-  ).readAsStringSync();
+  final src = _zcSrc();
 
   group('基础分 / 民主评议分 = 单行', () {
-    test('基础分 / 民主评议 / 加权成绩 / 体测成绩 都用 `_subRow` 渲染', () {
+    test('基础分 / 民主评议 / 加权成绩 / 体测成绩 都用 `zcSubRow` 渲染', () {
       expect(
-        RegExp(r'_subRow\(').allMatches(src).length,
+        RegExp(r'zcSubRow\(').allMatches(src).length,
         greaterThanOrEqualTo(9),
         reason:
             '3 基础分 + 3 民主评议 + 加权成绩 + 体测成绩 + 志愿服务时长 = 9 行单行分区',
       );
       // 标题最右端 = 胶囊：基础分只读胶囊，其余三种是可点胶囊
       expect(
-        RegExp(r"trailing: _staticChip\(context, '60 分'\)").allMatches(src).length,
+        RegExp(r"trailing: zcStaticChip\(context, '60 分'\)").allMatches(src).length,
         3,
         reason: '德育/美育/劳育基础分各一行、右侧 60 分胶囊（用户 2026-09-18 三轮：显示为胶囊）',
       );
       expect(
-        RegExp(r'trailing: _tapNumber\(').allMatches(src).length,
+        RegExp(r'trailing: zcTapNumber\(').allMatches(src).length,
         4,
         reason: '三处民主评议 + 体测成绩 = 4 个可点胶囊',
       );
       expect(
-        RegExp(r'trailing: _tapNumberOpt\(').allMatches(src).length,
+        RegExp(r'trailing: zcTapNumberOpt\(').allMatches(src).length,
         2,
         reason: '加权成绩 + 志愿服务时长 = 2 个可留空回自动的胶囊',
       );
@@ -42,8 +40,8 @@ void main() {
 
     test('基础分胶囊是只读件（无点击、无铅笔图标），与「加分汇总」徽章同款实心胶囊', () {
       final chip = src.substring(
-        src.indexOf('Widget _staticChip('),
-        src.indexOf('Widget _staticChip(') + 900,
+        src.indexOf('Widget zcStaticChip('),
+        _zcBlock(src, 'Widget zcStaticChip(').length + src.indexOf('Widget zcStaticChip('),
       );
       expect(chip, isNot(contains('InkWell')));
       expect(chip, isNot(contains('edit_outlined')));
@@ -85,7 +83,7 @@ void main() {
 
     test('可点胶囊与「加分汇总」同款（淡底 + 999 圆角），且不带纯文字悬停', () {
       final tap = src.substring(
-        src.indexOf('Widget _valueTap('),
+        src.indexOf('Widget zcValueTap('),
         src.indexOf('/// 「自动 / 手动」小标'),
       );
       expect(tap, contains('borderRadius: BorderRadius.circular(999)'));
@@ -98,19 +96,19 @@ void main() {
 
     test('民主评议的分数胶囊保留「x / 20」口径', () {
       expect(
-        RegExp(r"display: '\$\{_fmt\(pingyi\)\} / 20'").allMatches(src).length,
+        RegExp(r"display: '\$\{zcFmt\(pingyi\)\} / 20'").allMatches(src).length,
         3,
       );
     });
   });
 
   group('悬停提示位置 = 左端文字右侧', () {
-    test('统一走 `_labelTip`（文字 + 紧跟其后的 ?），行尾只剩分值/控件', () {
-      expect(src, contains('Widget _labelTip('));
+    test('统一走 `zcLabelTip`（文字 + 紧跟其后的 ?），行尾只剩分值/控件', () {
+      expect(src, contains('Widget zcLabelTip('));
       expect(
-        RegExp(r'_labelTip\(').allMatches(src).length,
+        RegExp(r'zcLabelTip\(').allMatches(src).length,
         greaterThanOrEqualTo(7),
-        reason: '_editRow / _extraItem / _sub / _subRow / _yuCard / 结果卡 / 排名卡',
+        reason: 'zcEditRow / zcExtraItem / zcSub / zcSubRow / zcYuCard / 结果卡 / 排名卡',
       );
       expect(
         RegExp(r'alignment: Alignment\.centerLeft').allMatches(src).length,
@@ -169,12 +167,30 @@ void main() {
         );
       }
       for (final merged in const [
-        "_tipIdsOf(const ['sh-d-2', 'd-2-ping'])",
-        "_tipIdsOf(const ['sh-m-2', 'm-2-ping'])",
-        "_tipIdsOf(const ['sh-l-2', 'l-2-ping'])",
+        "zcTipIdsOf(const ['sh-d-2', 'd-2-ping'])",
+        "zcTipIdsOf(const ['sh-m-2', 'm-2-ping'])",
+        "zcTipIdsOf(const ['sh-l-2', 'l-2-ping'])",
       ]) {
         expect(src, contains(merged));
       }
     });
   });
+}
+
+/// 综测页源码（2026-09-20 架构审查 ⑥：渲染工具箱已外提到 `zongce_widgets.dart`）。
+///
+/// 守卫改读**两文件并集** —— 原意不变（这些形态必须存在于综测页这一族里），
+/// 只是不再假设它们住在同一个文件里。
+String _zcSrc() => const [
+  'lib/features/zongce/presentation/zongce_screen.dart',
+  'lib/features/zongce/presentation/zongce_widgets.dart',
+].map((p) => File(p).readAsStringSync()).join('\n');
+
+/// 取 `sig` 开头那个顶层函数/类的**完整块**（到列 0 的 `}` 为止）——
+/// 比「indexOf + 固定字符数」稳（搬迁后行数/字符数都会变，固定窗口会切进隔壁函数）。
+String _zcBlock(String src, String sig) {
+  final start = src.indexOf(sig);
+  if (start < 0) return '';
+  final end = src.indexOf('\n}', start);
+  return end < 0 ? src.substring(start) : src.substring(start, end + 2);
 }

@@ -119,9 +119,7 @@ void main() {
   });
 
   group('源码守卫：综测页控件形态（用户 2026-09-18 四条）', () {
-    final src = File(
-      'lib/features/zongce/presentation/zongce_screen.dart',
-    ).readAsStringSync();
+    final src = _zcSrc();
 
     test('全页统一刷新按钮，字段级输入框 / 刷新按钮全部撤掉', () {
       expect(src, contains("tooltip: '刷新数据'"));
@@ -156,8 +154,8 @@ void main() {
       ]) {
         expect(src, contains("label: '$label'"), reason: '缺 $label 的步进器');
       }
-      expect('_tapNumber('.allMatches(src).length, greaterThanOrEqualTo(4));
-      expect(src, contains('_tapNumberOpt('));
+      expect('zcTapNumber('.allMatches(src).length, greaterThanOrEqualTo(4));
+      expect(src, contains('zcTapNumberOpt('));
       expect(
         "label: '民主评议分'".allMatches(src).length,
         greaterThanOrEqualTo(3),
@@ -166,7 +164,7 @@ void main() {
       expect(src, contains("label: '体测成绩'"));
       expect(src, contains("label: '加权成绩'"));
       expect(src, contains("label: '学年志愿时长(h)'"));
-      expect(src, contains("_sourceTag(context, tag)"));
+      expect(src, contains("zcSourceTag(context, tag)"));
     });
 
     test('竞赛小项高亮最终计入的材料', () {
@@ -178,3 +176,12 @@ void main() {
     });
   });
 }
+
+/// 综测页源码（2026-09-20 架构审查 ⑥：渲染工具箱已外提到 `zongce_widgets.dart`）。
+///
+/// 守卫改读**两文件并集** —— 原意不变（这些形态必须存在于综测页这一族里），
+/// 只是不再假设它们住在同一个文件里。
+String _zcSrc() => const [
+  'lib/features/zongce/presentation/zongce_screen.dart',
+  'lib/features/zongce/presentation/zongce_widgets.dart',
+].map((p) => File(p).readAsStringSync()).join('\n');

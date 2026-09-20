@@ -296,9 +296,7 @@ void main() {
   });
 
   group('源码守卫', () {
-    final screen = File(
-      'lib/features/zongce/presentation/zongce_screen.dart',
-    ).readAsStringSync();
+    final screen = _zcSrc();
 
     test('总评成绩行 = 可点胶囊，点它打开占比弹层', () {
       expect(screen, contains("Key('zcTotalChip')"));
@@ -347,7 +345,7 @@ void main() {
       expect(
         screen.contains('scoreText:'),
         isFalse,
-        reason: '旧的 _editRow + scoreText 两段式已并入单行胶囊',
+        reason: '旧的 zcEditRow + scoreText 两段式已并入单行胶囊',
       );
     });
 
@@ -379,3 +377,12 @@ void main() {
     });
   });
 }
+
+/// 综测页源码（2026-09-20 架构审查 ⑥：渲染工具箱已外提到 `zongce_widgets.dart`）。
+///
+/// 守卫改读**两文件并集** —— 原意不变（这些形态必须存在于综测页这一族里），
+/// 只是不再假设它们住在同一个文件里。
+String _zcSrc() => const [
+  'lib/features/zongce/presentation/zongce_screen.dart',
+  'lib/features/zongce/presentation/zongce_widgets.dart',
+].map((p) => File(p).readAsStringSync()).join('\n');

@@ -170,9 +170,7 @@ void main() {
 
   group('源码守卫', () {
     final section = File('lib/design/settings_section.dart').readAsStringSync();
-    final screen = File(
-      'lib/features/settings/presentation/settings_screen.dart',
-    ).readAsStringSync();
+    final screen = _setSrc();
 
     test('枚举顺序：publicQuery 紧跟在 imsSession 之后、cloudSync 之前', () {
       final iIms = section.indexOf('imsSession(');
@@ -185,7 +183,7 @@ void main() {
 
     test('设置页确实渲染这一节，且卡片挂在 prefs store 上', () {
       expect(screen.contains('SettingsSection.publicQuery'), isTrue);
-      expect(screen.contains('_PublicQueryCard()'), isTrue);
+      expect(screen.contains('SettingsPublicQueryCard()'), isTrue);
       expect(screen.contains("Key('settingsDefaultBuilding')"), isTrue);
       expect(screen.contains("Key('settingsBuildingPicker')"), isTrue);
       expect(screen.contains('publicQueryPrefsStoreProvider'), isTrue);
@@ -208,3 +206,12 @@ void main() {
     });
   });
 }
+
+/// 设置页源码（2026-09-20 架构审查 ⑥：14 个分节卡已外提到 `widgets/settings_cards.dart`）。
+///
+/// 守卫改读**两文件并集** —— 原意不变（这些形态必须存在于设置页这一族里），
+/// 只是不再假设它们住在同一个文件里。
+String _setSrc() => const [
+  'lib/features/settings/presentation/settings_screen.dart',
+  'lib/features/settings/presentation/widgets/settings_cards.dart',
+].map((p) => File(p).readAsStringSync()).join('\n');

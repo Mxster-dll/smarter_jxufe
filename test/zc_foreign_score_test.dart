@@ -204,12 +204,10 @@ void main() {
     });
 
     test('综测页：材料全量计入，加权显示 2 位', () {
-      final src = File(
-        'lib/features/zongce/presentation/zongce_screen.dart',
-      ).readAsStringSync();
+      final src = _zcSrc();
       expect(src, contains('final mats = all;'));
       expect(src.contains('zcFilterByYear'), isFalse);
-      expect(src, contains('_fmt2(r.weightUsed)'));
+      expect(src, contains('zcFmt2(r.weightUsed)'));
       expect(src, contains('v.toStringAsFixed(2)'));
       // 自动源仍按学年（用户 2026-09-16 裁定）——别被这轮改坏
       expect(src, contains('ref.watch(zcAutoWeightProvider(_year))'));
@@ -217,3 +215,12 @@ void main() {
     });
   });
 }
+
+/// 综测页源码（2026-09-20 架构审查 ⑥：渲染工具箱已外提到 `zongce_widgets.dart`）。
+///
+/// 守卫改读**两文件并集** —— 原意不变（这些形态必须存在于综测页这一族里），
+/// 只是不再假设它们住在同一个文件里。
+String _zcSrc() => const [
+  'lib/features/zongce/presentation/zongce_screen.dart',
+  'lib/features/zongce/presentation/zongce_widgets.dart',
+].map((p) => File(p).readAsStringSync()).join('\n');

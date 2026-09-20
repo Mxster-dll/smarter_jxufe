@@ -344,9 +344,7 @@ void main() {
     });
 
     test('源码守卫：设置页有开关，且课表页把偏好喂给两个视图', () {
-      final settings = File(
-        'lib/features/settings/presentation/settings_screen.dart',
-      ).readAsStringSync();
+      final settings = _setSrc();
       expect(settings.contains('scheduleGridLinesSwitch'), isTrue);
       expect(settings.contains('showGridLines: v'), isTrue);
 
@@ -510,7 +508,14 @@ void main() {
   });
 
   group('源码守卫', () {
-    String read(String path) => File(path).readAsStringSync();
+    String read(String path) {
+      // ⚠ 2026-09-20 架构审查 ⑥：设置页的 14 个分节卡已外提到 `widgets/settings_cards.dart`，
+      // 读设置页时并上它（原意不变，只是不再假设两者住在同一个文件里）。
+      final paths = path.endsWith('settings/presentation/settings_screen.dart')
+          ? [path, 'lib/features/settings/presentation/widgets/settings_cards.dart']
+          : [path];
+      return paths.map((p) => File(p).readAsStringSync()).join('\n');
+    }
 
     test('两个视图不再硬编码 7 天，列数 / 行数走可见天', () {
       final grid = read(
@@ -545,7 +550,7 @@ void main() {
       final settings = read(
         'lib/features/settings/presentation/settings_screen.dart',
       );
-      expect(settings.contains('class _ScheduleDisplayCard'), isTrue);
+      expect(settings.contains('class SettingsScheduleDisplayCard'), isTrue);
       expect(settings.contains('scheduleCachedEntriesProvider'), isTrue);
       expect(settings.contains('scheduleDayCourseCount('), isTrue);
       expect(settings.contains('仍然隐藏'), isTrue);
@@ -554,3 +559,12 @@ void main() {
     });
   });
 }
+
+/// 设置页源码（2026-09-20 架构审查 ⑥：14 个分节卡已外提到 `widgets/settings_cards.dart`）。
+///
+/// 守卫改读**两文件并集** —— 原意不变（这些形态必须存在于设置页这一族里），
+/// 只是不再假设它们住在同一个文件里。
+String _setSrc() => const [
+  'lib/features/settings/presentation/settings_screen.dart',
+  'lib/features/settings/presentation/widgets/settings_cards.dart',
+].map((p) => File(p).readAsStringSync()).join('\n');
