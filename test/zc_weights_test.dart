@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/status_palette.dart';
 import 'package:smarter_jxufe/features/zongce/domain/zc_engine.dart';
 import 'package:smarter_jxufe/features/zongce/domain/zc_models.dart';
@@ -367,12 +368,19 @@ void main() {
         contains(r"'${zcWeightPercentText(it.$4)}%'"),
         reason: '占比改成每育名称后的小胶囊（第 4 项 = 该育占比）',
       );
-      // 二轮（用户 2026-09-21：「对于优秀项，其“x育”以及分数都要用优秀的颜色，
-      // 其他评级以此类推」）→ 育名与分数都取各自等次色；等次小胶囊保留。
+      // 二轮更正（用户 2026-09-21：「应该是“x育”与占比显示为此育的颜色，只有
+      // 分数按等次显示」）→ 育名与占比胶囊取该育色（第 5 项 = `zcYuColors` 里
+      // 那一育的语义色），分数取等次色；行尾等次小胶囊保留。
+      expect(code, contains(r'color: it.$5'), reason: '育名与占比取该育色');
+      expect(
+        code,
+        contains(r'AppColors.tint(context, it.$5, 0.12)'),
+        reason: '占比胶囊底色 = 该育色淡底',
+      );
       expect(
         code,
         contains(r'color: zcGradeColor(context, it.$3)'),
-        reason: '育名与分数按该育等次上色',
+        reason: '分数按该育等次上色',
       );
       expect(code, contains('it.\$3.label'), reason: '行尾等次小胶囊保留');
     });
@@ -510,8 +518,8 @@ void main() {
       );
     });
 
-    testWidgets('五育名与分数按各自等次上色（用户 2026-09-21 二轮）', (tester) async {
-      // 用户原话：「对于优秀项，其“x育”以及分数都要用优秀的颜色，其他评级以此类推」。
+    testWidgets('育名与占比取该育色、分数取等次色（用户 2026-09-21 二轮更正）', (tester) async {
+      // 用户原话：「应该是“x育”与占比显示为此育的颜色，只有分数按等次显示」。
       const r = ZcCalcResult(
         deyu: 60,
         zhiyu: 102.86,
@@ -534,23 +542,65 @@ void main() {
         weights: ZcWeights.initial,
       );
       await pumpResult(tester, r);
-      const cases = <String, ZcGrade>{
-        '德育': ZcGrade.pass,
+
+      // ① 育名 = 该育语义色（`zcYuColors`），与等次无关
+      const yuNames = <String, String>{
+        '德育': 'd',
+        '智育': 'z',
+        '体育': 't',
+        '美育': 'm',
+        '劳育': 'l',
+      };
+      for (final e in yuNames.entries) {
+        expect(
+          tester.widget<Text>(find.text(e.key)).style!.color,
+          zcYuColors[e.value],
+          reason: '「${e.key}」取该育自己的颜色',
+        );
+      }
+
+      // ② 占比胶囊 = 同色文字 + 同色淡底（default 占比下 20% / 35% 各恰好一枚）
+      final ctx = tester.element(find.text('20%'));
+      for (final e in const {'20%': 'd', '35%': 'z'}.entries) {
+        expect(
+          tester.widget<Text>(find.text(e.key)).style!.color,
+          zcYuColors[e.value],
+          reason: '${e.key} 文字取该育色',
+        );
+        final box = tester.widget<Container>(
+          find
+              .ancestor(of: find.text(e.key), matching: find.byType(Container))
+              .first,
+        );
+        expect(
+          (box.decoration! as BoxDecoration).color,
+          AppColors.tint(ctx, zcYuColors[e.value]!, 0.12),
+          reason: '${e.key} 底色 = 该育色 12% 淡底',
+        );
+      }
+
+      // ③ 分数 = 等次色（与育色无关）
+      const scores = <String, ZcGrade>{
         '60 分': ZcGrade.pass,
-        '智育': ZcGrade.ok,
         '102.86 分': ZcGrade.ok,
-        '体育': ZcGrade.good,
         '67.8 分': ZcGrade.good,
-        '美育': ZcGrade.ok,
         '80 分': ZcGrade.ok,
-        '劳育': ZcGrade.ok,
         '84 分': ZcGrade.ok,
       };
-      for (final e in cases.entries) {
+      for (final e in scores.entries) {
         expect(
           tester.widget<Text>(find.text(e.key)).style!.color,
           _gradeColor(e.value),
-          reason: '「${e.key}」应取${e.value.label}的颜色',
+          reason: '「${e.key}」取${e.value.label}的颜色',
+        );
+      }
+
+      // ④ 行尾等次小胶囊仍是等次色（「优秀」出现 4 次，只取唯一的两个）
+      for (final e in const {'合格': ZcGrade.pass, '良好': ZcGrade.good}.entries) {
+        expect(
+          tester.widget<Text>(find.text(e.key)).style!.color,
+          _gradeColor(e.value),
+          reason: '等次胶囊「${e.key}」取等次色',
         );
       }
     });

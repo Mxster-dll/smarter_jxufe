@@ -116,12 +116,15 @@ Widget zcResultCard(
   // 用户 2026-09-21：「我希望综测顶部汇总卡片不要显示：占比 20 / 35 / 15 / 15 / 15、
   // 加权成绩 91.86 分、材料条数 13 条 这些信息，而是把占比显示到每个“育”的名称
   // 后面」→ 第 4 项 = 该育自己的占比（百分数），逐行渲染成名称后的小胶囊。
+  // 用户 2026-09-21 二轮（更正口径）：「应该是“x育”与占比显示为此育的颜色，
+  // 只有分数按等次显示」→ 第 5 项 = 该育自己的语义色（`zcYuColors`：德育红 /
+  // 智育蓝 / 体育青绿 / 美育紫 / 劳育琥珀金），只给**育名 + 占比**用；分数另取等次色。
   final rows = [
-    ('德育', r.deyu, r.gD, r.weights.d),
-    ('智育', r.zhiyu, r.gZ, r.weights.z),
-    ('体育', r.tiyu, r.gT, r.weights.t),
-    ('美育', r.meiyu, r.gM, r.weights.m),
-    ('劳育', r.laoyu, r.gL, r.weights.l),
+    ('德育', r.deyu, r.gD, r.weights.d, zcYuColors['d']!),
+    ('智育', r.zhiyu, r.gZ, r.weights.z, zcYuColors['z']!),
+    ('体育', r.tiyu, r.gT, r.weights.t, zcYuColors['t']!),
+    ('美育', r.meiyu, r.gM, r.weights.m, zcYuColors['m']!),
+    ('劳育', r.laoyu, r.gL, r.weights.l, zcYuColors['l']!),
   ];
   return zcCard(
     context,
@@ -145,22 +148,23 @@ Widget zcResultCard(
             ),
             const SizedBox(width: 12),
             // 用户 2026-09-21：「'测评结果'改成'总评成绩'，右侧显示总评成绩」+
-            // 「去除'填写/录入后自动计算，实时更新'」→ 标题换名、副标题整条删掉，
-            // 右侧那个位置放总评成绩本身。
+            // 「去除'填写/录入后自动计算，实时更新'」→ 标题换名、副标题整条删掉。
             // 用户 2026-09-21 二轮：「总评成绩不要显示为胶囊」（并选定「分数可点、
             // 但不显示铅笔图标」+「也按综合等次上色」）→ 纯文字 + 等次色，仍可点开
             // 占比弹层（`Key('zcTotalChip')` 语义不变）。
-            Expanded(
-              child: zcLabelTip(
-                context,
-                '总评成绩',
-                tipKey: 'overall',
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
+            // 用户 2026-09-21 三轮：「我希望总评成绩紧挨'总评成绩'字样」→ 标题不再
+            // `Expanded` 撑开（原来把分数顶到最右、中间留一大段空白），改成
+            // 「标签 → 分数」紧贴，再由 `Spacer` 把等次胶囊留在行尾。
+            zcLabelTip(
+              context,
+              '总评成绩',
+              tipKey: 'overall',
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
               ),
             ),
+            const SizedBox(width: 8),
             KeyedSubtree(
               key: const Key('zcTotalChip'),
               child: zcValueTap(
@@ -173,7 +177,7 @@ Widget zcResultCard(
                 onTap: () => onEditWeights(r.weights),
               ),
             ),
-            const SizedBox(width: 10),
+            const Spacer(),
             zcGradeChip(context, r.overall, big: true),
           ],
         ),
@@ -192,25 +196,24 @@ Widget zcResultCard(
                       width: 40,
                       child: Text(
                         it.$1,
-                        // 用户 2026-09-21 二轮：「对于优秀项，其“x育”以及分数都要用
-                        // 优秀的颜色，其他评级以此类推」→ 育名与分数都按该育等次上色
-                        // （行尾那枚等次小胶囊保留，颜色信息不靠单一通道传达）。
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          color: zcGradeColor(context, it.$3),
-                        ),
+                        // 用户 2026-09-21 二轮更正：「“x育”与占比显示为此育的颜色，
+                        // 只有分数按等次显示」→ 育名取该育语义色（第 5 项），
+                        // 分数取等次色；两者刻意不是同一套色（身份 vs 评级）。
+                        style: TextStyle(fontSize: 12.5, color: it.$5),
                       ),
                     ),
                     // 用户 2026-09-21：「把占比显示到每个“育”的名称后面」→ 名称后
-                    // 一枚淡底小胶囊（文案走 `zcWeightPercentText`，与占比弹层
+                    // 一枚小胶囊（文案走 `zcWeightPercentText`，与占比弹层
                     // 输入框同一份口径：整数不带小数点）。
+                    // 二轮更正：这枚胶囊也用**该育色**（淡底 + 同色文字），和育名
+                    // 合成一个色块；行尾等次胶囊才是等次色。
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 7,
                         vertical: 1.5,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.tint(context, scheme.outline, 0.12),
+                        color: AppColors.tint(context, it.$5, 0.12),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
@@ -218,7 +221,7 @@ Widget zcResultCard(
                         style: TextStyle(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w600,
-                          color: scheme.outline,
+                          color: it.$5,
                           fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ),

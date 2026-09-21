@@ -1146,6 +1146,29 @@ void main() {
         );
       }
     });
+
+    test('五育色 = 2026-09-21 定色后的取值', () {
+      // 用户原话：「我觉得我现在调的五育不好看，你改改」。上一版（提亮那版）的毛病
+      // 是**不齐**：白底对比度散在 3.68–4.43（智育蓝明显更亮），且德育红 ≈ 不合格红、
+      // 体育绿 ≈ 优秀绿（ΔE 15 / 19），同一行里「育名 + 等次」会糊。
+      // 现在五色按两条硬指标定：① 对比度一律 4.75:1（五行等重）；② 育与育最小
+      // ΔE(CIE76) 55.9、育与最近等次色最小 ΔE 20.2。要再亮得先改形态，别直接调亮。
+      const expected = <String, String>{
+        'deyu': '0xFFD03860',
+        'zhiyu': '0xFF2B77B8',
+        'tiyu': '0xFF1E8261',
+        'meiyu': '0xFFBA31CF',
+        'laoyu': '0xFF926D22',
+      };
+      final palette = sources['lib/design/status_palette.dart']!;
+      for (final e in expected.entries) {
+        expect(
+          palette.contains('${e.key} = Color(${e.value})'),
+          isTrue,
+          reason: 'ZongceTone.${e.key} 必须仍是 ${e.value}（提亮档，别手滑改回去）',
+        );
+      }
+    });
   });
 
   group('⑤-B 设计口径：节标题 / 卡片形状 / 断点（2026-09-20 · 架构审查）', () {

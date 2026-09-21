@@ -63,15 +63,29 @@ abstract final class StatusPalette {
 
 /// 五育（综合素质测评）语义色 + 综测等级色。
 ///
-/// 五育色同原网页：德红 / 智蓝 / 体绿 / 美紫 / 劳青。
+/// 五育色沿用传统对应：德玫红 / 智蓝 / 体青绿 / 美紫 / 劳琥珀金。
+///
+/// **2026-09-21 二次定色（用户原话：「我觉得我现在调的五育不好看，你改改」）**：
+/// 提亮那一版（`0xFFE23A2E`/`0xFF1E88E5`/`0xFF2A8F3C`/`0xFF8E5FD4`/`0xFF0F8C81`）的毛病
+/// 不在「亮」而在**不齐**：五者白底对比度散在 3.68–4.43，智育蓝明显更亮，一行一个重量；
+/// 且德育红与「不合格」红、体育绿与「优秀」绿几乎同色（ΔE 15 / 19），同一行里
+/// 「育名 + 等次」会糊成一片。
+///
+/// 现在这五个色由两条硬指标一起定出来（不是挑好看的手感色）：
+/// ① **同明度**：白底对比度一律 **4.75:1**（WCAG AA 对小字要 4.5）→ 五行等重、谁也不跳；
+/// ② **互相离得开**：育与育之间最小 ΔE(CIE76) **55.9**，育与最近等次色最小 **ΔE 20.2**
+///    （德育玫红 vs 不合格红、体育青绿 vs 优秀绿都拉开了）。
+/// 它们同时是「育名 / 占比胶囊」的文字色，所以**要再亮就得先改形态**
+/// （深色文字 + 淡底 / 加粗 / 改胶囊实底），别直接往 400/300 档走 —— 那会退回上面那个毛病。
+/// 守卫 = `test/core_conventions_test.dart`「五育色 = 2026-09-21 定色后的取值」。
 abstract final class ZongceTone {
   ZongceTone._();
 
-  static const deyu = Color(0xFFC42B1C);
-  static const zhiyu = Color(0xFF0078D4);
-  static const tiyu = Color(0xFF0F7B0F);
-  static const meiyu = Color(0xFF744DA9);
-  static const laoyu = Color(0xFF0F766E);
+  static const deyu = Color(0xFFD03860);
+  static const zhiyu = Color(0xFF2B77B8);
+  static const tiyu = Color(0xFF1E8261);
+  static const meiyu = Color(0xFFBA31CF);
+  static const laoyu = Color(0xFF926D22);
 
   /// 单项达标档位色（`ZcGrade`）。
   static const gradeOk = Color(0xFF00A870);
