@@ -20,6 +20,8 @@ import 'package:smarter_jxufe/features/campus_address/data/my_campus_prefs.dart'
 
 import 'package:smarter_jxufe/features/campus_address/domain/my_campus.dart';
 
+import 'package:smarter_jxufe/features/home/data/home_grid_prefs.dart';
+
 import 'package:smarter_jxufe/features/home/data/home_layout_prefs.dart';
 
 import 'package:smarter_jxufe/features/home/domain/home_layout.dart';
@@ -358,6 +360,7 @@ class SettingsHomeLayoutCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final store = ref.watch(homeLayoutStoreProvider);
+    final gridStore = ref.watch(homeGridStoreProvider);
     return Card(
       elevation: 0,
       margin: EdgeInsets.zero,
@@ -424,9 +427,70 @@ class SettingsHomeLayoutCard extends ConsumerWidget {
               ),
             ),
           ),
+          const Divider(height: 1),
+          // 宫格聚合（用户 2026-09-21 需求）：拖动说明 + 恢复默认布局。
+          // 拖动/合并发生在**主页宫格**上，这里只放口径说明与兜底按钮
+          // （用户 2026-09-11 裁定「偏好入口一律收在设置页」）。
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '宫格聚合',
+                  style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '长按某一格只拖动这一个功能；长按卡片其余部分（格与格之间的缝）'
+                  '拖动整张卡片。拖到另一张卡片的边缘（最外侧约三分之一）'
+                  '松手即合并成一张卡片，拖到卡片中间不会合并。'
+                  '聚合卡片可以是不规则形状，互补的形状能相互嵌合。'
+                  '顶栏的剪刀按钮可以进入拆解模式：卡片里出现分割线，点分割线断开这一处，'
+                  '退出时仍然连着的会自动接回去。',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    height: 1.3,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _gridSummary(gridStore),
+                        style: TextStyle(
+                          fontSize: 12,
+                          height: 1.3,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    OutlinedButton.icon(
+                      key: const Key('homeGridReset'),
+                      onPressed: () => unawaited(gridStore.reset()),
+                      icon: const Icon(Icons.restart_alt, size: 18),
+                      label: const Text('恢复默认布局'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  /// 聚合布局现状（给用户一句「现在是什么状态」）。
+  String _gridSummary(HomeGridStore store) {
+    final layout = store.layout;
+    if (layout == null) return '当前为默认布局（未自定义）。';
+    final groups = layout.groupCount;
+    return '已自定义：${layout.tiles.length} 张卡片'
+        '${groups > 0 ? '，其中 $groups 张是聚合卡片' : ''}。';
   }
 }
 

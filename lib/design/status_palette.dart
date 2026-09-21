@@ -38,6 +38,10 @@ abstract final class StatusPalette {
   /// 弹层遮罩（70% 黑）。
   static const scrim = Color(0xB3000000);
 
+  /// 拖起的宫格卡片投影（用户 2026-09-21「长按拖动合并宫格」——抬起的那张卡要有
+  /// 「拿起来了」的实体感；异形卡片走 `Canvas.drawShadow`，所以这里给的是阴影本色）。
+  static const liftedShadow = Color(0x99000000);
+
   /// 畅想之星阅读器沉浸底（与主题无关，阅读器自己的一套深浅）。
   static const readerBackdrop = Color(0xFF2B2B2B);
 
