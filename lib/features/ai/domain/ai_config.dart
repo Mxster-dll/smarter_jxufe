@@ -319,7 +319,8 @@ class AiPreset {
 /// 内置预设表。**唯一出处** —— 界面下拉、[AiConfig.fromPreset] 都读这里。
 ///
 /// `models` 只是「填得快」的建议值，用户永远可以手输别的模型名
-/// （供应商上新的速度远快于客户端发版）。
+/// （供应商上新的速度远快于客户端发版）。设置页还能**从官网现拉一份**
+/// （`GET {baseUrl}/models`，见 [aiModelOptions]）—— 预设表从此只是**离线兜底**。
 const List<AiPreset> aiPresets = [
   AiPreset(
     id: 'deepseek',
@@ -383,6 +384,44 @@ AiPreset aiPresetOf(String id) {
     if (p.id == key) return p;
   }
   return aiPresets.last;
+}
+
+/// 模型名候选胶囊的条数上限。
+///
+/// 聚合平台（硅基流动）的 `/models` 能回**几百条**（含 embedding / rerank / 画图），
+/// 全铺成胶囊会把编辑弹层撑成一面墙。24 条足够覆盖「能聊天的那几个」；
+/// 其余的照样能填 —— 模型名输入框本来就是自由文本。
+const int kAiModelOptionLimit = 24;
+
+/// 模型名候选：**官网现拉的排在前面**，预设建议值补齐。
+///
+/// 用户 2026-09-22：「我希望设置页里配置 api 的话，ds 的模型名可以从官网动态获取」。
+/// 口径：
+/// - [live]（`GET {baseUrl}/models` 的 `data[].id`）是**权威且会变**的 ——
+///   DeepSeek 上新模型时不必等客户端发版；[suggested]（[AiPreset.models]）
+///   降级为**离线兜底**（没网 / 没填 Key / 端点不实现 `/models` 时仍然一键填得上）。
+/// - 两边都按 `trim` 后的字面量去重、各自保持原顺序，合计不超过 [limit] 条。
+/// - **不排序**：官网的返回顺序（往往把新模型/主力模型放前面）本身就是有用信息。
+List<String> aiModelOptions({
+  required List<String> live,
+  required List<String> suggested,
+  int limit = kAiModelOptionLimit,
+}) {
+  final out = <String>[];
+  final seen = <String>{};
+  void take(Iterable<String> source) {
+    for (final raw in source) {
+      if (out.length >= limit) return;
+      final name = raw.trim();
+      if (name.isEmpty) continue;
+      if (!seen.add(name)) continue;
+      out.add(name);
+    }
+  }
+
+  take(live);
+  take(suggested);
+  return out;
 }
 
 /// AI 助手的全部持久化设置（单 key JSON 进 Hive）。

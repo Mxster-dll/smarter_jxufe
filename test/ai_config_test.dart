@@ -221,6 +221,52 @@ void main() {
     });
   });
 
+  group('aiModelOptions（官网模型名 + 预设兜底）', () {
+    // 用户 2026-09-22：「我希望设置页里配置 api 的话，ds 的模型名可以从官网动态获取」。
+    const deepseek = ['deepseek-chat', 'deepseek-reasoner'];
+
+    test('官网列表排在最前，预设建议值在后补齐', () {
+      final out = aiModelOptions(
+        live: const ['deepseek-chat', 'deepseek-v3.2-exp'],
+        suggested: deepseek,
+      );
+      expect(out, ['deepseek-chat', 'deepseek-v3.2-exp', 'deepseek-reasoner']);
+    });
+
+    test('没拉到（没网 / 端点不实现 /models）→ 就是预设那一份，一键填得动', () {
+      expect(aiModelOptions(live: const [], suggested: deepseek), deepseek);
+      expect(aiModelOptions(live: const [], suggested: const []), isEmpty);
+    });
+
+    test('两边去重：官网已经有的，不再从预设里重复出现', () {
+      final out = aiModelOptions(
+        live: const ['deepseek-reasoner', 'deepseek-chat'],
+        suggested: deepseek,
+      );
+      expect(out, ['deepseek-reasoner', 'deepseek-chat']);
+    });
+
+    test('去空白、丢空串，但**不排序**（官网的顺序本身有用）', () {
+      final out = aiModelOptions(
+        live: const ['  Qwen/Qwen3-32B ', '', '  ', 'deepseek-ai/DeepSeek-V3'],
+        suggested: const ['x'],
+      );
+      expect(out, ['Qwen/Qwen3-32B', 'deepseek-ai/DeepSeek-V3', 'x']);
+    });
+
+    test('条数有上限（聚合平台能回几百条，全铺成胶囊会撑成一面墙）', () {
+      final live = [for (var i = 0; i < 400; i++) 'm$i'];
+      final out = aiModelOptions(live: live, suggested: deepseek);
+      expect(out.length, kAiModelOptionLimit);
+      expect(out.first, 'm0');
+      expect(out.contains('deepseek-chat'), isFalse); // 上限被官网占满
+      expect(
+        aiModelOptions(live: live, suggested: deepseek, limit: 3),
+        ['m0', 'm1', 'm2'],
+      );
+    });
+  });
+
   group('AiSettings', () {
     const a = AiConfig(
       id: 'a',

@@ -318,6 +318,13 @@ class _ProfileEditorState extends ConsumerState<_ProfileEditor> {
   bool _obscure = true;
   bool _testing = false;
 
+  /// 官网现拉的模型名（`GET {baseUrl}/models`）。
+  ///
+  /// 只活在这次编辑会话里 —— 它**不是配置**，是「今天这个端点上有什么」的快照，
+  /// 存进 Hive 反而会在换 Key / 换端点后变成过期的谎话。
+  List<String> _liveModels = const [];
+  bool _loadingModels = false;
+
   @override
   void initState() {
     super.initState();
@@ -327,6 +334,14 @@ class _ProfileEditorState extends ConsumerState<_ProfileEditor> {
     _model = TextEditingController(text: _draft.model);
     _apiKey = TextEditingController(text: _draft.apiKey);
     _extra = TextEditingController(text: _draft.extraSystemPrompt);
+    // 打开一套**已经填好 Key** 的配置时顺手拉一次官网模型名（用户 2026-09-22：
+    // 「ds 的模型名可以从官网动态获取」）—— 静默执行：失败不打扰，胶囊回落到
+    // 预设建议值并在下方说明里讲清楚。新增配置还没有 Key，自然不拉。
+    if (_apiKey.text.trim().isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _fetchModels(silent: true);
+      });
+    }
   }
 
   @override
@@ -353,7 +368,37 @@ class _ProfileEditorState extends ConsumerState<_ProfileEditor> {
       _name.text = preset.name;
       _baseUrl.text = preset.baseUrl;
       if (preset.defaultModel.isNotEmpty) _model.text = preset.defaultModel;
+      // 换了供应商，上一家的模型名立刻失效 —— 不能把 A 家的列表挂在 B 家下面。
+      _liveModels = const [];
     });
+    if (_apiKey.text.trim().isNotEmpty) _fetchModels(silent: true);
+  }
+
+  /// 从官网拉一次模型名（`GET {baseUrl}/models`，即「测试连接」用的那个端点）。
+  ///
+  /// 用户 2026-09-22：「我希望设置页里配置 api 的话，ds 的模型名可以从官网动态获取」。
+  /// 复用 [AiClient.testConnection]（它本来就只打 `/models`，不花钱也不发对话），
+  /// 拿回来的 `models` 喂给下面的胶囊；失败时 [silent] 与否决定要不要弹提示。
+  Future<void> _fetchModels({bool silent = false}) async {
+    if (_loadingModels) return;
+    final config = _current;
+    if (config.baseUrl.isEmpty || config.apiKey.isEmpty) {
+      if (!silent) _toast('先填接口地址和 API Key');
+      return;
+    }
+    setState(() => _loadingModels = true);
+    final result = await ref.read(aiClientProvider).testConnection(config);
+    if (!mounted) return;
+    setState(() {
+      _loadingModels = false;
+      if (result.models.isNotEmpty) _liveModels = result.models;
+    });
+    if (silent) return;
+    _toast(
+      result.models.isEmpty
+          ? result.message
+          : '已从官网取到 ${result.models.length} 个模型名',
+    );
   }
 
   Future<void> _test() async {
@@ -365,7 +410,12 @@ class _ProfileEditorState extends ConsumerState<_ProfileEditor> {
     setState(() => _testing = true);
     final result = await ref.read(aiClientProvider).testConnection(config);
     if (!mounted) return;
-    setState(() => _testing = false);
+    setState(() {
+      _testing = false;
+      // 「测试连接」打的也是 `/models`，顺手把模型名留下来 —— 用户点完测试
+      // 不必再点一次「从官网获取」。
+      if (result.models.isNotEmpty) _liveModels = result.models;
+    });
     _toast(result.message);
   }
 
@@ -436,6 +486,11 @@ class _ProfileEditorState extends ConsumerState<_ProfileEditor> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final preset = aiPresetOf(_draft.presetId);
+    // 官网拉到的在前、预设建议值补齐（没网 / 没填 Key 时就是预设那一份）。
+    final modelOptions = aiModelOptions(
+      live: _liveModels,
+      suggested: preset.models,
+    );
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -505,25 +560,52 @@ class _ProfileEditorState extends ConsumerState<_ProfileEditor> {
             TextField(
               controller: _model,
               autocorrect: false,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: '模型名',
                 hintText: 'deepseek-chat',
+                // 「从官网动态获取」的入口（用户 2026-09-22）——放输入框尾部，
+                // 与 API Key 那行的「粘贴 / 显示」同一形态，不额外占一行。
+                suffixIcon: _loadingModels
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : IconButton(
+                        key: const Key('aiModelFetch'),
+                        tooltip: '从官网获取模型名',
+                        iconSize: 18,
+                        icon: const Icon(Icons.cloud_sync_outlined),
+                        onPressed: _fetchModels,
+                      ),
                 isDense: true,
               ),
             ),
-            if (preset.models.isNotEmpty) ...[
+            if (modelOptions.isNotEmpty) ...[
               const SizedBox(height: 6),
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
                 children: [
-                  for (final m in preset.models)
+                  for (final m in modelOptions)
                     ActionChip(
+                      key: Key('aiModelOption-$m'),
                       label: Text(m, style: const TextStyle(fontSize: 11.5)),
                       onPressed: () => setState(() => _model.text = m),
                       visualDensity: VisualDensity.compact,
                     ),
                 ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _liveModels.isEmpty
+                    ? '以上是预设的建议值；点输入框右侧的按钮可从官网取当天的模型名'
+                    : '以上模型名来自官网（共 ${_liveModels.length} 个）'
+                          '${modelOptions.length < _liveModels.length ? '，此处列出前 ${modelOptions.length} 个' : ''}',
+                style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
               ),
             ],
             const SizedBox(height: 12),
