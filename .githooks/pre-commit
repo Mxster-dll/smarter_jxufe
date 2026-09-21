@@ -1,0 +1,95 @@
+#!/bin/sh
+# 提交前隐私闸门（公开仓库）——细则见 docs/agents/34-提交前隐私纪律（公开仓库）.md 与 AGENTS.md §3.2
+#
+# 两层：
+#   ① 文件名 / 后缀机械检查（零依赖、秒级）—— 本地数据、抓包、密钥、含明文的脱敏脚本一律不许入库
+#   ② 跑 test/privacy_guard_test.dart（~30 秒）—— 真实个人信息（形状 + 加盐摘要黑名单）
+#
+# 逃生口（默认口径：确实知道为什么才用）：
+#   SKIP_PRIVACY_GUARD=1 git commit ...   只跳过 ② ，① 仍然生效
+#   git commit --no-verify                两层全跳过
+#
+# 启用（每个新克隆都要做一次，core.hooksPath 不随克隆走）：
+#   git config core.hooksPath .githooks
+#
+# 已知盲区：② 扫的是**工作树**（守卫测试读文件系统）而不是 index —— 若「工作树已改好、index 里还是旧值」
+# （部分暂存），它看到的是改好的那份；所以提交前仍要看一眼 `git status --porcelain` 与 `git diff --cached --stat`。
+
+fail() {
+  printf '\n\xe2\x9c\x97 提交被隐私闸门拦下：%s\n\n' "$1" >&2
+  exit 1
+}
+
+# ── ① 文件名 / 后缀机械检查 ────────────────────────────────────────────────
+blocked='^(app_data/|\.env|\.env\..*)'
+blocked="$blocked"'|.*\.(hive|mitm|flows|pcap|pcapng|har|jks|keystore|p12|pfx|mobileprovision|pem|key)$'
+blocked="$blocked"'|.*(key\.properties|secrets?\.(json|ya?ml|txt))$'
+blocked="$blocked"'|.*(_rel_scan\.py|_rel_scrub\.py|_scrub_rules[0-9]*\.txt|gen_guard\.py|desensitize\.py|replace_text\.txt|replace_message\.txt)$'
+blocked="$blocked"'|.*/(captures?)/'
+
+staged=$(git diff --cached --name-only -z --diff-filter=ACMR | tr '\0' '\n' | grep -E "$blocked" || true)
+if [ -n "$staged" ]; then
+  printf '%s\n' "$staged" >&2
+  fail '上面这些文件属于「绝不入库」类（本地运行数据 / 真机抓包 / 密钥 / 含明文的脱敏脚本）。清单见 §34.3'
+fi
+
+# ── ② 守卫测试 ────────────────────────────────────────────────────────────
+if [ "${SKIP_PRIVACY_GUARD:-}" = "1" ]; then
+  echo '· SKIP_PRIVACY_GUARD=1：已跳过隐私守卫测试（真实姓名 / 证件号 / 票据等没被检查）' >&2
+  exit 0
+fi
+
+root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+cd "$root" || exit 0
+
+dart=${DART:-}
+# 本机固定路径**优先于** PATH：PATH 上的 dart 可能是 flutter 的包装脚本（dart.bat，本仓明令不用：会卡死）
+if [ -z "$dart" ] && [ -x /d/Program/flutter/bin/cache/dart-sdk/bin/dart.exe ]; then
+  dart=/d/Program/flutter/bin/cache/dart-sdk/bin/dart.exe
+fi
+if [ -z "$dart" ] && command -v dart >/dev/null 2>&1; then
+  dart=$(command -v dart)
+fi
+if [ -z "$dart" ] || [ ! -x "$dart" ]; then
+  echo "· 没找到 dart（\$DART / /d/Program/flutter/... / PATH）→ 只做了文件名检查，没跑守卫测试" >&2
+  exit 0
+fi
+
+if [ -z "${FLUTTER_ROOT:-}" ]; then
+  FLUTTER_ROOT=$(cd "$(dirname "$dart")/../../../.." 2>/dev/null && pwd) || FLUTTER_ROOT=
+  if [ ! -f "$FLUTTER_ROOT/bin/cache/flutter_tools.snapshot" ] && [ -f /d/Program/flutter/bin/cache/flutter_tools.snapshot ]; then
+    FLUTTER_ROOT=/d/Program/flutter
+  fi
+fi
+snap="$FLUTTER_ROOT/bin/cache/flutter_tools.snapshot"
+if [ ! -f "$snap" ]; then
+  echo "· 没找到 flutter_tools.snapshot（dart=$dart，FLUTTER_ROOT=$FLUTTER_ROOT）→ 只做了文件名检查，没跑守卫测试" >&2
+  exit 0
+fi
+
+# 非幂等拷贝：build\unit_test_assets 已存在时 flutter test 会 errno 183 直接失败
+rm -rf build/unit_test_assets 2>/dev/null
+
+log=$(mktemp 2>/dev/null || echo /tmp/privacy_guard.$$.log)
+runner=''
+if command -v timeout >/dev/null 2>&1; then runner='timeout 300'; fi
+
+echo '· 跑隐私守卫测试（约 30 秒）…' >&2
+# shellcheck disable=SC2086
+$runner "$dart" "$snap" test test/privacy_guard_test.dart >"$log" 2>&1
+code=$?
+
+if [ "$code" -eq 124 ]; then
+  echo "· 守卫测试 300 秒没跑完（多半是与运行中的 flutter run 争构建目录）→ 跳过；请手动跑一次：$dart $snap test test/privacy_guard_test.dart（完整输出：$log）" >&2
+  exit 0
+fi
+
+if [ "$code" -ne 0 ]; then
+  sed -n '1,80p' "$log" >&2
+  echo "（完整输出：$log）" >&2
+  fail '隐私守卫测试没过。确认真实值已换成合成值（§34.4）后重跑；确实要绕过：SKIP_PRIVACY_GUARD=1 git commit … 或 git commit --no-verify'
+fi
+
+rm -f "$log" 2>/dev/null
+echo '· 隐私闸门通过（文件名检查 + 守卫测试）' >&2
+exit 0
