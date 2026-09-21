@@ -20,6 +20,7 @@ import 'package:smarter_jxufe/features/campus_address/data/my_campus_prefs.dart'
 
 import 'package:smarter_jxufe/features/campus_address/domain/my_campus.dart';
 
+import 'package:smarter_jxufe/features/home/data/home_edit_mode.dart';
 import 'package:smarter_jxufe/features/home/data/home_grid_prefs.dart';
 
 import 'package:smarter_jxufe/features/home/data/home_layout_prefs.dart';
@@ -442,19 +443,44 @@ class SettingsHomeLayoutCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  '长按某一格只拖动这一个功能；长按卡片其余部分（格与格之间的缝）'
-                  '拖动整张卡片。拖到另一张卡片的边缘（最外侧约三分之一）'
-                  '松手即合并成一张卡片，拖到卡片中间不会合并。'
+                  '长按功能本身（图标 / 文字那一块）只拖动这一个功能；长按卡片其余部分'
+                  '（功能四周的空白与格与格之间的缝）拖动整张卡片。'
+                  '拖到另一张卡片的边缘（最外侧约三分之一）'
+                  '松手即合并成一张卡片，拖到卡片中间不会合并、而是把压到的卡片挤开让位。'
                   '聚合卡片可以是不规则形状，互补的形状能相互嵌合。'
-                  '顶栏的剪刀按钮可以进入拆解模式：卡片里出现分割线，点分割线断开这一处，'
-                  '退出时仍然连着的会自动接回去。',
+                  '下面打开「编辑模式」后回到主页：卡片里出现分割线，点分割线断开这一处，'
+                  '退出时仍然连着的会自动接回去；该模式下拖动不必长按（按下即可拖，'
+                  '也可以点一下拿起、再点一下放下），点空白处可把拿起的卡片放下。',
                   style: TextStyle(
                     fontSize: 12.5,
                     height: 1.3,
                     color: scheme.onSurfaceVariant,
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 6),
+                // 编辑模式开关（用户 2026-09-21 十三轮原话：「我希望标题栏不显示编辑模式按钮和
+                // 重置按钮，这两个都放到设置里」）—— 原来这枚剪刀按钮在主页顶栏，位置太显眼、
+                // 也容易误触；开关本身是跨页面的一次性状态，见 [homeEditModeProvider]。
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '编辑模式',
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w500,
+                          color: scheme.onSurface,
+                        ),
+                      ),
+                    ),
+                    Switch(
+                      key: const Key('homeEditModeSwitch'),
+                      value: ref.watch(homeEditModeProvider),
+                      onChanged: (next) => _setEditMode(context, ref, next),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
                 Row(
                   children: [
                     Expanded(
@@ -470,7 +496,12 @@ class SettingsHomeLayoutCard extends ConsumerWidget {
                     const SizedBox(width: 12),
                     OutlinedButton.icon(
                       key: const Key('homeGridReset'),
-                      onPressed: () => unawaited(gridStore.reset()),
+                      // 先退出编辑模式再重置：那些「断开」是临时状态，退出时会结算落盘
+                      // （见 §17.10），留着会让「恢复默认布局」看起来没生效。
+                      onPressed: () {
+                        _setEditMode(context, ref, false);
+                        unawaited(gridStore.reset());
+                      },
                       icon: const Icon(Icons.restart_alt, size: 18),
                       label: const Text('恢复默认布局'),
                     ),
@@ -482,6 +513,29 @@ class SettingsHomeLayoutCard extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  /// 拨「编辑模式」开关（原主页顶栏的剪刀按钮）。
+  ///
+  /// 提示给在**这里**：用户拨开关时人在设置页，而模式生效在主页 —— 不说明一句，
+  /// 回到主页前完全看不到反馈（宫格此时多半还在屏幕外）。
+  void _setEditMode(BuildContext context, WidgetRef ref, bool next) {
+    ref.read(homeEditModeProvider.notifier).state = next;
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    messenger
+      ?..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          key: const Key('homeGridEditHint'),
+          duration: const Duration(seconds: 4),
+          content: Text(
+            next
+                ? '编辑模式已打开：回到主页，卡片里会出现分割线（点分割线断开 / 接回），'
+                      '拖动也不必长按'
+                : '已退出编辑模式：真的分成两块的才保留',
+          ),
+        ),
+      );
   }
 
   /// 聚合布局现状（给用户一句「现在是什么状态」）。

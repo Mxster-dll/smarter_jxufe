@@ -567,19 +567,35 @@ void main() {
       );
     });
 
-    test('拖到卡片中间 → 不合并（用户口径）', () {
+    test('拖到卡片中间 → 不合并，但把压到的卡片挤开（用户 2026-09-21 十二轮）', () {
+      // 用户原话：「我希望添加碰撞移动的功能，就是像手机桌面一样，既要支持合并
+      // 也要支持把卡片挤开」→ 老口径「处于中间则松手什么都不做」已作废。
       final layout = sixGrid();
-      expect(
-        homeGridPlanDrop(
-          layout: layout,
-          draggedKey: '甲',
-          pointerCell: (x: 1, y: 0),
-          grabCell: (x: 0, y: 0),
-        ),
-        isNull,
-        reason: '1×1 的卡片指针在正中 → 四个方向距离都是 0.5 > 边缘带',
+      final plan = homeGridPlanDrop(
+        layout: layout,
+        draggedKey: '甲',
+        pointerCell: (x: 1, y: 0),
+        grabCell: (x: 0, y: 0),
       );
-      // 3 格宽的卡片，指针落在中间那格同样不合并。
+      expect(plan, isNotNull, reason: '压在中间 → 挤开，不再是「什么都不做」');
+      expect(plan!.isMerge, isFalse, reason: '中间仍然**不合并**（用户二轮口径保留）');
+      expect(plan.kind, HomeGridDropKind.move);
+      expect(plan.landing.cells, const [(x: 1, y: 0)]);
+      expect(plan.side, 'right', reason: '往右拖 → 往右让');
+      expect(plan.pushed.keys, contains('乙'));
+      expect(plan.pushed['乙']!.cells, const [(x: 2, y: 0)]);
+      final next = plan.apply(layout);
+      expect(next.isValid, isTrue);
+      expect(next.allTitles.length, 6, reason: '一个服务都不许丢');
+      expect(next.tileByKey('甲')?.cells, const [(x: 1, y: 0)]);
+      expect(next.tileByKey('乙')?.cells, const [(x: 2, y: 0)]);
+      expect(
+        next.tileByKey('丙')?.cells,
+        const [(x: 0, y: 0)],
+        reason: '丙 被连锁挤到列外 → 交给 reflowed 让位（挪到空出来的第一格）',
+      );
+
+      // 3 格宽的卡片，指针落在中间那格：整体被挤到下一行（往下拖 → 往下让）。
       final wide = HomeGridLayout(
         cols: 4,
         tiles: [
@@ -590,14 +606,21 @@ void main() {
           one('丁', 0, 2),
         ],
       );
+      final up = homeGridPlanDrop(
+        layout: wide,
+        draggedKey: '丁',
+        pointerCell: (x: 1, y: 0),
+        grabCell: (x: 0, y: 0),
+      );
+      expect(up?.isMerge, isFalse);
+      expect(up?.side, 'top', reason: '丁 是从下面拖上来的 → 让位方向是「上」');
+      final wideNext = up!.apply(wide);
+      expect(wideNext.isValid, isTrue);
+      expect(wideNext.tileByKey('丁')?.cells, const [(x: 1, y: 0)]);
       expect(
-        homeGridPlanDrop(
-          layout: wide,
-          draggedKey: '丁',
-          pointerCell: (x: 1, y: 0),
-          grabCell: (x: 0, y: 0),
-        ),
-        isNull,
+        wideNext.tileByKey('甲\u001F乙\u001F丙')?.cells,
+        const [(x: 0, y: 1), (x: 1, y: 1), (x: 2, y: 1)],
+        reason: '往上没地方 → 整张宽卡让位到下一行（不被拆散）',
       );
     });
 
@@ -674,18 +697,17 @@ void main() {
         ),
         isNull,
       );
-      // 拖到别人的中间 → null（既不合并也不移动）。
-      expect(
-        homeGridPlanDrop(
-          layout: layout,
-          draggedKey: '甲',
-          pointerCell: (x: 1, y: 0),
-          grabCell: (x: 0, y: 0),
-          pointerFractionX: 0.5,
-          pointerFractionY: 0.5,
-        ),
-        isNull,
+      // 拖到别人的中间 → 不合并，但**挤开**（不再是 null；见「碰撞移动」组）。
+      final pushed = homeGridPlanDrop(
+        layout: layout,
+        draggedKey: '甲',
+        pointerCell: (x: 1, y: 0),
+        grabCell: (x: 0, y: 0),
+        pointerFractionX: 0.5,
+        pointerFractionY: 0.5,
       );
+      expect(pushed?.isMerge, isFalse);
+      expect(pushed?.pushed, isNotEmpty);
     });
 
     test('拖到空格 = 纯移动（不合并）', () {
@@ -785,15 +807,18 @@ void main() {
           one('丁', 3, 3),
         ],
       );
+      final plan = homeGridPlanDrop(
+        layout: layout,
+        draggedKey: '丁',
+        pointerCell: (x: 0, y: 0),
+        grabCell: (x: 0, y: 0),
+        pointerFractionX: 0.97, // 贴内缝
+      );
+      expect(plan?.isMerge, isFalse, reason: '内缝不是「边」→ 不合并');
       expect(
-        homeGridPlanDrop(
-          layout: layout,
-          draggedKey: '丁',
-          pointerCell: (x: 0, y: 0),
-          grabCell: (x: 0, y: 0),
-          pointerFractionX: 0.97, // 贴内缝
-        ),
-        isNull,
+        plan?.kind,
+        HomeGridDropKind.move,
+        reason: '十二轮起：压在内缝上 = 把 L 形挤开，而不是什么都不做',
       );
     });
 
@@ -814,6 +839,201 @@ void main() {
       expect(f.height, 3);
       expect(gridConnected(f.cells), isTrue);
       expect(gridShapeKey(f.cells), '1,0;2,0;0,1;1,1;1,2');
+    });
+  });
+
+  group('点击放下的落点（编辑模式 · 用户 2026-09-21 九轮）', () {
+    // 用户原话：「或者点击拿起，再次点击方下」→ 点一下必须有个结果。
+    // ⚠ 十二轮起拖动版与点击版**共用同一套挤开逻辑**（用户：「既要支持合并也要支持
+    //   把卡片挤开」），所以两边给出的方案逐字相同 —— 这条断言就是钉住这一点。
+    test('压在别的卡片正中：拖动版与点击版一样，都是「挤开」', () {
+      final layout = sixGrid(); // 3 列 6 张单格卡
+      // 甲 的指针落在 乙 那一格的正中（四条边都在 0.5，远超 `kHomeGridEdgeBand` 0.34）。
+      final dragged = homeGridPlanDrop(
+        layout: layout,
+        draggedKey: '甲',
+        pointerCell: (x: 1, y: 0),
+        grabCell: (x: 0, y: 0),
+      );
+      final tapped = homeGridPlanTapDrop(
+        layout: layout,
+        draggedKey: '甲',
+        pointerCell: (x: 1, y: 0),
+        grabCell: (x: 0, y: 0),
+      );
+      expect(dragged, isNotNull);
+      expect(tapped, isNotNull);
+      expect(dragged!.isMerge, isFalse);
+      expect(dragged.kind, HomeGridDropKind.move);
+      expect(dragged.landing.cells, const [(x: 1, y: 0)]);
+      expect(tapped!.landing.cells, dragged.landing.cells);
+      expect(tapped.pushed.keys, dragged.pushed.keys);
+
+      // 甲 落到 (1,0)，乙 被挤到 (2,0)，丙 被连锁挤到列外 → 让位到空出来的 (0,0)。
+      final next = tapped.apply(layout);
+      expect(next.isValid, isTrue);
+      expect(next.allTitles.length, 6);
+      expect(next.tileByKey('甲')?.cells, const [(x: 1, y: 0)]);
+      expect(next.tileByKey('乙')?.cells, const [(x: 2, y: 0)]);
+      expect(next.tileByKey('丙')?.cells, const [(x: 0, y: 0)]);
+    });
+
+    test('抓手格不是包围盒左上角：保持相对关系（拖 2 格卡的第 2 格放到 (0,1)）', () {
+      final layout = HomeGridLayout(
+        cols: 3,
+        tiles: [
+          many(const ['甲', '乙'], const [(x: 0, y: 0), (x: 1, y: 0)]),
+          one('丙', 2, 0),
+        ],
+      );
+      final plan = homeGridPlanTapDrop(
+        layout: layout,
+        draggedKey: '甲\u001F乙',
+        pointerCell: (x: 1, y: 1),
+        grabCell: (x: 1, y: 0), // 抓的是乙那一格
+      );
+      expect(plan?.landing.cells, const [(x: 0, y: 1), (x: 1, y: 1)]);
+      expect(plan!.apply(layout).tileByKey('甲\u001F乙')?.cells, const [
+        (x: 0, y: 1),
+        (x: 1, y: 1),
+      ]);
+    });
+
+    test('落点越界 → null（这次点击等于取消）', () {
+      final layout = sixGrid();
+      // 甲 在 (2,0)（最右列），抓手格 = 包围盒第 2 格 → 往右上放会越过右边界。
+      expect(
+        homeGridPlanTapDrop(
+          layout: layout,
+          draggedKey: '丙',
+          pointerCell: (x: 2, y: 0),
+          grabCell: (x: 0, y: 0),
+        )?.landing.cells,
+        const [(x: 2, y: 0)],
+      );
+      // 2 格卡抓**左边那格**、指针放在最右列 → 右边那格会落到列外 → 越界。
+      final wide = HomeGridLayout(
+        cols: 3,
+        tiles: [
+          many(const ['甲', '乙'], const [(x: 0, y: 0), (x: 1, y: 0)]),
+        ],
+      );
+      expect(
+        homeGridPlanTapDrop(
+          layout: wide,
+          draggedKey: '甲\u001F乙',
+          pointerCell: (x: 2, y: 0),
+          grabCell: (x: 0, y: 0),
+        ),
+        isNull,
+        reason: '第二格会被顶到 (3,0)（列外）→ 这次点击取消',
+      );
+      // 卡片不在布局里 → 也没有方案（脏 key 防御）。
+      expect(
+        homeGridPlanTapDrop(
+          layout: layout,
+          draggedKey: '不存在',
+          pointerCell: (x: 0, y: 0),
+          grabCell: (x: 0, y: 0),
+        ),
+        isNull,
+      );
+    });
+  });
+
+  // 用户 2026-09-21 十二轮原话（逐字）：「我希望添加碰撞移动的功能，就是像手机桌面一样，
+  // 既要支持合并也要支持把卡片挤开」。
+  group('碰撞移动：压到别人就挤开（十二轮）', () {
+    test('挤开方向 = 从原来位置指向落点的主导轴', () {
+      final layout = sixGrid(); // 3 列 6 格全占满 → 落点必然压着人
+      // 往右拖一格：乙 让到 (2,0)，丙 连锁出界 → 让位到空出来的 (0,0)。
+      final right = homeGridPlanDrop(
+        layout: layout,
+        draggedKey: '甲',
+        pointerCell: (x: 1, y: 0),
+        grabCell: (x: 0, y: 0),
+      )!;
+      expect(right.isMerge, isFalse);
+      expect(right.side, 'right');
+      expect(right.landing.cells, const [(x: 1, y: 0)]);
+      expect(right.pushed['乙']!.cells, const [(x: 2, y: 0)]);
+      final down = homeGridPlanDrop(
+        layout: layout,
+        draggedKey: '甲',
+        pointerCell: (x: 0, y: 1),
+        grabCell: (x: 0, y: 0),
+      )!;
+      expect(down.side, 'bottom');
+      expect(down.landing.cells, const [(x: 0, y: 1)]);
+      expect(down.pushed['丁']!.cells, const [(x: 0, y: 2)]);
+      final next = down.apply(layout);
+      expect(next.isValid, isTrue);
+      expect(next.allTitles.length, 6, reason: '一个服务都不许丢');
+      expect(next.tileByKey('甲')?.cells, const [(x: 0, y: 1)]);
+      expect(next.tileByKey('丁')?.cells, const [(x: 0, y: 2)]);
+      expect(
+        next.tileByKey('戊')?.cells,
+        const [(x: 1, y: 1)],
+        reason: '丙 那一列没人被撞到 → 一格都不动',
+      );
+    });
+
+    test('多格卡片被压到：整张一起让位（不拆散）', () {
+      final layout = HomeGridLayout(
+        cols: 6,
+        tiles: [
+          many(const ['甲', '乙'], const [(x: 2, y: 0), (x: 3, y: 0)]),
+          one('丙', 0, 2),
+        ],
+      );
+      final plan = homeGridPlanDrop(
+        layout: layout,
+        draggedKey: '丙',
+        pointerCell: (x: 3, y: 0),
+        grabCell: (x: 0, y: 0),
+      )!;
+      expect(plan.side, 'right');
+      expect(plan.pushed['甲\u001F乙']!.cells, const [(x: 4, y: 0), (x: 5, y: 0)]);
+      final next = plan.apply(layout);
+      expect(next.isValid, isTrue);
+      expect(next.tileByKey('丙')?.cells, const [(x: 3, y: 0)]);
+      expect(
+        next.tileByKey('甲\u001F乙')?.cells,
+        const [(x: 4, y: 0), (x: 5, y: 0)],
+      );
+      expect(next.groupCount, 1, reason: '聚合卡整体挪，没有被拆成两张');
+    });
+
+    test('落点是空的 → 谁都不挤（pushed 为空）', () {
+      final layout = HomeGridLayout.flow(
+        titles: const ['甲', '乙', '丙', '丁', '戊', '己'],
+        cols: 4,
+      );
+      final plan = homeGridPlanDrop(
+        layout: layout,
+        draggedKey: '甲',
+        pointerCell: (x: 2, y: 1), // 空格子
+        grabCell: (x: 0, y: 0),
+      )!;
+      expect(plan.kind, HomeGridDropKind.move);
+      expect(plan.pushed, isEmpty);
+      final next = plan.apply(layout);
+      expect(next.tileByKey('甲')?.cells, const [(x: 2, y: 1)]);
+      expect(next.tileByKey('乙')?.cells, const [(x: 1, y: 0)]);
+    });
+
+    test('贴在别人的边上仍然是合并（挤开不许把合并顶掉）', () {
+      final layout = sixGrid();
+      final plan = homeGridPlanDrop(
+        layout: layout,
+        draggedKey: '甲',
+        pointerCell: (x: 1, y: 0),
+        grabCell: (x: 0, y: 0),
+        pointerFractionX: 0.02, // 贴左边缘 → 落点在 (0,0)，与 乙 那一格相邻
+      );
+      expect(plan?.isMerge, isTrue);
+      expect(plan?.side, 'left');
+      expect(plan?.landing.cells, const [(x: 0, y: 0)]);
     });
   });
 }

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/design/app_page_transitions.dart';
 import 'package:smarter_jxufe/design/settings_entry.dart';
+import 'package:smarter_jxufe/features/home/data/home_edit_mode.dart';
 import 'package:smarter_jxufe/features/home/data/home_grid_prefs.dart';
 import 'package:smarter_jxufe/features/home/data/home_layout_prefs.dart';
 import 'package:smarter_jxufe/features/home/domain/home_layout.dart';
@@ -39,10 +40,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// 只活在页面 State 里（不进 Hive）：切走再回来仍是概览，符合「主页 = 概览」
   /// 的直觉；窄窗口 / 宫格视图下这个字段被忽略。
   String? _selectedService;
-
-  /// 宫格拆解模式（用户 2026-09-21 四轮：「我希望可以进入拆解模式，此模式下，才显示
-  /// 分割线…」）。只活在 State 里：它是一次性的编辑动作，不进 Hive。
-  bool _splitMode = false;
 
   @override
   Widget build(BuildContext context) {
@@ -104,11 +101,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   ///
   /// [gridStore] 提供宫格聚合布局（长按拖动 / 合并的结果，用户 2026-09-21 需求）：
   /// 布局由本页 watch、由宫格回写，宫格组件本身不碰 Riverpod（见 `home_service_grid.dart`）。
+  ///
+  /// 宫格编辑模式（原名「拆解模式」）的开关在**设置页** —— 用户 2026-09-21 十三轮原话：
+  /// 「我希望标题栏不显示编辑模式按钮和重置按钮，这两个都放到设置里」。状态由
+  /// [homeEditModeProvider] 持有：设置页拨、这里听，不再是本 State 的字段。
   Widget _buildGridBody(
     BuildContext context,
     List<HomeServiceEntry> entries,
     HomeGridStore gridStore,
   ) {
+    final editMode = ref.watch(homeEditModeProvider);
     return RefreshIndicator(
       onRefresh: () => refreshDashboard(ref),
       child: ListView(
@@ -125,7 +127,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           HomeServiceGrid(
             entries: entries,
             layout: gridStore.layout,
-            splitMode: _splitMode,
+            editMode: editMode,
             onLayoutChanged: (next) => unawaited(gridStore.save(next)),
           ),
         ],
@@ -250,27 +252,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // 姓名与卡号在「我的」页里看，账号管理（添加/切换/删除账户）走
   // 「我的」页右上角的退出图标 → AccountScreen。
   //
-  /// 切换宫格拆解模式（进入 / 退出各给一条说明，退出时宫格自己结算断开结果）。
-  void _toggleSplitMode(BuildContext context) {
-    final next = !_splitMode;
-    setState(() => _splitMode = next);
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    if (messenger == null) return;
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          key: const Key('homeGridSplitHint'),
-          duration: const Duration(seconds: 4),
-          content: Text(
-            next
-                ? '拆解模式：点卡片里的分割线可断开 / 接回；退出时仍然连着的会自动接回去'
-                : '已退出拆解模式：真的分成两块的才保留',
-          ),
-        ),
-      );
-  }
-
   // **侧栏视图下设置与头像不在这里**（用户 2026-09-16 裁定）：它们搬到左侧导航栏
   // 底部的固定区（头像在上、设置在下，见 `home_sidebar.dart`），顶栏只留品牌。
   Widget _buildTopBar(
@@ -307,22 +288,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           const Spacer(),
           if (showAccountActions) ...[
-            // 宫格拆解模式开关（只在宫格视图出现）：打开后卡片里的格缝变成可点的
-            // 分割线，点一下断开 / 接回；退出时仍然绕路连着的缝自动接回去。
-            IconButton(
-              key: const Key('homeSplitToggle'),
-              tooltip: _splitMode ? '退出拆解模式' : '拆解模式',
-              icon: Icon(
-                _splitMode ? Icons.close_fullscreen : Icons.content_cut,
-                size: 20,
-                color: _splitMode ? scheme.primary : null,
-              ),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-              visualDensity: VisualDensity.compact,
-              onPressed: () => _toggleSplitMode(context),
-            ),
-            const SizedBox(width: 4),
             // 全局设置入口（紧凑排布，避免窄屏顶栏溢出）。
             IconButton(
               tooltip: '设置',

@@ -392,12 +392,26 @@ class HomeGridLayout {
   /// 为什么需要它：满格的宫格里，把 A 拖到 B 的右边缘，落点那一格必然是 C 的位置
   /// （用户口径要的是「合并到此边相邻的位置」，而不是「把 C 盖掉」）→ C 必须让开。
   /// 只要不撞车就原位保留，所以用户辛苦摆出来的异形嵌合不会被一次拖动打乱。
-  HomeGridLayout reflowed({required HomeGridTile anchored}) {
-    final used = <GridCell>{...anchored.cells};
+  HomeGridLayout reflowed({
+    required HomeGridTile anchored,
+    Map<String, HomeGridTile> settled = const <String, HomeGridTile>{},
+  }) {
+    // 已经定好位置的卡片（被挤开 / 被顶开的那些）**先占住格子** —— 否则「谁被让位」
+    // 取决于卡片在列表里的顺序：列表按「行优先 + 标题」排（`_compareTiles`），乙 与 丙
+    // 都想站 (2,0) 时 丙 排在前面、会先把格子占了，乙 反而被扔到第一个空位去。
+    final used = <GridCell>{
+      ...anchored.cells,
+      for (final tile in settled.values) ...tile.cells,
+    };
     final keep = <HomeGridTile>[];
     final displaced = <HomeGridTile>[];
     for (final tile in tiles) {
       if (tile.key == anchored.key) continue;
+      final fixed = settled[tile.key];
+      if (fixed != null) {
+        keep.add(fixed); // 它已经在最终位置上了：占住格子、不接受让位
+        continue;
+      }
       var clash = false;
       for (final c in tile.cells) {
         if (used.contains(c)) {
@@ -473,7 +487,8 @@ class HomeGridLayout {
 
 /// 落点方案类型。
 enum HomeGridDropKind {
-  /// 拖到空格 → 只挪位置，不合并。
+  /// 拖到空格（或**压到别人身上**）→ 只挪位置，不合并；
+  /// 压到的卡片沿拖动方向被**挤开**（见 `_movePlan`）。
   move('移动'),
 
   /// 拖到别的卡片**边缘** → 落在那条边旁边，并合并成一张卡。
@@ -560,14 +575,25 @@ class HomeGridDropTarget {
 
   /// 把方案落到布局上（新的布局；调用方负责保存）。
   ///
-  /// 合并时 [pushed] 里的卡片先落到它们的新位置，再由 [HomeGridLayout.reflowed]
-  /// 处理「挪出界 / 仍然撞车」的那些（`anchored` = 合并后的那张卡，它钉死不动）。
+  /// [pushed] 里的卡片先落到它们的新位置（**合并与被挤开都走这条**），再由
+  /// [HomeGridLayout.reflowed] 处理「挪出界 / 仍然撞车」的那些（`anchored` = 落点那张卡，
+  /// 它钉死不动）。
   HomeGridLayout apply(HomeGridLayout layout) {
     final merged = mergedResult;
     if (merged == null) {
-      return layout
-          .replacingTile(sourceKey, landing)
-          .reflowed(anchored: landing);
+      final moved = pushed.isEmpty
+          ? layout.replacingTile(sourceKey, landing)
+          : HomeGridLayout(
+              cols: layout.cols,
+              tiles: <HomeGridTile>[
+                for (final tile in layout.tiles)
+                  if (tile.key == sourceKey)
+                    landing
+                  else
+                    pushed[tile.key] ?? tile,
+              ],
+            );
+      return moved.reflowed(anchored: landing, settled: pushed);
     }
     final absorbed = <String>{
       sourceKey,
@@ -580,7 +606,7 @@ class HomeGridDropTarget {
           if (!absorbed.contains(tile.key)) pushed[tile.key] ?? tile,
         merged,
       ],
-    ).reflowed(anchored: merged);
+    ).reflowed(anchored: merged, settled: pushed);
   }
 
   @override
@@ -600,7 +626,10 @@ class HomeGridDropTarget {
 ///   按格子算永远在正中间，就永远合并不了），必须看格内比例；
 /// - **边只认外露的边**：同一张卡内部两个格子之间的缝不是边（异形卡片的内凹处
 ///   反而是合法的落点 —— 用户要的「互补嵌合」正是从那里进去的）；
-/// - 结果 null = 本次松手什么都不做（拖到卡片中间 / 内缝、或落点越界）。
+/// - 指针压在卡片**中间 / 内缝**（不在任何一条边带里）→ **不合并，但会挤开**：
+///   落点照常算（抓手格对齐指针），压到的卡片沿拖动方向让位（用户 2026-09-21 十二轮
+///   「像手机桌面一样 …… 也要支持把卡片挤开」）；
+/// - 结果 null = 本次松手什么都不做（落点越界 / 原地没挪）。
 HomeGridDropTarget? homeGridPlanDrop({
   required HomeGridLayout layout,
   required String draggedKey,
@@ -661,7 +690,20 @@ HomeGridDropTarget? homeGridPlanDrop({
       !target.hasCell((x: pointerCell.x, y: pointerCell.y + 1)),
     );
     final picked = side;
-    if (picked == null) return null;
+    if (picked == null) {
+      // 指针压在卡片**中间 / 内缝**（不在任何一条边带里）：不合并，但**挤开**
+      // —— 用户 2026-09-21 十二轮：「我希望添加碰撞移动的功能，就是像手机桌面一样，
+      // 既要支持合并也要支持把卡片挤开」。老口径这里是 `return null`（松手什么都不做）。
+      final db = dragged.bounds;
+      return _movePlan(
+        layout: layout,
+        dragged: dragged,
+        landing: dragged.translate(
+          pointerCell.x - grabCell.x - db.left,
+          pointerCell.y - grabCell.y - db.top,
+        ),
+      );
+    }
 
     final bounds = dragged.bounds;
     // 另一轴与指针所在的行 / 列对齐（抓手格必在包围盒内，clamp 只是防御性写法）。
@@ -722,34 +764,12 @@ HomeGridDropTarget? homeGridPlanDrop({
     final pushed = <String, HomeGridTile>{};
     if (occupants.isNotEmpty) {
       final step = _pushVector(landing, occupants, picked);
-      // 连锁：撞上「已经要挪的卡片（挪之后的位置）」的也跟着挪（整条尾巴同一位移）。
-      final moves = <String, GridCell>{};
-      var changed = true;
-      while (changed) {
-        changed = false;
-        for (final t in layout.tiles) {
-          if (t.key == draggedKey || t.key == target.key) continue;
-          if (moves.containsKey(t.key)) continue;
-          var hit = t.cells.any(landingSet.contains);
-          if (!hit) {
-            for (final entry in moves.entries) {
-              final other = layout.tileByKey(entry.key);
-              if (other == null) continue;
-              if (gridOverlaps(
-                t.cells,
-                gridTranslated(other.cells, entry.value.x, entry.value.y),
-              )) {
-                hit = true;
-                break;
-              }
-            }
-          }
-          if (hit) {
-            moves[t.key] = step;
-            changed = true;
-          }
-        }
-      }
+      final moves = _cascadeMoves(
+        layout: layout,
+        skipKeys: <String>{draggedKey, target.key},
+        landingSet: landingSet,
+        step: step,
+      );
       for (final t in layout.tiles) {
         final mv = moves[t.key];
         if (mv == null) continue;
@@ -789,11 +809,96 @@ HomeGridDropTarget? homeGridPlanDrop({
     pointerCell.x - grabCell.x - db.left,
     pointerCell.y - grabCell.y - db.top,
   );
-  if (!_canPlace(landing, layout.cols, occupied)) return null;
+  // 压到别人身上（不在任何一条边带里）= **挤开**，不是「什么都不做」——
+  // 用户 2026-09-21 十二轮原话：「我希望添加碰撞移动的功能，就是像手机桌面一样，
+  // 既要支持合并也要支持把卡片挤开」。
+  return _movePlan(layout: layout, dragged: dragged, landing: landing);
+}
+
+/// 「纯移动」的落点方案 —— 落点压到别人时**把别人挤开**（不合并）。
+///
+/// 老口径是 `_canPlace` 不过就返回 null（「拖到卡片中间 / 落点压着别人 → 松手什么都不做」），
+/// 但满格宫格里落点几乎永远压着别人，用户会觉得「我明明拖到了那里却什么都没发生」
+/// （用户 2026-09-21 十二轮：「既要支持合并也要支持把卡片挤开」）。
+///
+/// 挤开方向 = **从原来位置指向落点的主导轴**（往右拖 → 右边的卡片往右让；往下拖 → 往下让），
+/// 与合并那一支共用 [_pushVector] + [_cascadeMoves]：被推的整条尾巴同一位移，
+/// 挪出界的那些不硬挪，留给 [HomeGridLayout.reflowed] 让位（挪到第一个空位）。
+///
+/// 返回 null = 落点越界（放不下），或**本来就没挪**（点一下拿起 → 原地再点一下放下）。
+HomeGridDropTarget? _movePlan({
+  required HomeGridLayout layout,
+  required HomeGridTile dragged,
+  required HomeGridTile landing,
+}) {
+  if (!_inBounds(landing, layout.cols)) return null;
+  final landingSet = gridCellSet(landing.cells);
+  final occupants = <HomeGridTile>[
+    for (final t in layout.tiles)
+      if (t.key != dragged.key && t.cells.any(landingSet.contains)) t,
+  ];
+  if (occupants.isEmpty) {
+    return HomeGridDropTarget(
+      kind: HomeGridDropKind.move,
+      landing: landing,
+      sourceKey: dragged.key,
+    );
+  }
+  final from = dragged.bounds;
+  final to = landing.bounds;
+  final dx = to.left - from.left;
+  final dy = to.top - from.top;
+  if (dx == 0 && dy == 0) return null; // 一格都没挪 = 取消
+  final horizontal = dx != 0 && dx.abs() >= dy.abs();
+  final side = horizontal
+      ? (dx > 0 ? 'right' : 'left')
+      : (dy > 0 ? 'bottom' : 'top');
+  final step = _pushVector(landing, occupants, side);
+  final moves = _cascadeMoves(
+    layout: layout,
+    skipKeys: <String>{dragged.key},
+    landingSet: landingSet,
+    step: step,
+  );
+  final pushed = <String, HomeGridTile>{};
+  for (final t in layout.tiles) {
+    final mv = moves[t.key];
+    if (mv == null) continue;
+    final moved = t.translate(mv.x, mv.y);
+    // 挪出界的卡片不硬挪：留给 `apply` 的 `reflowed` 让位（挪到第一个空位）。
+    if (!_inBounds(moved, layout.cols)) continue;
+    pushed[t.key] = moved;
+  }
   return HomeGridDropTarget(
     kind: HomeGridDropKind.move,
     landing: landing,
-    sourceKey: draggedKey,
+    sourceKey: dragged.key,
+    pushed: pushed,
+    side: side,
+  );
+}
+
+/// 「点击拿起 → 再点一下放下」的落点方案（编辑模式）。
+///
+/// 与 [homeGridPlanDrop] 共用同一套 [_movePlan]：落点压在别的卡片中间 / 内缝上时
+/// **把那几张挤开**（用户 2026-09-21 十二轮：「像手机桌面一样 …… 也要支持把卡片挤开」），
+/// 而不是像老口径那样「点哪儿都没反应」。落点越界（算出负数格 / 越过右边）→ null = 取消。
+HomeGridDropTarget? homeGridPlanTapDrop({
+  required HomeGridLayout layout,
+  required String draggedKey,
+  required GridCell pointerCell,
+  required GridCell grabCell,
+}) {
+  final dragged = layout.tileByKey(draggedKey);
+  if (dragged == null) return null;
+  final bounds = dragged.bounds;
+  return _movePlan(
+    layout: layout,
+    dragged: dragged,
+    landing: dragged.translate(
+      pointerCell.x - grabCell.x - bounds.left,
+      pointerCell.y - grabCell.y - bounds.top,
+    ),
   );
 }
 
@@ -806,17 +911,44 @@ HomeGridLayout? homeGridLayoutFromJson(String? raw) {
   return HomeGridLayout.parse(raw);
 }
 
-/// 落位是否放得下：每格在界内、且没被别人占。
-bool _canPlace(
-  HomeGridTile tile,
-  int cols,
-  Map<GridCell, HomeGridTile> occupied,
-) {
-  for (final c in tile.cells) {
-    if (c.x < 0 || c.x >= cols || c.y < 0) return false;
-    if (occupied.containsKey(c)) return false;
+/// **连锁推动**：撞上落点、或撞上「已经要挪的卡片（挪之后的位置）」的卡片一起挪
+/// （整条尾巴共用同一个位移 [step]）。
+///
+/// [skipKeys] = 不参与推动的卡片（被拖的那张；合并时还有被并进来的目标）。
+/// 合并那一支与 [_movePlan] 的「挤开」共用这一份实现，两边的手感才一致。
+Map<String, GridCell> _cascadeMoves({
+  required HomeGridLayout layout,
+  required Set<String> skipKeys,
+  required Set<GridCell> landingSet,
+  required GridCell step,
+}) {
+  final moves = <String, GridCell>{};
+  var changed = true;
+  while (changed) {
+    changed = false;
+    for (final t in layout.tiles) {
+      if (skipKeys.contains(t.key) || moves.containsKey(t.key)) continue;
+      var hit = t.cells.any(landingSet.contains);
+      if (!hit) {
+        for (final entry in moves.entries) {
+          final other = layout.tileByKey(entry.key);
+          if (other == null) continue;
+          if (gridOverlaps(
+            t.cells,
+            gridTranslated(other.cells, entry.value.x, entry.value.y),
+          )) {
+            hit = true;
+            break;
+          }
+        }
+      }
+      if (hit) {
+        moves[t.key] = step;
+        changed = true;
+      }
+    }
   }
-  return true;
+  return moves;
 }
 
 /// 让落点上站着的卡片整体让开落点所需的位移（沿合并方向，整条尾巴同一位移）。
