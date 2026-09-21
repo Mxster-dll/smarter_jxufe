@@ -25,7 +25,7 @@ Map<String, Object?> realFormResponse() => <String, Object?>{
     {'fieldName': '学号', 'value': '2202500001', 'key': 'XH'},
     {'fieldName': '姓名', 'value': '同学甲', 'key': 'USERNAME'},
     {'fieldName': '性别', 'value': '男性', 'key': 'XB'},
-    {'fieldName': '家庭住址', 'value': '<REDACTED> 'key': 'JTZZ'},
+    {'fieldName': '家庭住址', 'value': '江西省南昌市示例区示例路1号', 'key': 'JTZZ'},
     {'fieldName': '证件类型', 'value': '居民身份证', 'key': 'ZJLX'},
     {'fieldName': '所属校区', 'value': '麦庐园校区', 'key': 'SSXQ'},
     {'fieldName': '所属班级', 'value': '25计算机2班', 'key': 'SSBJ'},
@@ -101,7 +101,7 @@ void main() {
       expect(m['姓名'], '同学甲');
       expect(m['一卡通号'], '2202500001');
       expect(m['所属班级'], '25计算机2班');
-      expect(m['家庭住址'], '<REDACTED>);
+      expect(m['家庭住址'], '江西省南昌市示例区示例路1号');
       expect(m.containsKey('电子邮箱'), isFalse, reason: '空串不算值');
       expect(m.containsKey('银行账号'), isFalse, reason: 'null 不算值');
       expect(m.containsKey('wid'), isFalse, reason: '表单实例 id 不是学生字段');
