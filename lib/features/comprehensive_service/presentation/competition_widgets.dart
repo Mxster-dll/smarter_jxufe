@@ -597,6 +597,10 @@ class CompetitionErrorCard extends StatelessWidget {
 }
 
 /// 顶部提示（统一 5 秒 + 先收上一条）。
+///
+/// ⚠ 带 action 的 SnackBar **默认 persist = true**（`snack_bar.dart:303`：
+/// `persist = persist ?? action != null`），自动消失计时器的回调第一句是
+/// `if (snackBar.persist) return;` → 不显式写 false，「5 秒」形同虚设。
 void showCompetitionMessage(
   BuildContext context,
   String message, {
@@ -609,6 +613,7 @@ void showCompetitionMessage(
         content: Text(message),
         duration: const Duration(seconds: 5),
         action: action,
+        persist: false,
       ),
     );
 }

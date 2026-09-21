@@ -144,6 +144,43 @@ List<String> _parenBlocks(String src, String opener) {
   return out;
 }
 
+/// `SnackBar(` 构造的实参正文（**要求 `SnackBar` 前面不是标识符字符 / 点**）。
+///
+/// `_parenBlocks(src, 'SnackBar(')` 会被 `showSnackBar(` 骗到（子串命中，而它的实参
+/// 里当然没有 `persist:`）—— 这里的负向后顾把它挡掉。字符串字面量整体跳过，
+/// 免得文案里的半角括号破坏配平。
+List<String> _snackBarBlocks(String src) {
+  final out = <String>[];
+  for (final m in RegExp(r'(?<![A-Za-z0-9_.])SnackBar\(').allMatches(src)) {
+    var depth = 1;
+    var j = m.end;
+    var inString = false;
+    var quote = '';
+    for (; j < src.length; j++) {
+      final c = src[j];
+      if (inString) {
+        if (c == r'\') {
+          j++;
+        } else if (c == quote) {
+          inString = false;
+        }
+        continue;
+      }
+      if (c == "'" || c == '"') {
+        inString = true;
+        quote = c;
+      } else if (c == '(') {
+        depth++;
+      } else if (c == ')') {
+        depth--;
+        if (depth == 0) break;
+      }
+    }
+    out.add(src.substring(m.end, j));
+  }
+  return out;
+}
+
 void main() {
   final sources = _sources();
 
@@ -1196,6 +1233,38 @@ void main() {
       ]..sort();
       expect(found, isEmpty,
           reason: '断点请用 lib/design/breakpoints.dart 的 Breakpoints.narrow / tight / wide / extraWide');
+    });
+  });
+
+  group('SnackBar 的 persist 口径（2026-09-21 立）', () {
+    test('带 action 的 SnackBar 必须显式写 persist: false', () {
+      // 用户 2026-09-21 原话：「合并后，底部的提示信息不消失」。
+      // 根因在框架默认值：`SnackBar` 构造里 `persist = persist ?? action != null`
+      // （`<FLUTTER_ROOT>\packages\flutter\lib\src\material\snack_bar.dart:303`），
+      // 而 `ScaffoldMessengerState` 的自动消失计时器回调第一句就是
+      // `if (snackBar.persist) return;`
+      // （`…/material/scaffold.dart:618-625`）→ **带 action 的提示默认永不消失**，
+      // 页面上写的 `duration:` 形同虚设。
+      // 确实要常驻的提示把路径写进 allowed 并写明理由（本仓暂无）。
+      const allowed = <String>[];
+      final bad = <String>{};
+      var seen = 0;
+      for (final e in _sources().entries) {
+        final blocks = _snackBarBlocks(e.value);
+        seen += blocks.length;
+        for (final body in blocks) {
+          if (body.contains('action:') && !body.contains('persist:')) {
+            bad.add(e.key);
+          }
+        }
+      }
+      // 防空扫：全仓 SnackBar 构造有近百处，扫到个位数说明配平/前瞻写坏了。
+      expect(seen, greaterThan(30), reason: '扫描器没扫到 SnackBar 构造');
+      expect(
+        bad.toList()..sort(),
+        equals([...allowed]..sort()),
+        reason: '带 action 的 SnackBar 请补 `persist: false`，否则它永远不会自己消失',
+      );
     });
   });
 }

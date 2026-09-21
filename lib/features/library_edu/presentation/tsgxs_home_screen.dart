@@ -401,6 +401,12 @@ class TsgxsHomeScreen extends ConsumerWidget {
   }
 
   /// 未解锁章点击提示:说明锁定原因并提供「去上一章」。
+  ///
+  /// ⚠ `persist: false` 必须写（用户 2026-09-21 报的「提示信息不消失」就是这个默认值）：
+  /// 本机 Flutter 的 `SnackBar` 构造里 `persist = persist ?? action != null`
+  /// （`snack_bar.dart:303`），而自动消失计时器的回调第一句是
+  /// `if (snackBar.persist) return;`（`scaffold.dart:618-625`）→ 带 action 的提示
+  /// 默认永不消失。
   void _showLockedHint(BuildContext context, TsgxsChapter? prev, int index) {
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
@@ -411,6 +417,7 @@ class TsgxsHomeScreen extends ConsumerWidget {
               ? '本章未解锁:请先完成前一章的线索学习与闯关'
               : '本章未解锁:需先通过「${prev.displayTitle(index - 1)}」的闯关考试',
         ),
+        persist: false,
         action: prev == null
             ? null
             : SnackBarAction(

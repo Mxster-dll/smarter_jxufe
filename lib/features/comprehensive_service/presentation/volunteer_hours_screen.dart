@@ -154,6 +154,10 @@ class _VolunteerHoursScreenState extends ConsumerState<VolunteerHoursScreen> {
         content: Text(message),
         action: action,
         duration: const Duration(seconds: 5),
+        // ⚠ 带 action 的 SnackBar **默认 persist = true**（`snack_bar.dart:303`：
+        // `persist = persist ?? action != null`），而自动消失计时器的回调第一句是
+        // `if (snackBar.persist) return;` → 不显式写 false，duration 形同虚设。
+        persist: false,
       ),
     );
   }
