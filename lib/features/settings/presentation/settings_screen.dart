@@ -99,6 +99,17 @@ class SettingsScreen extends ConsumerWidget {
         title: geCardTitle(context, text: '课表', accent: fp(context).cardAccent),
         card: const SettingsScheduleDisplayCard(),
       ),
+      // 课前提醒（上课前 X 分钟起的常驻通知）：2026-09-22 用户立项，
+      // 偏好与排期口径见 `docs/agents/35-上课提醒（课前常驻通知）.md`。
+      (
+        section: SettingsSection.classReminder,
+        title: geCardTitle(
+          context,
+          text: '上课提醒',
+          accent: fp(context).cardAccent,
+        ),
+        card: const SettingsClassReminderCard(),
+      ),
       (
         section: SettingsSection.libraryEdu,
         title: geCardTitle(context, text: '入馆教育', accent: fp(context).cardAccent),

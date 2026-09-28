@@ -69,6 +69,11 @@ class _FakeService extends NotificationService {
     required String body,
     required DateTime when,
     String? payload,
+    // 课前提醒用的四个形态参数（截止提醒不用；签名必须与接口一致）。
+    bool ongoing = false,
+    Duration? autoDismissAfter,
+    bool countdown = false,
+    bool preferExact = false,
   }) async {
     if (!acceptAll) return false;
     scheduled[id] = when;

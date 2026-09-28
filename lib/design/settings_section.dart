@@ -19,6 +19,10 @@ enum SettingsSection {
   calendar('校历'),
   /// 课表显示（周六 / 周日）——课表页齿轮进本节（用户 2026-09-17 要求）。
   schedule('课表'),
+
+  /// 课前提醒（上课前 X 分钟起的常驻通知）——2026-09-22 立，见
+  /// `docs/agents/35-上课提醒（课前常驻通知）.md`。
+  classReminder('上课提醒'),
   libraryEdu('入馆教育'),
   platformGuid('平台标识'),
   liveClass('上课实况窗'),

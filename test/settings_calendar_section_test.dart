@@ -48,8 +48,11 @@ void main() {
   }
 
   /// 拉高视口：设置页内容超出默认 600px，屏幕外的开关点不到。
+  ///
+  /// 2026-09-22：设置页新增「上课提醒」节（排在「课表」之后），下面几节整体下移
+  /// → 视口 2600 → 3400，否则「平台标识」节落在懒构建区外、`find.text` 找不到。
   Future<void> pumpSettings(WidgetTester tester) async {
-    tester.view.physicalSize = const Size(1000, 2600);
+    tester.view.physicalSize = const Size(1000, 3400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(app());

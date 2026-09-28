@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/features/home_widget/data/home_widget_sync.dart';
 import 'package:smarter_jxufe/features/home_widget/presentation/home_widget_launcher.dart';
+import 'package:smarter_jxufe/features/ims/schedule/data/class_reminder_sync.dart';
 import 'package:smarter_jxufe/features/library_sync/data/providers/libsp_providers.dart';
 import 'package:smarter_jxufe/features/score_estimate/data/ge_deadline_reminders.dart';
 import 'package:smarter_jxufe/features/score_estimate/data/ge_providers.dart';
@@ -58,6 +59,9 @@ class _HomeWidgetSyncScopeState extends ConsumerState<HomeWidgetSyncScope>
     // 课程截止提醒与小组件同一时机重排（首帧 + 回前台）：重复条目要往后滚动，
     // 否则「每周作业」的提醒只覆盖到下一个月就断了。幂等，数据没变时不做任何事。
     unawaited(_syncDeadlineReminders());
+    // 课前提醒（上课前 X 分钟起的常驻通知）同样在首帧 + 回前台重排：预排窗口是
+    // 「未来一周」，不重排就会在第 7 天断掉。幂等。
+    unawaited(_syncClassReminders());
     // 图书馆订阅词云同步：首帧 + 回前台各对账一次（Q12）。
     // 是否真的上传由控制器判（未开启 / 未登录 / 60s 窗口内 / 今日超额都会直接返回）。
     unawaited(_syncLibraryCloud());
@@ -83,6 +87,18 @@ class _HomeWidgetSyncScopeState extends ConsumerState<HomeWidgetSyncScope>
       await syncGeDeadlineReminders(courses: courses);
     } catch (e) {
       debugPrint('[deadline] 截止提醒同步失败：$e');
+    }
+  }
+
+  /// 按当前课表重排**课前提醒**（上课前 X 分钟起的常驻通知）。
+  ///
+  /// 平台门控 / 偏好开关 / 数据装配都在 `ClassReminderSync` 里（桌面端直接返回 0）；
+  /// 这里只负责在首帧与回前台各触发一次，失败同样只打日志。
+  Future<void> _syncClassReminders() async {
+    try {
+      await ref.read(classReminderSyncProvider).syncNow();
+    } catch (e) {
+      debugPrint('[classReminder] 课前提醒同步失败：$e');
     }
   }
 

@@ -43,9 +43,13 @@ import 'package:smarter_jxufe/features/ims/public_query/data/public_query_prefs.
 
 import 'package:smarter_jxufe/features/ims/public_query/domain/public_query_defaults.dart';
 
+import 'package:smarter_jxufe/features/ims/schedule/data/class_reminder_sync.dart';
+import 'package:smarter_jxufe/features/ims/schedule/data/providers/class_reminder_providers.dart';
 import 'package:smarter_jxufe/features/ims/schedule/data/providers/schedule_display_providers.dart';
 
 import 'package:smarter_jxufe/features/ims/schedule/data/schedule_display_prefs.dart';
+
+import 'package:smarter_jxufe/features/ims/schedule/domain/class_start_reminder.dart';
 
 import 'package:smarter_jxufe/features/ims/schedule/domain/schedule_display_days.dart';
 
@@ -1920,5 +1924,227 @@ class SettingsHomeWidgetCardState extends State<SettingsHomeWidgetCard>
         ),
       ),
     );
+  }
+}
+
+/// 「上课提醒」卡：上课前 X 分钟起的**常驻通知**（2026-09-22 立）。
+///
+/// 用户原话：「我希望在任何一节课上课前x分钟(x可设置，默认30）到上课前，移动端显示
+/// 一个常驻通知，下节课的名称和教室」。
+///
+/// **唯一入口**（§3 铁律：新增用户偏好一律收拢到设置页，页面里不另开弹层）。
+/// 偏好落 Hive `schedulePrefs` 的 `classReminder` 键（与课表显示偏好同一个 box、
+/// 不同 key）；改完**立即重排系统通知**（`ClassReminderSync.syncNow(force: true)`），
+/// 用户不必等下次回前台才生效。
+///
+/// 形态：Android 常驻通知（`ongoing`，上课那一刻由系统按 `timeoutAfter` 撤下）；
+/// 桌面端不排（门控在 `ClassReminderSync` 里，按 `Platform.isAndroid`）。
+class SettingsClassReminderCard extends ConsumerWidget {
+  const SettingsClassReminderCard({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final store = ref.watch(classReminderPrefsStoreProvider);
+    final prefs = store.prefs;
+    final accent = fp(context).cardAccent;
+    return Card(
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      shape: geCardShape(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SwitchListTile(
+            key: const Key('classReminderSwitch'),
+            value: prefs.enabled,
+            onChanged: (next) => _setEnabled(context, ref, next),
+            contentPadding: const EdgeInsets.fromLTRB(16, 8, 12, 4),
+            secondary: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: AppColors.tint(context, accent, 0.10),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.alarm_on_outlined, color: accent, size: 22),
+            ),
+            title: const Text(
+              '上课提醒',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            ),
+            subtitle: Text(
+              '上课前起显示一条常驻通知：下节课的课程名与教室，上课时自动消失'
+              '（Android；Windows 暂不支持常驻通知）',
+              style: TextStyle(
+                fontSize: 12.5,
+                height: 1.3,
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          Divider(height: 1, thickness: 1, color: AppColors.stroke(context)),
+          // 关掉开关时「提前多久」整行置灰且点不动（值仍然保留，下次开回来还在）。
+          Opacity(
+            opacity: prefs.enabled ? 1 : 0.45,
+            child: IgnorePointer(
+              ignoring: !prefs.enabled,
+              child: ListTile(
+                key: const Key('classReminderLeadRow'),
+                contentPadding: const EdgeInsets.fromLTRB(16, 2, 16, 2),
+                leading: Icon(
+                  Icons.timer_outlined,
+                  size: 20,
+                  color: scheme.onSurfaceVariant,
+                ),
+                title: const Text('提前多久提醒', style: TextStyle(fontSize: 14)),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      classReminderLeadLabel(prefs.leadMinutes),
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        color: accent,
+                      ),
+                    ),
+                    Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+                  ],
+                ),
+                onTap: () => _pickLead(context, ref, prefs.leadMinutes),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                key: const Key('classReminderTest'),
+                onPressed: () => _sendTest(context),
+                icon: const Icon(Icons.notifications_active_outlined, size: 18),
+                label: const Text('发送测试提醒'),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+            child: Text(
+              '课表数据来自本地缓存（离线也有）；提醒预排未来一周，'
+              '每次回到 App 会自动往后滚动。测试提醒会在 5 秒后出现、15 秒后自动消失。',
+              style: TextStyle(
+                fontSize: 11.5,
+                height: 1.4,
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 开关：写偏好 → 立即重排（关掉时清空排期）→ 提示。
+  Future<void> _setEnabled(BuildContext context, WidgetRef ref, bool next) async {
+    final store = ref.read(classReminderPrefsStoreProvider);
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    await store.save(store.prefs.copyWith(enabled: next));
+    unawaited(ref.read(classReminderSyncProvider).syncNow(force: true));
+    messenger
+      ?..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          key: const Key('classReminderSnack'),
+          duration: const Duration(seconds: 3),
+          persist: false,
+          content: Text(next ? '已开启上课提醒' : '已关闭上课提醒'),
+        ),
+      );
+  }
+
+  /// 测试提醒：当场排一条 5 秒后出现、15 秒后自动消失的常驻通知。
+  ///
+  /// 手机上没有「攒着等某节课」的耐心 —— 这个按钮让用户立刻看到通知长什么样、
+  /// 以及「到点自动消失」是不是真的（2026-09-23 加）。
+  Future<void> _sendTest(BuildContext context) async {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    final ok = await sendTestClassReminder();
+    messenger
+      ?..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          key: const Key('classReminderSnack'),
+          duration: const Duration(seconds: 3),
+          persist: false,
+          content: Text(
+            ok
+                ? '已排一条测试提醒：5 秒后出现，15 秒后自动消失'
+                : '测试提醒排期失败（通知被系统关闭或平台不支持）',
+          ),
+        ),
+      );
+  }
+
+  /// 提前量：底部弹层选一个（5/10/15/20/30/45/60 分钟）。
+  Future<void> _pickLead(BuildContext context, WidgetRef ref, int current) async {
+    // messenger 在 await 之前取好（跨 await 用 context 会被
+    // `use_build_context_synchronously` 判为隐患）。
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    final picked = await showModalBottomSheet<int>(
+      context: context,
+      showDragHandle: true,
+      // 7 个选项在小屏 / 横屏会超过半屏高度 → 可滚动（否则弹层内部溢出）。
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        key: const Key('classReminderLeadSheet'),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
+                child: Text(
+                  '提前多久提醒',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                ),
+              ),
+              for (final minutes in classReminderLeadOptions)
+                ListTile(
+                  key: Key('classReminderLead-$minutes'),
+                  dense: true,
+                  title: Text(classReminderLeadLabel(minutes)),
+                  trailing: minutes == current
+                      ? Icon(
+                          Icons.check,
+                          size: 20,
+                          color: fp(sheetContext).cardAccent,
+                        )
+                      : null,
+                  onTap: () => Navigator.of(sheetContext).pop(minutes),
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (picked == null) return;
+
+    final store = ref.read(classReminderPrefsStoreProvider);
+    await store.save(store.prefs.copyWith(leadMinutes: picked));
+    // 提前量变了 → 每条提醒的触发时刻都变，立刻重排（幂等：内容一样就不动系统闹钟）。
+    unawaited(ref.read(classReminderSyncProvider).syncNow(force: true));
+    messenger
+      ?..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          key: const Key('classReminderSnack'),
+          duration: const Duration(seconds: 3),
+          persist: false,
+          content: Text('已改为${classReminderLeadLabel(picked)}提醒'),
+        ),
+      );
   }
 }

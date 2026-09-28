@@ -31,8 +31,9 @@ import 'package:smarter_jxufe/features/school_calendar/domain/teaching_week.dart
 import 'package:smarter_jxufe/shared/widgets/academic_year_picker.dart';
 import 'package:smarter_jxufe/design/app_states.dart';
 
-/// 课表页相关的三节：教务会话（课表数据）+ 上课实况窗（入口在设置页）
-/// + 课表显示（周六 / 周日 / 表格线开关，用户 2026-09-17 要求）。
+/// 课表页相关的四节：教务会话（课表数据）+ 上课实况窗（入口在设置页）
+/// + 课表显示（周六 / 周日 / 表格线开关，用户 2026-09-17 要求）
+/// + 上课提醒（上课前 X 分钟的常驻通知，用户 2026-09-22 要求）。
 ///
 /// **两条链路共用同一份清单**：整页模式的导航栏（`paneAppBar` 自动追加齿轮）
 /// 与侧栏内嵌模式的工具条（`PaneBody.settingsSections`，用户 2026-09-17
@@ -41,6 +42,7 @@ const List<SettingsSection> scheduleSettingsSections = <SettingsSection>[
   SettingsSection.imsSession,
   SettingsSection.liveClass,
   SettingsSection.schedule,
+  SettingsSection.classReminder,
 ];
 
 class ScheduleScreen extends ConsumerStatefulWidget {

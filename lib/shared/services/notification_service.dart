@@ -52,12 +52,24 @@ abstract class NotificationService {
   ///
   /// 返回是否真的排上：服务未就绪 / 平台不支持 / 时刻已过 → `false`。
   /// [payload] 供 `pendingScheduled()` 对账（截止提醒写触发时刻的 epoch 毫秒）。
+  ///
+  /// 四个可选形态参数默认全部关闭，既有调用方行为不变：
+  /// - [ongoing]：常驻（Android `ongoing: true` + `autoCancel: false`，用户划不掉）；
+  /// - [autoDismissAfter]：常驻 [autoDismissAfter] 之后由**系统**自动撤下
+  ///   （Android `timeoutAfter`）—— 课前提醒靠它实现「上课那一刻自动消失」；
+  /// - [countdown]：用系统计时器走秒（Android `usesChronometer`，[when] 即目标时刻）；
+  /// - [preferExact]：尽量用精确闹钟（Android 12+ 需要系统授权，拿不到就退回
+  ///   非精确 —— 见 `AndroidNotificationService`）。
   Future<bool> scheduleAt({
     required int id,
     required String title,
     required String body,
     required DateTime when,
     String? payload,
+    bool ongoing = false,
+    Duration? autoDismissAfter,
+    bool countdown = false,
+    bool preferExact = false,
   }) async => false;
 
   /// 撤销若干条定时通知（id 不存在时静默）。

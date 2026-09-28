@@ -83,6 +83,10 @@ class WindowsNotificationService extends NotificationService {
   /// ⚠ Windows 的定时通知由系统 toast 调度器投递，**App 未运行时能否触发取决于
   /// 应用是否已注册快捷方式**（本工程的 `WindowsInitializationSettings` 已给
   /// appUserModelId + guid）；桌面端主要用于开发期验证，真机提醒以 Android 为准。
+  ///
+  /// [ongoing] / [autoDismissAfter] / [countdown] 是 Android 专属形态（常驻 +
+  /// 自动撤下 + 系统计时器），Windows toast 没有对应能力 → **刻意忽略**，
+  /// 排出来就是一条普通提醒；课前提醒的排期本身也只跑在 Android 上。
   @override
   Future<bool> scheduleAt({
     required int id,
@@ -90,6 +94,10 @@ class WindowsNotificationService extends NotificationService {
     required String body,
     required DateTime when,
     String? payload,
+    bool ongoing = false,
+    Duration? autoDismissAfter,
+    bool countdown = false,
+    bool preferExact = false,
   }) async {
     if (!_ready || _plugin == null) return false;
     // 插件对「过去的时刻」直接抛 ArgumentError，这里先挡住。

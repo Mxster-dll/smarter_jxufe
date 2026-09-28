@@ -11,6 +11,12 @@ class AndroidNotificationService extends NotificationService {
   /// 截止提醒通知通道 id。
   static const reminderChannelId = 'deadline_reminders';
 
+  /// 课前提醒（常驻）通知通道 id。
+  ///
+  /// 与实况窗分开：实况窗是「安静走秒」的低优先级常驻，课前提醒要**响一次**，
+  /// 用户也可以单独关掉其中一条通道。
+  static const classStartChannelId = 'class_start';
+
   /// 实况窗固定通知 id —— 复用同一 id 即可原地更新同一条通知。
   static const liveClassNotificationId = 8801;
 
@@ -150,6 +156,10 @@ class AndroidNotificationService extends NotificationService {
     required String body,
     required DateTime when,
     String? payload,
+    bool ongoing = false,
+    Duration? autoDismissAfter,
+    bool countdown = false,
+    bool preferExact = false,
   }) async {
     if (!_ready || _plugin == null) return false;
     // 已过去的时刻不排：AlarmManager 会立刻弹出（Windows 侧则会抛异常）。
@@ -163,24 +173,74 @@ class AndroidNotificationService extends NotificationService {
         // 用 **UTC Location** 承载绝对时刻：不依赖设备时区名，
         // 因此无需 flutter_timezone / setLocalLocation（`tz.UTC` 也无需载时区库）。
         scheduledDate: tz.TZDateTime.from(when.toUtc(), tz.UTC),
-        notificationDetails: const NotificationDetails(
-          android: AndroidNotificationDetails(
-            reminderChannelId,
-            '截止提醒',
-            channelDescription: '网课 / 作业 / 考试截止前的提醒',
-            importance: Importance.high,
-            priority: Priority.high,
-          ),
-          iOS: DarwinNotificationDetails(),
+        notificationDetails: NotificationDetails(
+          android: ongoing
+              ? _ongoingDetails(
+                  when: when,
+                  autoDismissAfter: autoDismissAfter,
+                  countdown: countdown,
+                )
+              : const AndroidNotificationDetails(
+                  reminderChannelId,
+                  '截止提醒',
+                  channelDescription: '网课 / 作业 / 考试截止前的提醒',
+                  importance: Importance.high,
+                  priority: Priority.high,
+                ),
+          iOS: const DarwinNotificationDetails(),
         ),
-        // 刻意用 inexact：精确闹钟在 Android 14+ 默认被拒（要用户去系统设置授权），
-        // 而截止提醒差几分钟无所谓。
-        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        androidScheduleMode: await _scheduleMode(preferExact: preferExact),
       );
       return true;
     } catch (e) {
       debugPrint('Android 定时通知排期失败: $e');
       return false;
+    }
+  }
+
+  /// 课前提醒的常驻通知详情（用户 2026-09-22 需求）。
+  ///
+  /// 形态：开课时**响一次**（importance high）→ 之后安静常驻（`onlyAlertOnce`）
+  /// → 到上课那一刻由系统按 [autoDismissAfter] 自动撤下，不需要 App 再排一条撤销。
+  AndroidNotificationDetails _ongoingDetails({
+    required DateTime when,
+    Duration? autoDismissAfter,
+    required bool countdown,
+  }) => AndroidNotificationDetails(
+    classStartChannelId,
+    '上课提醒',
+    channelDescription: '上课前提醒：下节课的课程名与教室（上课时自动消失）',
+    importance: Importance.high,
+    priority: Priority.high,
+    ongoing: true,
+    autoCancel: false,
+    onlyAlertOnce: true,
+    showWhen: true,
+    when: when.millisecondsSinceEpoch,
+    usesChronometer: countdown,
+    chronometerCountDown: countdown,
+    // 到点自动撤下（Android `Notification.Builder.setTimeoutAfter`）。
+    timeoutAfter: autoDismissAfter?.inMilliseconds,
+    category: AndroidNotificationCategory.reminder,
+  );
+
+  /// 尽量精确、拿不到授权就退回非精确。
+  ///
+  /// ⚠ Android 12+ 的精确闹钟要在系统设置里授权（Android 14 起默认拒绝），
+  /// 因此**不能直接写死精确**：`canScheduleExactNotifications()` 为 true 才用精确。
+  Future<AndroidScheduleMode> _scheduleMode({required bool preferExact}) async {
+    if (!preferExact) return AndroidScheduleMode.inexactAllowWhileIdle;
+    try {
+      final android = _plugin
+          ?.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      final allowed = await android?.canScheduleExactNotifications();
+      return allowed == true
+          ? AndroidScheduleMode.exactAllowWhileIdle
+          : AndroidScheduleMode.inexactAllowWhileIdle;
+    } catch (_) {
+      return AndroidScheduleMode.inexactAllowWhileIdle;
     }
   }
 
