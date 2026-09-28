@@ -9,12 +9,14 @@ import '../../college/data/providers/college_repository_provider.dart';
 import '../../college/domain/college.dart';
 import '../../../core/network/current_account_provider.dart';
 import '../../../core/storage/account_scoped_box.dart';
+import '../../chaoxing/domain/chaoxing_snapshot.dart';
 import '../../ims/curriculum/data/providers/curriculum_repository_provider.dart';
 import '../../ims/grades/data/providers/grades_box_provider.dart';
 import '../../ims/student_info/data/providers/student_info_repository_provider.dart';
 import '../../major/data/providers/major_repository_provider.dart';
 import '../../major/domain/major.dart';
 import '../domain/ge_models.dart';
+import 'ge_chaoxing_works.dart';
 import 'ge_curriculum.dart';
 import 'ge_prior_grades.dart';
 import 'ge_store.dart';
@@ -136,3 +138,13 @@ final geCurriculumIndexProvider = FutureProvider<GeCurriculumIndex>((
     return const GeCurriculumIndex.empty();
   }
 });
+
+/// 学习通的作业快照（**只读缓存，一个网络请求都不发** —— 超星有请求配额，见 §30）。
+///
+/// 「分数估计」用它把学习通作业均分接进该课的「作业」分项；用户口径 = 只有这门课
+/// **已经给出作业的占比**（即已配了带分值的「作业」分项）才接，口径与守卫见
+/// `domain/ge_chaoxing_sync.dart`。数据新鲜度 = 学习通页最近一次取数的时刻
+/// （`snapshot.fetchedAt`），界面照实显示，不假装实时。
+final geChaoxingSnapshotProvider = FutureProvider<ChaoxingSnapshot?>(
+  (ref) => loadGeChaoxingSnapshot(account: ref.watch(currentAccountProvider)),
+);

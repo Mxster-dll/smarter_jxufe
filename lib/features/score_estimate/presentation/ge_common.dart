@@ -218,6 +218,78 @@ class GeModeChip extends StatelessWidget {
   }
 }
 
+/// 「学习通同步」来源芯片（分项由学习通作业成绩自动同步时挂在名字后面）。
+///
+/// 用户 2026-09-22 口径：进课程详情页即用学习通作业均分刷新该分项；芯片让「这个
+/// 数字不是手填的」看得见，[hint] 用来说明数据来自哪一刻的缓存（本模块不发请求）。
+class GeChaoxingChip extends StatelessWidget {
+  /// 悬浮说明（为空则不挂 Tooltip）。
+  final String hint;
+
+  const GeChaoxingChip({super.key, this.hint = ''});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = fp(context).chaoxing;
+    final chip = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      decoration: BoxDecoration(
+        color: AppColors.tint(context, color, 0.12),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.cloud_sync_outlined, size: 11, color: color),
+          const SizedBox(width: 3),
+          Text('学习通同步', style: TextStyle(fontSize: 11, color: color)),
+        ],
+      ),
+    );
+    if (hint.isEmpty) return chip;
+    return Tooltip(message: hint, child: chip);
+  }
+}
+
+/// 「学习通有作业成绩、但没接进来」的说明行（可带「接入」按钮）。
+///
+/// 两个真实场景（口径见 `domain/ge_chaoxing_sync.dart`）：① 本课还没配「作业」分项
+/// → 占比未知，不接；② 「作业」分项是计数型 → 改写成直接分数是结构性变更，要用户点。
+class GeChaoxingNotice extends StatelessWidget {
+  final String text;
+
+  /// 非空才画「接入」按钮（[GeChaoxingNotice] 只负责显示，写库由调用方做）。
+  final VoidCallback? onBind;
+
+  const GeChaoxingNotice({super.key, required this.text, this.onBind});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, 6, 8, 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.sync_problem_outlined, size: 16, color: fp(context).chaoxing),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 11.5,
+                height: 1.45,
+                color: AppColors.textMuted(context),
+              ),
+            ),
+          ),
+          if (onBind != null)
+            TextButton(onPressed: onBind, child: const Text('接入')),
+        ],
+      ),
+    );
+  }
+}
+
 // ---- 与 App 统一的卡片语言 ----
 
 /// 卡片外形：**统一口径已迁到 `lib/design/app_card.dart`**（圆角 12 + `outlineVariant` 60%

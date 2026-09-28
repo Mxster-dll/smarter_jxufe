@@ -208,6 +208,13 @@ presentation/           主页 + 作业 / 通知 / 课程三个二级页 + 共�
 | `chaoxing_notices_screen.dart` | 全部通知 + 点开全文弹窗（**不做标记已读**） |
 | `chaoxing_courses_screen.dart` | 全部课程 + 学期 chip 筛选 + 展开看该课作业 |
 
+## 下游消费方（别的模块读哪些东西）
+
+| 消费方 | 读什么 | 口径 |
+|---|---|---|
+| `lib/features/score_estimate/`（分数估计） | **作业快照缓存**（`ChaoxingStore.open(account).load()`，`data/ge_chaoxing_works.dart`） | 把某课的**已完成且有分数**的作业均分接进该课的「作业」分项（`domain/ge_chaoxing_sync.dart`）。⚠ **只读缓存、不发请求**（超星请求配额见上文风险控制节），且**只有该课已配「作业」分项（占比已知）才接**；新鲜度取 `snapshot.fetchedAt`，界面照实显示。详见 `docs/agents/04-…` 的「学习通作业成绩接入」段 |
+
+
 **消息可点看详情（2026-09-19 · 用户原话「我希望消息可以点击看详情」）**：通知行
 `ChaoxingNoticeRow` 的 `onTap` 非空时整行可点并出右箭头，点开 = `showChaoxingNoticeDetail`
 （`presentation/chaoxing_common.dart`，**弹窗唯一实现**，主页「通知消息」区块与「全部通知」页

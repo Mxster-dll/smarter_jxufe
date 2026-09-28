@@ -7,12 +7,11 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/current_account_provider.dart';
-import '../../../design/app_theme.dart';
 import '../../../design/feature_palette.dart';
+import '../data/ge_chaoxing_works.dart';
 import '../data/ge_curriculum.dart';
 import '../data/ge_deadline_reminders.dart';
 import '../data/ge_memo_importer.dart';
@@ -22,11 +21,13 @@ import '../data/ge_prior_grades.dart';
 import '../data/ge_providers.dart';
 import '../data/ge_store.dart';
 import '../data/ge_summary.dart';
+import '../domain/ge_chaoxing_sync.dart';
 import '../domain/ge_deadline.dart';
 import '../domain/ge_engine.dart';
 import '../domain/ge_memo.dart';
 import '../domain/ge_models.dart';
 import 'ge_common.dart';
+import 'ge_course_cards.dart';
 import 'ge_deadline_card.dart';
 import 'ge_dialogs.dart';
 import 'ge_memo_card.dart';
@@ -59,6 +60,9 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
   List<GeCourse> _allCourses = const [];
   GeCurriculumIndex _curriculum = const GeCurriculumIndex.empty();
   bool _summaryReady = false;
+
+  /// 学习通里本课的作业成绩（null = 没缓存 / 名字对不上 / 没有已批作业）。
+  GeChaoxingHomework? _chaoxing;
 
   late final TextEditingController _finalCtrl;
   late final TextEditingController _goalCtrl;
@@ -108,6 +112,8 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
       });
       // 进详情页即按当前数据重排截止提醒（幂等，数据没变时不做任何事）。
       _syncDeadlineReminders();
+      // 进详情页即把学习通作业均分同步进「作业」分项（同样幂等，值没变不写库）。
+      await _syncChaoxingHomework();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -117,6 +123,57 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
       return;
     }
     await _initSummary();
+  }
+
+  /// 自动同步：把学习通作业均分写进本课的「作业」分项（用户口径 2026-09-22）。
+  ///
+  /// **只有这门课已经给出作业的占比**（= 已有带分值上限的「作业」分项）才接入，
+  /// 且只覆盖 [gePartSourceChaoxing] 来源的分项；计数型分项要用户点「接入」才改写。
+  /// 口径与边界全在 `domain/ge_chaoxing_sync.dart`，这里只负责取数 + 落库。
+  /// ⚠ 取的是**学习通页最近一次取数的缓存**，本页不发任何超星请求（请求配额，见 §30）。
+  Future<void> _syncChaoxingHomework() async {
+    GeChaoxingHomework? homework;
+    try {
+      final snapshot = await ref.read(geChaoxingSnapshotProvider.future);
+      homework = geChaoxingHomeworkFor(snapshot, _c.name);
+    } catch (e) {
+      debugPrint('[score_estimate] 读取学习通作业缓存失败：$e');
+    }
+    if (!mounted) return;
+    final hw = homework;
+    if (hw != null) {
+      final result = geApplyChaoxingHomework(
+        _c,
+        average: hw.average,
+        workCount: hw.count,
+        fetchedAt: hw.fetchedAt,
+      );
+      if (result != null) {
+        debugPrint(
+          '[score_estimate] 学习通作业已接入「${result.part.name}」：'
+          '均分 ${result.average}（${result.workCount} 条）',
+        );
+        _mutate(result.course);
+      }
+    }
+    setState(() => _chaoxing = hw);
+  }
+
+  /// 用户明确点「接入」：允许把计数型分项改写成「直接分数」。
+  ///
+  /// 与自动同步只差 `force: true`（自动同步遇到计数型分项会收手，见
+  /// `domain/ge_chaoxing_sync.dart` 的第 4 条）。
+  void _bindChaoxingHomework() {
+    final hw = _chaoxing;
+    if (hw == null) return;
+    final result = geApplyChaoxingHomework(
+      _c,
+      average: hw.average,
+      workCount: hw.count,
+      fetchedAt: hw.fetchedAt,
+      force: true,
+    );
+    if (result != null) _mutate(result.course);
   }
 
   /// 汇总卡的辅助数据（教务成绩 / 培养方案）：失败只影响汇总卡，不阻塞本页。
@@ -197,6 +254,8 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
         note: draft.note,
       ),
     );
+    // 改名会改变与学习通课程的匹配，立刻重对一次。
+    _resyncChaoxing();
   }
 
   // ---- 期末成绩 ----
@@ -209,7 +268,13 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
     final out = await showGePartDialog(context);
     if (out == null || !mounted) return;
     _mutate(_c.copyWith(parts: [..._c.parts, out.part]));
+    _resyncChaoxing();
   }
+
+  /// 改完分项 / 课程名后立刻对一次学习通作业 —— 否则用户得「退出再进」才生效
+  /// （缓存已在内存里，这一步零网络请求；没变化时 `geApplyChaoxingHomework` 返回
+  /// null，不写库）。
+  void _resyncChaoxing() => unawaited(_syncChaoxingHomework());
 
   Future<void> _editPart(GePart p) async {
     final out = await showGePartDialog(context, part: p);
@@ -233,6 +298,7 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
         ),
       );
     }
+    _resyncChaoxing();
   }
 
   /// 步进器：+1 / −1（正计数上下移动完成数；负计数上下移动剩余数）。
@@ -276,7 +342,10 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
       );
     }
     final scheme = Theme.of(context).colorScheme;
-    // 顶部汇总卡（与列表页同一口径）：教务已出成绩 + 本模块估计分的学分加权平均。
+    final calc = geCalc(_c);
+    // 顶部汇总卡（与列表页同一口径，见 ge_summary.dart）。
+    // 用户口径（2026-09-26）：**既要算含本课、也要算不含本课** —— 主数字显示含本课的
+    // 加权平均，右侧胶囊给出本课带来的提升 / 减少（`_withoutCourseAverage()`）。
     final summaryData = _summaryReady
         ? geSummarize(
             prior: _prior,
@@ -284,6 +353,7 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
             index: _curriculum,
           )
         : null;
+    final chaoxingNotice = _chaoxingNotice(context);
     return Scaffold(
       appBar: AppBar(
         title: Text(_c.name, maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -304,21 +374,65 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(24, 12, 24, 48),
         children: [
+          // 卡片 1 · 总加权平均（含本课 / 不含本课 + Δ 胶囊）。
           if (summaryData != null) ...[
             GeWeightedSummaryCard(
               summary: summaryData.summary,
-              pendingCount: summaryData.pendingCount,
-              planMajorName: _curriculum.majorName,
+              withoutCourseAverage: _withoutCourseAverage(),
+              courseExcludedNote: _courseExcludedNote(),
             ),
             const SizedBox(height: 12),
           ],
-          _ratioCard(),
+          // 卡片 2 · 当前课程成绩现状（占比 + 各部分成绩 + 期末预估 + 目标反推）。
+          GeCourseStatusCard(
+            course: _c,
+            calc: calc,
+            finalCtrl: _finalCtrl,
+            goalCtrl: _goalCtrl,
+            planCreditHint: _planCreditHint,
+            onFinalChanged: _setFinal,
+            onGoalChanged: () => setState(() {}),
+            onOpenRatio: _openRatioSheet,
+          ),
           const SizedBox(height: 12),
-          _estimateCard(scheme),
-          const SizedBox(height: 12),
-          _partsCard(),
-          const SizedBox(height: 12),
-          _goalCard(scheme),
+          // 小节标题「平时成绩」（用户口径：卡片 2 与卡片 3 之间）。
+          Padding(
+            padding: const EdgeInsets.fromLTRB(2, 2, 2, 8),
+            child: appSectionTitle(
+              context,
+              text: '平时成绩',
+              trailing: _c.parts.isEmpty
+                  ? null
+                  : Text(
+                      '已得 ${geFmt(calc.scoreSum, decimals: 2)} / '
+                      '${geFmt(calc.capSum, decimals: 2)} 分 · '
+                      '折算 ${geFmt(calc.dailyContrib)} 分',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+            ),
+          ),
+          // 卡片 3 / 4-x · 一个平时分项一张卡（「作业」那张排最前）。
+          for (final p in _orderedParts()) ...[
+            GePartCard(
+              course: _c,
+              part: p,
+              chaoxingCount: _chaoxing?.count ?? 0,
+              chaoxingHint: _chaoxingFetchedHint(),
+              onTap: () => _editPart(p),
+              onBump: (d) => _bump(p, d),
+            ),
+            const SizedBox(height: 8),
+          ],
+          if (chaoxingNotice != null) ...[
+            chaoxingNotice,
+            const SizedBox(height: 8),
+          ],
+          // 末尾那张「添加」卡。
+          GeAddPartCard(onTap: _addPart, showEmptyHint: _c.parts.isEmpty),
           const SizedBox(height: 12),
           _memoCard(),
           const SizedBox(height: 12),
@@ -531,7 +645,42 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
     unawaited(syncGeDeadlineReminders(courses: _summaryCourses()));
   }
 
-  // ---- 构成占比卡 ----
+  /// 学习通有作业成绩、但**没能接入**时的说明（null = 不需要说）。
+  ///
+  /// 用户口径（2026-09-22）：「前提是该课程给出了作业的占比」→ 本课没有「作业」分项
+  /// 就没有占比，**不接入**（也绝不替用户造一个分项）；「作业」分项是计数型时，
+  /// 改写成「直接分数」是结构性变更，要用户点「接入」才做。
+  Widget? _chaoxingNotice(BuildContext context) {
+    final hw = _chaoxing;
+    if (hw == null) return null;
+    final target = geHomeworkPartOf(_c);
+    if (target != null && target.source == gePartSourceChaoxing) return null;
+    final avg = geFmt(hw.average, decimals: 1);
+    final text = target == null
+        ? '学习通里这门课有 ${hw.count} 条已批作业（均分 $avg），但本课还没配「作业」分项 '
+              '—— 占比未知，没有接入。加一个「作业」分项并填上分值，下次进本页会自动接入。'
+        : '「${target.name}」是计数型分项：学习通作业均分（$avg）没有接进来 —— '
+              '接入会把它改成「直接分数」，原计数被覆盖。';
+    return GeChaoxingNotice(
+      text: text,
+      onBind: target == null ? null : _bindChaoxingHomework,
+    );
+  }
+
+  /// 「学习通同步」芯片的悬浮说明：数据来自哪一刻的缓存（本页不发超星请求）。
+  String _chaoxingFetchedHint() {
+    final at = _chaoxing?.fetchedAt;
+    final when = at == null
+        ? '取数时间未知'
+        : '${at.year}-${_two(at.month)}-${_two(at.day)} '
+              '${_two(at.hour)}:${_two(at.minute)}';
+    return '作业均分来自学习通（$when）\n进本页会自动同步；'
+        '要停止同步，点开该分项关掉开关。';
+  }
+
+  static String _two(int v) => v < 10 ? '0$v' : '$v';
+
+  // ---- 占比设置（点卡片 2 的标题或占比条触发） ----
 
   /// 设平时占比（弹层内滑动条 / 手输 / 快捷比例统一走这里，即时写库）。
   void _setDailyPercent(double v) => _mutate(_c.copyWith(dailyPercent: v));
@@ -544,673 +693,50 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
     onChanged: _setDailyPercent,
   );
 
-  Widget _ratioCard() {
-    final scheme = Theme.of(context).colorScheme;
-    final dp = _c.dailyPercent;
-    final fp = 100 - dp;
-    return Card(
-      margin: EdgeInsets.zero,
-      elevation: 0,
-      shape: geCardShape(context),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            geCardTitle(
-              context,
-              text: '构成占比',
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '${geFmt(_c.credits)} 学分 · 期末 ${geFmt(fp)}%',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: scheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Icon(Icons.tune, size: 14, color: scheme.onSurfaceVariant),
-                ],
-              ),
-            ),
-            if (_planCreditHint != null) ...[
-              const SizedBox(height: 2),
-              Text(
-                _planCreditHint!,
-                style: TextStyle(
-                  fontSize: 11.5,
-                  height: 1.35,
-                  fontWeight: FontWeight.w600,
-                  // ⚠ 本方法内 `fp` 是「期末占比」的局部变量（line 560），
-                  // 会遮蔽顶层 `fp(context)` → 这里走 FeatureColors.of(context)。
-                  color: FeatureColors.of(context).cardAccent,
-                ),
-              ),
-            ],
-            const SizedBox(height: 10),
-            GeRatioChart(
-              parts: _c.parts,
-              dailyPercent: dp,
-              onTap: _openRatioSheet,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '总评 = 平时均分 × ${geFmt(dp)}% + 期末 × ${geFmt(fp)}%'
-              '${_c.parts.isEmpty ? ' · 点条可调比例，加分项后按分值分段' : ' · 点条可调比例'}',
-              style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant),
-            ),
-          ],
-        ),
-      ),
-    );
+  // ---- 卡片 1 的「含本课 / 不含本课」口径（用户 2026-09-26） ----
+
+  /// 不含本课的加权平均（`null` = 不比较）。
+  ///
+  /// 与含本课那份（`build` 里的 `summaryData`）走**同一个** `geSummarize`，
+  /// 只差课程列表里有没有本课 —— 两份口径不可能漂移。
+  double? _withoutCourseAverage() {
+    if (!_summaryReady || _allCourses.isEmpty) return null;
+    final others = [
+      for (final x in _summaryCourses())
+        if (x.id != _c.id) x,
+    ];
+    return geSummarize(
+      prior: _prior,
+      courses: others,
+      index: _curriculum,
+    ).summary.average;
   }
 
-  // ---- 当前估计卡 ----
-  Widget _estimateCard(ColorScheme scheme) {
-    final calc = geCalc(_c);
-    final hasParts = _c.parts.isNotEmpty;
-    final finalScore = _c.finalScore;
-    final total = geTotalWithFinal(calc, finalScore);
-
-    return Card(
-      margin: EdgeInsets.zero,
-      elevation: 0,
-      shape: geCardShape(context),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            geCardTitle(
-              context,
-              text: '当前估计',
-              trailing: !hasParts
-                  ? Text(
-                      '先添加平时分项',
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    )
-                  : null,
-            ),
-            if (hasParts) ...[
-              const SizedBox(height: 8),
-              // 期末输入行
-              Row(
-                children: [
-                  const Text('期末分', style: TextStyle(fontSize: 13)),
-                  const SizedBox(width: 8),
-                  SizedBox(
-                    width: 92,
-                    child: TextField(
-                      controller: _finalCtrl,
-                      keyboardType: TextInputType.number,
-                      maxLength: 3,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      style: const TextStyle(fontSize: 14),
-                      decoration: const InputDecoration(
-                        isDense: true,
-                        counterText: '',
-                        suffixText: '分',
-                        suffixStyle: TextStyle(fontSize: 12),
-                        border: OutlineInputBorder(),
-                      ),
-                      onChanged: (v) {
-                        if (v.trim().isEmpty) {
-                          _setFinal(null);
-                          return;
-                        }
-                        var n = double.tryParse(v) ?? 0;
-                        if (n > 100) {
-                          n = 100;
-                          _finalCtrl.text = '100';
-                          _finalCtrl.selection = TextSelection.collapsed(
-                            offset: 3,
-                          );
-                        }
-                        _setFinal(n);
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Wrap(
-                      spacing: 6,
-                      children: [
-                        for (final preset in const [60.0, 70.0, 80.0, 90.0])
-                          ActionChip(
-                            visualDensity: VisualDensity.compact,
-                            label: Text(
-                              geFmt(preset),
-                              style: const TextStyle(fontSize: 11.5),
-                            ),
-                            onPressed: () {
-                              _finalCtrl.text = geFmt(preset, decimals: 1);
-                              _setFinal(preset);
-                            },
-                          ),
-                        if (finalScore != null)
-                          ActionChip(
-                            visualDensity: VisualDensity.compact,
-                            avatar: const Icon(Icons.close, size: 14),
-                            label: const Text(
-                              '清空',
-                              style: TextStyle(fontSize: 11.5),
-                            ),
-                            onPressed: () {
-                              _finalCtrl.text = '';
-                              _setFinal(null);
-                            },
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              // 结果区
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  children: [
-                    if (finalScore == null) ...[
-                      Text(
-                        '${geFmt(calc.dailyContrib + 0)} ~ '
-                        '${geFmt(calc.dailyContrib + calc.finalWeight * 100)}',
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w700,
-                          color: fp(context).cardAccent,
-                        ),
-                      ),
-                      Text(
-                        '总评区间（期末按 0~100 计）',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ] else ...[
-                      Text(
-                        geFmt(total!, decimals: 1),
-                        style: TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.w700,
-                          height: 1.1,
-                          color: total < 60
-                              ? scheme.error
-                              : fp(context).cardAccent,
-                        ),
-                      ),
-                      Text(
-                        '估计总评（满分 100）',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 10),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(3),
-                      child: LinearProgressIndicator(
-                        value: (total ?? calc.dailyContrib + 0) / 100,
-                        minHeight: 7,
-                        color: fp(context).cardAccent,
-                        backgroundColor: AppColors.tint(
-                          context,
-                          fp(context).cardAccent,
-                          0.12,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      finalScore == null
-                          ? '平时折算 ${geFmt(calc.dailyContrib)} 分'
-                                '（均分 ${geFmt(calc.dailyMean)} × 平时 ${geFmt(_c.dailyPercent)}%）'
-                          : '平时折算 ${geFmt(calc.dailyContrib)} 分'
-                                '（均分 ${geFmt(calc.dailyMean)} × ${geFmt(_c.dailyPercent)}%）'
-                                '  +  期末折算 ${geFmt(calc.finalContrib(finalScore))} 分',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        color: scheme.onSurfaceVariant,
-                        height: 1.5,
-                      ),
-                    ),
-                    if (total != null && total < 60)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          '低于及格线：距 60 还差 ${geFmt(60 - total)} 分'
-                          '（可看下方反推）',
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            color: scheme.error,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ---- 平时分项卡 ----
-  Widget _partsCard() {
-    final scheme = Theme.of(context).colorScheme;
-    final calc = geCalc(_c);
-    return Card(
-      margin: EdgeInsets.zero,
-      elevation: 0,
-      shape: geCardShape(context),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            geCardTitle(
-              context,
-              text: '平时分项',
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (_c.parts.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 1,
-                      ),
-                      decoration: BoxDecoration(
-                        color: fp(context).cardAccent.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        '满分 ${geFmt(calc.capSum, decimals: 2)}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: fp(context).cardAccent.withValues(alpha: 0.95),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  TextButton.icon(
-                    onPressed: _addPart,
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('添加分项'),
-                  ),
-                ],
-              ),
-            ),
-            if (_c.parts.isEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(0, 4, 8, 10),
-                child: Text(
-                  '还没有分项。例如：考勤（负计数，从总课次向下扣）、'
-                  '作业提交或课堂打卡（正计数，从 0 累计）、'
-                  '期中测验或实验报告（直接分数，填满分与得分）。',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    height: 1.5,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              )
-            else
-              for (var i = 0; i < _c.parts.length; i++) ...[
-                if (i > 0) Divider(height: 1, color: scheme.outlineVariant),
-                _partTile(_c.parts[i]),
-              ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _partTile(GePart p) {
-    final scheme = Theme.of(context).colorScheme;
-    final ratio = gePartRatio(p);
-    final score = gePartScore(p);
-    final isDown = p.mode == GePartMode.down;
-    final isScore = p.mode == GePartMode.score;
-    final missed = p.target - p.current;
-
-    final countLine = isScore
-        ? '得分 ${geFmt(p.score, decimals: 2)} / 满分 ${p.target}'
-        : isDown
-        ? (missed <= 0
-              ? '尚未扣减 · 剩余 ${p.current} / ${p.target}'
-              : '已扣 $missed · 剩余 ${p.current} / ${p.target}')
-        : '已完成 ${p.current} / ${p.target}';
-
-    final ratioLine =
-        '得分率 ${geFmt(ratio * 100, decimals: 1)}%'
-        ' · 折算 ${geFmt(score, decimals: 2)} / ${geFmt(p.cap, decimals: 2)} 分';
-
-    // 步进按钮语义随方向翻转
-    final minusTip = isDown ? '记一次扣减（如缺勤）' : '撤销一次完成';
-    final plusTip = isDown ? '撤销一次扣减' : '记一次完成（可超目标）';
-    final minusEnabled = isDown ? p.current > 0 : p.current > 0;
-    final plusEnabled = isDown ? p.current < p.target : true;
-
-    Widget stepBtn(
-      IconData icon,
-      bool enabled,
-      String tip,
-      VoidCallback onTap,
-    ) {
-      return Tooltip(
-        message: tip,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(6),
-          onTap: enabled ? onTap : null,
-          child: Padding(
-            padding: const EdgeInsets.all(4),
-            child: Icon(
-              icon,
-              size: 19,
-              color: enabled
-                  ? (isDown ? scheme.error : scheme.primary)
-                  : scheme.outlineVariant,
-            ),
-          ),
-        ),
-      );
+  /// 本课没进合计的原因（`null` = 已计入 → 汇总卡显示 Δ 胶囊）。
+  ///
+  /// 与 `data/ge_summary.dart` 的计入条件逐条对齐：同名教务成绩优先、
+  /// 学分为 0 不计入、未填期末不计入。
+  String? _courseExcludedNote() {
+    final priorNames = {for (final p in _prior) p.courseName.trim()};
+    if (priorNames.contains(_c.name.trim())) return '同名教务成绩已计入';
+    if (geEffectiveCredits(_curriculum, _c).credits <= 0) {
+      return '学分为 0，暂未计入';
     }
-
-    return InkWell(
-      onTap: () => _editPart(p),
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(
-          children: [
-            GeModeBadge(mode: p.mode),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          p.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      GeModeChip(mode: p.mode),
-                      if (p.note.isNotEmpty) ...[
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            p.note,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    countLine,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 1),
-                  Text(
-                    ratioLine,
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      color: ratio >= 1
-                          ? AppColors.success(context)
-                          : scheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 6),
-            if (isScore)
-              // 直接分数项没有步进语义：点整行弹窗改分。
-              Tooltip(
-                message: '点击修改得分',
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: Icon(
-                    Icons.edit_outlined,
-                    size: 19,
-                    color: scheme.outline,
-                  ),
-                ),
-              )
-            else ...[
-              stepBtn(
-                Icons.remove_circle_outline,
-                minusEnabled,
-                minusTip,
-                () => _bump(p, -1),
-              ),
-              SizedBox(
-                width: 38,
-                child: Text(
-                  '${p.current}',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              stepBtn(
-                Icons.add_circle_outline,
-                plusEnabled,
-                plusTip,
-                () => _bump(p, 1),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
+    if (_c.finalScore == null) return '未填期末，暂未计入';
+    return null;
   }
 
-  // ---- 目标反推 / 达线预警卡 ----
-  Widget _goalCard(ColorScheme scheme) {
-    final calc = geCalc(_c);
-    final hasParts = _c.parts.isNotEmpty;
-    final goal = double.tryParse(_goalCtrl.text.trim());
-
-    return Card(
-      margin: EdgeInsets.zero,
-      elevation: 0,
-      shape: geCardShape(context),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            geCardTitle(context, text: '目标反推 · 达线预警'),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                const Text('目标总评', style: TextStyle(fontSize: 13)),
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: 76,
-                  child: TextField(
-                    controller: _goalCtrl,
-                    keyboardType: TextInputType.number,
-                    maxLength: 3,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    style: const TextStyle(fontSize: 14),
-                    decoration: const InputDecoration(
-                      isDense: true,
-                      counterText: '',
-                      suffixText: '分',
-                      suffixStyle: TextStyle(fontSize: 12),
-                      border: OutlineInputBorder(),
-                    ),
-                    onChanged: (_) => setState(() {}),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
-                    children: [
-                      for (final g in const [60.0, 70.0, 80.0, 90.0, 95.0])
-                        ActionChip(
-                          visualDensity: VisualDensity.compact,
-                          label: Text(
-                            g == 60 ? '60 及格' : geFmt(g),
-                            style: const TextStyle(fontSize: 11.5),
-                          ),
-                          onPressed: () {
-                            _goalCtrl.text = geFmt(g);
-                            setState(() {});
-                          },
-                        ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            if (!hasParts)
-              Text(
-                '先添加平时分项并录入进度，即可反推期末需要考多少分。',
-                style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
-              )
-            else if (goal == null || goal <= 0 || goal > 100)
-              Text(
-                '输入 0~100 的目标总评，实时反推。',
-                style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
-              )
-            else
-              _goalResult(context, calc, goal, scheme),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _goalResult(
-    BuildContext context,
-    GeCalc calc,
-    double goal,
-    ColorScheme scheme,
-  ) {
-    final need = geRequiredFinal(calc, goal);
-    final fw = calc.finalWeight;
-    final hasFinal = fw > 0;
-
-    final Color resultColor;
-    final String headline;
-    final String detail;
-
-    switch (need.status) {
-      case GeGoalStatus.reached:
-        resultColor = AppColors.success(context);
-        headline = '平时折算已达目标';
-        detail =
-            '即使期末 0 分，总评也有 '
-            '${geFmt(calc.dailyContrib)} 分（≥ 目标 ${geFmt(goal)}）。';
-      case GeGoalStatus.ok:
-        resultColor = scheme.primary;
-        headline = '期末需 ≥ ${geFmt(need.requiredFinal, decimals: 1)} 分';
-        detail =
-            '平时已折算 ${geFmt(calc.dailyContrib)} 分，距目标 '
-            '${geFmt(goal)} 还差 ${geFmt(goal - calc.dailyContrib)} 总评点；'
-            '期末占比 ${geFmt((100 - _c.dailyPercent))}%，'
-            '每考 1 分得 ${geFmt(fw * 100, decimals: 0)}%。';
-      case GeGoalStatus.recoverByDaily:
-        resultColor = AppColors.caution(context);
-        headline = hasFinal
-            ? '期末满分也差 ${geFmt(need.dailyGap, decimals: 1)} 分'
-            : '总分还差 ${geFmt(need.dailyGap, decimals: 1)} 分';
-        detail = hasFinal
-            ? '期末按满分 100 计仍差 ${geFmt(need.dailyGap, decimals: 1)} 总评点，'
-                  '但平时还能再挣的分项（正计数 / 直接分数）拿满可补 '
-                  '+${geFmt(calc.dailyCeiling - calc.dailyContrib, decimals: 1)} 分。'
-            : '平时还能再挣的分项（正计数 / 直接分数）拿满可补 '
-                  '+${geFmt(calc.dailyCeiling - calc.dailyContrib, decimals: 1)} 分'
-                  '（该课期末不占比例）。';
-      case GeGoalStatus.impossible:
-        resultColor = scheme.error;
-        headline = hasFinal
-            ? '上限仅 ${geFmt(need.maxTotal, decimals: 1)} 分，无法达到 ${geFmt(goal)}'
-            : '平时全部做满也仅 ${geFmt(need.maxTotal, decimals: 1)} 分';
-        detail = hasFinal
-            ? '即使期末 100 分、剩余平时分项全部做满，总评最高也只有 '
-                  '${geFmt(need.maxTotal, decimals: 1)} 分。'
-            : '平时剩余分项全部做满后总评最高 '
-                  '${geFmt(need.maxTotal, decimals: 1)} 分（该课期末不占比例）。';
+  /// 平时分项的渲染顺序：**「作业」那张排最前**（用户口径里它是卡片 3），
+  /// 其余保持用户添加顺序；没有作业分项时顺序完全不变。
+  List<GePart> _orderedParts() {
+    final hw = geHomeworkPartOf(_c);
+    if (hw == null || _c.parts.isEmpty || hw.id == _c.parts.first.id) {
+      return _c.parts;
     }
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.tint(context, resultColor, 0.07),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: resultColor.withValues(alpha: 0.35)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            headline,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: resultColor,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            detail,
-            style: TextStyle(
-              fontSize: 12,
-              height: 1.5,
-              color: scheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
-    );
+    return [
+      hw,
+      for (final p in _c.parts)
+        if (p.id != hw.id) p,
+    ];
   }
 }

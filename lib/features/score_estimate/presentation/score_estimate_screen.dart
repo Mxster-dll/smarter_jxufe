@@ -222,11 +222,7 @@ class _ScoreEstimateScreenState extends ConsumerState<ScoreEstimateScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 96),
       children: [
-        GeWeightedSummaryCard(
-          summary: summary,
-          pendingCount: data.pendingCount,
-          planMajorName: _curriculum.majorName,
-        ),
+        GeWeightedSummaryCard(summary: summary),
         const SizedBox(height: 12),
         for (var i = 0; i < _courses.length; i++) ...[
           if (i > 0) const SizedBox(height: 12),

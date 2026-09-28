@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../design/feature_palette.dart';
+import '../domain/ge_chaoxing_sync.dart';
 import '../domain/ge_models.dart';
 import 'ge_common.dart';
 
@@ -271,9 +272,104 @@ class GePartOutcome {
   const GePartOutcome.deleted(GePart part) : this(part, deleted: true);
 }
 
+/// 新建分项时的「类型」预设：点一下把名称 / 计分方式 / 数值一次填好（仍可手改）。
+///
+/// 用户口径（2026-09-26）：「不默认显示『作业』了，而是重新设计添加平时分项的浮窗，
+/// 并在这里添加一个作业项」→ 「作业」不再是课程里预置的卡片，而是**这个浮窗里的一个类型**；
+/// 选中它 = 名称「作业」+ 直接分数（满分 100）+ 打开学习通自动同步，于是
+/// `geHomeworkPartOf` 认得出它，进课程详情时自动同步学习通已批作业均分。
+class GePartPreset {
+  /// 芯片文字（同时也是「当前选中类型」的标识）。
+  final String label;
+
+  /// 分项名称。
+  final String name;
+
+  final GePartMode mode;
+
+  /// 目标值：直接分数 = 该项满分；计数 = 目标 / 总事件数。
+  final int target;
+
+  /// 计数起点：负计数从总次数起（还没扣过），正计数从 0 起。
+  final int current;
+
+  /// 分值上限（该项在平时满分里的份额）。
+  final double cap;
+
+  final String note;
+
+  /// 是否接学习通作业成绩自动同步（只有「作业」预设为 true）。
+  final bool chaoxing;
+
+  const GePartPreset({
+    required this.label,
+    required this.name,
+    required this.mode,
+    required this.target,
+    required this.current,
+    required this.cap,
+    this.note = '',
+    this.chaoxing = false,
+  });
+}
+
+/// 常见平时成绩类型（顺序 = 芯片顺序；最后一项是「自定义」兜底）。
+const List<GePartPreset> gePartPresets = [
+  GePartPreset(
+    label: '作业',
+    name: '作业',
+    mode: GePartMode.score,
+    target: 100,
+    current: 0,
+    cap: 10,
+    chaoxing: true,
+  ),
+  GePartPreset(
+    label: '考勤',
+    name: '考勤',
+    mode: GePartMode.down,
+    target: 16,
+    current: 16,
+    cap: 5,
+  ),
+  GePartPreset(
+    label: '课堂表现',
+    name: '课堂表现',
+    mode: GePartMode.up,
+    target: 10,
+    current: 0,
+    cap: 5,
+  ),
+  GePartPreset(
+    label: '期中测验',
+    name: '期中测验',
+    mode: GePartMode.score,
+    target: 100,
+    current: 0,
+    cap: 20,
+  ),
+  GePartPreset(
+    label: '实验报告',
+    name: '实验报告',
+    mode: GePartMode.score,
+    target: 100,
+    current: 0,
+    cap: 10,
+  ),
+  GePartPreset(
+    label: '自定义',
+    name: '',
+    mode: GePartMode.up,
+    target: 20,
+    current: 0,
+    cap: 5,
+  ),
+];
+
 /// 平时分项编辑弹窗。
 ///
 /// [part] 为 null 时新建（返回新 id）；编辑时保留原 id。
+/// 新建时顶部先选**类型**（见 [gePartPresets]，含「作业」= 接学习通作业均分）。
 Future<GePartOutcome?> showGePartDialog(
   BuildContext context, {
   GePart? part,
@@ -283,6 +379,12 @@ Future<GePartOutcome?> showGePartDialog(
   var mode = part?.mode ?? GePartMode.up;
   var target = part?.target ?? (mode == GePartMode.down ? 16 : 20);
   var cap = part?.cap ?? 5.0;
+
+  /// 数据来源：`''` = 手填；[gePartSourceChaoxing] = 学习通作业成绩自动同步。
+  var source = part?.source ?? '';
+
+  /// 当前选中的类型芯片（null = 还没点过预设）。
+  String? presetLabel;
 
   final nameCtrl = TextEditingController(text: part?.name ?? '');
   final noteCtrl = TextEditingController(text: part?.note ?? '');
@@ -333,6 +435,29 @@ Future<GePartOutcome?> showGePartDialog(
     targetCtrl.text = '$target';
   }
 
+  /// 点类型芯片：一次填好名称 / 计分方式 / 目标 / 起点 / 分值上限 / 来源。
+  ///
+  /// 「自定义」预设的 name 为空 → 名称框留空、光标聚焦等用户自己填。
+  void applyPreset(GePartPreset p) {
+    presetLabel = p.label;
+    nameCtrl.text = p.name;
+    mode = p.mode;
+    target = p.target;
+    targetCtrl.text = '$target';
+    current = p.current;
+    currentCtrl.text = '$current';
+    scoreValue = 0;
+    scoreCtrl.text = geFmt(scoreValue, decimals: 2);
+    cap = p.cap;
+    capCtrl.text = geFmt(cap, decimals: 2);
+    noteCtrl.text = p.note;
+    source = p.chaoxing ? gePartSourceChaoxing : '';
+    nameError = null;
+    targetError = null;
+    scoreError = null;
+    capError = null;
+  }
+
   final scheme = Theme.of(context).colorScheme;
 
   return showDialog<GePartOutcome>(
@@ -343,7 +468,7 @@ Future<GePartOutcome?> showGePartDialog(
         final isDown = mode == GePartMode.down;
         final isScore = mode == GePartMode.score;
         return AlertDialog(
-          title: Text(isNew ? '添加分项' : '编辑分项'),
+          title: Text(isNew ? '添加平时分项' : '编辑分项'),
           content: SizedBox(
             width: 380,
             child: SingleChildScrollView(
@@ -351,6 +476,35 @@ Future<GePartOutcome?> showGePartDialog(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (isNew) ...[
+                    Text(
+                      '类型',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        for (final p in gePartPresets)
+                          ChoiceChip(
+                            label: Text(
+                              p.label,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            visualDensity: VisualDensity.compact,
+                            selected: presetLabel == p.label,
+                            onSelected: (_) =>
+                                setState(() => applyPreset(p)),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   TextField(
                     controller: nameCtrl,
                     autofocus: isNew,
@@ -491,6 +645,33 @@ Future<GePartOutcome?> showGePartDialog(
                     }),
                   ),
                   const SizedBox(height: 10),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    value: source == gePartSourceChaoxing,
+                    title: const Text(
+                      '学习通自动同步',
+                      style: TextStyle(fontSize: 13.5),
+                    ),
+                    subtitle: Text(
+                      source == gePartSourceChaoxing
+                          ? '进入课程详情时用学习通作业均分覆盖得分（满分按 100 计）；'
+                                '关掉即可停止同步'
+                          : '打开后本分项改由学习通作业成绩自动填写（会变成「直接分数」）',
+                      style: const TextStyle(fontSize: 11.5),
+                    ),
+                    onChanged: (v) => setState(() {
+                      // 关掉 → 标成「明确手填」：否则下次进课程详情又会被自动接管。
+                      source = v ? gePartSourceChaoxing : gePartSourceManual;
+                      if (!v) return;
+                      // 接入即「直接分数」：满分固定 100（学习通作业分是百分制），
+                      // 实际得分由同步写入（见 domain/ge_chaoxing_sync.dart）。
+                      applyMode(GePartMode.score);
+                      target = 100;
+                      targetCtrl.text = '$target';
+                    }),
+                  ),
+                  const SizedBox(height: 10),
                   TextField(
                     controller: noteCtrl,
                     maxLength: 40,
@@ -556,6 +737,7 @@ Future<GePartOutcome?> showGePartDialog(
                       score: isScore ? scoreValue : 0,
                       cap: capV,
                       note: noteCtrl.text.trim(),
+                      source: source,
                     ),
                   ),
                 );

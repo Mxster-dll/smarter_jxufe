@@ -67,6 +67,13 @@ class GePart {
   /// 备注（可选），如「每周四上课」。
   final String note;
 
+  /// 数据来源标记：`''` = 本人手填；`gePartSourceChaoxing`（`chaoxing`）= 由
+  /// 学习通作业成绩自动同步（见 `domain/ge_chaoxing_sync.dart`）。
+  ///
+  /// **只有这一档的分项会被自动同步覆盖** —— 手填分项不动，除非用户在分项弹窗里
+  /// 打开「学习通自动同步」开关。
+  final String source;
+
   const GePart({
     required this.id,
     required this.name,
@@ -76,6 +83,7 @@ class GePart {
     this.score = 0,
     this.cap = 0,
     this.note = '',
+    this.source = '',
   });
 
   Map<String, dynamic> toJson() => {
@@ -87,6 +95,7 @@ class GePart {
     'score': score,
     'cap': cap,
     'note': note,
+    'source': source,
   };
 
   factory GePart.fromJson(Map<String, dynamic> json) {
@@ -101,6 +110,8 @@ class GePart {
       score: ((json['score'] as num?)?.toDouble() ?? 0).clamp(0.0, 1e6),
       cap: ((json['cap'] as num?)?.toDouble() ?? 0).clamp(0.0, 1e6),
       note: json['note'] as String? ?? '',
+      // 旧数据没有 source 字段 → 手填（不会被自动同步覆盖）。
+      source: json['source'] as String? ?? '',
     );
   }
 
@@ -113,6 +124,7 @@ class GePart {
     double? score,
     double? cap,
     String? note,
+    String? source,
   }) => GePart(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -122,6 +134,7 @@ class GePart {
     score: score ?? this.score,
     cap: cap ?? this.cap,
     note: note ?? this.note,
+    source: source ?? this.source,
   );
 }
 
