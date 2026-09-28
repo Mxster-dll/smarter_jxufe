@@ -72,7 +72,7 @@ presentation/widgets/  Markdown 渲染器、写操作确认弹窗、设置节卡
 | `get_curriculum` | 培养方案：要修哪些课、各多少学分、必修/选修 | 学籍 → 学院 → 专业 → `CurriculumRepository`（**命中缓存不发网络**） |
 | `get_graduation_credits` | 毕业学分构成**要求**（只有要求，没有已修） | `graduationRequirementsProvider`（在线，需教务会话） |
 | `get_volunteer_hours` | 志愿时长（累计 + **本学年** + 活动记录） | `volunteerActivitiesProvider` + `volunteerHoursStats(xn: 教学学年)` |
-| `get_zongce` | 综测：总评 + 五育得分与等次 + 明细 | `zcMaterialsProvider` + `ZcStore.loadManual` + `zcCalculate` |
+| `get_zongce` | 综测：总评 + 五育得分与等次 + 明细；`detail: true` 时逐条材料给**「计入 / 未计入」**（德育按表 3~7 各板块、智育竞赛按封顶 5 分） | `zcMaterialsProvider` + `ZcStore.loadManual` + `zcCalculate` + `zcContestContributingIds` / `zcMoralContributingIds` |
 | `list_materials` | 材料库（按材料类型分组） | `zcMaterialsProvider` + `groupMaterialsByType` |
 | `get_school_calendar` | 校历：第几教学周、放假区间、调休备注 | `schoolCalendarProvider` + `teachingWeekProvider` |
 | `get_energy` | 宿舍电费 + 校园网费余额 | `dashboardElectricityProvider` + `netFeeSummaryProvider` |

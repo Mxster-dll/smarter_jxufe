@@ -14,6 +14,7 @@ library;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/features/ai/tools/ai_tool.dart';
+import 'package:smarter_jxufe/features/ai/tools/my_schedule_data.dart';
 import 'package:smarter_jxufe/features/ai/tools/tool_registry.dart';
 import 'package:smarter_jxufe/features/ims/schedule/data/providers/live_class_providers.dart';
 import 'package:smarter_jxufe/features/ims/student_info/data/providers/student_info_repository_provider.dart';
@@ -41,10 +42,19 @@ Future<String> buildAiSnapshot(Ref ref, {required DateTime now}) async {
     final week = await ref.read(teachingWeekProvider.future);
     final termName = '${term.xn}-${term.xn + 1}学年'
         '${term.xq == 0 ? '第一学期' : (term.xq == 1 ? '第二学期' : '第 ${term.xq} 学段')}';
+    // 学期参数（xn/xq）写进快照：模型问起别的学期时能直接填，不必先试错一遍
     lines.add(
-      '学期：$termName'
+      '学期：$termName（xn=${term.xn}，xq=${term.xq}）'
       '${week == null ? '' : '，${week.week >= 1 ? '第 ${week.week} 教学周' : '尚未开学（第 0 周）'}'}',
     );
+    // 可选学期（离线，最多 4 个）——「上学期」「去年」这类说法要落到具体 xn/xq
+    final choices = availableSchoolTermsFrom(terms, current: term, limit: 4);
+    if (choices.length > 1) {
+      lines.add(
+        '可选学期：${availableTermsHintFrom(choices, current: term)}'
+        '（问别的学期时把这组 xn/xq 传给课表类工具）',
+      );
+    }
   } catch (_) {
     // 校历不可用：不写这一行
   }
@@ -80,6 +90,9 @@ Future<String> buildAiDataPack(AiToolContext ctx) async {
     (tool: 'get_my_schedule', args: {'scope': 'week'}, label: '本周课表'),
     (tool: 'get_deadlines', args: {'days': 30}, label: '近期截止日期'),
     (tool: 'get_grades', args: {'sort': 'score_desc'}, label: '成绩'),
+    // 用户 2026-09-27：「给这个模块（综测）接入 ai 助手的数据源」—— 降级态
+    // （模型不支持函数调用 / 被自动降级）也要有综测，否则 AI 会答不出综测问题。
+    (tool: 'get_zongce', args: {}, label: '综测'),
   ];
   final parts = <String>[];
   for (final item in wanted) {
@@ -123,7 +136,21 @@ String aiSystemPrompt({
       ..writeln('4. 时间以「现在」为基准自己推算（今天/明天/周几），不要说「我无法知道当前时间」。')
       ..writeln('5. 工具结果是权威数据：照实转述，不要改动数字；工具报错就如实说明并给出下一步建议。')
       ..writeln('6. 需要用户去某个页面操作时，用 `open_page` 附一个跳转按钮。')
-      ..writeln('7. 要改 App 设置时用 `update_app_setting`（会弹确认框，用户可能拒绝）。')
+      // 用户 2026-09-27：「给这个模块（综测）接入 ai 助手的数据源」→ 光有工具不够，
+      // 路由规则里也要点名，模型才会把它用在综测问题上（规则要具体到可执行）。
+      ..writeln('7. 问综测（综合素质测评）的问题 —— 「我综测多少分」「哪一育拖后腿」')
+      ..writeln('   「德育为什么被扣分」「哪条加分算进去了」→ 用 `get_zongce`；')
+      ..writeln('   要逐条核对材料**计入 / 未计入**（德育按表 3~7 各板块、智育竞赛按封顶 5 分）')
+      ..writeln('   时给 `detail: true`。总评是五育**按占比加权**，不是简单平均。')
+      ..writeln('8. 要改 App 设置时用 `update_app_setting`（会弹确认框，用户可能拒绝）。')
+      // 用户 2026-09-27：「为什么app内ai提示只能查本学期课表，但是我们明明是有查各学期
+      // 课表的能力的」—— 工具加了学期参数还不够，路由规则里不写，模型照旧只答本学期。
+      ..writeln('9. 课表类问题（`get_my_schedule` / `query_timetable` / `find_free_time`）')
+      ..writeln('   **默认是当下学期**；用户提到别的学期 —— 「上学期」「上一学年」')
+      ..writeln('   「2025-2026 学年第一学期」——就传 `xn`（学年起始年，2025-2026 学年 → 2025）')
+      ..writeln('   与 `xq`（0 第一学期 / 1 第二学期），并**显式给 `week`**（别的学期没有')
+      ..writeln('   「当前教学周」）。不确定有哪些学期就看「现在的情况」里的可选学期，别回答')
+      ..writeln('   「我只能查本学期」。')
       ..writeln();
   } else {
     buffer

@@ -10,6 +10,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/core/web/external_url.dart';
@@ -49,6 +50,47 @@ const List<String> kAiStarterQuestions = [
 bool aiShouldRenderMessage(AiChatMessage m) {
   if (m.role != AiRole.user && m.role != AiRole.assistant) return false;
   return m.content.trim().isNotEmpty;
+}
+
+/// 复制一段文本到系统剪贴板 + 轻提示。
+///
+/// 用户 2026-09-27：「我希望 ai 的回答与我的提问可以一键复制」——
+/// 气泡里虽然有 `SelectionArea`（可手动框选），但触摸端框选又慢又容易选歪，
+/// 所以每条消息配一颗显式按钮（与代码块那颗「复制代码」同形制）。
+Future<void> _copyText(BuildContext context, String text, String done) async {
+  await Clipboard.setData(ClipboardData(text: text));
+  if (!context.mounted) return;
+  ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+    SnackBar(content: Text(done), duration: const Duration(seconds: 1)),
+  );
+}
+
+/// 消息下方那颗「复制」小按钮。
+class _CopyButton extends StatelessWidget {
+  final String text;
+  final String tooltip;
+  final String done;
+
+  const _CopyButton({
+    required this.text,
+    required this.tooltip,
+    required this.done,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return IconButton(
+      tooltip: tooltip,
+      iconSize: 15,
+      visualDensity: VisualDensity.compact,
+      constraints: const BoxConstraints(minWidth: 30, minHeight: 26),
+      padding: EdgeInsets.zero,
+      color: scheme.onSurfaceVariant,
+      icon: const Icon(Icons.copy_all_outlined),
+      onPressed: () => _copyText(context, text, done),
+    );
+  }
 }
 
 class AiChatScreen extends ConsumerStatefulWidget {
@@ -292,20 +334,34 @@ class _UserBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Align(
-      alignment: Alignment.centerRight,
-      child: Container(
-        margin: const EdgeInsets.only(top: 10, left: 48),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: scheme.primary.withValues(alpha: 0.10),
-          borderRadius: BorderRadius.circular(14),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Align(
+          alignment: Alignment.centerRight,
+          child: Container(
+            margin: const EdgeInsets.only(top: 10, left: 48),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: scheme.primary.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: SelectableText(
+              text,
+              style: TextStyle(
+                fontSize: 14.5,
+                height: 1.5,
+                color: scheme.onSurface,
+              ),
+            ),
+          ),
         ),
-        child: SelectableText(
-          text,
-          style: TextStyle(fontSize: 14.5, height: 1.5, color: scheme.onSurface),
+        // 复制自己的提问（用户 2026-09-27）。
+        Padding(
+          padding: const EdgeInsets.only(top: 2, right: 4),
+          child: _CopyButton(text: text, tooltip: '复制提问', done: '提问已复制'),
         ),
-      ),
+      ],
     );
   }
 }
@@ -340,28 +396,39 @@ class _AssistantBubble extends StatelessWidget {
     // 双保险：调用方已经跳过空消息，这里再兜一次 —— 气泡一旦空着就是一张空卡片
     // （只有内边距 + 底 + 描边）。这个守卫让「画出空卡片」在组件层面不可能发生。
     if (text.trim().isEmpty) return const SizedBox.shrink();
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(top: 10, right: 32),
-        padding: const EdgeInsets.fromLTRB(14, 11, 14, 12),
-        decoration: BoxDecoration(
-          color: appCardColorOf(scheme),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.hairline(context, 0.6)),
-        ),
-        // 回答按 markdown 渲染（标题 / 列表 / 表格 / 代码块 / 粗体 / 行内码 / 链接）。
-        // 解析与渲染分家：结构在 `domain/ai_markdown.dart`（纯 Dart、可单测）。
-        child: AiMarkdownView(
-          source: text,
-          baseStyle: TextStyle(
-            fontSize: 14.5,
-            height: 1.6,
-            color: scheme.onSurface,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Container(
+            margin: const EdgeInsets.only(top: 10, right: 32),
+            padding: const EdgeInsets.fromLTRB(14, 11, 14, 12),
+            decoration: BoxDecoration(
+              color: appCardColorOf(scheme),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.hairline(context, 0.6)),
+            ),
+            // 回答按 markdown 渲染（标题 / 列表 / 表格 / 代码块 / 粗体 / 行内码 / 链接）。
+            // 解析与渲染分家：结构在 `domain/ai_markdown.dart`（纯 Dart、可单测）。
+            child: AiMarkdownView(
+              source: text,
+              baseStyle: TextStyle(
+                fontSize: 14.5,
+                height: 1.6,
+                color: scheme.onSurface,
+              ),
+              onTapLink: onTapLink,
+            ),
           ),
-          onTapLink: onTapLink,
         ),
-      ),
+        // 复制这条回答（用户 2026-09-27：「ai 的回答…可以一键复制」）。
+        // 复制的是**原文 markdown**，不是渲染后的纯文本 —— 粘到别处还能保留结构。
+        Padding(
+          padding: const EdgeInsets.only(top: 2, left: 4),
+          child: _CopyButton(text: text, tooltip: '复制回答', done: '回答已复制'),
+        ),
+      ],
     );
   }
 }
@@ -725,6 +792,38 @@ class _Composer extends StatelessWidget {
     required this.onStop,
   });
 
+  /// 从系统剪贴板粘贴到光标处（替换当前选区）。
+  ///
+  /// 用户 2026-09-27：「当前 ai 输入框无法删除与粘贴」—— 与 2026-09-19 那次
+  /// 「api-key 要允许粘贴」同源：输入框本身支持 Ctrl+V / 长按，但移动端长按
+  /// 弹不出工具条、桌面端焦点一丢就不灵，所以给**显式按钮**（读
+  /// `Clipboard.kTextPlain`，两头都稳）。
+  Future<void> _paste(BuildContext context) async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final pasted = data?.text ?? '';
+    if (!context.mounted) return;
+    if (pasted.isEmpty) {
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        const SnackBar(content: Text('剪贴板里没有文本'), duration: Duration(seconds: 2)),
+      );
+      return;
+    }
+    final base = controller.text;
+    final sel = controller.selection;
+    final start = sel.isValid ? sel.start.clamp(0, base.length) : base.length;
+    final end = sel.isValid ? sel.end.clamp(start, base.length) : base.length;
+    controller.value = TextEditingValue(
+      text: base.replaceRange(start, end, pasted),
+      selection: TextSelection.collapsed(offset: start + pasted.length),
+    );
+    focus.requestFocus();
+  }
+
+  void _clearInput() {
+    controller.clear();
+    focus.requestFocus();
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -750,6 +849,9 @@ class _Composer extends StatelessWidget {
               focusNode: focus,
               minLines: 1,
               maxLines: 5,
+              // 显式打开（默认就是 true，但「设置 → AI 助手」的 API Key 输入框
+              // 当初为同一个毛病也写了这一行 —— 见 docs/agents/05 的「API Key 可粘贴」）。
+              enableInteractiveSelection: true,
               textInputAction: TextInputAction.send,
               onSubmitted: busy ? null : (_) => onSend(),
               decoration: InputDecoration(
@@ -772,7 +874,26 @@ class _Composer extends StatelessWidget {
               style: const TextStyle(fontSize: 14),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 2),
+          _ComposerAction(
+            key: const Key('aiComposerPaste'),
+            tooltip: '粘贴',
+            icon: Icons.content_paste_rounded,
+            onPressed: () => _paste(context),
+          ),
+          // 「清空」只在有字时出现（没字时那颗按钮没有意义，还占宽度）。
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: controller,
+            builder: (context, value, _) => value.text.isEmpty
+                ? const SizedBox.shrink()
+                : _ComposerAction(
+                    key: const Key('aiComposerClear'),
+                    tooltip: '清空输入',
+                    icon: Icons.backspace_outlined,
+                    onPressed: _clearInput,
+                  ),
+          ),
+          const SizedBox(width: 2),
           busy
               ? IconButton.filledTonal(
                   tooltip: '停止',
@@ -786,6 +907,34 @@ class _Composer extends StatelessWidget {
                 ),
         ],
       ),
+    );
+  }
+}
+
+/// 输入框右侧的小圆按钮（粘贴 / 清空输入）。
+class _ComposerAction extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  const _ComposerAction({
+    super.key,
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      iconSize: 18,
+      visualDensity: VisualDensity.compact,
+      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+      color: scheme.onSurfaceVariant,
+      icon: Icon(icon),
     );
   }
 }

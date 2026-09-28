@@ -114,6 +114,51 @@ List<String> _partTargets(File file) {
   ];
 }
 
+/// `.gitignore` 里**真的会命中文件**的规则（跳过注释与空行）。
+///
+/// 只实现本仓用到的那些形态：`/锚定`、`目录/`（任意深度）、`*.后缀`、`名字`、
+/// `**/x/y`、`a*b` 通配。够用即可 —— 它的用途是「别把源码吞掉」这条断言，
+/// 不是重写 git。
+List<String> _ignoreRules() => [
+  for (final raw in File('.gitignore').readAsStringSync().split(RegExp(r'\r?\n')))
+    if (raw.trim().isNotEmpty && !raw.trimLeft().startsWith('#')) raw.trim(),
+];
+
+/// 单条 gitignore 规则是否命中某个**已归一化**的相对路径（`a/b/c.dart`）。
+///
+/// ⚠ 关键语义（就是 2026-09-27 踩的那个坑）：**不带前导斜杠的规则在任意深度生效**
+/// —— `tools/` 会命中 `lib/features/ai/tools/`，必须写成 `/tools/` 才只指仓库根。
+bool _ruleMatches(String rule, String path) {
+  final anchored = rule.startsWith('/');
+  final body = anchored ? rule.substring(1) : rule;
+  final dirOnly = body.endsWith('/');
+  final pattern = dirOnly ? body.substring(0, body.length - 1) : body;
+  if (pattern.isEmpty) return false;
+
+  final regex = RegExp(
+    '^${RegExp.escape(pattern).replaceAll(r'\*\*', '§').replaceAll(r'\*', '[^/]*').replaceAll('§', '.*')}'
+        r'(/|$)',
+  );
+  if (anchored) return regex.hasMatch(path);
+  // 未锚定：逐段起头都算（`a/b/c` 上试 `a/b/c`、`b/c`、`c`）
+  final parts = path.split('/');
+  for (var i = 0; i < parts.length; i++) {
+    if (regex.hasMatch(parts.sublist(i).join('/'))) return true;
+  }
+  return false;
+}
+
+/// `lib/` 下被 `.gitignore` 命中的源码文件（正常应当是空的）。
+List<String> _ignoredSources() {
+  final rules = _ignoreRules();
+  return [
+    for (final f in _dartFiles())
+      if (rules.any((r) => _ruleMatches(r,
+          f.path.replaceAll(r'\', '/').replaceFirst(RegExp(r'^\./'), ''))))
+        f.path.replaceAll(r'\', '/'),
+  ];
+}
+
 void main() {
   final allDart = _dartFiles();
   final generated = [
@@ -175,6 +220,36 @@ void main() {
     expect(generated.length, declared.length,
         reason: '生成物 ${generated.length} 个 vs part 指令 ${declared.length} 条 —— '
             '两者必须 1:1（多 = 孤儿，少 = 缺失）。');
+  });
+
+  test('★ 源码不被 .gitignore 吞掉（2026-09-27 · 实测踩过）', () {
+    // 实测事故：`.gitignore` 写的是 `tools/`（**不带前导斜杠 = 任意深度生效**）→
+    // `lib/features/ai/tools/`（整个 AI 工具层，10 个 .dart / ~109 KB）被静默忽略，
+    // `git ls-files lib/features/ai/tools/` = 空：本地编译测试全绿，**全新克隆却缺一整层源码**。
+    // 编译器管不到「文件在不在 git 里」，所以只能在这里守。
+    final ignored = _ignoredSources();
+    expect(
+      ignored,
+      isEmpty,
+      reason: '这些 `lib/` 下的源码被 `.gitignore` 命中了（`git check-ignore -v <路径>` '
+          '可看是哪条规则）：\n  ${ignored.join('\n  ')}\n'
+          '多半是某条**没锚定**的目录规则（如 `tools/` 会命中任意深度的 `tools/`）—— '
+          '改成 `/tools/` 这种仓库根写法。',
+    );
+    // 反向自检：匹配器本身不许静默失效（拿真出过事的那条规则验一次）。
+    expect(
+      _ruleMatches('tools/', 'lib/features/ai/tools/life_tools.dart'),
+      isTrue,
+      reason: '匹配器没认出「未锚定的 `tools/` 会命中任意深度」—— 这条守卫就成了空转。',
+    );
+    expect(
+      _ruleMatches('/tools/', 'lib/features/ai/tools/life_tools.dart'),
+      isFalse,
+      reason: '`/tools/` 是仓库根锚定，不该命中 `lib/feature/ai/tools/`。',
+    );
+    expect(_ruleMatches('/tools/', 'tools/smoke.dart'), isTrue);
+    expect(_ruleMatches('*.log', 'lib/a.log'), isTrue);
+    expect(_ruleMatches('*.log', 'lib/a.dart'), isFalse);
   });
 
   group('依赖都被真的 import（2026-09-20 · 架构审查 ①）', () {
