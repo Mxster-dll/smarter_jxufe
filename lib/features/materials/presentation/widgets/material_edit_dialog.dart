@@ -194,21 +194,23 @@ class MaterialEditDialogState extends State<MaterialEditDialog> {
   }
 
   void _onNameChanged(String v) {
-    _d.name = v;
-    final spec = _spec;
-    if (!spec.needCat) return;
-    final hit = zcMatchContest(v);
-    if (hit != null) {
-      setState(() {
+    // ⚠ 必须无条件 `setState`：名称直接参与 `_valid`（必填）与 `_invalidHint`，
+    // 旧写法在「非竞赛类型」和「竞赛类型但名字不命中目录」两条路上都不重建 →
+    // 填完名称后「保存」还是灰的、也不给原因（与次数输入框同款坑，
+    // 2026-09-27 一并修）。
+    setState(() {
+      _d.name = v;
+      final spec = _spec;
+      if (!spec.needCat) return;
+      final hit = zcMatchContest(v);
+      if (hit != null) {
         _d.cat = hit.cat;
         _d.catAuto = true;
-      });
-    } else if (_d.catAuto) {
-      setState(() {
+      } else if (_d.catAuto) {
         _d.cat = '';
         _d.catAuto = false;
-      });
-    }
+      }
+    });
   }
 
   Future<void> _pickFiles() async {
@@ -297,7 +299,15 @@ class MaterialEditDialogState extends State<MaterialEditDialog> {
         return false;
       }
     }
-    if (_d.level < 0 || _d.level >= spec.levels.length) return false;
+    // ⚠ `spec.levels` 为空的类型（今天只有「思想教育 · 活动参与」，它走**次数**
+    // 输入）必须跳过这条 —— 否则 `0 >= 0` 恒真，保存按钮永远灰着、也没有任何
+    // 提示（用户 2026-09-27 报的「思想教育-活动参与添加材料时无法保存」）。
+    if (spec.levels.isNotEmpty &&
+        (_d.level < 0 || _d.level >= spec.levels.length)) {
+      return false;
+    }
+    // 次数型：0 次 = 0 分，存进去只会是条「没分」的材料 → 要求至少 1 次。
+    if (spec.qtyLabel != null && _d.qty < 1) return false;
     if (spec.opts.isNotEmpty && (_d.opt < 0 || _d.opt >= spec.opts.length)) {
       return false;
     }
@@ -321,6 +331,9 @@ class MaterialEditDialogState extends State<MaterialEditDialog> {
       if (cert != null && cert.needsScore && _d.manualScore == null) {
         return '请填写原始成绩（如四级 489、雅思 6.5、托福 90、GRE 320）';
       }
+    }
+    if (spec.qtyLabel != null && _d.qty < 1) {
+      return '请填写${spec.qtyLabel}';
     }
     return null;
   }
@@ -458,8 +471,10 @@ class MaterialEditDialogState extends State<MaterialEditDialog> {
                     if (spec.manualScore)
                       // 外语等：按证书名目选，得分自己填（用户 2026-09-17 裁定）。
                       _buildManualScore(context)
-                    else
+                    else if (spec.levels.isNotEmpty)
                       // 级别 / 档位：一排按钮（用户 2026-09-17 裁定不用下拉）。
+                      // ⚠ 空的按钮组不画 —— 「思想教育 · 活动参与」没有档位，
+                      // 画出来就是一个只有标题、没有选项的空区（2026-09-27 修）。
                       _choiceGroup(
                         context,
                         label: '级别 / 档位',
@@ -483,7 +498,8 @@ class MaterialEditDialogState extends State<MaterialEditDialog> {
                       TextField(
                         controller: _qtyCtrl,
                         keyboardType: TextInputType.number,
-                        onChanged: (s) => _d.qty = double.tryParse(s) ?? 0,
+                        onChanged: (s) =>
+                            setState(() => _d.qty = double.tryParse(s) ?? 0),
                         decoration: InputDecoration(
                           labelText: spec.qtyLabel!,
                           isDense: true,

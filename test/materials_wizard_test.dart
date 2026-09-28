@@ -416,4 +416,119 @@ void main() {
       reason: '入学年之前的年份不在范围内',
     );
   });
+
+  group('★ 次数型材料（思想教育 · 活动参与）能保存（用户 2026-09-27 报的「无法保存」）', () {
+    /// 走到「思想教育 · 活动参与」的表单。
+    Future<void> openEduPartForm(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1100, 2400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(app());
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('添加材料'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('思想教育 · 活动参与'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.textContaining('直接填写').first);
+      await tester.pumpAndSettle();
+    }
+
+    bool saveEnabled(WidgetTester tester) =>
+        tester
+            .widget<FilledButton>(find.widgetWithText(FilledButton, '保存'))
+            .onPressed !=
+        null;
+
+    Future<void> pickToday(WidgetTester tester) async {
+      final now = DateTime.now();
+      await tapVisible(tester, find.text('选择日期'));
+      await tester.tap(find.byKey(gridDateYearKey(now.year)));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(gridDateMonthKey(now.month)));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(gridDateDayKey(1)));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('没有档位就不画空按钮组；次数填了才可保存，保存后按 0.5 分/次计分', (tester) async {
+      await openEduPartForm(tester);
+
+      // 该类型没有 levels（唯一一个）→ 不该出现只有标题、没有选项的「级别 / 档位」。
+      expect(find.text('级别 / 档位'), findsNothing);
+      expect(find.text('奖项 / 细分'), findsNothing);
+      expect(find.textContaining('参与次数'), findsOneWidget, reason: '次数输入框在');
+      expect(saveEnabled(tester), isFalse, reason: '名称与日期都没填');
+
+      await tester.enterText(
+        find.widgetWithText(TextField, '名称（竞赛/论文/荣誉等）'),
+        '思想教育类征文',
+      );
+      await tester.pumpAndSettle();
+      await pickToday(tester);
+
+      // ★ 回归点：名称 + 日期齐了、次数还没填 → 保存禁用，但**必须说明原因**
+      // （旧实现是 level 越界判据恒真 → 永远禁用且 `_invalidHint` 为 null，用户
+      // 只看到一个灰着的「保存」，这正是「无法保存」的现场）。
+      expect(saveEnabled(tester), isFalse);
+      expect(find.textContaining('请填写参与次数'), findsOneWidget);
+
+      await tester.enterText(
+        find.widgetWithText(TextField, '参与次数（0.5 分/次，上限 2 分）'),
+        '4',
+      );
+      await tester.pumpAndSettle();
+      expect(find.textContaining('请填写参与次数'), findsNothing);
+      expect(saveEnabled(tester), isTrue, reason: '★ 修复点：次数填了就能保存');
+
+      await tapVisible(tester, find.text('保存'));
+      await settleSave(tester);
+
+      final saved = await store.loadMaterials();
+      expect(saved, hasLength(1));
+      expect(saved.single.typeId, ZcTypeId.eduPart);
+      expect(saved.single.name, '思想教育类征文');
+      expect(saved.single.qty, 4);
+      expect(
+        zcMaterialValue(saved.single),
+        2.0,
+        reason: '0.5 分/次 × 4 次（槽位合计封顶 2 分由引擎负责）',
+      );
+    });
+
+    testWidgets('编辑已有次数型材料：次数清 0 也会提示、填回即可保存', (tester) async {
+      store.items.add(
+        const ZcMaterial(
+          id: 'p1',
+          typeId: ZcTypeId.eduPart,
+          name: '演讲比赛参与',
+          dateIso: '2026-05-01',
+          qty: 2,
+        ),
+      );
+      tester.view.physicalSize = const Size(1100, 2400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(app());
+      await tester.pumpAndSettle();
+
+      await tapVisible(tester, find.text('演讲比赛参与'));
+      expect(find.text('编辑证明材料'), findsOneWidget);
+      expect(saveEnabled(tester), isTrue, reason: '既有数据（2 次）应当可直接保存');
+
+      await tester.enterText(find.widgetWithText(TextField, '参与次数（0.5 分/次，上限 2 分）'), '');
+      await tester.pumpAndSettle();
+      expect(saveEnabled(tester), isFalse);
+      expect(find.textContaining('请填写参与次数'), findsOneWidget);
+
+      await tester.enterText(
+        find.widgetWithText(TextField, '参与次数（0.5 分/次，上限 2 分）'),
+        '3',
+      );
+      await tester.pumpAndSettle();
+      await tapVisible(tester, find.text('保存'));
+      await settleSave(tester);
+      final saved = await store.loadMaterials();
+      expect(saved.single.qty, 3);
+    });
+  });
 }
