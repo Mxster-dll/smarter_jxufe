@@ -217,6 +217,17 @@ ZcCalcResult zcCalculate(
           if (m.typeId == id) zcMaterialValue(m),
       ]);
 
+  // ---- 「放开所有累加」开关（用户 2026-09-27） ----
+  // 口径 = 学校《评优评先综测计算器》与标准版在**累加**上的差别：所有「就高
+  // 一次」改多项叠加、所有附加分封顶取消。**民主评议（20）、扣分项、等次评定、
+  // 一票否决一律照旧** —— 那份参考文件里 `dPing`/`mPing`/`lPing` 仍
+  // `Math.min(…,20)`，扣分也都还在 `− dKou` 里。
+  final open = manual.openAccumulate;
+  /// 分槽分：标准档「就高一次」（`slotMax`），放开档改累加（`slotSum`）。
+  double slotBest(ZcTypeId id) => open ? slotSum(id) : slotMax(id);
+  /// 附加分封顶：**只在标准档生效**，放开档原值放行。
+  double capped(double value, double max) => open ? value : _c(value, 0, max);
+
   // ---- 智育竞赛（calcJS 口径） ----
   final comp = <double>[];
   for (final m in materials) {
@@ -227,7 +238,13 @@ ZcCalcResult zcCalculate(
   var compTotal = 0.0;
   if (comp.isNotEmpty) {
     comp.sort((a, b) => b.compareTo(a));
-    if (comp.first > 5) {
+    if (open) {
+      // 放开累加：Ⅰ~Ⅳ 类完全平等，所有获奖一律相加、无 5 分封顶（对应参考版
+      // `calcJS` 的 `for (const it of arr) { total += it.v; }`）。
+      for (final v in comp) {
+        compTotal += v;
+      }
+    } else if (comp.first > 5) {
       compTotal = comp.first;
     } else {
       var sum = 0.0;
@@ -254,8 +271,10 @@ ZcCalcResult zcCalculate(
       if (key == 'intl' || key == 'auth' || key == 'csci') hasBreak = true;
     }
   }
-  paperTotal += _c(genSum, 0, 1.5);
-  if (!hasBreak) paperTotal = _c(paperTotal, 0, 5);
+  // 放开累加：国内一般刊物不再限 1.5 分、合计不再封顶 5 分（对应参考版只
+  // `total += genSum`）。
+  paperTotal += open ? genSum : _c(genSum, 0, 1.5);
+  if (!open && !hasBreak) paperTotal = _c(paperTotal, 0, 5);
 
   // ---- 自动源 ----
   final volunteerHours = manual.volunteerHours ?? (autoVolunteer ?? 0);
@@ -271,7 +290,7 @@ ZcCalcResult zcCalculate(
   final tBase = manual.tMian ? 60.0 : manual.tScore;
   final tJs = slotSum(ZcTypeId.sportComp);
   final tXl = slotSum(ZcTypeId.psych);
-  final tTeam = slotMax(ZcTypeId.sportTeam);
+  final tTeam = slotBest(ZcTypeId.sportTeam);
   final mWy = slotSum(ZcTypeId.artsComp);
   var mMtYuan = 0.0, mMt = 0.0;
   for (final m in materials) {
@@ -284,19 +303,30 @@ ZcCalcResult zcCalculate(
       mMt += v;
     }
   }
-  mMt += _c(mMtYuan, 0, 10);
+  mMt += capped(mMtYuan, 10);
   final mHd = slotSum(ZcTypeId.artAct);
   final lSh = slotSum(ZcTypeId.social);
   final lHd = slotSum(ZcTypeId.laborAct);
-  final lQinshi = slotMax(ZcTypeId.dorm);
+  final lQinshi = slotBest(ZcTypeId.dorm);
 
   // ---- 德育 ----
+  // 民主评议**两档都封顶 20**（参考版 `Math.min(Math.max(…), 20)` 照旧）。
   final dPingyi = _c(manual.deyuPingyi, 0, 20);
-  final dShi = slotMax(ZcTypeId.deed);
-  final dSx = slotMax(ZcTypeId.eduCon) + _c(slotSum(ZcTypeId.eduPart), 0, 2);
-  final dFw = slotMax(ZcTypeId.servicePost);
-  final dHonor = _c(slotMax(ZcTypeId.honorP) + slotMax(ZcTypeId.honorG), 0, 10);
-  final dAdd = _c(dShi + dSx + dFw + dHonor, 0, 20);
+  final dShi = slotBest(ZcTypeId.deed);
+  // 思想教育分两槽：**贡献度**（骨干，职责取最高）+ **参与度**（活动次数累加，
+  // 封顶 2 分）。用户 2026-09-27：「思想教育应该分为思想教育·贡献度和
+  // 思想教育·参与度」→ 明细拆成两行，界面各挂一个板块（值只从引擎取，界面不重算）。
+  final dSxCon = slotBest(ZcTypeId.eduCon);
+  final dSxPart = capped(slotSum(ZcTypeId.eduPart), 2);
+  final dSx = dSxCon + dSxPart;
+  final dFw = slotBest(ZcTypeId.servicePost);
+  // 荣誉称号同样拆：**个人**（表 6）+ **集体**（表 7）。「两槽合计封顶 10 分」
+  // 只体现在父级 [dHonor]（进而进 [dAdd] 的 20 分封顶）—— 两个板块各显示自己
+  // 那一槽的分值，与智育四小项同口径（板块显示分槽值、父级合计才封顶）。
+  final dHonorP = slotBest(ZcTypeId.honorP);
+  final dHonorG = slotBest(ZcTypeId.honorG);
+  final dHonor = capped(dHonorP + dHonorG, 10);
+  final dAdd = capped(dShi + dSx + dFw + dHonor, 20);
   const dCf = [0.0, 2.0, 5.0, 10.0];
   final cfIdx = manual.kouCf < 0 ? 0 : (manual.kouCf > 3 ? 3 : manual.kouCf);
   final dKou = manual.kouQk * 2 + manual.kouHd + dCf[cfIdx];
@@ -304,9 +334,9 @@ ZcCalcResult zcCalculate(
   final gD = manual.vetoD ? ZcGrade.fail : zcGradeOf(dScore, manual.rankD);
 
   // ---- 智育 ----
-  final zWy = slotMax(ZcTypeId.foreign);
-  final zCy = slotMax(ZcTypeId.startup);
-  final zAdd = _c(compTotal + paperTotal + zWy + zCy, 0, 20);
+  final zWy = slotBest(ZcTypeId.foreign);
+  final zCy = slotBest(ZcTypeId.startup);
+  final zAdd = capped(compTotal + paperTotal + zWy + zCy, 20);
   final zKou = manual.kouZhiyu * 3.0;
   final zScore = _max0(weight + zAdd - zKou);
   var gZ = zcGradeOf(zScore, manual.rankZ);
@@ -321,22 +351,24 @@ ZcCalcResult zcCalculate(
   }
 
   // ---- 体育 ----
-  final tAdd = _c(tJs + tXl + tTeam, 0, 20);
+  final tAdd = capped(tJs + tXl + tTeam, 20);
   final tKou = manual.tKou1 * 5.0 + manual.tKou2 * 2.0;
   final tTotal = _max0(tBase + tAdd - tKou);
   final gT = tBase < 60 ? ZcGrade.fail : zcGradeOf(tTotal, manual.rankT);
 
   // ---- 美育 ----
+  // 民主评议两档都封顶 20（同上）。
   final mPingyi = _c(manual.meiyuPingyi, 0, 20);
-  final mAdd = _c(mWy + mMt + mHd, 0, 20);
+  final mAdd = capped(mWy + mMt + mHd, 20);
   final mKou =
       manual.mKou1 * 1.0 + manual.mKou2 * 2.0 + manual.mKou3 * 5.0;
   final mScore = _max0(60 + mPingyi + mAdd - mKou);
   final gM = zcGradeOf(mScore, manual.rankM);
 
   // ---- 劳育 ----
+  // 民主评议两档都封顶 20（同上）。
   final lPingyi = _c(manual.laoyuPingyi, 0, 20);
-  final lAdd = _c(volScore + lSh + lHd + lQinshi, 0, 20);
+  final lAdd = capped(volScore + lSh + lHd + lQinshi, 20);
   final lKou = manual.lKou1 * 1.0 +
       (manual.lKou2 ? 2 : 0) +
       (manual.lKou3 ? 2 : 0) +
@@ -380,9 +412,14 @@ ZcCalcResult zcCalculate(
     ZcDetail('德育 · 基础分', 60),
     ZcDetail('德育 · 民主评议', dPingyi),
     ZcDetail('德育 · 优秀事迹', dShi),
-    ZcDetail('德育 · 思想教育', dSx),
+    // ⚠ 思想教育与荣誉称号**各拆两行**（用户 2026-09-27）—— 界面按这 6 行挂
+    // 6 个板块；每行是**分槽值**，父级封顶（思想教育参与度 2 / 荣誉称号合计 10 /
+    // 附加合计 20）不进这两行，所以「6 行之和」可能大于实际计入的附加分。
+    ZcDetail('德育 · 思想教育贡献度', dSxCon),
+    ZcDetail('德育 · 思想教育参与度', dSxPart),
     ZcDetail('德育 · 公共服务', dFw),
-    ZcDetail('德育 · 荣誉称号', dHonor),
+    ZcDetail('德育 · 荣誉称号（个人）', dHonorP),
+    ZcDetail('德育 · 荣誉称号（集体）', dHonorG),
     if (dKou > 0) ZcDetail('德育 · 扣分', -dKou),
     ZcDetail('智育 · 加权成绩', weight, auto: weightAuto),
     if (weightMissing) ZcDetail('智育 · 加权缺失（需填/需登录）', 0),
@@ -441,7 +478,13 @@ double zcRound2(double v) => (v * 100).roundToDouble() / 100;
 /// 最高项 > 5 分时只计最高那一项；否则按分值从高到低累加，累加到 ≥ 5 分为止，
 /// 总分封顶 5 分）。用户 2026-09-18：「综测智育竞赛加分要把最终贡献分数的项
 /// 高亮一下」——界面用本函数决定高亮哪几条材料，别再自己写一套判断。
-Set<String> zcContestContributingIds(List<ZcMaterial> materials) {
+///
+/// [open] = 综测页的「放开所有累加」开关（`ZcManual.openAccumulate`）：放开档
+/// 所有获奖一律相加、无封顶 → **每一条有分的竞赛都被计入**。
+Set<String> zcContestContributingIds(
+  List<ZcMaterial> materials, {
+  bool open = false,
+}) {
   final entries = <({String id, double value})>[];
   for (final m in materials) {
     if (m.typeId != ZcTypeId.contest) continue;
@@ -449,6 +492,7 @@ Set<String> zcContestContributingIds(List<ZcMaterial> materials) {
     if (v != null && v > 0) entries.add((id: m.id, value: v));
   }
   if (entries.isEmpty) return const <String>{};
+  if (open) return {for (final e in entries) e.id};
   entries.sort((a, b) => b.value.compareTo(a.value));
   if (entries.first.value > 5) return {entries.first.id};
   final out = <String>{};
@@ -458,5 +502,97 @@ Set<String> zcContestContributingIds(List<ZcMaterial> materials) {
     sum += e.value;
     if (sum >= 5) break;
   }
+  return out;
+}
+
+/// 德育附加分涉及的六个材料类型（表 3~7；[zcMoralContributingIds] 只认这几个，
+/// 传进来的其它类型材料一律忽略）。
+const List<ZcTypeId> _zcMoralTypeIds = [
+  ZcTypeId.deed, // 表 3 优秀事迹
+  ZcTypeId.eduCon, // 表 4 思想教育 · 贡献度
+  ZcTypeId.eduPart, // 表 4 思想教育 · 参与度
+  ZcTypeId.servicePost, // 表 5 公共服务
+  ZcTypeId.honorP, // 表 6 荣誉称号 · 个人
+  ZcTypeId.honorG, // 表 7 荣誉称号 · 集体
+];
+
+/// 德育附加分里**最终被采用**的材料 id 集合（= 引擎 `dShi/dSx/dFw/dHonor`
+/// 的同一套规则）。用户 2026-09-27：「德育加分部分，也要像竞赛附加分一样，
+/// 只高亮计入的那一项」—— 界面用本函数决定高亮哪几条，别再自己写一套判断。
+///
+/// 逐板块口径（与 [zcCalculate] 逐字对应，六个板块与界面 `d-3-1 ~ d-3-4b`
+/// 的规则点、材料类型一一对齐）：
+/// - **优秀事迹**（表 3）：`slotMax(deed)` → 只采用最高一条；
+/// - **思想教育 · 贡献度**（表 4）：骨干培训 `slotMax(eduCon)` → 只采用最高一条；
+/// - **思想教育 · 参与度**（表 4）：活动参与 `slotSum(eduPart)` 累加（引擎再封顶
+///   2 分）→ 按分值从高到低累加到 ≥ 2 分为止的那几条；
+/// - **公共服务**（表 5）：`slotMax(servicePost)` → 只采用最高一条；
+/// - **荣誉称号 · 个人**（表 6）：`slotMax(honorP)` → 只采用最高一条；
+/// - **荣誉称号 · 集体**（表 7）：`slotMax(honorG)` → 只采用最高一条
+///   （引擎把个人+集体**合计**封顶 10 分 —— 那是两槽合计的上限，
+///   不改变「采用了哪两条」，故两条都算采用）。
+///
+/// ⚠ 附加合计封顶 20 分（引擎的 `dAdd`）同样是**在上述结果之上的一次性截断**，
+/// 不改变「采用了哪几条」—— 故本函数刻意不模拟它（否则得凭空规定截断顺序）。
+///
+/// 同分并列时取**材料列表里靠前的那一条**（严格大于才替换，见 `_takeMax`），
+/// 与 [zcContestContributingIds] 的 `sort` 口径相比更确定（`List.sort`
+/// 不保证稳定）。分值 ≤ 0 / 未填分的材料一律不算采用。
+///
+/// [open] = 综测页的「放开所有累加」开关（`ZcManual.openAccumulate`）：放开档
+/// 六个板块全部改累加、封顶全取消 → **每一条有分的德育材料都被采用**。
+Set<String> zcMoralContributingIds(
+  List<ZcMaterial> materials, {
+  bool open = false,
+}) {
+  final byType = <ZcTypeId, List<({String id, double value})>>{};
+  for (final m in materials) {
+    final v = zcMaterialValue(m);
+    if (v == null || v <= 0) continue;
+    final list = byType.putIfAbsent(
+      m.typeId,
+      () => <({String id, double value})>[],
+    );
+    list.add((id: m.id, value: v));
+  }
+  if (open) {
+    final all = <String>{};
+    for (final t in _zcMoralTypeIds) {
+      for (final e in byType[t] ?? const <({String id, double value})>[]) {
+        all.add(e.id);
+      }
+    }
+    return all;
+  }
+  final out = <String>{};
+  // 只取最高一条（并列取靠前的）。
+  void takeMax(ZcTypeId id) {
+    final list = byType[id];
+    if (list == null || list.isEmpty) return;
+    var best = list.first;
+    for (final e in list) {
+      if (e.value > best.value) best = e;
+    }
+    out.add(best.id);
+  }
+
+  // 按分值从高到低累加，累加到 ≥ cap 为止（并列按原顺序）。
+  void takeUntil(ZcTypeId id, double cap) {
+    final list = [...?byType[id]]
+      ..sort((a, b) => b.value.compareTo(a.value));
+    var sum = 0.0;
+    for (final e in list) {
+      out.add(e.id);
+      sum += e.value;
+      if (sum >= cap) break;
+    }
+  }
+
+  takeMax(ZcTypeId.deed); // 表 3 优秀事迹
+  takeMax(ZcTypeId.eduCon); // 表 4 思想教育贡献度
+  takeUntil(ZcTypeId.eduPart, 2); // 表 4 思想教育参与度（≤2 分）
+  takeMax(ZcTypeId.servicePost); // 表 5 公共服务
+  takeMax(ZcTypeId.honorP); // 表 6 荣誉称号·个人
+  takeMax(ZcTypeId.honorG); // 表 7 荣誉称号·集体
   return out;
 }

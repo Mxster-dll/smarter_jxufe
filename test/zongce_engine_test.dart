@@ -101,10 +101,14 @@ void main() {
         _mat(ZcTypeId.honorP, level: 0),
         _mat(ZcTypeId.honorG, level: 0),
       ], manual: const ZcManual());
-      expect(
-        r.details.firstWhere((d) => d.label.contains('荣誉称号')).value,
-        10,
-      );
+      // 2026-09-27 起明细按「个人 / 集体」两行拆开（界面据此挂两个板块），
+      // 合计封顶 10 只体现在德育分数上（60 基础 + min(10 + 4, 10) = 70；
+      // 不封顶会是 74）。
+      double detail(String label) =>
+          r.details.firstWhere((d) => d.label == label).value;
+      expect(detail('德育 · 荣誉称号（个人）'), 10);
+      expect(detail('德育 · 荣誉称号（集体）'), 4);
+      expect(r.deyu, closeTo(70, 1e-9));
     });
 
     test('附加分合计 ≤20', () {

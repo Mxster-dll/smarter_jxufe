@@ -3,25 +3,64 @@ library;
 
 import 'dart:convert';
 
+import 'package:smarter_jxufe/features/school_calendar/domain/school_time.dart'
+    show schoolYearFallback, schoolYearStartOf;
+
 import 'zc_catalog.dart';
 import 'zc_foreign.dart';
 import 'zc_rules.dart';
 import 'zc_weights.dart';
 
 /// 测评学年（结束年编码）：测评学年 [yearEnd] 覆盖窗口
-/// 2025-09-01 ~ 2026-08-31（yearEnd=2026），即对上一教学学年的测评。
-bool zcYearWindowContains(DateTime d, int yearEnd) {
-  final start = DateTime(yearEnd - 1, 9, 1);
-  final end = DateTime(yearEnd, 8, 31, 23, 59, 59);
-  return !d.isBefore(start) && !d.isAfter(end);
-}
+/// `[yearEnd-1]-09-01 ~ [yearEnd]-08-31`（yearEnd=2026），即对上一教学学年的测评。
+///
+/// ⚠ 2026-09-27 起**唯一实现在 `school_calendar/domain/school_time.dart`**
+/// （`schoolYearFallback(yearEnd - 1)`）—— 本函数只是转发别名，别再往这里加日期算法。
+/// 综测引擎是纯函数、拿不到校历数据，所以固定用兜底窗口；需要真实学年末
+/// （`[xn+1]` 学年首日 − 1 天）的调用方请传 `SchoolTimeTable`。
+bool zcYearWindowContains(DateTime d, int yearEnd) =>
+    schoolYearFallback(yearEnd - 1).contains(d);
 
 /// 默认测评学年：9 月起对刚结束的学年测评（2026-09 → 2025-2026 即 yearEnd 2026）；
 /// 1~8 月（测评季尚未到 9 月）默认最近一个已完成学年。
-int zcDefaultYear(DateTime now) => now.month >= 9 ? now.year : now.year - 1;
+///
+/// ⚠ 2026-09-27 起算术在 `school_calendar/domain/school_time.dart` 的
+/// `schoolYearStartOf`（本函数 = 转发别名）。
+int zcDefaultYear(DateTime now) => schoolYearStartOf(now);
 
 /// 学年窗口 label，如 「2025-2026 学年」。
 String zcYearLabel(int yearEnd) => '${yearEnd - 1}-$yearEnd 学年';
+
+/// 「测评学年（结束年）」→ 「学年选择器（`AcademicYearPicker`）三元组参数」的换算。
+///
+/// ⚠ **两套年份语义的换算只此一处**：
+/// - 选择器（以及课表 / 成绩页）的年份 = 学年的**开始**年 —— 高亮对渲染成
+///   `initialYear - initialYear + 1`，且 `academic_year_picker.dart` 的
+///   `_maxOffset => _offsetOf(endYear - 1)` 要求 `initialYear ≤ endYear - 1`；
+/// - 综测内部一律用学年的**结束**年（[zcYearLabel]、`manual-<结束年>`、
+///   `zcAutoXxxProvider(yearEnd)`）。
+///
+/// 此前 `zongce_screen.dart` 直接把结束年当选择器年份传，于是：高亮对的右半边
+/// （`+1`）落在 `endYear` 之外、**列表里根本没有那一项**，尺寸也越过了
+/// `_maxOffset`（用户 2026-09-27 报：「综测页顶部的学年选择范围有误，今年是
+/// 2026-2027 学年，但是顶部只显示到了 2026，实际应该显示到 2027 的文本」）。
+///
+/// [latestEnd] = 最新可选测评学年的结束年（= [zcDefaultYear]）；
+/// [yearEnd] = 当前选中的测评学年（结束年）；
+/// [window] = 往前可回溯的学年数（默认 5）。
+/// 返回的 `endYear` 比最新学年多一格，**配对才有右半边**（如 2026-2027）。
+({int startYear, int endYear, int initialYear}) zcYearPickerRange({
+  required int latestEnd,
+  required int yearEnd,
+  int window = 5,
+}) {
+  final startYear = latestEnd - window;
+  return (
+    startYear: startYear,
+    endYear: latestEnd + 1,
+    initialYear: (yearEnd - 1).clamp(startYear, latestEnd),
+  );
+}
 
 /// 一条加分证明材料。
 class ZcMaterial {
@@ -199,6 +238,14 @@ class ZcManual {
   /// 默认 `20/35/15/15/15`。明细见 `zc_weights.dart`。
   final ZcWeights weights;
 
+  /// 「放开所有累加」开关（用户 2026-09-27：「我们希望增加一个综测开关
+  /// 『是否放开所有累加』的按钮」）——口径照学校《评优评先综测计算器》与标准版
+  /// 在累加上的差别：**所有「就高一次」改多项叠加、所有附加分封顶取消**
+  /// （附加合计 20 / 荣誉合计 10 / 院级媒体 10 / 竞赛 5 / 论文单篇 1.5 与合计 5 /
+  /// 参与度 2）；**民主评议仍封顶 20、扣分项照旧、等次评定与一票否决不变**。
+  /// 与占比一样**按学年各存一套**（本对象即 `manual-<测评学年结束年>`）。
+  final bool openAccumulate;
+
   const ZcManual({
     this.deyuPingyi = 0,
     this.kouQk = 0,
@@ -229,6 +276,7 @@ class ZcManual {
     this.rankM = ZcRank.unknown,
     this.rankL = ZcRank.unknown,
     this.weights = ZcWeights.initial,
+    this.openAccumulate = false,
   });
 
   Map<String, dynamic> toJson() => {
@@ -261,6 +309,7 @@ class ZcManual {
         'rankM': rankM.name,
         'rankL': rankL.name,
         'weights': weights.toJson(),
+        'openAccumulate': openAccumulate,
       };
 
   factory ZcManual.fromJson(Map<String, dynamic>? json) {
@@ -298,6 +347,8 @@ class ZcManual {
       rankL: rank('rankL'),
       // 旧数据没有这一项 → 回落默认档（20/35/15/15/15）。
       weights: ZcWeights.fromJson(json['weights']),
+      // 旧数据没有这一项 → 标准档（不放开累加）。
+      openAccumulate: json['openAccumulate'] as bool? ?? false,
     );
   }
 
@@ -331,6 +382,7 @@ class ZcManual {
     ZcRank? rankM,
     ZcRank? rankL,
     ZcWeights? weights,
+    bool? openAccumulate,
   }) =>
       ZcManual(
         deyuPingyi: deyuPingyi ?? this.deyuPingyi,
@@ -363,6 +415,7 @@ class ZcManual {
         rankM: rankM ?? this.rankM,
         rankL: rankL ?? this.rankL,
         weights: weights ?? this.weights,
+        openAccumulate: openAccumulate ?? this.openAccumulate,
       );
 }
 

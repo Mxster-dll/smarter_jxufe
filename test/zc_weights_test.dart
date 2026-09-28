@@ -12,6 +12,7 @@ import 'package:smarter_jxufe/features/zongce/domain/zc_rules.dart';
 import 'package:smarter_jxufe/features/zongce/domain/zc_weights.dart';
 import 'package:smarter_jxufe/features/zongce/presentation/widgets/weight_sheet.dart';
 import 'package:smarter_jxufe/features/zongce/presentation/zongce_widgets.dart';
+import 'package:smarter_jxufe/shared/widgets/academic_year_picker.dart';
 
 /// 总评成绩（五育加权）的守卫 —— 用户 2026-09-18：
 /// 「综测不是直接算平均分，而是有一个总评成绩，这个成绩的占比由班主任定，
@@ -368,14 +369,28 @@ void main() {
         contains(r"'${zcWeightPercentText(it.$4)}%'"),
         reason: '占比改成每育名称后的小胶囊（第 4 项 = 该育占比）',
       );
-      // 二轮更正（用户 2026-09-21：「应该是“x育”与占比显示为此育的颜色，只有
-      // 分数按等次显示」）→ 育名与占比胶囊取该育色（第 5 项 = `zcYuColors` 里
-      // 那一育的语义色），分数取等次色；行尾等次小胶囊保留。
-      expect(code, contains(r'color: it.$5'), reason: '育名与占比取该育色');
+      // 四轮更正（用户 2026-09-27：「每板块的占比胶囊不要有颜色，就用默认；
+      // 各育的名字也不要有颜色，就默认颜色」）→ 育名不带 color、占比胶囊走中性灰；
+      // 分数与行尾等次小胶囊仍是等次色（2026-09-21 三轮口径未变）。
+      expect(
+        code.contains(r'it.$5'),
+        isFalse,
+        reason: '育名 / 占比都不再取该育色（rows 的第 5 项已删）',
+      );
       expect(
         code,
-        contains(r'AppColors.tint(context, it.$5, 0.12)'),
-        reason: '占比胶囊底色 = 该育色淡底',
+        contains('color: AppColors.tint(context, scheme.outline, 0.12)'),
+        reason: '占比胶囊底色改回中性灰',
+      );
+      expect(
+        code,
+        contains('color: scheme.outline'),
+        reason: '占比胶囊文字也走中性灰',
+      );
+      expect(
+        code,
+        contains(r'TextStyle(fontSize: 12.5)'),
+        reason: '育名 = 默认文字色（不带 color）',
       );
       expect(
         code,
@@ -388,10 +403,96 @@ void main() {
     test('学年切换 = 共享学年选择器（旧的两个箭头按钮已撤）', () {
       expect(screen, contains('AcademicYearPicker('));
       expect(screen, contains("key: const Key('zcYearPicker')"));
-      expect(screen, contains('onChanged: _loadYear'));
+      // ⚠ 选择器的年份 = 学年**开始**年，综测内部一律用**结束**年 → 必须 +1 换算
+      //   （2026-09-27 之前直接传 `_year`，高亮对右半边落在 endYear 之外）。
+      expect(screen, contains('onChanged: (y) => _loadYear(y + 1)'));
+      expect(screen, contains('zcYearPickerRange('));
       expect(screen.contains("tooltip: '上一学年'"), isFalse);
       expect(screen.contains("tooltip: '下一学年'"), isFalse);
       expect(screen.contains('_switchYear'), isFalse, reason: '旧方法应已删除');
+    });
+
+    test('★ 学年选择器的范围与年份语义（用户 2026-09-27：「只显示到了 2026，应该显示到 2027」）', () {
+      // 2026-09：最新测评学年 = 2025-2026（结束年 2026）。
+      final r = zcYearPickerRange(latestEnd: 2026, yearEnd: 2026);
+      expect(r.initialYear, 2025, reason: '选择器年份 = 学年开始年（2025-2026 → 2025）');
+      expect(r.endYear, 2027, reason: 'endYear 要多留一格，配对才有右半边「2027」');
+      expect(r.startYear, 2021, reason: '往前 5 个学年（2021-2022 是最老的一档）');
+      // 高亮对 = initialYear ~ initialYear+1 = 2025-2026 ✓，且右半边 ≤ endYear-1
+      expect(r.initialYear + 1 <= r.endYear - 1, isTrue);
+      // 当前学年（2026-2027）也够得着：initialYear 能一直选到 endYear-1
+      expect(r.endYear - 1, 2026, reason: '2026-2027 学年 = 开始年 2026');
+
+      // 切到当前学年后（_year = 2027）仍然夹得住
+      final r2 = zcYearPickerRange(latestEnd: 2026, yearEnd: 2027);
+      expect(r2.initialYear, 2026);
+      expect(r2.initialYear <= r2.endYear - 1, isTrue);
+      // 越界的 _year 会被夹回范围（不留一个选不中的值）
+      final r3 = zcYearPickerRange(latestEnd: 2026, yearEnd: 2099);
+      expect(r3.initialYear, 2026);
+      final r4 = zcYearPickerRange(latestEnd: 2026, yearEnd: 1900);
+      expect(r4.initialYear, r4.startYear);
+    });
+
+    test('★ 选择器右侧有「学年」二字（用户 2026-09-27：「就像成绩页一样」）', () {
+      final code = screen
+          .split('\n')
+          .map((line) => line.split('//').first)
+          .join('\n');
+      final at = code.indexOf('Widget _buildYearBar(BuildContext context) {');
+      final block = code.substring(at, code.indexOf('\n  }', at));
+      expect(block, contains("'学年'"), reason: '标签必须在选择器同一行里');
+      expect(block, contains('mainAxisSize: MainAxisSize.min'));
+    });
+
+    testWidgets('★ 新范围要真的画得出「2027」（旧参数下这一项压根不存在）', (tester) async {
+      final r = zcYearPickerRange(latestEnd: 2026, yearEnd: 2026);
+      Widget host(int startYear, int endYear, int initialYear) => MaterialApp(
+        home: Scaffold(
+          body: AcademicYearPicker(
+            startYear: startYear,
+            endYear: endYear,
+            initialYear: initialYear,
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(host(r.startYear, r.endYear, r.initialYear));
+      await tester.pumpAndSettle();
+      // 高亮对 = 2025 + 「-」 + 2026，且 2027 作为条目存在（能一直选到 2026-2027）
+      expect(find.text('2025'), findsOneWidget);
+      expect(find.text('2026'), findsOneWidget);
+      expect(
+        find.text('2027'),
+        findsOneWidget,
+        reason: '右半边要有实体，否则标签只剩「2026 -」——用户看到的正是这个',
+      );
+
+      // 旧口径（endYear = 最新学年那年）：列表到不了 2027 → 复现用户报的现象
+      await tester.pumpWidget(host(2021, 2026, 2026));
+      await tester.pumpAndSettle();
+      expect(find.text('2027'), findsNothing);
+    });
+
+    test('顶部只剩一个**居中**的学年选择器，左侧提示文本已撤（用户 2026-09-27 四轮）', () {
+      // 只扫代码（注释里会引用被删掉的旧写法做说明，不能当违规）。
+      final code = screen
+          .split('\n')
+          .map((line) => line.split('//').first)
+          .join('\n');
+      final at = code.indexOf('Widget _buildYearBar(BuildContext context) {');
+      expect(at, greaterThan(0), reason: '_buildYearBar 应还在');
+      final block = code.substring(at, code.indexOf('\n  }', at));
+      expect(block, contains('Center('), reason: '选择器必须居中');
+      expect(block, contains("key: const Key('zcYearPicker')"));
+      for (final gone in const ['测评学年', '9 月起测评上一学年', 'onHoverChanged']) {
+        expect(block.contains(gone), isFalse, reason: '「$gone」应已从顶部撤掉');
+      }
+      expect(
+        code.contains('_pickerHovered'),
+        isFalse,
+        reason: '悬停淡出（只服务于左侧那两行）连字段一起删掉，留着会报 unused_field',
+      );
     });
 
     test('志愿服务时长 = 单行胶囊 + 下方按表 18 分段的进度条（无说明文案）', () {
@@ -518,7 +619,9 @@ void main() {
       );
     });
 
-    testWidgets('育名与占比取该育色、分数取等次色（用户 2026-09-21 二轮更正）', (tester) async {
+    testWidgets('育名与占比胶囊 = 默认（中性）色，分数与等次胶囊取等次色（用户 2026-09-27 四轮）', (
+      tester,
+    ) async {
       // 用户原话：「应该是“x育”与占比显示为此育的颜色，只有分数按等次显示」。
       const r = ZcCalcResult(
         deyu: 60,
@@ -543,39 +646,33 @@ void main() {
       );
       await pumpResult(tester, r);
 
-      // ① 育名 = 该育语义色（`zcYuColors`），与等次无关
-      const yuNames = <String, String>{
-        '德育': 'd',
-        '智育': 'z',
-        '体育': 't',
-        '美育': 'm',
-        '劳育': 'l',
-      };
-      for (final e in yuNames.entries) {
+      // ① 育名 = 默认文字色（不再取该育语义色 —— 用户 2026-09-27 四轮）
+      for (final name in const ['德育', '智育', '体育', '美育', '劳育']) {
         expect(
-          tester.widget<Text>(find.text(e.key)).style!.color,
-          zcYuColors[e.value],
-          reason: '「${e.key}」取该育自己的颜色',
+          tester.widget<Text>(find.text(name)).style!.color,
+          isNull,
+          reason: '「$name」用默认颜色，不带 color',
         );
       }
 
-      // ② 占比胶囊 = 同色文字 + 同色淡底（default 占比下 20% / 35% 各恰好一枚）
+      // ② 占比胶囊 = 中性灰（同色文字 + 同色淡底；default 占比下 20% / 35% 各一枚）
       final ctx = tester.element(find.text('20%'));
-      for (final e in const {'20%': 'd', '35%': 'z'}.entries) {
+      final outline = Theme.of(ctx).colorScheme.outline;
+      for (final key in const ['20%', '35%']) {
         expect(
-          tester.widget<Text>(find.text(e.key)).style!.color,
-          zcYuColors[e.value],
-          reason: '${e.key} 文字取该育色',
+          tester.widget<Text>(find.text(key)).style!.color,
+          outline,
+          reason: '$key 文字用中性灰（不再取该育色）',
         );
         final box = tester.widget<Container>(
           find
-              .ancestor(of: find.text(e.key), matching: find.byType(Container))
+              .ancestor(of: find.text(key), matching: find.byType(Container))
               .first,
         );
         expect(
           (box.decoration! as BoxDecoration).color,
-          AppColors.tint(ctx, zcYuColors[e.value]!, 0.12),
-          reason: '${e.key} 底色 = 该育色 12% 淡底',
+          AppColors.tint(ctx, outline, 0.12),
+          reason: '$key 底色 = 中性灰 12% 淡底',
         );
       }
 

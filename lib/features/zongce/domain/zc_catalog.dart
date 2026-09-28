@@ -35,6 +35,16 @@ enum ZcTypeId {
 
 enum ZcAgg { max, sum, contest, paper }
 
+/// 该聚合语义是否 = **「可累计」**（多条材料相加，而不是「就高一次」）。
+///
+/// 用户 2026-09-27：「参考 `2026综测计算器.html` 给允许累加的项添加绿色胶囊」——
+/// 学校标准版计算器在 9 处分项标题后挂了 `.cum-badge{…}可累计`，正好等于本仓
+/// `agg` 为 `sum`（思想教育·参与度 / 体育竞赛 / 心理健康 / 文艺竞赛 / 媒体艺术 /
+/// 美育活动 / 社会实践 / 劳育活动）**加上 `paper`**（论文/专利：官方条目标了
+/// 可累计，虽然它另有单篇 1.5 / 合计 5 的封顶）。`contest` 不标 —— 标准版竞赛
+/// 是「最高项 > 5 只计最高，否则累加封顶 5」，官方也没给它挂胶囊。
+bool zcAggIsCumulative(ZcAgg agg) => agg == ZcAgg.sum || agg == ZcAgg.paper;
+
 /// 某材料类型：录入表单 + 计入口 + 聚合语义描述。
 class ZcTypeSpec {
   final ZcTypeId id;
@@ -52,6 +62,9 @@ class ZcTypeSpec {
   final String slot;
 
   final ZcAgg agg;
+
+  /// 这一项是否「可累计」（= [zcAggIsCumulative]；界面据此挂绿色胶囊）。
+  bool get cumulative => zcAggIsCumulative(agg);
 
   final bool needName;
   final bool needDate;

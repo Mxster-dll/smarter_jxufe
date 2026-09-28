@@ -51,10 +51,6 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
   ZcStore? _store;
   String? _loadError;
 
-  /// 学年选择器是否被鼠标悬停（悬停展开时把左侧说明淡出，避免年份溢出的
-  /// 数字压在文字上）。
-  bool _pickerHovered = false;
-
   // ---- 体测成绩自动获取（赛康体测平台，仅当用户未手动编辑时回填）----
   bool _ticeBusy = false; // 自动查询进行中
   bool _ticeTouched = false; // 本学年用户已手动编辑体测分数（防覆盖）
@@ -263,6 +259,13 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 40),
       children: [
         _buildYearBar(context),
+        // 开关打开时给一行行内说明（不是 Tooltip：本仓 2026-09-18 四轮裁定页面
+        // 不留纯文字悬停；语义要一眼可见）。
+        if (_manual.openAccumulate)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Center(child: zcOpenAccumulateNote(context)),
+          ),
         if (matsAsync.isLoading || matsAsync.hasError)
           Padding(
             padding: const EdgeInsets.only(top: 4, bottom: 10),
@@ -300,49 +303,91 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
   /// 全应用统一的学年选择器（用户 2026-09-18：「综测的年份切换要使用我们的
   /// 『学年选择器』」）—— 取代原先的两个 `chevron_left/right` 图标按钮。
   ///
-  /// 范围 = 当前测评学年往前 [zcYearWindow] 个学年，**不允许选未来学年**
-  /// （还没到的学年没有测评意义）。
+  /// 用户 2026-09-27：「综测页顶部只保留一个居中的学年选择器，左侧不要有提示
+  /// 文本」→ 左侧那两行（「测评学年」+「9 月起测评上一学年（材料按盖章时间
+  /// 归档）」）连同专为它们做的悬停淡出（旧字段 `_pickerHovered`）一并删掉，
+  /// 选择器单独居中。
+  ///
+  /// ## ⚠ 两套年份语义（2026-09-27 修正）
+  ///
+  /// 选择器的年份 = 学年的**开始**年（高亮对渲染成 `_selected - _selected + 1`，
+  /// 且 `academic_year_picker.dart` 的 `_maxOffset => _offsetOf(endYear - 1)`
+  /// 明确要求 `_selected ≤ endYear - 1`，即 `endYear` 要留一格给配对的那个年）；
+  /// 综测内部一律用学年的**结束**年 `_year`（`zcYearLabel(yearEnd)`、
+  /// `manual-<学年结束年>`、`zcAutoXxxProvider(yearEnd)`）。
+  ///
+  /// 此前这里直接把 `_year` 当选择器年份传，于是：配对里的 `_year + 1` 落在
+  /// `endYear` 之外、**列表里根本没有那一项** —— 高亮对只剩半边
+  /// （用户报：「顶部只显示到了 2026，实际应该显示到 2027」），而且显示的年
+  /// 与页面算的年整整差一年。现在显式换算：传 `_year - 1`（= 学年开始年），
+  /// 回来 `+ 1` 还原成结束年。
+  ///
+  /// 范围 = 当前测评学年往前 [zcYearWindow] 个学年 **+ 当前学年那一对**
+  /// （`endYear: latestEnd + 1` 才放得下 `2026-2027`）—— 用户 2026-09-27：
+  /// 「今年是 2026-2027 学年，……实际应该显示到 2027 的文本」。默认选中的仍是
+  /// **上一学年**（9 月起评的是刚结束的那一学年，见 `zcDefaultYear`）。
   Widget _buildYearBar(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final endYear = zcDefaultYear(DateTime.now());
-    final startYear = endYear - zcYearWindow;
-    return Row(
-      children: [
-        Expanded(
-          child: AnimatedOpacity(
-            duration: const Duration(milliseconds: 160),
-            opacity: _pickerHovered ? 0.0 : 1.0,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '测评学年',
-                  style: TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
-                    color: scheme.onSurface,
-                  ),
+    // 年份语义换算（结束年 ↔ 选择器的开始年）收在 `zcYearPickerRange` 里，
+    // 那里写着为什么必须换算、以及 endYear 为什么要多留一格。
+    final range = zcYearPickerRange(
+      latestEnd: zcDefaultYear(DateTime.now()),
+      yearEnd: _year,
+      window: zcYearWindow,
+    );
+    return SizedBox(
+      width: double.infinity,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AcademicYearPicker(
+                key: const Key('zcYearPicker'),
+                startYear: range.startYear,
+                endYear: range.endYear,
+                initialYear: range.initialYear,
+                // 选择器给的是**开始**年，综测内部要**结束**年 → +1。
+                onChanged: (y) => _loadYear(y + 1),
+              ),
+              const SizedBox(width: 4),
+              // 用户 2026-09-27：「顶部学年选择器右侧应该显示『学年』二字，
+              // 就像成绩页一样」（成绩页那颗是 `TimeLimit` 下拉，默认档标签 = 「学年」）。
+              Text(
+                '学年',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  '9 月起测评上一学年（材料按盖章时间归档）',
-                  style: TextStyle(fontSize: 11, color: scheme.outline),
-                ),
-              ],
+              ),
+            ],
+          ),
+          // 用户 2026-09-27：「我们希望增加一个综测开关『是否放开所有累加』的
+          // 按钮」→ 位置拍板 = 学年选择器的**同一行右侧**。选择器保持居中
+          // （Stack + Positioned），开关做成胶囊（不是 `Switch`），不去挤居中的
+          // 选择器；窄面板下两者仍可能重叠，属已知取舍。
+          Positioned(
+            right: 0,
+            top: 0,
+            bottom: 0,
+            child: Center(
+              child: zcOpenAccumulateToggle(
+                context,
+                on: _manual.openAccumulate,
+                onChanged: (v) =>
+                    _updateManual(_manual.copyWith(openAccumulate: v)),
+              ),
             ),
           ),
-        ),
-        AcademicYearPicker(
-          key: const Key('zcYearPicker'),
-          startYear: startYear,
-          endYear: endYear,
-          initialYear: _year.clamp(startYear, endYear),
-          onChanged: _loadYear,
-          onHoverChanged: (v) => setState(() => _pickerHovered = v),
-        ),
-      ],
+        ],
+      ),
     );
   }
+
+  /// 卡片副标题（`meta`）里的「附加」口径随开关变：标准档写封顶，放开档写
+  /// 「全部累加」—— 免得卡片自己说「≤20」而引擎已经不封顶了。
+  String _addMeta(String standardText, String openText) =>
+      _manual.openAccumulate ? openText : standardText;
 
   // ===================================================================
   // 顶部：总评成绩（原网页「结果侧栏」语义，单列时置顶常驻）
@@ -371,12 +416,31 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
     final dMats = mats
         .where((x) => zcTypeSpecOf[x.typeId]?.dim == 'd')
         .toList();
+    // 用户 2026-09-27：「德育加分部分，也要像竞赛附加分一样，只高亮计入的那
+    // 一项」→ 取引擎同一套口径（表 3~7 各板块：只取最高的取最高、累加的累加到
+    // 封顶），界面对它只有「高亮 / 淡出」两种处理。
+    final dCounted = zcMoralContributingIds(
+      dMats,
+      open: m.openAccumulate,
+    );
+    List<ZcMaterial> dBoard(List<ZcTypeId> types) => [
+      for (final x in dMats)
+        if (types.contains(x.typeId)) x,
+    ];
+    Set<String> dDimmed(List<ZcMaterial> items) => {
+      for (final x in items)
+        if (!dCounted.contains(x.id) && (zcMaterialValue(x) ?? 0) > 0) x.id,
+    };
     final pingyi = zcSumDetail(r, const ['德育 · 民主评议']);
+    // ⚠ 用户 2026-09-27 把「思想教育」「荣誉称号」各拆两块 → 附加分合计按 6 个
+    // 板块标签求和（与智育四小项同口径：板块显示分槽值、封顶由分数行承担）。
     final extra = zcSumDetail(r, const [
       '德育 · 优秀事迹',
-      '德育 · 思想教育',
+      '德育 · 思想教育贡献度',
+      '德育 · 思想教育参与度',
       '德育 · 公共服务',
-      '德育 · 荣誉称号',
+      '德育 · 荣誉称号（个人）',
+      '德育 · 荣誉称号（集体）',
     ]);
     final kou = zcSumDetail(r, const ['德育 · 扣分']);
     return zcYuCard(
@@ -418,13 +482,81 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
           3,
           '附加分 · 证明材料（自动带入）',
           tipKey: 'sh-d-3',
-          badge: extra > 0 ? zcBadge(context, '+${zcFmt(extra)}') : null,
+          badge: zcCumBadge(
+            context,
+            open: _manual.openAccumulate,
+            badge: extra > 0 ? zcBadge(context, '+${zcFmt(extra)}') : null,
+          ),
           tip: dMats.isEmpty ? null : '${dMats.length} 条',
         ),
         if (dMats.isEmpty)
           zcGoMaterials(context, text: '暂无德育证明 · 去材料库录入')
-        else
-          for (final x in dMats) zcMatRow(context, x),
+        else ...[
+          // 用户 2026-09-27：「德育附加分也要分各板块」→ 与智育的四小项同款，
+          // 按证明材料的计入口拆板块（每块分值取引擎明细，不重算；块内材料用
+          // `dCounted` 分「计入 / 未计入」）。同日追加：「思想教育应该分为思想
+          // 教育·贡献度和思想教育·参与度；荣誉称号同样要分个人和集体」→ 4 块
+          // 变 6 块（规则点 id 一一对应：r23 贡献度 / r24 参与度 / r28 个人 /
+          // r29+r30 集体）。
+          zcExtraItem(
+            context,
+            label: '优秀事迹（表 3）',
+            value: zcSumDetail(r, const ['德育 · 优秀事迹']),
+            tipIds: zcTipIdsOf(const ['d-3-1']),
+            items: dBoard(const [ZcTypeId.deed]),
+            highlightIds: dCounted,
+            dimmedIds: dDimmed(dBoard(const [ZcTypeId.deed])),
+          ),
+          zcExtraItem(
+            context,
+            label: '思想教育 · 贡献度（表 4）',
+            value: zcSumDetail(r, const ['德育 · 思想教育贡献度']),
+            tipIds: zcTipIdsOf(const ['d-3-2a']),
+            items: dBoard(const [ZcTypeId.eduCon]),
+            highlightIds: dCounted,
+            dimmedIds: dDimmed(dBoard(const [ZcTypeId.eduCon])),
+          ),
+          zcExtraItem(
+            context,
+            label: '思想教育 · 参与度（表 4）',
+            value: zcSumDetail(r, const ['德育 · 思想教育参与度']),
+            tipIds: zcTipIdsOf(const ['d-3-2b']),
+            items: dBoard(const [ZcTypeId.eduPart]),
+            highlightIds: dCounted,
+            dimmedIds: dDimmed(dBoard(const [ZcTypeId.eduPart])),
+            // 表 4 参与度是「按次累加」项 → 分项标题挂绿色胶囊（用户
+            // 2026-09-27：「参考 `2026综测计算器.html` 给允许累加的项添加
+            // 绿色胶囊」；官方在 d-3-2b 挂了 `.cum-badge`）。
+            cumulative: true,
+          ),
+          zcExtraItem(
+            context,
+            label: '公共服务（表 5）',
+            value: zcSumDetail(r, const ['德育 · 公共服务']),
+            tipIds: zcTipIdsOf(const ['d-3-3']),
+            items: dBoard(const [ZcTypeId.servicePost]),
+            highlightIds: dCounted,
+            dimmedIds: dDimmed(dBoard(const [ZcTypeId.servicePost])),
+          ),
+          zcExtraItem(
+            context,
+            label: '荣誉称号 · 个人（表 6）',
+            value: zcSumDetail(r, const ['德育 · 荣誉称号（个人）']),
+            tipIds: zcTipIdsOf(const ['d-3-4a']),
+            items: dBoard(const [ZcTypeId.honorP]),
+            highlightIds: dCounted,
+            dimmedIds: dDimmed(dBoard(const [ZcTypeId.honorP])),
+          ),
+          zcExtraItem(
+            context,
+            label: '荣誉称号 · 集体（表 7）',
+            value: zcSumDetail(r, const ['德育 · 荣誉称号（集体）']),
+            tipIds: zcTipIdsOf(const ['d-3-4b']),
+            items: dBoard(const [ZcTypeId.honorG]),
+            highlightIds: dCounted,
+            dimmedIds: dDimmed(dBoard(const [ZcTypeId.honorG])),
+          ),
+        ],
         // 4 扣分项
         zcSub(
           context,
@@ -526,13 +658,19 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
       for (final x in zMats)
         if (x.typeId == ZcTypeId.contest) x,
     ];
-    final contestCounted = zcContestContributingIds(contestItems);
+    final contestCounted = zcContestContributingIds(
+      contestItems,
+      open: _manual.openAccumulate,
+    );
     return zcYuCard(
       context,
       dim: 'z',
       icon: Icons.school_outlined,
       name: '智育素质',
-      meta: '加权成绩 + 附加(≤20) − 扣分',
+      meta: _addMeta(
+        '加权成绩 + 附加(≤20) − 扣分',
+        '加权成绩 + 附加(全部累加) − 扣分',
+      ),
       score: r.zhiyu,
       grade: r.gZ,
       headerTipKey: 'sec-zhiyu',
@@ -578,9 +716,15 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
         zcSub(
           context,
           2,
-          '加分项 · 四类各计最高（附加合计 ≤ 20 分）',
+          _manual.openAccumulate
+              ? '加分项 · 四类全部累加（不设上限）'
+              : '加分项 · 四类各计最高（附加合计 ≤ 20 分）',
           tipKey: 'sh-z-2',
-          badge: extra > 0 ? zcBadge(context, '+${zcFmt(extra)}') : null,
+          badge: zcCumBadge(
+            context,
+            open: _manual.openAccumulate,
+            badge: extra > 0 ? zcBadge(context, '+${zcFmt(extra)}') : null,
+          ),
           tip: zMats.isEmpty ? null : '${zMats.length} 条',
         ),
         // 用户 2026-09-18：「综测智育加分项分为四部分，我希望你分开显示为四小项」
@@ -606,6 +750,8 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
           label: '论文 / 专利（表 9）',
           value: zcSumDetail(r, const ['智育 · 论文/专利']),
           tipIds: const ['r42', 'r43'],
+          // 表 9 论文/专利 = 官方挂了 `.cum-badge` 的那一项（z-2-2）。
+          cumulative: true,
           items: [
             for (final x in zMats)
               if (x.typeId == ZcTypeId.paper) x,
@@ -699,7 +845,10 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
       dim: 't',
       icon: Icons.fitness_center_outlined,
       name: '体育素质',
-      meta: '体测成绩 + 附加(≤20) − 扣分',
+      meta: _addMeta(
+        '体测成绩 + 附加(≤20) − 扣分',
+        '体测成绩 + 附加(全部累加) − 扣分',
+      ),
       score: r.tiyu,
       grade: r.gT,
       headerTipKey: 'sec-tiyu',
@@ -743,7 +892,11 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
           2,
           '加分项 · 证明材料',
           tipKey: 'sh-t-2',
-          badge: extra > 0 ? zcBadge(context, '+${zcFmt(extra)}') : null,
+          badge: zcCumBadge(
+            context,
+            open: _manual.openAccumulate,
+            badge: extra > 0 ? zcBadge(context, '+${zcFmt(extra)}') : null,
+          ),
           tip: tMats.isEmpty ? null : '${tMats.length} 条',
         ),
         if (tMats.isEmpty)
@@ -837,7 +990,11 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
           3,
           '加分项 · 证明材料（文艺竞赛/媒体/活动）',
           tipKey: 'sh-m-3',
-          badge: extra > 0 ? zcBadge(context, '+${zcFmt(extra)}') : null,
+          badge: zcCumBadge(
+            context,
+            open: _manual.openAccumulate,
+            badge: extra > 0 ? zcBadge(context, '+${zcFmt(extra)}') : null,
+          ),
           tip: mMats.isEmpty ? null : '${mMats.length} 条',
         ),
         if (mMats.isEmpty)
@@ -944,9 +1101,13 @@ class _ZongceScreenState extends ConsumerState<ZongceScreen> {
           3,
           '加分项 · 证明材料',
           tipKey: 'sh-l-3',
-          badge: (volScore + otherExtra) > 0
-              ? zcBadge(context, '+${zcFmt(volScore + otherExtra)}')
-              : null,
+          badge: zcCumBadge(
+            context,
+            open: _manual.openAccumulate,
+            badge: (volScore + otherExtra) > 0
+                ? zcBadge(context, '+${zcFmt(volScore + otherExtra)}')
+                : null,
+          ),
           tip: lMats.isEmpty ? null : '${lMats.length} 条',
         ),
         // 志愿服务时长：与基础分/评议分/加权/体测同款的单行胶囊（右侧可点改），

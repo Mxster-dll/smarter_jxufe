@@ -116,15 +116,17 @@ Widget zcResultCard(
   // 用户 2026-09-21：「我希望综测顶部汇总卡片不要显示：占比 20 / 35 / 15 / 15 / 15、
   // 加权成绩 91.86 分、材料条数 13 条 这些信息，而是把占比显示到每个“育”的名称
   // 后面」→ 第 4 项 = 该育自己的占比（百分数），逐行渲染成名称后的小胶囊。
-  // 用户 2026-09-21 二轮（更正口径）：「应该是“x育”与占比显示为此育的颜色，
-  // 只有分数按等次显示」→ 第 5 项 = 该育自己的语义色（`zcYuColors`：德育红 /
-  // 智育蓝 / 体育青绿 / 美育紫 / 劳育琥珀金），只给**育名 + 占比**用；分数另取等次色。
+  // 用户 2026-09-27（四轮更正）：「每板块的占比胶囊不要有颜色，就用默认；各育的
+  // 名字也不要有颜色，就默认颜色」→ 育名与占比胶囊都回到**默认（中性）**口径：
+  // 育名不带 `color`（继承默认文字色）、占比胶囊用中性灰（`scheme.outline`
+  // 淡底 + outline 文字）。**只有分数与行尾等次胶囊**保留等次色（2026-09-21 三轮
+  // 「只有分数按等次显示」仍然有效）；该育语义色 `zcYuColors` 只给五育卡的头像用了。
   final rows = [
-    ('德育', r.deyu, r.gD, r.weights.d, zcYuColors['d']!),
-    ('智育', r.zhiyu, r.gZ, r.weights.z, zcYuColors['z']!),
-    ('体育', r.tiyu, r.gT, r.weights.t, zcYuColors['t']!),
-    ('美育', r.meiyu, r.gM, r.weights.m, zcYuColors['m']!),
-    ('劳育', r.laoyu, r.gL, r.weights.l, zcYuColors['l']!),
+    ('德育', r.deyu, r.gD, r.weights.d),
+    ('智育', r.zhiyu, r.gZ, r.weights.z),
+    ('体育', r.tiyu, r.gT, r.weights.t),
+    ('美育', r.meiyu, r.gM, r.weights.m),
+    ('劳育', r.laoyu, r.gL, r.weights.l),
   ];
   return zcCard(
     context,
@@ -196,24 +198,23 @@ Widget zcResultCard(
                       width: 40,
                       child: Text(
                         it.$1,
-                        // 用户 2026-09-21 二轮更正：「“x育”与占比显示为此育的颜色，
-                        // 只有分数按等次显示」→ 育名取该育语义色（第 5 项），
-                        // 分数取等次色；两者刻意不是同一套色（身份 vs 评级）。
-                        style: TextStyle(fontSize: 12.5, color: it.$5),
+                        // 用户 2026-09-27：「各育的名字也不要有颜色，就默认颜色」
+                        // → 不再取该育语义色（第 5 项已删）。
+                        style: const TextStyle(fontSize: 12.5),
                       ),
                     ),
                     // 用户 2026-09-21：「把占比显示到每个“育”的名称后面」→ 名称后
                     // 一枚小胶囊（文案走 `zcWeightPercentText`，与占比弹层
                     // 输入框同一份口径：整数不带小数点）。
-                    // 二轮更正：这枚胶囊也用**该育色**（淡底 + 同色文字），和育名
-                    // 合成一个色块；行尾等次胶囊才是等次色。
+                    // 2026-09-27 四轮：「占比胶囊不要有颜色，就用默认」→ 底色与文字
+                    // 都改回中性灰（此前是该育色 12% 淡底 + 同色文字）。
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 7,
                         vertical: 1.5,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.tint(context, it.$5, 0.12),
+                        color: AppColors.tint(context, scheme.outline, 0.12),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
@@ -221,7 +222,7 @@ Widget zcResultCard(
                         style: TextStyle(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w600,
-                          color: it.$5,
+                          color: scheme.outline,
                           fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ),
@@ -662,6 +663,40 @@ Widget zcBadge(BuildContext context, String text, {Color? color}) {
   );
 }
 
+/// 「可累计」绿色胶囊（= 原网页 `.cum-badge`）。
+///
+/// 用户 2026-09-27：「参考 `2026综测计算器.html` 给允许累加的项添加绿色胶囊」。
+/// 官方 CSS = `.cum-badge{display:inline-flex;align-items:center;flex:0 0 auto;
+/// font-size:12px;font-weight:600;line-height:1;color:var(--green);
+/// background:var(--green-soft);border:1px solid var(--green-line);
+/// border-radius:999px;padding:2px 6px;white-space:nowrap}`，其中
+/// `--green:var(--color-success)`、`--green-line:rgba(15,123,15,.35)`。
+/// 本仓对应 = `AppColors.success(context)`（深色自动提亮）+ `tint` / `tintBorder`。
+///
+/// **静态常显**：只要那一项/那条材料本身按累加计（`ZcTypeSpec.cumulative`）就挂，
+/// 与「放开所有累加」开关无关；开关打开时另在维度标题上挂
+/// `zcCumChip(context, text: '本轮全部累加')`。
+Widget zcCumChip(BuildContext context, {String text = '可累计'}) {
+  final green = AppColors.success(context);
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+    decoration: BoxDecoration(
+      color: AppColors.tint(context, green, 0.12),
+      borderRadius: BorderRadius.circular(999),
+      border: Border.all(color: AppColors.tintBorder(context, green, 0.35)),
+    ),
+    child: Text(
+      text,
+      style: TextStyle(
+        color: green,
+        fontSize: 10.5,
+        fontWeight: FontWeight.w600,
+        height: 1.05,
+      ),
+    ),
+  );
+}
+
 /// 一个编辑行：label（可选实时分值）+ 控件（输入 + 右侧灰规则说明）。
 /// [tipKey] 非空时在标题行尾加「条款依据」悬停按钮。
 Widget zcEditRow(
@@ -742,6 +777,7 @@ Widget zcExtraItem(
   required List<ZcMaterial> items,
   Set<String> highlightIds = const <String>{},
   Set<String> dimmedIds = const <String>{},
+  bool cumulative = false,
 }) {
   final scheme = Theme.of(context).colorScheme;
   return Padding(
@@ -763,6 +799,12 @@ Widget zcExtraItem(
                 ),
               ),
             ),
+            // 该小项按「累加」计（`ZcTypeSpec.cumulative`）→ 名称后挂绿色胶囊；
+            // 已在标题上标过就不在每条材料行上重复标（见下面的 showCumulative）。
+            if (cumulative) ...[
+              const SizedBox(width: 6),
+              zcCumChip(context),
+            ],
             const SizedBox(width: 8),
             Text(
               value > 0 ? '+${zcFmt(value)} 分' : '0 分',
@@ -785,9 +827,105 @@ Widget zcExtraItem(
               x,
               highlighted: highlightIds.contains(x.id),
               dimmed: dimmedIds.contains(x.id),
+              showCumulative: !cumulative,
             ),
       ],
     ),
+  );
+}
+
+/// 「放开所有累加」开关（用户 2026-09-27：「我们希望增加一个综测开关『是否
+/// 放开所有累加』的按钮，……怎么放开可以参考 `评优评先综测计算器.html` 与
+/// `2026综测计算器.html` 在累加上的区别」）。
+///
+/// 口径写在 `ZcManual.openAccumulate`（引擎按它切换）：**所有「就高一次」改
+/// 多项叠加、所有附加分封顶取消**；民主评议仍封顶 20、扣分项照旧、等次评定与
+/// 一票否决**不放开**（用户拍板「只放开累加与封顶」）。位置 = 综测页顶部学年
+/// 选择器**同一行右侧**（用户拍板）。做成胶囊而不是 `Switch`，免得去挤居中的
+/// 选择器；`on` 时走绿色（与「可累计」胶囊同一套绿）。
+Widget zcOpenAccumulateToggle(
+  BuildContext context, {
+  required bool on,
+  required ValueChanged<bool> onChanged,
+}) {
+  final scheme = Theme.of(context).colorScheme;
+  final green = AppColors.success(context);
+  final c = on ? green : scheme.onSurfaceVariant;
+  return InkWell(
+    key: const Key('zcOpenAccumulate'),
+    borderRadius: BorderRadius.circular(999),
+    onTap: () => onChanged(!on),
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: on ? AppColors.tint(context, green, 0.12) : null,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: on
+              ? AppColors.tintBorder(context, green, 0.35)
+              : AppColors.hairline(context, 0.6),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            on ? Icons.check_circle_outline : Icons.all_inclusive,
+            size: 14,
+            color: c,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            '放开累加',
+            style: TextStyle(
+              fontSize: 12,
+              color: c,
+              fontWeight: on ? FontWeight.w600 : FontWeight.w400,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+/// 放开累加**打开时**的行内说明（用户 2026-09-18 四轮裁定「页面不留纯文字悬停」，
+/// 所以开关的语义用一行常驻文字讲清楚，而不是塞进 Tooltip）。
+Widget zcOpenAccumulateNote(BuildContext context) {
+  final green = AppColors.success(context);
+  return Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Icon(Icons.all_inclusive, size: 13, color: green),
+      const SizedBox(width: 5),
+      Flexible(
+        child: Text(
+          '已放开所有累加：所有「就高一次」改多项叠加、附加分封顶全取消'
+          '（民主评议仍 ≤20，扣分项、等次评定与一票否决照旧）',
+          style: TextStyle(fontSize: 11, height: 1.35, color: green),
+        ),
+      ),
+    ],
+  );
+}
+
+/// 维度「加分项 / 附加分」标题右侧的徽章：**放开累加时先挂一枚绿色
+/// 「本轮全部累加」胶囊**（用户 2026-09-27 拍板：绿色胶囊按官方口径静态常显在
+/// 9 个可累加分项上，开关打开时另在**维度标题**上给一个总标记），再接原来的
+/// `+N` 徽章；[open] 为假时原样返回 [badge]。
+///
+/// 返回可空 —— 直接喂给 `zcSub(badge: …)`（那位参数本来就可空）。
+Widget? zcCumBadge(
+  BuildContext context, {
+  required bool open,
+  Widget? badge,
+}) {
+  if (!open) return badge;
+  final chip = zcCumChip(context, text: '本轮全部累加');
+  if (badge == null) return chip;
+  return Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [chip, const SizedBox(width: 6), badge],
   );
 }
 
@@ -1037,6 +1175,7 @@ Widget zcMatRow(
   ZcMaterial m, {
   bool highlighted = false,
   bool dimmed = false,
+  bool showCumulative = true,
 }) {
   final scheme = Theme.of(context).colorScheme;
   final spec = zcTypeSpecOf[m.typeId];
@@ -1092,6 +1231,13 @@ Widget zcMatRow(
                     color: scheme.primary,
                     size: 13,
                   ),
+                  // 「可累计」绿色胶囊（用户 2026-09-27）：这一条材料所属类型按
+                  // 累加计（`ZcAgg.sum` / `paper`）就标；分项标题已经标过时由调用方
+                  // 传 `showCumulative: false` 关掉，避免同一条材料挂两枚。
+                  if (showCumulative && (spec?.cumulative ?? false)) ...[
+                    const SizedBox(width: 6),
+                    zcCumChip(context),
+                  ],
                 ],
               ),
               Text(
