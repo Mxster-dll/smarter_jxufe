@@ -7,6 +7,7 @@ import 'package:smarter_jxufe/features/platform_guid/data/providers/guid_provide
 import 'package:smarter_jxufe/features/school_calendar/data/calendar_prefs.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/calendar_prefs_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/school_calendar_providers.dart';
+import 'package:smarter_jxufe/features/school_calendar/data/providers/school_time_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/wxcal_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/wxcal_repository.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/anti_corruption/school_calendar_html_parser.dart';
@@ -28,6 +29,14 @@ void main() {
     xq: 0,
   );
 
+  /// 真实抓取的教务校历页 → 领域对象（学年时间卡的输入）。
+  SchoolCalendar realCal(String path, int xn, int xq) =>
+      SchoolCalendarHtmlParser().parse(
+        File(path).readAsStringSync(),
+        xn: xn,
+        xq: xq,
+      );
+
   /// 261 学期的官方安排（内置快照里的最后一条）。
   final terms = <WxSemesterArrangement>[
     for (final t in wxcalOfflineToDomain())
@@ -44,6 +53,15 @@ void main() {
             xn: 2026,
             xq: 0,
           )).overrideWith((ref) async => calendar),
+          // 学年时间卡（§36）：用真实抓取的教务页拼时间表，别走真网络。
+          schoolTimeTableProvider(2026).overrideWith(
+            (ref) async => SchoolTimeTable.fromCalendars([
+              realCal('test/fixtures/_cal_xq0.html', 2025, 0),
+              realCal('test/fixtures/_cal_xq1.html', 2025, 1),
+              realCal('test/fixtures/_cal_xq2.html', 2025, 2),
+              realCal('test/fixtures/_cal_261_xq0.html', 2026, 0),
+            ]),
+          ),
           wxArrangementsProvider.overrideWith((ref) async => terms),
           platformGuidProvider.overrideWith((ref) async => null),
           calendarViewerProvider.overrideWith((ref) async => who),
@@ -65,6 +83,26 @@ void main() {
   }
 
   int count(String text) => find.text(text).evaluate().length;
+
+  testWidgets('学年时间卡：学年窗口 + 学期 / 假期（未公布的一律留白）', (tester) async {
+    await pumpTall(tester, app());
+
+    expect(count('学年时间'), 1);
+    // 学年末 = 下学年第一学期第一天 − 1 天；2027 未公布 → 如实写「起」
+    expect(count('2026-2027学年 · 2026-09-07 起（下学年校历未公布）'), 1);
+    // 已公布的第一学段（学期起止）
+    expect(count('2026-09-07 ~ 2027-01-15'), 1);
+    // 寒假：教务只给了占位跨度（01-16 ~ 01-19，4 天 < 14 天下限）
+    // → 结束日不采信，卡片写「起」+「待公布」；占位值只在「关键日期」原样出现一次
+    expect(count('寒假'), 1);
+    expect(count('2027-01-16 起'), 1);
+    expect(count('待公布'), 1);
+    expect(count('2027-01-19'), 1, reason: '只有「关键日期」原样列了教务的占位结束日');
+    // 未公布的第二学段 / 暑期段：整行不画（不是画成空壳）
+    expect(count('2026-09-07 起'), 0);
+    expect(count('暑假'), 0);
+    expect(tester.takeException(), isNull);
+  });
 
   test('fixture 覆盖 2026-09 ~ 2027-01 五个月', () {
     expect(calendar.months.map((m) => m.label), [

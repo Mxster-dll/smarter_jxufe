@@ -4,7 +4,8 @@ import 'package:html/parser.dart' as html_parser;
 import 'package:smarter_jxufe/features/ims/data/ims_exception.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grade.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grades_result.dart';
-import 'package:smarter_jxufe/features/ims/grades/domain/semester.dart';
+import 'package:smarter_jxufe/features/school_calendar/domain/school_time.dart'
+    show schoolTermCodeOfText;
 
 /// 解析成绩 HTML 响应。
 ///
@@ -50,17 +51,14 @@ class GradesHtmlParser {
   }
 
   /// 从学期标题 table 中提取学期短编号，如 "251"。
+  ///
+  /// 解析口径的唯一实现在 `school_calendar/domain/school_time.dart`
+  /// （`schoolTermCodeOfText`）：认不出返回空串，不抛。
   String _extractSemesterCode(Element table) {
     final text = table.text.trim();
     final match = RegExp(r'学年学期：(.+)').firstMatch(text);
-    if (match != null) {
-      try {
-        return Semester.parse(match.group(1)!).shortCode;
-      } catch (_) {
-        return '';
-      }
-    }
-    return '';
+    if (match == null) return '';
+    return schoolTermCodeOfText(match.group(1)!);
   }
 
   List<Grade> _parseGrades(Element table, String semesterCode) {

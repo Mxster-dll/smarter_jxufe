@@ -9,6 +9,12 @@ import 'package:smarter_jxufe/features/comprehensive_service/data/models/volunte
 import 'package:smarter_jxufe/features/comprehensive_service/data/providers/volunteer_hours_providers.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/domain/volunteer_hours_stats.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/volunteer_hours_screen.dart';
+import 'package:smarter_jxufe/features/school_calendar/domain/school_calendar.dart';
+import 'package:smarter_jxufe/features/school_calendar/domain/school_time.dart';
+
+/// 校历页备注（真实抓取格式，见 `docs/agents/36`）。
+SchoolCalendar _cal(int xn, int xq, List<String> notes) =>
+    SchoolCalendar(title: '', xn: xn, xq: xq, months: const [], notes: notes);
 
 /// 真实「短期校内活动申报详情」页（`apply_one_detail.html?id=…&type=0`）的
 /// 表单片段，已脱敏（姓名 → 某同学、手机号 → 13800000000、长数字 → 2000000000）。
@@ -158,6 +164,27 @@ void main() {
       expect(stats.currentYear, 8, reason: '2025-10-01 在 2025-2026 学年内');
       expect(stats.previousYear, 4);
       expect(stats.yearLabel, '2025-2026学年');
+    });
+
+    test('传校历 → 用真实学年末：09-03（还没开学）仍算上一学年', () {
+      // 2025-2026 学年到 2026-09-06 才结束（2026-2027 学年 09-07 开学，见 §36 台账）。
+      final table = SchoolTimeTable.fromCalendars([
+        _cal(2025, 0, const [
+          '学期开始日期：2025-09-01',
+          '学期结束日期：2026-01-15',
+        ]),
+        _cal(2026, 0, const ['学期开始日期：2026-09-07']),
+      ]);
+      final activities = [
+        _activity(index: 1, hours: '4', start: '2026-09-03'),
+      ];
+      final withTable = volunteerHoursStats(activities, xn: 2026, table: table);
+      expect(withTable.currentYear, 0, reason: '2026-2027 学年 09-07 才开始');
+      expect(withTable.previousYear, 4, reason: '09-03 属 2025-2026 学年');
+      // 没传校历 → 固定口径（09-01 起算）会把它算进本学年：这就是两条路的分歧点。
+      final without = volunteerHoursStats(activities, xn: 2026);
+      expect(without.currentYear, 4);
+      expect(without.previousYear, 0);
     });
 
     test('一条日期都取不到时 yearKnown=false（界面应显示「—」而不是 0）', () {

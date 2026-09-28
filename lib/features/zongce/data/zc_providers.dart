@@ -12,6 +12,7 @@ import 'package:smarter_jxufe/core/network/current_account_provider.dart';
 import 'package:smarter_jxufe/core/storage/account_scoped_box.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/providers/volunteer_hours_providers.dart';
 import 'package:smarter_jxufe/features/score_estimate/data/ge_providers.dart';
+import 'package:smarter_jxufe/features/school_calendar/data/providers/school_time_providers.dart';
 import 'package:smarter_jxufe/features/zongce/data/zc_store.dart';
 import 'package:smarter_jxufe/features/zongce/domain/zc_models.dart';
 import 'package:smarter_jxufe/features/zongce/domain/zc_year_sources.dart';
@@ -67,15 +68,18 @@ final zcAutoWeightProvider = FutureProvider.family<double?, int>((
 
 /// 自动源 · 该**测评学年**内认定的第二课堂志愿时长（小时）。
 ///
-/// 活动按活动日期归入学年窗口 `[yearEnd-1]-09-01 ~ [yearEnd]-08-31`；一条日期
-/// 都取不到 → null（回退手动填写，**别显示 0**）。
+/// 活动按活动日期归入学年窗口（唯一实现见 `school_calendar/domain/school_time.dart`）：
+/// 校历取得到就用真实窗口 `[yearEnd-1] 第一学期第一天 ~ [yearEnd] 学年第一天前一天`，
+/// 取不到退回 `[yearEnd-1]-09-01 ~ [yearEnd]-08-31`；一条日期都取不到 → null
+/// （回退手动填写，**别显示 0**）。
 final zcAutoVolunteerProvider = FutureProvider.family<double?, int>((
   ref,
   yearEnd,
 ) async {
   try {
     final acts = await ref.watch(volunteerActivitiesProvider.future);
-    return zcVolunteerHoursForYear(acts, yearEnd: yearEnd);
+    final table = await ref.watch(schoolTimeTableProvider(yearEnd - 1).future);
+    return zcVolunteerHoursForYear(acts, yearEnd: yearEnd, table: table);
   } catch (_) {
     return null;
   }

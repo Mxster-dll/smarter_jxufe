@@ -13,6 +13,8 @@ import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/school_term.dart';
+import 'package:smarter_jxufe/features/school_calendar/domain/school_time.dart'
+    show schoolYearFallback;
 import 'package:smarter_jxufe/features/school_calendar/domain/wxcal_semester.dart';
 
 import '../domain/award_calc.dart';
@@ -38,7 +40,8 @@ enum AwardRangePreset {
 /// - 「本学期」优先取校历快照里的**真实起止**（与课表 / 校历同源，见
 ///   `school_term.dart` 的「当下学期」唯一口径），快照取不到才按学段推：
 ///   第一学期 `[xn]-09-01 ~ [xn+1]-01-31`、第二学期 `[xn+1]-02-01 ~ [xn+1]-08-31`；
-/// - 「本学年」= `[xn]-09-01 ~ [xn+1]-08-31`；
+/// - 「本学年」= `[xn]-09-01 ~ [xn+1]-08-31`（走 `schoolYearFallback`，学年窗口
+///   算术的唯一出处在 `school_calendar/domain/school_time.dart`）；
 /// - 「近一年」= 今天往前 365 天；
 /// - 「全部」= null（回到「不筛日期」的默认口径）。
 AwardDateRange? awardRangeOfPreset(
@@ -52,10 +55,10 @@ AwardDateRange? awardRangeOfPreset(
   }
   final term = currentSchoolTerm(now, terms: terms);
   if (preset == AwardRangePreset.currentYear) {
-    return AwardDateRange(
-      DateTime(term.xn, 9, 1),
-      DateTime(term.xn + 1, 8, 31),
-    );
+    // 学年窗口的算术唯一出处在 `school_calendar/domain/school_time.dart`
+    // （本函数是同步纯函数、拿不到校历时间表 → 用固定口径兜底）。
+    final year = schoolYearFallback(term.xn);
+    return AwardDateRange(year.firstDay!, year.lastDay!);
   }
   for (final t in terms) {
     if (t.matches(xn: term.xn, xq: term.xq)) {

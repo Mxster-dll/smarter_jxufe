@@ -1,8 +1,14 @@
 /// 志愿时长统计口径：全部累计 + 本学年（+ 上一学年对照）。
 ///
 /// **「本学年」= 当下教学学年**（`currentSchoolTerm` 给出的学年起始年 `xn`，
-/// 口径与课表 / 校历 / 今日课程一致），窗口 `[xn]-09-01 ~ [xn+1]-08-31`。
-/// ⚠ 别用综测模块的 `zcDefaultYear`（那是**测评学年**：9 月起评的是刚结束的
+/// 口径与课表 / 校历 / 今日课程一致）。
+///
+/// ⚠ 学年窗口的**唯一实现**在 `school_calendar/domain/school_time.dart`
+/// （2026-09-27 从本文件收上去）：
+/// - 传了 [SchoolTimeTable] → 真实窗口 `[第一学期第一天, 下学年第一天 − 1 天]`；
+/// - 没传（离线 / 纯函数调用）→ 固定兜底 `[xn]-09-01 ~ [xn+1]-08-31`。
+///
+/// 另：别用综测模块的 `zcDefaultYear`（那是**测评学年**：9 月起评的是刚结束的
 /// 那一学年，2026-09 时它给 2025-2026）—— 2026-09-16 实测踩过：卡片标着「本学年」
 /// 却显示上学年的 24 小时，属口径错用。
 ///
@@ -14,6 +20,8 @@ library;
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/volunteer_activity.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/school_calendar.dart'
     show xnDisplayName;
+import 'package:smarter_jxufe/features/school_calendar/domain/school_time.dart'
+    show SchoolTimeTable, schoolYearOrFallback;
 
 /// 志愿时长统计结果。
 class VolunteerHoursStats {
@@ -48,20 +56,18 @@ class VolunteerHoursStats {
   String get previousYearLabel => xnDisplayName(xn - 1);
 }
 
-/// 学年窗口：`[xn]-09-01 ~ [xn+1]-08-31`（含首尾两天）。
-bool _inYear(DateTime d, int xn) {
-  final start = DateTime(xn, 9, 1);
-  final end = DateTime(xn + 1, 8, 31, 23, 59, 59);
-  return !d.isBefore(start) && !d.isAfter(end);
-}
-
 /// 按活动日期归集「全部 / 本学年 / 上一学年」志愿时长。
 ///
-/// [xn] = 当下学年起始年（由 `currentSchoolTerm(now).xn` 传入）。
+/// [xn] = 当下学年起始年（由 `currentSchoolTerm(now).xn` 传入）；
+/// [table] = 校历学年窗口（`schoolTimeTableProvider(xn)`），能传就传 ——
+/// 不传则退回固定口径 `[xn]-09-01 ~ [xn+1]-08-31`。
 VolunteerHoursStats volunteerHoursStats(
   List<VolunteerActivity> activities, {
   required int xn,
+  SchoolTimeTable? table,
 }) {
+  final year = schoolYearOrFallback(table, xn);
+  final previous = schoolYearOrFallback(table, xn - 1);
   var total = 0.0;
   var currentYear = 0.0;
   var previousYear = 0.0;
@@ -71,9 +77,9 @@ VolunteerHoursStats volunteerHoursStats(
     final date = activity.activityDate;
     if (date == null) continue;
     yearKnown = true;
-    if (_inYear(date, xn)) {
+    if (year.contains(date)) {
       currentYear += activity.hours;
-    } else if (_inYear(date, xn - 1)) {
+    } else if (previous.contains(date)) {
       previousYear += activity.hours;
     }
   }

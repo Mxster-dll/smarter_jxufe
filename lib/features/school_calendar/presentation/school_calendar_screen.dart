@@ -6,6 +6,7 @@ import 'package:smarter_jxufe/features/platform_guid/data/providers/guid_provide
 import 'package:smarter_jxufe/features/platform_guid/presentation/guid_guide_screen.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/calendar_prefs_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/school_calendar_providers.dart';
+import 'package:smarter_jxufe/features/school_calendar/data/providers/school_time_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/wxcal_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/wxcal_repository.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/calendar_day_mark.dart';
@@ -216,6 +217,7 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
       children: [
         _buildKeyDatesCard(context, calendar),
         const SizedBox(height: 10),
+        _buildSchoolYearCard(context, calendar.xn),
         _buildOfficialCard(context, wxArrangements, guid),
         const SizedBox(height: 10),
         for (final month in calendar.months) ...[
@@ -358,8 +360,119 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
     );
   }
 
-  // ---------- 小程序源「官方安排」卡 ----------
+  /// 学年时间卡（2026-09-27 · 学校时间轴，用户原话：「融入校历页，包括学期时间与
+  /// 学年时间」）。
+  ///
+  /// 与「关键日期」的分工：那一张**原样**列当前学段备注里的四行日期（含教务在
+  /// 未公布学段编的占位值，如 2026 学年寒假只给 4 天）；这一张把整学年拼起来 ——
+  /// - 学年 = `[xn] 第一学期第一天 ~ [xn+1] 第一学期第一天 − 1 天`，下学年未公布
+  ///   就写「起（下学年校历未公布）」而**不猜结束日**；
+  /// - 假期结束日一律派生自「下一学段起点 − 1 天」，教务给的跨度短于下限
+  ///   （寒 14 天 / 暑 21 天）判为占位 → 显示「结束日待公布」。
+  ///
+  /// 取不到数据（离线 / 该学年未收录）时整卡不画 —— 上学段信息仍由「关键日期」覆盖。
+  Widget _buildSchoolYearCard(BuildContext context, int xn) {
+    final table = ref.watch(schoolTimeTableProvider(xn)).valueOrNull;
+    if (table == null) return const SizedBox.shrink();
+    final year = table.yearOf(xn);
+    final breaks = table.breaksOf(xn);
+    final segments = [
+      for (final xq in schoolYearTermSegments)
+        if ((table.termAt(xn, xq)?.termStart) != null) table.termAt(xn, xq)!,
+    ];
+    if (!year.isKnown && breaks.isEmpty && segments.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
+    final textTheme = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    Widget row(IconData icon, String label, String value, {bool pending = false}) =>
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 5),
+          child: Row(
+            children: [
+              Icon(icon, size: 18, color: scheme.primary),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 92,
+                child: Text(
+                  label,
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textMuted(context),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  value,
+                  style: textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              if (pending)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                  decoration: BoxDecoration(
+                    color: AppColors.tint(context, scheme.outline, 0.12),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '待公布',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textMuted(context),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: _WhiteCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SectionTitle(icon: Icons.school_outlined, title: '学年时间'),
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Text(
+                '${year.label} · ${year.rangeText}',
+                style: textTheme.bodySmall?.copyWith(
+                  color: AppColors.textMuted(context),
+                ),
+              ),
+            ),
+            for (final t in segments)
+              row(
+                Icons.menu_book_outlined,
+                xqDisplayName(t.xq),
+                t.termEnd == null
+                    ? '${schoolDayText(t.termStart!)} 起'
+                    : '${schoolDayText(t.termStart!)} ~ ${schoolDayText(t.termEnd!)}',
+              ),
+            for (final b in breaks)
+              row(
+                b.kind == SchoolBreakKind.winter
+                    ? Icons.ac_unit_outlined
+                    : Icons.wb_sunny_outlined,
+                b.label,
+                b.end == null
+                    ? '${schoolDayText(b.start)} 起'
+                    : '${schoolDayText(b.start)} ~ ${schoolDayText(b.end!)}',
+                pending: b.end == null,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ---------- 小程序源「官方安排」卡 ----------
   /// 所选 (xn, xq) 对应学期的小程序校历官方安排（放假/补课/考试/军训等）。
   ///
   /// 数据源：小程序校历接口需平台 GUID（仅微信授权可得）；配置了 GUID 走实时，

@@ -10,6 +10,9 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:smarter_jxufe/features/school_calendar/domain/school_calendar.dart';
+import 'package:smarter_jxufe/features/school_calendar/domain/school_time.dart';
+
 import 'package:smarter_jxufe/features/comprehensive_service/data/models/volunteer_activity.dart';
 import 'package:smarter_jxufe/features/score_estimate/data/ge_prior_grades.dart';
 import 'package:smarter_jxufe/features/zongce/domain/zc_year_sources.dart';
@@ -43,26 +46,26 @@ VolunteerActivity _act(String hours, String start, String end) =>
 void main() {
   group('学期码 → 学年起始年', () {
     test('短编号 yy+学段：三个学段都属于同一学年', () {
-      expect(zcSemesterStartYear('251'), 2025);
-      expect(zcSemesterStartYear('252'), 2025);
-      expect(zcSemesterStartYear('253'), 2025, reason: '第二阶段仍属同一学年');
-      expect(zcSemesterStartYear('261'), 2026);
-      expect(zcSemesterStartYear('242'), 2024);
+      expect(schoolYearOfTermText('251'), 2025);
+      expect(schoolYearOfTermText('252'), 2025);
+      expect(schoolYearOfTermText('253'), 2025, reason: '第二阶段仍属同一学年');
+      expect(schoolYearOfTermText('261'), 2026);
+      expect(schoolYearOfTermText('242'), 2024);
     });
 
     test('完整学期名也认', () {
-      expect(zcSemesterStartYear('2025-2026学年第一学期'), 2025);
-      expect(zcSemesterStartYear('2026-2027 学年第二阶段'), 2026);
+      expect(schoolYearOfTermText('2025-2026学年第一学期'), 2025);
+      expect(schoolYearOfTermText('2026-2027 学年第二阶段'), 2026);
     });
 
     test('认不出 → null（不能兜底成某年，否则会算进别的学年的课）', () {
-      expect(zcSemesterStartYear(''), isNull);
-      expect(zcSemesterStartYear('  '), isNull);
-      expect(zcSemesterStartYear('25'), isNull);
-      expect(zcSemesterStartYear('250'), isNull, reason: '末位 0 不是合法学段');
-      expect(zcSemesterStartYear('25x'), isNull);
-      expect(zcSemesterStartYear('2025-2026'), isNull, reason: '缺「学年」二字');
-      expect(zcSemesterStartYear('第一学期'), isNull);
+      expect(schoolYearOfTermText(''), isNull);
+      expect(schoolYearOfTermText('  '), isNull);
+      expect(schoolYearOfTermText('25'), isNull);
+      expect(schoolYearOfTermText('250'), isNull, reason: '末位 0 不是合法学段');
+      expect(schoolYearOfTermText('25x'), isNull);
+      expect(schoolYearOfTermText('2025-2026'), isNull, reason: '缺「学年」二字');
+      expect(schoolYearOfTermText('第一学期'), isNull);
     });
   });
 
@@ -126,6 +129,35 @@ void main() {
       ];
       expect(zcVolunteerHoursForYear(acts, yearEnd: 2026), 3);
       expect(zcVolunteerHoursForYear(acts, yearEnd: 2027), 5);
+    });
+
+    test('传校历 → 真实学年末（2026-09-03 仍属 2025-2026 学年）', () {
+      // 2026-2027 学年 09-07 开学 → 上一学年到 09-06（§36 实测台账）。
+      final table = SchoolTimeTable.fromCalendars([
+        SchoolCalendar(
+          title: '',
+          xn: 2025,
+          xq: 0,
+          months: const [],
+          notes: const ['学期开始日期：2025-09-01', '学期结束日期：2026-01-15'],
+        ),
+        SchoolCalendar(
+          title: '',
+          xn: 2026,
+          xq: 0,
+          months: const [],
+          notes: const ['学期开始日期：2026-09-07'],
+        ),
+      ]);
+      final acts = <VolunteerActivity>[
+        _act('6', '2026-09-03', '2026-09-03'), // 固定口径会漏掉的日子
+        _act('3', '2026-09-08', '2026-09-08'), // 新学年
+      ];
+      expect(zcVolunteerHoursForYear(acts, yearEnd: 2026, table: table), 6);
+      expect(zcVolunteerHoursForYear(acts, yearEnd: 2027, table: table), 3);
+      // 不传表 = 固定口径兜底：09-03 被算进下一学年（与上面相反）。
+      expect(zcVolunteerHoursForYear(acts, yearEnd: 2026), 0);
+      expect(zcVolunteerHoursForYear(acts, yearEnd: 2027), 9);
     });
 
     test('一条日期都取不到 → null（别显示 0）', () {

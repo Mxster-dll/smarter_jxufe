@@ -18,6 +18,7 @@ import 'package:smarter_jxufe/features/comprehensive_service/domain/volunteer_ho
 import 'package:smarter_jxufe/features/electricity/data/models/electricity_models.dart';
 import 'package:smarter_jxufe/features/electricity/data/providers/electricity_providers.dart';
 import 'package:smarter_jxufe/features/ims/schedule/data/providers/live_class_providers.dart';
+import 'package:smarter_jxufe/features/school_calendar/data/providers/school_time_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/wxcal_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/school_term.dart';
 
@@ -68,6 +69,8 @@ final dashboardElectricityProvider = FutureProvider<ElectricityBalance?>((
 /// （用户 2026-09-16 要求「志愿时长的仪表盘里还要显示本学年志愿时长」）。
 ///
 /// 本学年 = **当下教学学年**（`currentSchoolTerm` 的 `xn`，与课表/校历同口径）；
+/// 学年窗口取自校历（`schoolTimeTableProvider`）—— 取不到时该 provider 内部退回
+/// 固定口径 `[xn]-09-01 ~ [xn+1]-08-31`，不会让卡片卡住或抛错。
 /// 活动日期来自列表逐行详情页，取不到时 `yearKnown` 为 false → 卡片显示「—」。
 final dashboardVolunteerHoursProvider = FutureProvider<VolunteerHoursStats>((
   ref,
@@ -78,7 +81,8 @@ final dashboardVolunteerHoursProvider = FutureProvider<VolunteerHoursStats>((
     now,
     terms: ref.watch(offlineSemesterTermsProvider),
   );
-  return volunteerHoursStats(activities, xn: term.xn);
+  final table = await ref.watch(schoolTimeTableProvider(term.xn).future);
+  return volunteerHoursStats(activities, xn: term.xn, table: table);
 });
 
 /// 今日课程：取当前学期课表，按今天星期过滤并按时段排序。
