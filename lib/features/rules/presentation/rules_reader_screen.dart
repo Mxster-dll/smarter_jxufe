@@ -9,6 +9,7 @@ import '../data/rules_repository.dart';
 import 'package:smarter_jxufe/design/breakpoints.dart';
 import 'widgets/doc_table.dart';
 import 'widgets/notice_card.dart';
+import 'widgets/rules_doc_widgets.dart';
 import 'package:smarter_jxufe/design/app_states.dart';
 
 /// 规则文件阅读器：按文档模板深度定制渲染。
@@ -28,22 +29,6 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
   /// 静态共享：版本切换（pushReplacement）后字号保持用户设置。
   static double _font = 16.5;
   final _keys = <String, GlobalKey>{};
-
-  static final _chapterBody = RegExp(r'^第[一二三四五六七八九十百零]+章');
-  static final _clauseBody = RegExp(r'^第[一二三四五六七八九十百零]+条');
-  static final _dateBody = RegExp(r'^\d{4}年\d{1,2}月\d{1,2}日$');
-  static final _wenhaoBody = RegExp(r'^.{0,24}〔.{1,20}〕.*号$');
-  static final _subEnum = RegExp(r'^（[一二三四五六七八九十]+）');
-  static final _subNum = RegExp(r'^\d{1,2}[.、]');
-  static final _sectionBody = RegExp(r'^[一二三四五六七八九十]+、');
-
-  /// 「第一章总则」→「第一章 总则」；已是「第一章 总则」则保持。
-  static String _prettyChapter(String t) {
-    final m = RegExp(r'^(第[一二三四五六七八九十百零]+章)(.*)$').firstMatch(t);
-    if (m == null) return t;
-    final rest = m.group(2)!.trim();
-    return rest.isEmpty ? m.group(1)! : '${m.group(1)} $rest';
-  }
 
   GlobalKey _keyFor(String label) =>
       _keys.putIfAbsent(label, () => GlobalKey(debugLabel: label));
@@ -337,7 +322,7 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
     for (var i = 0; i < blocks.length; i++) {
       final b = blocks[i];
       if (b.kind != BlockKind.heading) continue;
-      final isChapter = _chapterBody.hasMatch(b.text);
+      final isChapter = rdChapterBody.hasMatch(b.text);
       final isBigTitle =
           b.level == 1 && !b.text.contains('通知') && b.text.length >= 8;
       if (isChapter || isBigTitle) {
@@ -363,8 +348,8 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
             b.level == 1 &&
             b.text.length >= 6 &&
             !b.text.contains('通知') &&
-            !_chapterBody.hasMatch(b.text) &&
-            !_clauseBody.hasMatch(b.text);
+            !rdChapterBody.hasMatch(b.text) &&
+            !rdClauseBody.hasMatch(b.text);
         if (isDocBanner) {
           bannerDone = true;
           String? sub;
@@ -378,14 +363,14 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
           i++;
           continue;
         }
-        if (_chapterBody.hasMatch(b.text)) {
-          final label = _prettyChapter(b.text);
+        if (rdChapterBody.hasMatch(b.text)) {
+          final label = rdPrettyChapter(b.text);
           toc.add((label, 'chapter'));
           children.add(_chapterHeader(label, key: _keyFor(label)));
           i++;
           continue;
         }
-        if (_clauseBody.hasMatch(b.text)) {
+        if (rdClauseBody.hasMatch(b.text)) {
           children.add(_clauseHeader(b.text));
           i++;
           continue;
@@ -424,7 +409,7 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
     bool inNotice = false,
   }) {
     final text = blocks[idx].text;
-    if (inNotice && _wenhaoBody.hasMatch(text) && text.length <= 26) {
+    if (inNotice && rdWenhaoBody.hasMatch(text) && text.length <= 26) {
       out.add(
         Padding(
           padding: const EdgeInsets.only(bottom: 12),
@@ -458,14 +443,14 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
       );
       return 1;
     }
-    if (_dateBody.hasMatch(text)) return 1; // 日期由前块落款消费
-    final unit = _isUnitLine(text);
+    if (rdDateBody.hasMatch(text)) return 1; // 日期由前块落款消费
+    final unit = rdIsUnitLine(text);
     if (unit) {
       String date = '';
       var consumed = 1;
       if (idx + 1 < blocks.length &&
           blocks[idx + 1].kind == BlockKind.para &&
-          _dateBody.hasMatch(blocks[idx + 1].text)) {
+          rdDateBody.hasMatch(blocks[idx + 1].text)) {
         date = blocks[idx + 1].text;
         consumed = 2;
       }
@@ -491,7 +476,7 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
       );
       return consumed;
     }
-    if (_isRecipient(text)) {
+    if (rdIsRecipient(text)) {
       out.add(
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
@@ -512,11 +497,11 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
     // 被标题化的「### 第X条 + 短条名」是同一种条目标题行：若仍按正文
     // 内联两格缩进渲染，会与 ### 版（_clauseHeader 顶格）错位。统一走
     // 同一组件；只有 rest 为长句正文（含标点或超长）才保留内联缩进样式。
-    final clauseM = _clauseBody.firstMatch(text);
+    final clauseM = rdClauseBody.firstMatch(text);
     if (clauseM != null) {
       final prefix = clauseM.group(0)!;
       final rest = text.substring(prefix.length).trim();
-      if (_isClauseTitle(rest)) {
+      if (rdIsClauseTitle(rest)) {
         out.add(_clauseHeader(text));
         return 1;
       }
@@ -563,7 +548,7 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
       );
       return 1;
     }
-    if (_isSubHead(text)) {
+    if (rdIsSubHead(text)) {
       out.add(
         Padding(
           padding: const EdgeInsets.only(top: 10, bottom: 2),
@@ -647,7 +632,7 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
     var parasBeforeSections = true;
     for (final b in blocks) {
       if (b.kind == BlockKind.heading) {
-        if (b.level >= 2 && _sectionBody.hasMatch(b.text)) {
+        if (b.level >= 2 && rdSectionBody.hasMatch(b.text)) {
           sections.add(b.text);
           parasBeforeSections = false;
         }
@@ -696,7 +681,7 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
       for (final b in blocks) {
         if (b.kind == BlockKind.heading &&
             b.level >= 2 &&
-            _sectionBody.hasMatch(b.text)) {
+            rdSectionBody.hasMatch(b.text)) {
           current = b.text;
         } else if (b.kind == BlockKind.table) {
           final label = current.isEmpty ? '竞赛目录' : unique(current);
@@ -844,7 +829,7 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
   }
 
   Widget _clauseHeader(String text) {
-    final m = _clauseBody.firstMatch(text);
+    final m = rdClauseBody.firstMatch(text);
     final numPart = m?.group(0) ?? '';
     final rest = text.substring(numPart.length).trim();
     return Padding(
@@ -950,45 +935,6 @@ class _RulesReaderScreenState extends ConsumerState<RulesReaderScreen> {
         style: TextStyle(fontSize: _font, height: 1.8),
       ),
     );
-  }
-
-  bool _isRecipient(String t) {
-    if (t.length > 30 || !(t.endsWith(':') || t.endsWith('：'))) return false;
-    return t.contains('各单位') ||
-        t.contains('各部门') ||
-        t.contains('各学院') ||
-        t.startsWith('校属');
-  }
-
-  bool _isUnitLine(String t) {
-    if (t.isEmpty || t.length > 18) return false;
-    if (RegExp(r'[，。；、：？！]').hasMatch(t)) return false;
-    return RegExp(r'(大学|办公室|委员会|学院|校长|处|部|室)$').hasMatch(t);
-  }
-
-  bool _isClauseTitle(String rest) {
-    // 「第X条」后是否为短条名（标题行）而非条文长句正文。
-    if (rest.isEmpty) return true;
-    if (rest.length > 14) return false;
-    // 含句子标点视为正文长句（如"第十三条 考核分为考试和考查两类，"）。
-    if (RegExp(r'[，。；：！？、…—]').hasMatch(rest)) return false;
-    return true;
-  }
-
-  bool _isSubHead(String t) {
-    if (t.length > 36 || RegExp(r'[。；！？]').hasMatch(t)) return false;
-    if (_subEnum.hasMatch(t) ||
-        _subNum.hasMatch(t) ||
-        (_clauseBody.hasMatch(t) && t.length <= 24)) {
-      return true;
-    }
-    // 短中文无标点独立行：办法中的条内小标题（如「竞赛奖励标准」）。
-    if (t.length <= 12 &&
-        !RegExp(r'[0-9A-Za-z，、：（）《》]').hasMatch(t) &&
-        !_isUnitLine(t)) {
-      return true;
-    }
-    return false;
   }
 
   // ---------- 拆分互链：通知 ↔ 附件 ----------

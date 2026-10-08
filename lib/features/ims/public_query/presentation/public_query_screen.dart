@@ -11,13 +11,13 @@ import 'package:smarter_jxufe/features/ims/public_query/domain/public_query.dart
 import 'package:smarter_jxufe/features/ims/public_query/domain/public_query_defaults.dart';
 import 'package:smarter_jxufe/features/ims/public_query/presentation/classroom_free_screen.dart';
 import 'package:smarter_jxufe/features/ims/public_query/presentation/free_time_screen.dart';
-import 'package:smarter_jxufe/features/ims/public_query/presentation/public_query_option_sheet.dart';
 import 'package:smarter_jxufe/features/ims/public_query/presentation/public_timetable_view.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/wxcal_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/school_term.dart';
 import 'package:smarter_jxufe/features/score_estimate/presentation/ge_common.dart';
 import 'package:smarter_jxufe/design/pane_chrome.dart';
 import 'package:smarter_jxufe/design/settings_section.dart';
+import 'widgets/public_query_widgets.dart';
 
 /// 教务「公共查询」聚合页：按课程 / 教师 / 班级 / 教室查课表，
 /// 并可把多个班级拉到一起**对照出共同空闲时间**。
@@ -185,15 +185,15 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
             _kindCard(context),
             const SizedBox(height: 12),
             termsAsync.when(
-              loading: () => _loadingCard(context, '正在读取「已发布课表」的学年学期…'),
-              error: (e, _) => _errorCard(
+              loading: () => pqLoadingCard(context, '正在读取「已发布课表」的学年学期…'),
+              error: (e, _) => pqErrorCard(
                 context,
                 '学期列表加载失败：$e',
                 onRetry: () => ref.invalidate(publicQueryTermsProvider),
               ),
               data: (terms) {
                 if (terms.isEmpty) {
-                  return _infoCard(
+                  return pqInfoCard(
                     context,
                     Icons.event_busy_outlined,
                     '目前还没有已发布的课表信息',
@@ -699,7 +699,7 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
     switch (_kind) {
       case PublicQueryKind.course:
         return [
-          _pickerRow(
+          pqPickerRow(
             context,
             icon: Icons.menu_book_outlined,
             label: '课程',
@@ -707,11 +707,11 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
             hint: '选择课程',
             onTap: term == null ? null : () => _pickFromComboBox(context, term),
           ),
-          _hint(context, '课程课表按「课程」汇总全校该课程的所有上课安排（含教师、班级、教室）。'),
+          pqHint(context, '课程课表按「课程」汇总全校该课程的所有上课安排（含教师、班级、教室）。'),
         ];
       case PublicQueryKind.teacher:
         return [
-          _pickerRow(
+          pqPickerRow(
             context,
             icon: Icons.account_balance_outlined,
             label: '部门（可选）',
@@ -719,7 +719,7 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
             hint: '不限部门',
             onTap: () => _pickDepartment(context),
           ),
-          _pickerRow(
+          pqPickerRow(
             context,
             icon: Icons.person_outline,
             label: '教师',
@@ -727,7 +727,7 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
             hint: '选择教师',
             onTap: term == null ? null : () => _pickFromComboBox(context, term),
           ),
-          _hint(context, '教师课表 = 该教师本学期承担的全部教学任务与时间地点。'),
+          pqHint(context, '教师课表 = 该教师本学期承担的全部教学任务与时间地点。'),
         ];
       case PublicQueryKind.klass:
         final colleges = ref.watch(publicQueryCollegesProvider(_grade));
@@ -743,7 +743,7 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
           _trainLevelRow(context),
           _collegeRow(context, colleges),
           _majorRow(context, majors),
-          _pickerRow(
+          pqPickerRow(
             context,
             icon: Icons.groups_outlined,
             label: '班级（可选）',
@@ -753,7 +753,7 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
             hint: '选择班级',
             onTap: term == null ? null : () => _pickFromComboBox(context, term),
           ),
-          _hint(
+          pqHint(
             context,
             '四档过滤任选其一即可查：班级 > 专业 > 学院 > 校区（越靠前越精确）。'
             '选了校区请确保班级属于该校区，否则教务会返回「没有检索到记录」。',
@@ -763,7 +763,7 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
         return [
           _campusRow(context, campuses),
           _buildingRow(context),
-          _pickerRow(
+          pqPickerRow(
             context,
             icon: Icons.meeting_room_outlined,
             label: '教室（可选）',
@@ -773,7 +773,7 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
                 ? null
                 : () => _pickFromComboBox(context, term),
           ),
-          _hint(context, '不选具体教室时返回所选楼房（或整个校区）全部教室的课表，数据较多、耗时略长。'),
+          pqHint(context, '不选具体教室时返回所选楼房（或整个校区）全部教室的课表，数据较多、耗时略长。'),
         ];
     }
   }
@@ -785,13 +785,13 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: campuses.when(
-        loading: () => _rowShell(
+        loading: () => pqRowShell(
           context,
           icon: Icons.location_city_outlined,
           label: '校区',
           child: const Text('加载中…'),
         ),
-        error: (e, _) => _rowShell(
+        error: (e, _) => pqRowShell(
           context,
           icon: Icons.location_city_outlined,
           label: '校区',
@@ -800,7 +800,7 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
             style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
         ),
-        data: (list) => _rowShell(
+        data: (list) => pqRowShell(
           context,
           icon: Icons.location_city_outlined,
           label: '校区',
@@ -831,7 +831,7 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
     final years = [for (var y = base; y >= base - 4; y--) '$y'];
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: _rowShell(
+      child: pqRowShell(
         context,
         icon: Icons.school_outlined,
         label: '年级',
@@ -863,7 +863,7 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
         const <PublicQueryOption>[];
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: _rowShell(
+      child: pqRowShell(
         context,
         icon: Icons.workspace_premium_outlined,
         label: '培养层次',
@@ -897,11 +897,11 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
   Widget _collegeRow(
     BuildContext context,
     AsyncValue<List<PublicQueryOption>> colleges,
-  ) => _pickerRow(
+  ) => pqPickerRow(
     context,
     icon: Icons.account_balance_outlined,
     label: '学院（可选）',
-    value: _labelOf(colleges.valueOrNull, _department),
+    value: pqLabelOf(colleges.valueOrNull, _department),
     hint: '不限学院',
     onTap: () => _pickCollege(context),
   );
@@ -910,46 +910,30 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
   Widget _majorRow(
     BuildContext context,
     AsyncValue<List<PublicQueryOption>> majors,
-  ) => _pickerRow(
+  ) => pqPickerRow(
     context,
     icon: Icons.menu_book_outlined,
     label: '专业（可选）',
-    value: _labelOf(majors.valueOrNull, _major),
+    value: pqLabelOf(majors.valueOrNull, _major),
     hint: _department.isEmpty ? '先选学院' : '不限专业',
     onTap: _department.isEmpty ? null : () => _pickMajor(context),
   );
 
-  /// 在候选列表里把代码翻成显示名；查不到就回退显示代码本身。
-  String _labelOf(List<PublicQueryOption>? list, String code) {
-    if (code.isEmpty) return '';
-    for (final o in list ?? const <PublicQueryOption>[]) {
-      if (o.code == code) return o.displayName;
-    }
-    return code;
-  }
-
-  PublicQueryOption? _optionOf(List<PublicQueryOption> list, String code) {
-    for (final o in list) {
-      if (o.code == code) return o;
-    }
-    return null;
-  }
-
   Widget _buildingRow(BuildContext context) {
     if (_campus.isEmpty) {
-      return _hint(context, '选择校区后可按楼房缩小范围（不选楼房则查该校区全部教室）。');
+      return pqHint(context, '选择校区后可按楼房缩小范围（不选楼房则查该校区全部教室）。');
     }
     final buildings = ref.watch(publicQueryBuildingsProvider(_campus));
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: buildings.when(
-        loading: () => _rowShell(
+        loading: () => pqRowShell(
           context,
           icon: Icons.apartment_outlined,
           label: '楼房',
           child: const Text('加载中…'),
         ),
-        error: (e, _) => _rowShell(
+        error: (e, _) => pqRowShell(
           context,
           icon: Icons.apartment_outlined,
           label: '楼房',
@@ -958,7 +942,7 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
             style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
         ),
-        data: (list) => _rowShell(
+        data: (list) => pqRowShell(
           context,
           icon: Icons.apartment_outlined,
           label: '楼房',
@@ -1001,7 +985,7 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
       _toast('部门列表暂时取不到');
       return;
     }
-    final picked = await _pickOption(context, '选择部门', list, null);
+    final picked = await pqPickOption(context, '选择部门', list, null);
     if (picked == null) return;
     setState(() {
       _department = picked.code;
@@ -1019,11 +1003,11 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
       _toast('该年级没有取到学院列表，请换年级后重试');
       return;
     }
-    final picked = await _pickOption(
+    final picked = await pqPickOption(
       context,
       '选择学院',
       list,
-      _optionOf(list, _department),
+      pqOptionOf(list, _department),
     );
     if (picked == null) return;
     setState(() {
@@ -1048,11 +1032,11 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
       _toast('该学院在该年级没有取到专业列表');
       return;
     }
-    final picked = await _pickOption(
+    final picked = await pqPickOption(
       context,
       '选择专业',
       list,
-      _optionOf(list, _major),
+      pqOptionOf(list, _major),
     );
     if (picked == null) return;
     setState(() {
@@ -1082,7 +1066,7 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
       });
       return;
     }
-    final picked = await _pickOption(
+    final picked = await pqPickOption(
       context,
       switch (_kind) {
         PublicQueryKind.course => '选择课程',
@@ -1119,10 +1103,10 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
   Widget _resultSection(BuildContext context, ColorScheme scheme) {
     final request = _buildRequest();
     if (request == null) {
-      return _infoCard(context, Icons.hourglass_empty, '等待学期信息', '学期列表还没就绪。');
+      return pqInfoCard(context, Icons.hourglass_empty, '等待学期信息', '学期列表还没就绪。');
     }
     if (!request.ready) {
-      return _infoCard(
+      return pqInfoCard(
         context,
         Icons.filter_alt_outlined,
         '还差筛选条件',
@@ -1136,15 +1120,15 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
     }
     final async = ref.watch(publicQueryReportProvider(request));
     return async.when(
-      loading: () => _loadingCard(context, '正在向教务查询课表…（教室课表数据量大，可能需要十几秒）'),
-      error: (e, _) => _errorCard(
+      loading: () => pqLoadingCard(context, '正在向教务查询课表…（教室课表数据量大，可能需要十几秒）'),
+      error: (e, _) => pqErrorCard(
         context,
         '查询失败：$e',
         onRetry: () => ref.invalidate(publicQueryReportProvider(request)),
       ),
       data: (result) {
         if (result.isEmpty) {
-          return _infoCard(
+          return pqInfoCard(
             context,
             Icons.search_off,
             '没有检索到记录',
@@ -1199,175 +1183,6 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
     );
   }
 
-  // ---------------- 通用小组件 ----------------
-
-  Widget _rowShell(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required Widget child,
-  }) {
-    final scheme = Theme.of(context).colorScheme;
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: scheme.onSurfaceVariant),
-        const SizedBox(width: 10),
-        SizedBox(
-          width: 92,
-          child: Text(
-            label,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
-          ),
-        ),
-        Expanded(child: child),
-      ],
-    );
-  }
-
-  Widget _pickerRow(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required String value,
-    required String hint,
-    VoidCallback? onTap,
-  }) {
-    final scheme = Theme.of(context).colorScheme;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: _rowShell(
-          context,
-          icon: icon,
-          label: label,
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  value.isEmpty ? hint : value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: value.isEmpty ? scheme.onSurfaceVariant : null,
-                  ),
-                ),
-              ),
-              Icon(
-                Icons.chevron_right,
-                size: 18,
-                color: scheme.onSurfaceVariant,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _hint(BuildContext context, String text) => Padding(
-    padding: const EdgeInsets.only(top: 6),
-    child: Text(
-      text,
-      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-        color: Theme.of(context).colorScheme.onSurfaceVariant,
-      ),
-    ),
-  );
-
-  Widget _loadingCard(BuildContext context, String text) => Card(
-    elevation: 0,
-    shape: geCardShape(context),
-    child: Padding(
-      padding: const EdgeInsets.all(20),
-      child: Row(
-        children: [
-          const SizedBox(
-            width: 18,
-            height: 18,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-          const SizedBox(width: 12),
-          Expanded(child: Text(text)),
-        ],
-      ),
-    ),
-  );
-
-  Widget _errorCard(
-    BuildContext context,
-    String text, {
-    required VoidCallback onRetry,
-  }) => Card(
-    elevation: 0,
-    shape: geCardShape(context),
-    child: Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.error_outline,
-                size: 20,
-                color: Theme.of(context).colorScheme.error,
-              ),
-              const SizedBox(width: 8),
-              Expanded(child: Text(text)),
-            ],
-          ),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(onPressed: onRetry, child: const Text('重试')),
-          ),
-        ],
-      ),
-    ),
-  );
-
-  Widget _infoCard(
-    BuildContext context,
-    IconData icon,
-    String title,
-    String message,
-  ) => Card(
-    elevation: 0,
-    shape: geCardShape(context),
-    child: Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            icon,
-            size: 20,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 4),
-                Text(message, style: Theme.of(context).textTheme.bodyMedium),
-              ],
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-
   void _toast(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(
@@ -1385,29 +1200,4 @@ class _PublicQueryScreenState extends ConsumerState<PublicQueryScreen> {
       return const [];
     }
   }
-
-  Future<PublicQueryOption?> _pickOption(
-    BuildContext context,
-    String title,
-    List<PublicQueryOption> options,
-    PublicQueryOption? selected,
-  ) async {
-    final picked = await _pickOptions(context, title, options, single: true);
-    return picked.isEmpty ? null : picked.first;
-  }
-
-  /// 可搜索的选择面板（长列表：教师 5000+ / 课程 1000+ / 班级 1000+）。
-  ///
-  /// 面板本身是共享件（public_query_option_sheet.dart）——「找无课时间」页用它多选班级。
-  Future<List<PublicQueryOption>> _pickOptions(
-    BuildContext context,
-    String title,
-    List<PublicQueryOption> options, {
-    bool single = false,
-  }) => pickPublicQueryOptions(
-    context,
-    title: title,
-    options: options,
-    single: single,
-  );
 }
