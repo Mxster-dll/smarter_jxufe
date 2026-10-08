@@ -13,6 +13,7 @@ import 'package:smarter_jxufe/features/electricity/data/models/electricity_model
 import 'package:smarter_jxufe/features/electricity/data/providers/electricity_providers.dart';
 import 'package:smarter_jxufe/design/pane_chrome.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
+import 'package:smarter_jxufe/features/electricity/presentation/widgets/electricity_widgets.dart';
 
 /// 宿舍电费页。
 ///
@@ -133,7 +134,7 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
       if (!mounted) return;
       setState(() {
         _loadingCampuses = false;
-        _error = _messageOf(e);
+        _error = elMessageOf(e);
       });
     }
   }
@@ -158,7 +159,7 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
       if (!mounted) return;
       setState(() {
         _loadingBuildings = false;
-        _error = _messageOf(e);
+        _error = elMessageOf(e);
       });
     }
   }
@@ -181,7 +182,7 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
       if (!mounted) return;
       setState(() {
         _loadingRooms = false;
-        _error = _messageOf(e);
+        _error = elMessageOf(e);
       });
     }
   }
@@ -216,7 +217,7 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
       await _loadRecords(roomId);
     } catch (e) {
       if (!mounted) return;
-      final message = _messageOf(e);
+      final message = elMessageOf(e);
       setState(() {
         _busy = false;
         _error = message;
@@ -270,7 +271,7 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = _messageOf(e);
+        _error = elMessageOf(e);
       });
     }
   }
@@ -283,9 +284,6 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
       _balance = null;
     });
   }
-
-  String _messageOf(Object e) =>
-      e is ElectricityApiException ? e.message : e.toString();
 
   // ---------- 手动更换流程 ----------
 
@@ -400,53 +398,11 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
     return null;
   }
 
-  // ---------- 楼栋聚合分组 ----------
-
-  static String _buildingGroupKey(String name) {
-    final match = RegExp(r'^(.*?)([0-9]+|[A-Za-z])栋$').firstMatch(name);
-    if (match == null) return name;
-    final prefix = match.group(1)!;
-    return prefix.isEmpty ? name : prefix;
-  }
-
-  static String _buildingShortName(String name) {
-    final match = RegExp(r'^.*?([0-9]+|[A-Za-z])栋$').firstMatch(name);
-    if (match == null) return name;
-    return '${match.group(1)}栋';
-  }
-
-  static List<RoomNode> _sortBuildingGroup(List<RoomNode> group) {
-    final sorted = [...group];
-    sorted.sort((a, b) => _compareBuildingNames(a.name, b.name));
-    return sorted;
-  }
-
-  static int _compareBuildingNames(String a, String b) {
-    String? tailOf(String name) {
-      final m = RegExp(r'^.*?([0-9]+|[A-Za-z])栋$').firstMatch(name);
-      return m?.group(1);
-    }
-
-    final at = tailOf(a);
-    final bt = tailOf(b);
-    if (at == null || bt == null) {
-      if (at != null) return -1;
-      if (bt != null) return 1;
-      return a.compareTo(b);
-    }
-    final an = int.tryParse(at);
-    final bn = int.tryParse(bt);
-    if (an != null && bn != null) return an - bn;
-    if (an != null) return -1;
-    if (bn != null) return 1;
-    return at.compareTo(bt);
-  }
-
   List<MapEntry<String, List<RoomNode>>> _groupedBuildings() {
     final order = <String>[];
     final map = <String, List<RoomNode>>{};
     for (final b in _buildings) {
-      final key = _buildingGroupKey(b.name);
+      final key = elBuildingGroupKey(b.name);
       if (!map.containsKey(key)) {
         map[key] = [];
         order.add(key);
@@ -454,7 +410,7 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
       map[key]!.add(b);
     }
     return [
-      for (final key in order) MapEntry(key, _sortBuildingGroup(map[key]!)),
+      for (final key in order) MapEntry(key, elSortBuildingGroup(map[key]!)),
     ];
   }
 
@@ -543,69 +499,20 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
     );
   }
 
-  Widget _dialogGroupHeader(BuildContext context, String label) {
-    final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.only(top: 10, bottom: 8),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: scheme.onSurfaceVariant,
-          letterSpacing: 0.2,
-        ),
-      ),
-    );
-  }
-
-  Widget _dialogChip({
-    required BuildContext context,
-    required Widget child,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
-    final scheme = Theme.of(context).colorScheme;
-    return Material(
-      color: selected ? scheme.primary : scheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(
-          color: selected ? scheme.primary : scheme.outlineVariant,
-        ),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-          child: DefaultTextStyle.merge(
-            style: TextStyle(
-              fontSize: 13.5,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-              color: selected ? scheme.onPrimary : scheme.onSurface,
-            ),
-            child: child,
-          ),
-        ),
-      ),
-    );
-  }
-
   List<Widget> _buildingBlocks() {
     return [
       for (final group in _groupedBuildings()) ...[
-        _dialogGroupHeader(context, group.key),
+        elDialogGroupHeader(context, group.key),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
             for (final b in group.value)
-              _dialogChip(
+              elDialogChip(
                 context: context,
                 selected: _buildingId == b.id,
                 onTap: () => Navigator.of(context).pop(b.id),
-                child: Text(_buildingShortName(b.name)),
+                child: Text(elBuildingShortName(b.name)),
               ),
           ],
         ),
@@ -619,13 +526,13 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
         .toList(growable: false);
     return [
       for (final group in groups) ...[
-        _dialogGroupHeader(context, group.floorName),
+        elDialogGroupHeader(context, group.floorName),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
             for (final room in group.rooms)
-              _dialogChip(
+              elDialogChip(
                 context: context,
                 selected: _roomId == room.id,
                 onTap: () => Navigator.of(context).pop(room.id),
@@ -672,7 +579,7 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
                 runSpacing: 10,
                 children: [
                   for (final campus in _campuses)
-                    _campusPill(
+                    elCampusPill(
                       context,
                       label: campus.name,
                       selected: _campusId == campus.id,
@@ -682,7 +589,7 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
               ),
               if (_campusId != null) ...[
                 const SizedBox(height: 12),
-                _selectCard(
+                elSelectCard(
                   context: context,
                   icon: Icons.apartment_outlined,
                   selected: _buildingId != null,
@@ -694,7 +601,7 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
               ],
               if (_buildingId != null) ...[
                 const SizedBox(height: 12),
-                _selectCard(
+                elSelectCard(
                   context: context,
                   icon: Icons.door_sliding_outlined,
                   selected: _roomId != null,
@@ -769,74 +676,8 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
           for (var i = 0; i < _records.length; i++) ...[
             if (i > 0)
               Divider(height: 1, thickness: 0.6, color: scheme.outlineVariant),
-            _buildRecordRow(context, _records[i]),
+            elBuildRecordRow(context, _records[i]),
           ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRecordRow(BuildContext context, ChargingRecord record) {
-    final scheme = Theme.of(context).colorScheme;
-    final time = record.paidAt;
-    final timeText = time == null
-        ? ''
-        : '${time.year}-${time.month.toString().padLeft(2, '0')}-'
-              '${time.day.toString().padLeft(2, '0')} '
-              '${time.hour.toString().padLeft(2, '0')}:'
-              '${time.minute.toString().padLeft(2, '0')}';
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-      child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: AppColors.tint(context, scheme.primary, 0.08),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              Icons.add_card_outlined,
-              size: 17,
-              color: scheme.primary,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  record.remark.isEmpty ? '电费充值' : record.remark,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 13.5),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  [
-                    if (record.payTypeName.isNotEmpty) record.payTypeName,
-                    if (timeText.isNotEmpty) timeText,
-                  ].join(' · '),
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '+${record.amountYuan.toStringAsFixed(2)} 元',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: scheme.primary,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
         ],
       ),
     );
@@ -845,7 +686,7 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
   /// 宿舍卡：已绑定 → 显示宿舍串，点击更换；未绑定 → 提示点击选择。
   Widget _buildDormCard(BuildContext context) {
     final binding = _binding;
-    return _selectCard(
+    return elSelectCard(
       context: context,
       icon: Icons.home_work_outlined,
       selected: binding != null,
@@ -873,132 +714,6 @@ class _ElectricityScreenState extends ConsumerState<ElectricityScreen> {
       }
     }
     return null;
-  }
-
-  Widget _campusPill(
-    BuildContext context, {
-    required String label,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
-    final scheme = Theme.of(context).colorScheme;
-    return Material(
-      color: selected ? scheme.primary : scheme.surface,
-      shape: StadiumBorder(
-        side: BorderSide(
-          color: selected ? scheme.primary : scheme.outlineVariant,
-        ),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-              color: selected ? scheme.onPrimary : scheme.onSurface,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// App 同源选择卡：白底细描边圆角 8 + 主色浅底图标盒；
-  /// 选中后主色描边 + 淡底 + 勾选。
-  Widget _selectCard({
-    required BuildContext context,
-    required IconData icon,
-    required bool selected,
-    required bool loading,
-    required String? value,
-    required String placeholder,
-    VoidCallback? onTap,
-  }) {
-    final scheme = Theme.of(context).colorScheme;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOut,
-      decoration: BoxDecoration(
-        color: selected
-            ? AppColors.tint(context, scheme.primary, 0.05)
-            : scheme.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: selected ? scheme.primary : scheme.outlineVariant,
-          width: selected ? 1.4 : 1,
-        ),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(8),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-            child: Row(
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: AppColors.tint(context, scheme.primary, 0.10),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(icon, size: 20, color: scheme.primary),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: loading
-                      ? Text(
-                          '查询中…',
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        )
-                      : Text(
-                          value ?? placeholder,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: value != null ? 14.5 : 15,
-                            fontWeight: value != null
-                                ? FontWeight.w500
-                                : FontWeight.w400,
-                            height: 1.3,
-                            color: value != null
-                                ? scheme.onSurface
-                                : scheme.onSurfaceVariant,
-                          ),
-                        ),
-                ),
-                const SizedBox(width: 8),
-                if (loading)
-                  const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                else if (onTap == null)
-                  const SizedBox.shrink()
-                else if (selected)
-                  Icon(Icons.edit_outlined, size: 18, color: scheme.primary)
-                else
-                  Icon(
-                    Icons.chevron_right,
-                    size: 20,
-                    color: scheme.onSurfaceVariant,
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
   }
 
   // ---------- 结果 / 错误 ----------
