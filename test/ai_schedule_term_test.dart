@@ -39,7 +39,6 @@ import 'package:smarter_jxufe/features/ims/schedule/domain/class_time.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/schedule_entry.dart';
 import 'package:smarter_jxufe/features/ims/student_info/data/providers/student_info_repository_provider.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/wxcal_repository.dart';
-import 'package:smarter_jxufe/features/school_calendar/domain/school_term.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/teaching_week.dart';
 
 /// `now` 固定在这一天：离线校历里它属于 **2026-2027 学年第一学期**（= 当下学期）。

@@ -31,9 +31,14 @@ ZcMaterial _m(
   qty: qty,
 );
 
-String _screen() =>
-    File('lib/features/zongce/presentation/zongce_screen.dart')
-        .readAsStringSync();
+/// 综测页源码（⚠ 2026-10-08：改为扫**整族目录** —— 该页要按类拆分，
+/// 不再假设这些形态住在某一个文件里；原意不变）。
+String _screen() => Directory('lib/features/zongce/presentation')
+    .listSync()
+    .whereType<File>()
+    .where((f) => f.path.endsWith('.dart'))
+    .map((f) => f.readAsStringSync())
+    .join('\n');
 
 /// 引擎明细里某个标签的值（界面 `zcSumDetail` 的同源数据）。
 double _detail(ZcCalcResult r, String label) {

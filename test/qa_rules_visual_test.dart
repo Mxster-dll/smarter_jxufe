@@ -180,16 +180,6 @@ Future<List<TableData>> _tablesOf(String asset) async {
   ];
 }
 
-const _rule20 = RuleDoc(
-  id: 'r20',
-  file: 'r20.md',
-  pdf: 'r20.pdf',
-  title: '学科竞赛目录（2024-2025学年）',
-  group: '学科竞赛',
-  template: RuleTemplate.catalog,
-  year: '2024-2025',
-);
-
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 

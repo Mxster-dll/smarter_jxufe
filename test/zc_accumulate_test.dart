@@ -508,7 +508,11 @@ void main() {
             if (_codeOnly(f.readAsStringSync()).contains("'可累计'"))
               f.path.replaceAll('\\', '/'),
       ];
-      expect(hits, ['lib/features/zongce/presentation/zongce_widgets.dart']);
+      // ⚠ 2026-10-08：综测页要按类拆分，故**不再绑定具体文件名** ——
+      // 原意（「可累计」胶囊全仓只此一处、且必须住在综测族里）不变。
+      expect(hits.length, 1, reason: '「可累计」胶囊只此一处');
+      expect(hits.single.startsWith('lib/features/zongce/'), isTrue,
+          reason: '它必须住在综测族里（拆分后可能在族内任一文件）');
     });
 
     test('页面接线：开关 + 五处总标记 + 高亮传 open', () {

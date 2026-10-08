@@ -220,7 +220,12 @@ void main() {
 ///
 /// 守卫改读**两文件并集** —— 原意不变（这些形态必须存在于综测页这一族里），
 /// 只是不再假设它们住在同一个文件里。
-String _zcSrc() => const [
-  'lib/features/zongce/presentation/zongce_screen.dart',
-  'lib/features/zongce/presentation/zongce_widgets.dart',
+String _zcSrc() => [
+  // ⚠ 2026-10-08：综测页要按类拆分 + 五育卡去重，故守卫改为扫**整族目录**，
+  // 不再假设这些形态住在哪两个具体文件里（原意不变：形态必须存在于这一族）。
+  ...Directory('lib/features/zongce/presentation')
+      .listSync()
+      .whereType<File>()
+      .where((f) => f.path.endsWith('.dart'))
+      .map((f) => f.path),
 ].map((p) => File(p).readAsStringSync()).join('\n');
