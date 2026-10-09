@@ -41,10 +41,21 @@ class PaneScope extends InheritedWidget {
   /// 其余调用点（单独的 `HomeDetailPane`、内嵌服务页里的二级页）**不传**，保持原判据。
   final bool sidebarPane;
 
+  /// **侧栏右栏这一格的"宿主回调"**（只有 [sidebarPane] 为 true 时给）。
+  ///
+  /// 收到「要把某一页开在右栏」的请求时调它（参数 = 侧栏目录里的条目名）。
+  /// ⚠ 为什么不让页面自己 `Navigator.push`（用户 2026-10-10 二十七轮：
+  /// 「点击数据一览的卡片后，顶部路由不记录」）：面板内部那个 Navigator 的压栈
+  /// **绕不过宿主的记账** —— 顶部的全局路由历史是在 `home_screen._select` /
+  /// `_recordPaneHistory` 里记的，直接 push 只是"栈里多一层"，历史里什么都不留，
+  /// 于是前进/后退按钮对这一段完全瞎。所以改成回调宿主，由它走**和点侧栏同一套**通道。
+  final void Function(String entryTitle)? sidebarHost;
+
   const PaneScope({
     super.key,
     required this.embedded,
     this.sidebarPane = false,
+    this.sidebarHost,
     required super.child,
   });
 
@@ -57,9 +68,15 @@ class PaneScope extends InheritedWidget {
       context.dependOnInheritedWidgetOfExactType<PaneScope>()?.sidebarPane ??
       false;
 
+  /// 最近的"侧栏右栏宿主回调"（宫格视图 / 独立面板：null）。
+  static void Function(String entryTitle)? sidebarHostOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<PaneScope>()?.sidebarHost;
+
   @override
   bool updateShouldNotify(PaneScope oldWidget) =>
-      oldWidget.embedded != embedded || oldWidget.sidebarPane != sidebarPane;
+      oldWidget.embedded != embedded ||
+      oldWidget.sidebarPane != sidebarPane ||
+      oldWidget.sidebarHost != sidebarHost;
 }
 
 /// 本页是否被内嵌在侧栏右侧面板里。

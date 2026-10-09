@@ -38,17 +38,22 @@ class HomeDetailPane extends StatelessWidget {
   /// "面板首路由"（不画导航栏）；其余调用点不传，保持"只有首路由才不画"的老判据。
   final bool sidebarPane;
 
+  /// 侧栏右栏这一格的宿主回调（见 [PaneScope.sidebarHost]）。
+  final void Function(String entryTitle)? sidebarHost;
+
   const HomeDetailPane({
     super.key,
     required this.paneKey,
     required this.builder,
     this.sidebarPane = false,
+    this.sidebarHost,
   });
 
   /// 目录条目版（面板 id = 条目标题）。
   HomeDetailPane.entry(HomeServiceEntry entry, {super.key})
     : paneKey = entry.title,
       sidebarPane = false,
+      sidebarHost = null,
       builder = entry.builder;
 
   /// 面板内 Navigator 的 Key（按 [paneKey] 区分 = 切换条目即重置路由栈）。
@@ -65,6 +70,7 @@ class HomeDetailPane extends StatelessWidget {
     return PaneScope(
       embedded: true,
       sidebarPane: sidebarPane,
+      sidebarHost: sidebarHost,
       child: Navigator(
         key: navKeyOfId(paneKey),
         onGenerateRoute: (settings) => MaterialPageRoute<void>(

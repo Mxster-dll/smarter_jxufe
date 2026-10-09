@@ -388,6 +388,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       return HomeDetailPane(
         paneKey: footer!.name,
         sidebarPane: true,
+        sidebarHost: _openEntryInPane,
         builder: builder,
       );
     }
@@ -395,8 +396,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return HomeDetailPane(
       paneKey: selected.title,
       sidebarPane: true,
+      sidebarHost: _openEntryInPane,
       builder: selected.builder,
     );
+  }
+
+  /// 把右栏切到目录里的某一个条目 —— **概览卡片点开也走这里**。
+  ///
+  /// 用户 2026-10-10 二十七轮：「点击数据一览的卡片后，顶部路由不记录」。
+  /// 根因是那段从前直接 `Navigator.of(context).push(...)` —— 只往面板内部的 Navigator
+  /// 压了一层，**绕过了宿主的记账**（全局路由历史记在 [_select] / [_recordPaneHistory] 里）。
+  ///
+  /// 所以由宿主把它收回来：走和点侧栏条目**同一套**通道（记账 + 侧栏高亮 + 换页动画），
+  /// 「往前退回到概览」也就自然由历史里那条 `restore` 负责（它本来就是切回那一格）。
+  void _openEntryInPane(String entryTitle) {
+    if (!mounted) return;
+    _select(entryTitle);
   }
 
   /// 右栏默认那一格「数据一览」。
@@ -423,6 +438,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return HomeDetailPane(
       paneKey: kServiceOverview,
       sidebarPane: true,
+      sidebarHost: _openEntryInPane,
       builder: builder ?? () => const HomeOverviewPane(),
     );
   }

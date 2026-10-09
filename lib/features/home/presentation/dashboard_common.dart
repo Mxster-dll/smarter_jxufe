@@ -55,9 +55,22 @@ void dashboardPush(BuildContext context, Widget screen) {
   final paneKey = dashboardPaneKeyOf(screen);
   // ⚠ 判据 = `paneEmbedded`（本页在不在面板里）。
   // 右栏那一格「数据一览」概览**已经是面板的一条路由**（`home_screen._overviewPane()`
-  // 把它交给 `HomeDetailPane`，见 §44.1.18），所以从概览点卡片时这里为 **true** →
-  // 落在面板自己的 Navigator 上 → 页面显示在右栏。
+  // 把它交给 `HomeDetailPane`，见 §44.1.18），所以从概览点卡片时这里为 **true**。
   if (paneEmbedded(context) && paneKey != null) {
+    // ⚠⚠ **优先走"侧栏右栏宿主"的回调**（用户 2026-10-10 二十七轮：
+    // 「点击数据一览的卡片后，顶部路由不记录」）。
+    //
+    // 直接 `Navigator.of(context).push(...)` 只是往面板内部那个 Navigator 压一层，
+    // **绕过了宿主的记账** —— 顶部的全局路由历史是在 `home_screen._select` /
+    // `_recordPaneHistory` 里记的，于是这一段在历史里什么都不留（前进/后退对它全瞎）。
+    // 交给宿主之后，走的是**和点侧栏条目同一套**通道：记账 + 侧栏高亮 + 换页动画
+    // 一次性对齐。
+    final host = PaneScope.sidebarHostOf(context);
+    if (host != null) {
+      host(paneKey);
+      return;
+    }
+    // 兜底（独立面板 / 单测没给宿主）：保持原样，就地压一层。
     // 面板首路由 = 目录里那一页；这里再推就是**二级页**（有返回键，正确）。
     // 溅屏入口不同：它会把首路由替换掉，所以这里也替换，别叠两层。
     final navigator = Navigator.of(context);

@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+import 'package:smarter_jxufe/core/navigation/route_history.dart';
 import 'package:smarter_jxufe/core/navigation/service_nav.dart';
 import 'package:smarter_jxufe/features/home/data/home_grid_prefs.dart';
 import 'package:smarter_jxufe/features/home/data/home_layout_prefs.dart';
@@ -113,8 +114,12 @@ void main() {
     );
     expect(rootNav(tester).canPop(), isFalse, reason: '起始时根栈只有主页一层');
 
-    // 概览面板里的「宿舍电费」卡片：按文案找到它，点它。
-    // （`DashboardPanel` 就在右栏里，卡片是 `InkWell`。）
+    // 拿历史那份单例（`routeHistoryProvider` 不是 autoDispose → 跨页面活着）。
+    final history = ProviderScope.containerOf(
+      tester.element(find.byType(HomeScreen)),
+    ).read(routeHistoryProvider);
+    final labelsBefore = history.entries.map((e) => e.label).toList();
+
     // 概览里的电费卡标题是「电费余额」（`dashboard_metrics.dart` 的 `_MetricCard`）。
     final card = find.text('电费余额');
     expect(
@@ -135,6 +140,46 @@ void main() {
     );
     // ② 主页还在（不是被盖住）
     expect(find.byType(HomeScreen), findsOneWidget);
+
+    // ③ ★ **顶部路由历史必须记下这一笔**（用户 2026-10-10 二十七轮：
+    //    「点击数据一览的卡片后，顶部路由不记录」）。
+    //    判据 = 历史**末尾**多了一条「宿舍电费」。
+    //
+    // ⚠ 这里不能用 `labelsBefore` 比全表：本用例只 pump 了一个裸 `HomeScreen`
+    // （不走组装根 `main.dart`），而 `_select` 的语义是"先记离开的位置、再记新位置" ——
+    // 点一下之后末尾两笔正是「数据一览」「宿舍电费」（实测）。只钉末尾那笔即可。
+    expect(
+      history.entries.map((e) => e.label).last,
+      '宿舍电费',
+      reason: '点概览卡片必须落一笔历史（否则顶部前进/后退对它全瞎）'
+          '（实测全表 ${history.entries.map((e) => e.label).toList()}，'
+          '点之前 $labelsBefore）',
+    );
+    expect(
+      history.entries.last.canRestore,
+      isTrue,
+      reason: '这一笔必须能回去（restore 非空），否则顶部按钮是死的',
+    );
+
+    // ④ **顶部的「后退」真能用**：`goBack()` 把游标退回上一笔（= 数据一览）并调它的
+    //    restore → 右栏应当回到概览。
+    //    ⚠ 别写成 `history.entries.last.restore!()`：那是**当前**这一笔（宿舍电费），
+    //    调它等于原地重设一遍，什么都不会变（实测踩过）。
+    expect(history.canGoBack, isTrue, reason: '刚记完一笔，顶部的后退应当可用');
+    expect(history.goBack(), isTrue);
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 32));
+    }
+    expect(
+      find.byKey(homeOverviewPaneKey),
+      findsOneWidget,
+      reason: '顶部后退应当把右栏放回「数据一览」',
+    );
+    expect(
+      history.current?.label,
+      '数据一览',
+      reason: '游标应当退回概览那一笔（实测 ${history.current?.label}）',
+    );
     expect(tester.takeException(), isNull);
   });
 }

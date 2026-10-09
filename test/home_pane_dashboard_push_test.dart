@@ -1,4 +1,4 @@
-﻿// 概览面板里的卡片点开后，页面必须落在**右侧内容区**里，不许占满整个窗口
+// 概览面板里的卡片点开后，页面必须落在**右侧内容区**里，不许占满整个窗口
 // （用户 2026-10-09 二十四轮：「点击主页卡片后，页面会占满整个窗口，而不是显示在
 // 右侧内容区」）。
 //
@@ -26,7 +26,6 @@ import 'package:smarter_jxufe/features/home/domain/home_layout.dart';
 import 'package:smarter_jxufe/features/home/presentation/dashboard_common.dart';
 import 'package:smarter_jxufe/features/home/presentation/home_detail_pane.dart';
 import 'package:smarter_jxufe/features/home/presentation/home_screen.dart';
-import 'package:smarter_jxufe/features/home/presentation/home_service_grid.dart';
 import 'package:smarter_jxufe/features/ims/menu/domain/ims_tab.dart';
 import 'package:smarter_jxufe/features/ims/splash/presentation/ims_splash_screen.dart';
 import 'package:smarter_jxufe/features/net_fee/presentation/net_fee_screen.dart';
@@ -131,53 +130,38 @@ void main() {
     expect(paneFinder, findsOneWidget, reason: '选了服务之后右栏应当是内嵌面板');
     expect(tester.widget<PaneScope>(paneFinder).embedded, isTrue);
 
-    // 面板自己的 Navigator（`homeDetailNav-<paneKey>`）—— 量它里面开了几个路由。
-    NavigatorState paneNav() => tester.state<NavigatorState>(
-      find.byKey(HomeDetailPane.navKeyOfId('宿舍电费')),
+    // 右栏面板自己的 Navigator（按 paneKey 命名）。
+    NavigatorState paneNavOf(String id) => tester.state<NavigatorState>(
+      find.byKey(HomeDetailPane.navKeyOfId(id)),
     );
-    final routesBefore = paneNav().canPop() ? 2 : 1;
 
-    // ignore: avoid_print
-    print(
-      'PROBE 推之前 面板canPop=${paneNav().canPop()} 根canPop='
-      '${tester.state<NavigatorState>(find.ancestor(of: find.byType(HomeScreen), matching: find.byType(Navigator)).last).canPop()} '
-      'NetFee=${find.byType(NetFeeScreen).evaluate().length}',
-    );
-    // 模拟**右栏里的卡片**被点（概览面板的指标卡就是这条路径）：
-    // `paneEmbedded(context)` 为真 → 必须走**面板自己的** Navigator。
-    // 面板里那一页（「宿舍电费」的真实首路由 = IMS 那条溅屏入口）就是页面自己的
-    // `context` —— 概览面板的卡片也在同一个 Navigator 底下，取它等价。
+    // 模拟**右栏里的卡片**被点（概览面板的指标卡就是这条路径）。
+    //
+    // ⚠ 二十七轮起契约变了：不再往面板 Navigator **压一层**，而是**把右栏换成那一格**
+    // （交给宿主 `_openEntryInPane` → `_select`）—— 这样顶部的全局路由历史才记得下来
+    // （用户 2026-10-10：「点击数据一览的卡片后，顶部路由不记录」）。
+    // 所以这里断言的是「右栏换成了校园网那一格」，而不是「栈里多了一层」。
     final context = tester.element(find.byType(ElectricityScreen));
-    // 推一个**和面板首路由不同**的页面（校园网）—— 这样"面板里多了一层"和
-    // "根 Navigator 没动"两件事都能独立看出来。
     dashboardPush(context, const NetFeeScreen());
     for (var i = 0; i < 12; i++) {
       await tester.pump(const Duration(milliseconds: 32));
     }
 
-    // ① **面板的路由栈真的长了一层**，而且压上去的就是那个页面 ——
-    //    `_ProbePage` 只可能从面板里长出来（它是注册在「宿舍电费」这个 id 上的
-    //    探针；整页 push 走的是 `MaterialPageRoute(builder: (_) => ElectricityScreen())`，
-    //    永远不会是它）。**这条断言在改之前的代码上必红。**
-    expect(
-      paneNav().canPop(),
-      isTrue,
-      reason: '卡片点开的页面必须落在面板自己的 Navigator 里',
-    );
-    expect(
-      routesBefore,
-      1,
-      reason: '推开之前面板只有首路由（canPop = false）',
-    );
+    // ① 右栏换成了「校园网」那一格（面板 Navigator 的 key 也跟着换成它）
     expect(
       find.byType(NetFeeScreen),
       findsOneWidget,
-      reason: '面板里应当出现「校园网」页 —— 找不到就是整页 push 走了',
+      reason: '右栏应当显示「校园网」页 —— 找不到就是整页 push 走了',
     );
     expect(
       find.byType(ElectricityScreen),
       findsNothing,
-      reason: '校园网是**二级页**，压在电费之上（不是替换）',
+      reason: '换格（不是压在电费之上）：电费那一页已经让位',
+    );
+    expect(
+      paneNavOf('校园网').canPop(),
+      isFalse,
+      reason: '新那一格只有首路由（换格 = 换 Navigator，路由栈天然重置）',
     );
 
     // ② **根 Navigator 一个路由都没多** = 没有东西盖在整页之上
