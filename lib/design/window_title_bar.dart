@@ -426,6 +426,7 @@ class _WindowTitleBarState extends ConsumerState<WindowTitleBar> {
     return _region(
       token,
       _WindowButton(
+        key: Key('windowButton-${button.name}'),
         snapshot: snapshot,
         button: button,
         style: WindowButtonsStyle.windows,
@@ -445,6 +446,7 @@ class _WindowTitleBarState extends ConsumerState<WindowTitleBar> {
     return _region(
       token,
       _WindowButton(
+        key: Key('windowButton-${button.name}'),
         snapshot: snapshot,
         button: button,
         style: WindowButtonsStyle.mac,
@@ -534,6 +536,7 @@ class _RenderTitleBarRegion extends RenderProxyBox {
 /// 三键之一（**纯视觉**：点击由原生处理，悬停 / 按下态由原生推回）。
 class _WindowButton extends StatelessWidget {
   const _WindowButton({
+    super.key,
     required this.snapshot,
     required this.button,
     required this.style,
@@ -554,8 +557,8 @@ class _WindowButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hovered = snapshot.hovered == button;
-    final pressed = snapshot.pressed == button;
+    final hovered = snapshot.active && snapshot.hovered == button;
+    final pressed = snapshot.active && snapshot.pressed == button;
     final active = hovered || pressed;
     final scheme = Theme.of(context).colorScheme;
 
