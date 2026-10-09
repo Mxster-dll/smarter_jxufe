@@ -37,6 +37,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import 'package:smarter_jxufe/core/errors/app_exception.dart';
+import 'package:smarter_jxufe/core/navigation/route_history.dart';
 import 'package:smarter_jxufe/core/web/external_url.dart';
 import 'package:smarter_jxufe/core/web/web_session.dart';
 import 'package:smarter_jxufe/design/app_states.dart';
@@ -141,14 +142,54 @@ Future<String?> _userDataFolder() async {
   }
 }
 
+/// 一次「网页告诉我它到哪儿了」要不要落一笔路由历史（要的话给去重键）。
+///
+/// 抽成**纯函数**是为了能被单测直接推（真 WebView 在 widget 测试里建不出来，
+/// 见 `test/in_app_web_nav_test.dart` 开头那段说明）。
+///
+/// 规则：
+/// - [enabled] 为 false（调用点显式关掉）→ 不记；
+/// - [url] 为空 → 不记（还不知道地址）；
+/// - **同一地址不重复记**（`onLoadStop` 与 `onUpdateVisitedHistory` 会各喊一次）；
+/// - [isReload] 为 true（用户按了刷新）→ 不算新位置，不记。
+String? webRouteHistoryKey({
+  required bool enabled,
+  required String url,
+  required String previousUrl,
+  required bool isReload,
+}) {
+  if (!enabled) return null;
+  if (url.isEmpty) return null;
+  if (isReload) return null;
+  if (url == previousUrl) return null;
+  return 'web:$url';
+}
+
 /// 内嵌网页页（整页模式带标题栏，内嵌服务主页的按钮下沉到内容顶部）。
 ///
 /// 与 app 自己的 `dio` **不共享 Cookie 罐**：要让页面处于登录态，调用方必须把
 /// 凭据放进 [EmbeddedWebRequest.cookies]（见 `core/network/cas_browser_session.dart`）。
 class InAppWebScreen extends ConsumerStatefulWidget {
-  const InAppWebScreen({super.key, required this.request});
+  const InAppWebScreen({
+    super.key,
+    required this.request,
+    this.recordRouteHistory = true,
+  });
 
   final EmbeddedWebRequest request;
+
+  /// 网页**内部**的每次跳转要不要记进顶部的**全局路由历史**。
+  ///
+  /// 用户 2026-10-10 二十八轮：「我希望内嵌的智慧江财的内部页面也要接入路由」。
+  ///
+  /// 默认 true：智慧江财那种门户点进去是**好几层**页面，从前顶部历史里只有
+  /// 「智慧江财」这一笔，进去之后的历史整个是空的（前进/后退对它全瞎）。
+  /// 打开之后每次 `onUpdateVisitedHistory` 都落一笔（键 = URL，天然去重），
+  /// 标题取网页自己的标题；那一笔的 `restore` = 让这个 WebView 重新加载那个 URL
+  /// （**同一个会话**，登录态还在）。
+  ///
+  /// 关掉它（false）= 回到老行为，给"只当工具用、不需要参与全局历史"的调用点留的开关。
+  final bool recordRouteHistory;
 
   @override
   ConsumerState<InAppWebScreen> createState() => _InAppWebScreenState();
@@ -168,6 +209,13 @@ class _InAppWebScreenState extends ConsumerState<InAppWebScreen> {
   /// 网页**内部**还有没有上一页（决定「上一页」按钮灰不灰、以及系统返回键
   /// 是回网页还是退页面）。真值只能问 WebView，所以每次导航后同步一次。
   bool _canGoBack = false;
+
+  /// 这一页的**当前地址**（记路由历史用）：`onUpdateVisitedHistory` / `onLoadStop`
+  /// 都会刷新它。空串 = 还不知道。
+  String _currentUrl = '';
+
+  /// 这一页的**当前标题**：优先网页自己报的（`getTitle`），拿不到才用请求里那个。
+  String _currentTitle = '';
 
   @override
   void initState() {
@@ -256,6 +304,54 @@ class _InAppWebScreenState extends ConsumerState<InAppWebScreen> {
   Future<void> _goBack() async {
     await _controller?.goBack();
     await _syncHistory();
+  }
+
+  /// 把「网页此刻到哪儿了」记进顶部的全局路由历史（用户 2026-10-10 二十八轮）。
+  ///
+  /// **要不要记、去重键是什么**由纯函数 [webRouteHistoryKey] 判（那几条规则写在它头上）；
+  /// 这里只负责取标题、落一笔、以及给那一笔配 restore：
+  /// - **标题优先网页自己的**（`getTitle()`），拿不到才退回请求里那个 —— 门户里
+  ///   每一层的标题都不一样，那正是用户想在图里看到的东西；
+  /// - **`restore` = 让这个 WebView 重新加载那个 URL**：同一实例、同一 Cookie 罐，
+  ///   所以登录态还在；不重新走 `_boot()`（那会把整页重建）。
+  ///
+  /// ⚠ 失败一律只记日志：历史记不上不该影响网页本身（与 `pageScript` 同一条纪律）。
+  Future<void> _recordRoute(String url, {required bool isReload}) async {
+    final key = webRouteHistoryKey(
+      enabled: widget.recordRouteHistory,
+      url: url,
+      previousUrl: _currentUrl,
+      isReload: isReload,
+    );
+    if (key == null) return;
+    var title = _currentTitle;
+    final controller = _controller;
+    if (controller != null) {
+      try {
+        final webTitle = await controller.getTitle();
+        if (webTitle != null && webTitle.trim().isNotEmpty) {
+          title = webTitle.trim();
+        }
+      } catch (e) {
+        debugPrint('[InAppWeb] 取网页标题失败（用请求标题兜底）：$e');
+      }
+    }
+    if (title.trim().isEmpty) title = widget.request.title;
+    _currentUrl = url;
+    _currentTitle = title;
+    if (!mounted) return;
+    ref.read(routeHistoryProvider).record(
+          RouteHistoryEntry(
+            label: title,
+            key: key,
+            restore: () {
+              // 回到这一笔 = **让这个 WebView 加载那个地址**（不重开会话）。
+              unawaited(
+                _controller?.loadUrl(urlRequest: URLRequest(url: WebUri(url))),
+              );
+            },
+          ),
+        );
   }
 
   Future<void> _openExternal() async {
@@ -357,6 +453,8 @@ class _InAppWebScreenState extends ConsumerState<InAppWebScreen> {
             setState(() => _progress = 100);
             // 兜底同步一次：有的平台不抛 visited-history。
             unawaited(_syncHistory());
+            // 「这一跳到此结束」→ 记一笔路由历史（标题此时也才拿得到）。
+            unawaited(_recordRoute(url?.toString() ?? '', isReload: false));
             // 「页面加载后再修一次」的注入点（可选，语义与纪律见
             // `EmbeddedWebRequest.pageScript`）。
             final script = widget.request.pageScript;
@@ -367,6 +465,10 @@ class _InAppWebScreenState extends ConsumerState<InAppWebScreen> {
           onUpdateVisitedHistory: (controller, url, isReload) {
             // 历史一变就更新「能不能上一页」——「上一页」按钮的灰/亮靠它。
             unawaited(_syncHistory());
+            // 每次网页内部跳转都记一笔（键 = URL，同一条不会重复记）。
+            unawaited(
+              _recordRoute(url?.toString() ?? '', isReload: isReload == true),
+            );
           },
           onReceivedError: (controller, request, error) {
             if (!mounted) return;
