@@ -219,26 +219,30 @@ class _WindowTitleBarState extends ConsumerState<WindowTitleBar> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < kWindowTitleBarCompactWidth;
+        // 品牌只留「logo + 应用名」—— 侧栏开关与路由历史已搬到**栏中间**（见下）。
         final brand = Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 侧栏开关（页面经插槽发布，画在 logo 左边）。
-              if (actions.leadingVisible) ...[
-                _region(
-                  _leadingToken,
-                  Builder(builder: actions.leadingBuilder!),
-                  enabled: true,
-                ),
-                const SizedBox(width: 2),
-              ],
-              _brand(context, compact: compact),
+          child: _brand(context, compact: compact),
+        );
+
+        // 栏**中间**那一组（用户 2026-10-10：「我希望顶部的侧边栏展开收起按钮、
+        // 历史控制的三个按钮，都要放到标题栏中间」）—— 与品牌、三键都各自独立，
+        // 品牌在哪一侧都不影响它居中。
+        final centerGroup = Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 侧栏展开 / 收起（页面经插槽发布，宽屏侧栏布局下才有）。
+            if (actions.leadingVisible) ...[
+              _region(
+                _leadingToken,
+                Builder(builder: actions.leadingBuilder!),
+                enabled: true,
+              ),
               const SizedBox(width: 6),
-              // 全局路由历史（← → 🕘）。
-              _region(_historyToken, const WindowTitleBarHistory(), enabled: true),
             ],
-          ),
+            // 全局路由历史（← → 🕘）。
+            _region(_historyToken, const WindowTitleBarHistory(), enabled: true),
+          ],
         );
 
         // ⚠ 两组各自 `AnimatedAlign` 在两端之间滑动（不是 Row + Spacer）—— 换位置
@@ -283,6 +287,8 @@ class _WindowTitleBarState extends ConsumerState<WindowTitleBar> {
                 curve: kWindowTitleBarSwitchCurve,
                 child: brand,
               ),
+              // 居中的那一组：侧栏开关 + 路由历史。**不参与**左右互换（恒居中）。
+              Align(alignment: Alignment.center, child: centerGroup),
             ],
           ),
         );
