@@ -1,0 +1,89 @@
+{
+  "result": 1,
+  "msg": "获取列表成功",
+  "errorMsg": null,
+  "data": {
+    "startCount": 1,
+    "endCount": 3,
+    "startList": [
+      {
+        "id": 6000000000001,
+        "name": "二维码签到",
+        "activeType": 2,
+        "status": 1,
+        "starttime": 1791000000000,
+        "endtime": 1791003600000,
+        "starttimeStr": "2026-10-09 15:00:00",
+        "endtimeStr": "2026-10-09 16:00:00",
+        "createtimeStr": "2026-10-09 14:58:00",
+        "attendNum": 12,
+        "signCode": "123456",
+        "clazzid": 150000001,
+        "courseId": 260000001,
+        "userStatus": null
+      },
+      {
+        "id": 6000000000002,
+        "name": "选人",
+        "activeType": 11,
+        "status": 1,
+        "starttimeStr": "2026-10-09 15:10:00",
+        "endtimeStr": "2026-10-09 15:20:00",
+        "attendNum": 0,
+        "clazzid": 150000001,
+        "courseId": 260000001,
+        "userStatus": null
+      }
+    ],
+    "endList": [
+      {
+        "id": 6000000000003,
+        "name": "二维码签到",
+        "activeType": 2,
+        "status": 2,
+        "starttimeStr": "2026-10-08 18:26:00",
+        "endtimeStr": "2026-10-08 18:39:31",
+        "createtimeStr": "2026-10-08 18:26:00",
+        "attendNum": 64,
+        "signCode": "116765",
+        "clazzid": 150000001,
+        "courseId": 260000001,
+        "userStatus": null
+      },
+      {
+        "id": 6000000000004,
+        "name": "手势签到",
+        "activeType": 2,
+        "status": 2,
+        "starttimeStr": "2026-09-24 18:38:06",
+        "endtimeStr": "2026-09-24 18:46:06",
+        "attendNum": 61,
+        "signCode": "106149",
+        "clazzid": 150000001,
+        "courseId": 260000001,
+        "userStatus": null
+      },
+      {
+        "id": 6000000000005,
+        "name": "位置签到",
+        "activeType": 2,
+        "status": 2,
+        "starttimeStr": "2026-09-21 19:41:35",
+        "endtimeStr": "2026-09-21 19:42:11",
+        "attendNum": 0,
+        "clazzid": 150000001,
+        "courseId": 260000001
+      },
+      {
+        "name": "二维码签到",
+        "activeType": 2,
+        "status": 2,
+        "starttimeStr": "2026-09-14 19:26:58",
+        "endtimeStr": "2026-09-14 19:29:01",
+        "attendNum": 60,
+        "clazzid": 150000001,
+        "courseId": 260000001
+      }
+    ]
+  }
+}

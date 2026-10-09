@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:smarter_jxufe/design/app_theme.dart';
+import 'package:smarter_jxufe/features/ims/grades/data/providers/failed_grades_provider.dart';
+import 'package:smarter_jxufe/features/ims/grades/domain/failed_grade.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/recommendation_weighted.dart';
 import 'package:smarter_jxufe/features/recommendation/data/bonus_catalog_parser.dart';
 import 'package:smarter_jxufe/features/recommendation/data/providers/recommendation_providers.dart';
@@ -112,6 +114,7 @@ void main() {
     List<ZcMaterial> materials = const [],
     BonusCatalog? overrideCatalog,
     _MemoryStore? store,
+    List<FailedGrade> failed = const [],
   }) async {
     tester.view.physicalSize = const Size(1000, 2400);
     tester.view.devicePixelRatio = 1;
@@ -132,6 +135,8 @@ void main() {
           ),
           // 材料库：自动带入的来源（不 override 会去开 Hive）。
           zcMaterialsProvider.overrideWith((ref) async => materials),
+          // 挂科记录（2026-10-08 加）：同样要 override，否则去开成绩缓存 box。
+          failedGradesProvider.overrideWith((ref) async => failed),
         ],
         child: MaterialApp(
           theme: appLightTheme,
@@ -200,6 +205,68 @@ void main() {
       );
     }
     expect(catalog.cap, 10);
+  });
+
+  // 挂科 → 无推免资格（2026-10-08 加）。用户原话：「挂科可以产生一个联动，
+  // 那就是一旦有挂科记录，保研分页就显示您已挂科，无保研资格之类的」。
+  group('挂科联动', () {
+    testWidgets('★ 有挂科记录时顶部出警示条，并点名课程与门数', (tester) async {
+      await pumpPage(
+        tester,
+        weighted: _available,
+        failed: const [
+          FailedGrade(
+            code: '1004701034',
+            name: '高等数学I',
+            credit: 4,
+            score: 52,
+            semester: '251',
+          ),
+        ],
+      );
+      final bar = find.byKey(const Key('recFailedBar'));
+      expect(bar, findsOneWidget);
+      expect(find.text('您已有挂科记录，1 门'), findsOneWidget);
+      expect(find.textContaining('高等数学I'), findsWidgets);
+      expect(find.textContaining('一般不具备推免资格'), findsOneWidget);
+      // ⚠ 只陈述事实、不替学校下结论；下面的测算照常
+      expect(find.byKey(const Key('recSummaryCard')), findsOneWidget);
+    });
+
+    testWidgets('★ 警示条排在汇总卡**上面**（先看到资格问题再读分数）', (tester) async {
+      await pumpPage(
+        tester,
+        weighted: _available,
+        failed: const [
+          FailedGrade(code: '1', name: '大学英语I', credit: 2),
+        ],
+      );
+      final barY = tester.getTopLeft(find.byKey(const Key('recFailedBar'))).dy;
+      final cardY = tester.getTopLeft(find.byKey(const Key('recSummaryCard'))).dy;
+      expect(barY, lessThan(cardY));
+    });
+
+    testWidgets('没有挂科记录时整条不画（不许常驻空警示）', (tester) async {
+      await pumpPage(tester, weighted: _available);
+      expect(find.byKey(const Key('recFailedBar')), findsNothing);
+      expect(find.textContaining('挂科'), findsNothing);
+    });
+
+    testWidgets('多门挂科只列前三门 + 「等」', (tester) async {
+      await pumpPage(
+        tester,
+        weighted: _available,
+        failed: const [
+          FailedGrade(code: '1', name: '甲课', credit: 2),
+          FailedGrade(code: '2', name: '乙课', credit: 2),
+          FailedGrade(code: '3', name: '丙课', credit: 2),
+          FailedGrade(code: '4', name: '丁课', credit: 2),
+        ],
+      );
+      expect(find.text('您已有挂科记录，4 门'), findsOneWidget);
+      expect(find.textContaining('甲课、乙课、丙课 等'), findsOneWidget);
+      expect(find.textContaining('丁课'), findsNothing);
+    });
   });
 
   testWidgets('汇总卡显示综合成绩与三段构成', (tester) async {

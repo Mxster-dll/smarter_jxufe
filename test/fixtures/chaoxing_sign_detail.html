@@ -1,0 +1,40 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>签到</title>
+</head>
+<body>
+<div id="header"></div>
+<input type="hidden" id="activeId" value="6000000000003" />
+<input type="hidden" id="activeStatus" value="2" />
+<input type="hidden" id="courseId" value="260000001" />
+<input type="hidden" id="classId" value="150000001" />
+<input type="hidden" id="puid" value="400000001" />
+<div class="wid1100">
+	<div class="location">
+		<a href="javascript:;" onclick="starting(1)" shape="rect">学习活动</a><i></i>
+			<a href="javascript:;" onclick="starting(2)" shape="rect">已结束</a>
+			<i></i><span>签到</span>
+	</div>
+	<div class="whitebg">
+		<div class="cont">
+			<dl>
+				<dt><img src="https://mobilelearn-static.chaoxing.com/mobilelearn/newpc/images/right.png" /></dt><dd><span class="greenColor">签到成功</span><em id="st">2026-10-08 18:26:25</em></dd>
+			</dl>
+			<dl style="width: 100%;text-align: center">
+			</dl>
+		</div>
+	</div>
+</div>
+<script xml:space="preserve">
+/*<![CDATA[*/
+if($("#activeStatus").val()==2){
+	$("#titiePic").removeClass("qdhover").addClass("qd_over");
+}
+var setDate= '2026-10-08 18:26:00';
+var st = $("#st").html();
+/*]]>*/
+</script>
+</body>
+</html>

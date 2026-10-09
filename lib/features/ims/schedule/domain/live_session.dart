@@ -11,6 +11,7 @@ import 'package:smarter_jxufe/features/ims/schedule/domain/class_time.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/period_time.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/reschedule.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/reschedule_engine.dart';
+import 'package:smarter_jxufe/features/ims/schedule/domain/schedule_board.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/schedule_entry.dart';
 
 /// 一节课的完整日程：课程信息 + 时段 + 推算出的起止时刻。
@@ -151,20 +152,26 @@ bool classTimeAppliesInWeek(ClassTime ct, int week) => ct.appliesInWeek(week);
 /// [teachingWeek] 为 0（开学前）时天然返回空列表，因为课表的周次从 1 起。
 /// [reschedules] 为本地调课记录：调课/停课/补课在此一次性生效，
 /// 因而实况窗、通知、今日课程与课表页看到的永远是同一份安排。
+///
+/// [calendar] 为校历上下文（假期 / 补课）：传了就按校历调整 —— 假期当天只剩
+/// 「被移到这一天」的课，补课日改上被补那一周那一星期的课（用户 2026-10-07 要求
+/// 课表响应校历事件，实况窗与课前提醒同源）。不传 = 旧行为。
 List<ScheduledSession> sessionsOfDay({
   required List<ScheduleEntry> entries,
   required PeriodTable table,
   required int teachingWeek,
   required DateTime day,
   List<Reschedule> reschedules = const [],
+  ScheduleCalendarContext calendar = ScheduleCalendarContext.none,
 }) {
   final out = <ScheduledSession>[];
 
-  final classes = effectiveClassesOfDay(
+  final classes = effectiveClassesOfDate(
     entries: entries,
     reschedules: reschedules,
     week: teachingWeek,
-    day: day,
+    date: day,
+    calendar: calendar,
   );
 
   for (final c in classes) {
@@ -210,6 +217,7 @@ LiveSession resolveLiveSession({
   required int teachingWeek,
   required DateTime now,
   List<Reschedule> reschedules = const [],
+  ScheduleCalendarContext calendar = ScheduleCalendarContext.none,
 }) {
   final today = sessionsOfDay(
     entries: entries,
@@ -217,6 +225,7 @@ LiveSession resolveLiveSession({
     teachingWeek: teachingWeek,
     day: now,
     reschedules: reschedules,
+    calendar: calendar,
   );
   final live = today.where((s) => !s.isCancelled).toList();
 

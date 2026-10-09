@@ -164,39 +164,74 @@ class AndroidNotificationService extends NotificationService {
     if (!_ready || _plugin == null) return false;
     // 已过去的时刻不排：AlarmManager 会立刻弹出（Windows 侧则会抛异常）。
     if (!when.isAfter(DateTime.now())) return false;
-    try {
-      await _plugin!.zonedSchedule(
-        id: id,
-        title: title,
-        body: body,
-        payload: payload,
-        // 用 **UTC Location** 承载绝对时刻：不依赖设备时区名，
-        // 因此无需 flutter_timezone / setLocalLocation（`tz.UTC` 也无需载时区库）。
-        scheduledDate: tz.TZDateTime.from(when.toUtc(), tz.UTC),
-        notificationDetails: NotificationDetails(
-          android: ongoing
-              ? _ongoingDetails(
-                  when: when,
-                  autoDismissAfter: autoDismissAfter,
-                  countdown: countdown,
-                )
-              : const AndroidNotificationDetails(
-                  reminderChannelId,
-                  '截止提醒',
-                  channelDescription: '网课 / 作业 / 考试截止前的提醒',
-                  importance: Importance.high,
-                  priority: Priority.high,
-                ),
-          iOS: const DarwinNotificationDetails(),
-        ),
-        androidScheduleMode: await _scheduleMode(preferExact: preferExact),
-      );
-      return true;
-    } catch (e) {
-      debugPrint('Android 定时通知排期失败: $e');
-      return false;
+
+    final details = NotificationDetails(
+      android: ongoing
+          ? _ongoingDetails(
+              when: when,
+              autoDismissAfter: autoDismissAfter,
+              countdown: countdown,
+            )
+          : const AndroidNotificationDetails(
+              reminderChannelId,
+              '截止提醒',
+              channelDescription: '网课 / 作业 / 考试截止前的提醒',
+              importance: Importance.high,
+              priority: Priority.high,
+            ),
+      iOS: const DarwinNotificationDetails(),
+    );
+
+    // 逐档降级（最可靠 → 次之 → 兜底），理由见 [_scheduleModes]。
+    final modes = await _scheduleModes(preferExact: preferExact);
+    for (var i = 0; i < modes.length; i++) {
+      final mode = modes[i];
+      try {
+        await _zonedSchedule(
+          id: id,
+          title: title,
+          body: body,
+          when: when,
+          payload: payload,
+          details: details,
+          mode: mode,
+        );
+        if (i > 0) {
+          debugPrint('🔔 定时通知 #$id 已降级为 $mode（${modes.first} 不可用）');
+        }
+        return true;
+      } catch (e) {
+        final last = i == modes.length - 1;
+        if (last) {
+          debugPrint('Android 定时通知排期失败（已试遍 ${modes.length} 档）: $e');
+        } else {
+          debugPrint('Android 定时通知 $mode 档失败，继续降级: $e');
+        }
+      }
     }
+    return false;
   }
+
+  /// 真正调插件排一条（所有降级档共用同一份参数）。
+  Future<void> _zonedSchedule({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime when,
+    required NotificationDetails details,
+    required AndroidScheduleMode mode,
+    String? payload,
+  }) => _plugin!.zonedSchedule(
+    id: id,
+    title: title,
+    body: body,
+    payload: payload,
+    // 用 **UTC Location** 承载绝对时刻：不依赖设备时区名，
+    // 因此无需 flutter_timezone / setLocalLocation（`tz.UTC` 也无需载时区库）。
+    scheduledDate: tz.TZDateTime.from(when.toUtc(), tz.UTC),
+    notificationDetails: details,
+    androidScheduleMode: mode,
+  );
 
   /// 课前提醒的常驻通知详情（用户 2026-09-22 需求）。
   ///
@@ -224,23 +259,45 @@ class AndroidNotificationService extends NotificationService {
     category: AndroidNotificationCategory.reminder,
   );
 
-  /// 尽量精确、拿不到授权就退回非精确。
+  /// 排期档位（**从最可靠到兜底，逐档降级**）。
   ///
-  /// ⚠ Android 12+ 的精确闹钟要在系统设置里授权（Android 14 起默认拒绝），
-  /// 因此**不能直接写死精确**：`canScheduleExactNotifications()` 为 true 才用精确。
-  Future<AndroidScheduleMode> _scheduleMode({required bool preferExact}) async {
-    if (!preferExact) return AndroidScheduleMode.inexactAllowWhileIdle;
+  /// ⚠ 2026-10-08 真机教训（华为 / 荣耀 / HarmonyOS）：课前提醒在**应用被从最近任务
+  /// 划掉后完全不触发**。华为官方支持文档（第三方闹钟类应用一节）写明「应用不被允许
+  /// 后台运行、或被从后台清理时，它不会排定闹钟」，解法是用户在系统里允许自启动 /
+  /// 关联启动 / 后台活动。
+  ///
+  /// 代码侧能做的就是**换一种闹钟注册方式**：`setExactAndAllowWhileIdle` 是普通
+  /// 精确闹钟（`AlarmManager` 的通用档，国产 ROM 的省电策略会把它连同应用一起冻结），
+  /// 而 `AndroidScheduleMode.alarmClock` 走 `AlarmManager.setAlarmClock()`
+  /// ——**系统闹钟档**：状态栏会出现一个闹钟图标、系统把它当「用户看得见的闹钟」对待，
+  /// 是各 ROM 最不敢丢的一类（丢了用户真的会起不来床）。代价就是这个图标。
+  ///
+  /// 拿不到精确闹钟授权（Android 12+ 需系统设置授权，14 起默认拒绝）时，
+  /// `setAlarmClock` 会抛 `ExactAlarmPermissionException` → 自动落到 `exactAllowWhileIdle`
+  /// → 再不行落 `inexactAllowWhileIdle`，**绝不因为一档失败就整条不排**。
+  Future<List<AndroidScheduleMode>> _scheduleModes({
+    required bool preferExact,
+  }) async {
+    if (!preferExact) return const [AndroidScheduleMode.inexactAllowWhileIdle];
+    if (await _canScheduleExact()) {
+      return const [
+        AndroidScheduleMode.alarmClock,
+        AndroidScheduleMode.exactAllowWhileIdle,
+      ];
+    }
+    return const [AndroidScheduleMode.inexactAllowWhileIdle];
+  }
+
+  /// 能不能排精确闹钟（拿不到授权 / 查询抛异常都算不能）。
+  Future<bool> _canScheduleExact() async {
     try {
       final android = _plugin
           ?.resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin
           >();
-      final allowed = await android?.canScheduleExactNotifications();
-      return allowed == true
-          ? AndroidScheduleMode.exactAllowWhileIdle
-          : AndroidScheduleMode.inexactAllowWhileIdle;
+      return await android?.canScheduleExactNotifications() == true;
     } catch (_) {
-      return AndroidScheduleMode.inexactAllowWhileIdle;
+      return false;
     }
   }
 

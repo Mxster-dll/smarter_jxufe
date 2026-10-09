@@ -186,7 +186,9 @@ class LibspSyncPrefsStore extends ChangeNotifier {
     if (box == null) return;
     try {
       await box.put(_prefsKey, jsonEncode(next.toJson()));
-    } catch (_) {}
+    } catch (_) {
+      // 落盘失败不影响内存态与本次同步（开关/时间戳下次改动时会再写一遍）。
+    }
   }
 
   /// 开启 / 关闭同步。

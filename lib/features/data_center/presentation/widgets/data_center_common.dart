@@ -19,6 +19,40 @@ import 'package:smarter_jxufe/design/app_states.dart';
 
 // ---- 概览未到 / 概览失败时的两枚件 ----
 
+/// 数据中心**所有卡片共用的标题行**（用户 2026-10-09：「所有的卡片统一样式」）。
+///
+/// 一张卡 = `Card(shape: appCardShape(context))` + `Padding(16)` + 本件 + 正文。
+/// 从前 13 张卡各写一遍这个 Row：有的 `Spacer`、有的 `Expanded`、有的干脆没有尾部件，
+/// 字号与图标尺寸也在 13/14、16/18 之间漂 —— 现在只有这一处：
+/// **图标 18 + 文案 14 w700（超长省略）+ 可选尾部件（数字 / 按钮）**。
+///
+/// [accent] = **已经解析好的最终颜色**（调用方自己过 `AppColors.tone` /
+/// `AppColors.info` / `AppColors.caution` …，别在这里二次映射）；省略 = 中性灰
+/// （纯指标卡用它，别为了"有颜色"硬塞一个色）。
+Widget dcCardHeader(
+  BuildContext context, {
+  required IconData icon,
+  required String title,
+  Color? accent,
+  Widget? trailing,
+}) {
+  return Row(
+    children: [
+      Icon(icon, size: 18, color: accent ?? AppColors.textMuted(context)),
+      const SizedBox(width: 6),
+      Expanded(
+        child: Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+        ),
+      ),
+      ?trailing,
+    ],
+  );
+}
+
 /// 概览还没回来时的**卡片骨架**：标题已知、值未到。
 ///
 /// [lead] = 列表里最上面那一枚（学籍概要）——只有它挂转圈，其余骨架只留
@@ -40,19 +74,7 @@ Widget dcSkeletonCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(icon, size: 18, color: AppColors.textMuted(context)),
-              const SizedBox(width: 6),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
+          dcCardHeader(context, icon: icon, title: title),
           if (lead)
             const AppLoadingState(
               compact: true,

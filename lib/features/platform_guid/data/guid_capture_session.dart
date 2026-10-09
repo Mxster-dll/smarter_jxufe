@@ -165,7 +165,10 @@ class GuidCaptureSession extends ChangeNotifier {
     _proxy = null;
     try {
       await proxy?.stop();
-    } catch (_) {}
+    } catch (_) {
+      // 拆除阶段：停代理失败不阻断后面的「恢复系统代理设置」——那一步才是关键，
+      // 残留的监听套接字随进程回收。
+    }
     final prev = _prevProxy;
     _prevProxy = null;
     if (prev != null) {

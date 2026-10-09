@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 自适应图标（API 26+）。三层都来自各密度的 mipmap 三件套，由 design/logo/make_icons.py 生成：
+       foreground = 108dp 安全构图（楼体收进 ⌀70dp 圆内）· background = 同图放大裁切+模糊的兜底延展。
+     ⚠ 2026-10-08：本文件曾被另一套脚本写成「引 @drawable/ic_launcher_foreground + 四角平涂色」，
+       那份成品在真机上会露出一圈看得见的方框边（天空是渐变、补色是平涂）—— 那个 drawable 已删除。 -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@mipmap/ic_launcher_background" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+</adaptive-icon>

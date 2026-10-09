@@ -7,6 +7,7 @@ import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/pane_chrome.dart';
 import 'package:smarter_jxufe/features/data_center/data/providers/data_center_providers.dart';
 import 'package:smarter_jxufe/features/data_center/domain/dzj_page_body.dart';
+import 'package:smarter_jxufe/features/data_center/presentation/widgets/data_center_common.dart';
 import 'package:smarter_jxufe/design/settings_section.dart';
 
 /// 数据中台子页面图标（按标题给一个，认不出用通用图标）。
@@ -162,29 +163,22 @@ class _DzjSubPageScreenState extends ConsumerState<DzjSubPageScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Icon(
-                  b.rows.isEmpty ? Icons.insights_outlined : Icons.table_rows_outlined,
-                  size: 18,
-                  color: AppColors.tone(context, accent),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    b.block.title.isEmpty ? '数据' : b.block.title,
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                if (b.rows.isNotEmpty)
-                  Text(
-                    '${b.rows.length} 条',
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      color: AppColors.textMuted(context),
-                    ),
-                  ),
-              ],
+            dcCardHeader(
+              context,
+              icon: b.rows.isEmpty
+                  ? Icons.insights_outlined
+                  : Icons.table_rows_outlined,
+              title: b.block.title.isEmpty ? '数据' : b.block.title,
+              accent: AppColors.tone(context, accent),
+              trailing: b.rows.isNotEmpty
+                  ? Text(
+                      '${b.rows.length} 条',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: AppColors.textMuted(context),
+                      ),
+                    )
+                  : null,
             ),
             const SizedBox(height: 10),
             if (b.fields.isNotEmpty) _fields(context, b),

@@ -13,6 +13,7 @@ import 'package:smarter_jxufe/features/ims/schedule/data/providers/schedule_repo
 import 'package:smarter_jxufe/features/ims/schedule/domain/class_time.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/reschedule.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/reschedule_engine.dart';
+import 'package:smarter_jxufe/features/ims/schedule/domain/schedule_board.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/schedule_entry.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/schedule_view_mode.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/term_weeks.dart';
@@ -25,6 +26,7 @@ import 'package:smarter_jxufe/features/ims/schedule/presentation/schedule_title_
 import 'package:smarter_jxufe/features/ims/schedule/presentation/week_pager.dart';
 import 'package:smarter_jxufe/features/ims/student_info/data/providers/student_info_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/student_info/domain/student_info.dart';
+import 'package:smarter_jxufe/features/school_calendar/data/providers/calendar_effect_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/school_calendar_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/wxcal_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/teaching_week.dart';
@@ -85,9 +87,33 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   /// 是否已按「当前教学周」初始化过默认周次。
   bool _weekInitialized = false;
 
-  /// 「平滑跳转」请求序号：长按周数回本周时 +1，让分页器横划过去而不是瞬移
-  /// （口径见 [WeekPager.smoothRequest]）。只有这一个入口会 +1。
+  /// 「平滑跳转」请求序号：**顶部切换周数**（选周弹窗 / 长按回本周）时 +1，
+  /// 让分页器横划过去而不是瞬移（口径见 [WeekPager.smoothRequest]）。
+  ///
+  /// 只有 [_goToWeek] 这一处会 +1（切学期 / 换学年仍走直接跳：那会换掉一整套
+  /// 数据，刷过去只会让不相干的学期在眼前掠过）。
   int _smoothWeekRequest = 0;
+
+  /// 「可见天 / 列集合」按**哪一周**算 —— 与「正在看第几周」（[_week]）刻意分开。
+  ///
+  /// 用户 2026-10-08 二轮：「如果周六在第 5 周因为补课而有课，但是其他周没有，
+  /// 那么在其他周的视图中，周六就不应该显示。只有在第五周的视图中周六显示」。
+  /// 但「按正在看的那一周逐页算」与分页器不相容：分页器的静态表头与相邻页共用
+  /// 一份列集合，补间途中 `onPageChanged` 会逐页回灌周次 → 列数会在飞行中 6↔5、
+  /// 列宽重排（用户同一轮报的「起点或终点是本周时动画错乱」）。
+  ///
+  /// 所以按**入口**分开（用户三轮反馈定稿）：
+  /// - **选周 / 长按回本周**（[_goToWeek]）= 「立刻去那一周」→ 列集合**跟着目标周一起换**，
+  ///   换的那一下发生在**补间开始之前**（画面还没动、弹窗正在退场），此后飞行途中与
+  ///   落定后都不再变 —— 用户三轮原话「从第 6 周切到第 5 周…此时就会导致周六列的突然
+  ///   出现」说的就是「落定后才换」留下的那一下；提前到起手处，第 5 周的周六列就是
+  ///   **随第 5 周一起滑进来**的；
+  /// - **手势翻页**（没有目标，落点由松手决定）= 拖动期间冻结，**停稳**（[WeekPager.onSettled]）
+  ///   后按落点重算一次 —— 否则手指拖动途中列宽会重排。
+  ///
+  /// ⚠ 切学期 / 切视图（整学期 ↔ 周视图）不走分页器停稳（分页器被重建 / 不存在），
+  /// 由 [_syncTermContext] 与 [_toggleView] 直接跟上 [_week]。
+  int? _layoutWeek;
 
   /// 正在查看的学期是否就是当下学期（决定默认周次与表头日期是否有意义）。
   bool _isCurrentTerm = false;
@@ -120,22 +146,19 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   /// 界定教务系统应该有接口……你找找然后复用」—— 第 1 周来自
   /// `resolveTeachingWeek`（已在用），最后一周复用同源的教务校历
   /// `schoolCalendarProvider((xn:, xq:))` 的周次表，不写死。
-  int get _lastWeek {
-    final xq = int.tryParse(_selectedSemester) ?? 0;
-    final calendar = ref
-        .read(schoolCalendarProvider((xn: _selectedYear, xq: xq)))
-        .valueOrNull;
-    return resolveLastTeachingWeek(
-      calendar: calendar,
-      entries: _entries ?? const [],
-    );
-  }
+  ///
+  /// ⚠ 它是**每次 `build` 时按 `ref.watch` 到的校历重算并存下来的字段**，不是 getter：
+  /// 校历是异步 family provider，用 getter + `ref.read` 会在首帧拿到 null（周次退回
+  /// 兜底 20 周）；`ref.watch` 只能出现在 build 里，而 `_goToWeek` 这类回调也要读它。
+  int _lastWeek = fallbackTeachingWeeks;
 
   /// 切到指定教学周；越界一律夹在 `[1, _lastWeek]`（首/末周不再动）。
   ///
-  /// [smooth] = true 时**要求分页器横划过去**（哪怕跨十几周）—— 只有「长按周数
-  /// 回本周」这条路径这么请求（用户 2026-09-17：「长按周数返回本周要显示横划
-  /// 动画」）；弹窗选周 / 切学期仍是直接跳（定位语义，别让整屏不相干的周次掠过）。
+  /// [smooth] = true 时**要求分页器横划过去**（哪怕跨十几周）—— 顶部那两个入口
+  /// 都这么请求：**长按周数回本周**（用户 2026-09-17：「长按周数返回本周要显示横划
+  /// 动画」）与**点周数选周**（用户 2026-10-08：「课表点击顶部切换周数时，也要显示
+  /// 切换动画」）。切学期 / 换学年仍是直接跳（那会换掉一整套数据，刷过去只会让
+  /// 不相干的学期在眼前掠过）。
   /// 实现见 `WeekPager.smoothRequest`：这里只把请求序号 +1。
   void _goToWeek(int target, {bool smooth = false}) {
     final current = _week;
@@ -144,6 +167,10 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     if (clamped == current) return;
     setState(() {
       _week = clamped;
+      // 列集合**跟目标周一起换**（不是等落定后才换）：换列发生在补间起手之前，
+      // 画面还没动，于是「第 5 周的周六列随第 5 周一起滑进来」，不会在停稳后再
+      // 蹦出来（用户 2026-10-08 三轮）。手势翻页没有目标，仍走停稳那条路。
+      _layoutWeek = clamped;
       if (smooth) _smoothWeekRequest++;
     });
   }
@@ -166,10 +193,35 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       _firstMonday?.add(Duration(days: (week - 1) * 7));
 
   /// 分页器手势翻到的周（用户 2026-09-15：滑动切周要像手机桌面翻页）。
+  ///
+  /// ⚠ **不动 [_layoutWeek]**：补间途中它会逐页触发，这里若跟着改，列集合就会
+  /// 在飞行中重排（见 [_layoutWeek] 的注释）。落点由 [_onPagerSettled] 收口。
   void _onPagerWeekChanged(int week) {
     if (week == _week) return;
     setState(() => _week = week);
   }
+
+  /// 分页器停稳（拖动松手 / 补间结束 / 跳转结束）→ 列集合按落点重算一次。
+  ///
+  /// 这条主要服务**手势翻页**（没有目标周，只有落点）与**兜底**：`_goToWeek` 那条路
+  /// 早在起手时就把 [_layoutWeek] 换成目标周了，这里再算一次是幂等的（`==` 早退）。
+  void _onPagerSettled() {
+    if (!mounted || _layoutWeek == _week) return;
+    setState(() => _layoutWeek = _week);
+  }
+
+  /// 某一周的「真的有课」的星期（0 = 周一）——列集合（隐藏周六 / 周日）的判据。
+  ///
+  /// [week] 为 null（整学期模板 / 历史学期没有日期）= 逐周扫过整学期，口径见
+  /// `schedule_board.dart` 的 `scheduleDaysWithClass`。
+  Set<int> _visibleDaysOf(int? week, ScheduleCalendarContext calendar) =>
+      scheduleDaysWithClass(
+        entries: _entries ?? const [],
+        reschedules: _reschedules,
+        week: week,
+        weekMonday: week == null ? null : _mondayOfWeek(week),
+        calendar: calendar,
+      );
 
   @override
   void initState() {
@@ -213,7 +265,10 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         // 入学年只喂给学期选择器的范围起点（当前学年仍由 currentSchoolTerm 给）。
         _enrollYear = int.tryParse(info!.enrollYear.trim());
       }
-    } catch (_) {}
+    } catch (_) {
+      // 学籍取不到 → `_serialNo` / `_enrollYear` 留空继续（课表主体不依赖学籍：
+      // 学年学期来自 currentSchoolTerm，学籍只补 xh 与学期选择器的范围起点）。
+    }
     _syncTermContext(resetWeek: true);
     if (!mounted) return;
     _loadData();
@@ -253,6 +308,8 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         _week = currentWeek;
         _weekInitialized = true;
       }
+      // 切学期 / 换学年不走分页器停稳（分页器会被重建）→ 列集合直接跟上。
+      _layoutWeek = _week;
     });
   }
 
@@ -358,6 +415,30 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         ) ==
         ScheduleViewMode.horizontal;
 
+    // 教务校历（周次表）：最后教学周由它给（`term_weeks.dart`）。`ref.watch` 让
+    // 首次拿到 / 换学期时**重新**算最后一周 —— 从前用 getter + `ref.read`，
+    // 首帧多半拿到 null（周次表还没回来）→ 只能退回兜底 20 周。
+    final schoolCalendar = ref
+        .watch(
+          schoolCalendarProvider((
+            xn: _selectedYear,
+            xq: int.tryParse(_selectedSemester) ?? 0,
+          )),
+        )
+        .valueOrNull;
+    _lastWeek = resolveLastTeachingWeek(
+      calendar: schoolCalendar,
+      entries: _entries ?? const [],
+    );
+
+    // 校历上下文（假期 / 补课效应 + 教学周范围）：课表要按校历事件动态调整
+    // （用户 2026-10-07）。效应索引同步可得（实时校历没回来时用内置快照）。
+    final calendar = ScheduleCalendarContext(
+      effects: ref.watch(calendarDayEffectIndexProvider),
+      lastWeek: _lastWeek,
+      termFirstMonday: _firstMonday,
+    );
+
     final body = Column(
       children: [
         // 标题栏（AppBar）已承载学期/周次选择时，正文不再重复一条筛选栏，
@@ -369,7 +450,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         // 正文（课表网格）让开底部系统导航栏：课表恒适应高度，被导航栏盖住的
         // 那一截会让最后一节 / 最后一天看不见（见 `ScheduleBodyArea`）。
         // 只包正文、不包上面的筛选栏（它在顶部，与导航栏无关）。
-        Expanded(child: ScheduleBodyArea(child: _buildBody(horizontal))),
+        Expanded(child: ScheduleBodyArea(child: _buildBody(horizontal, calendar))),
       ],
     );
 
@@ -439,8 +520,9 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         onYearChanged: _onYearChanged,
         onSemesterChanged: _onSemesterChanged,
         onTermPicked: _onTermPicked,
-        onGoToWeek: _goToWeek,
-        // 长按周数回本周：请求分页器**横划**过去（用户 2026-09-17）。
+        // 点周数选周（弹窗选周 / 输入日期跳周）与长按回本周都要**横划**过去
+        // （用户 2026-09-17 长按、用户 2026-10-08 点选周数）。
+        onGoToWeek: (week) => _goToWeek(week, smooth: true),
         onReturnToCurrentWeek: (week) => _goToWeek(week, smooth: true),
         lastWeek: _lastWeek,
         mondayOf: _mondayOfWeek,
@@ -607,11 +689,14 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             compact: false,
             lastWeek: _lastWeek,
             mondayOf: _mondayOfWeek,
-            onGoToWeek: _goToWeek,
+            // 口径同标题栏那条链路：选周 / 回本周都横划过去（用户 2026-10-08）。
+            onGoToWeek: (week) => _goToWeek(week, smooth: true),
             onReturnToCurrentWeek: (week) => _goToWeek(week, smooth: true),
-            onToggleView: () => setState(
-              () => _week = _week == null ? (_currentWeek ?? 1) : null,
-            ),
+            onToggleView: () => setState(() {
+              _week = _week == null ? (_currentWeek ?? 1) : null;
+              // 整学期 ↔ 周视图会换掉整套列（分页器随之重建）→ 列集合直接跟上。
+              _layoutWeek = _week;
+            }),
           ),
         ],
       ),
@@ -620,7 +705,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
 
   void _toggleView() => setState(() => _isHorizontal = !_isHorizontal);
 
-  Widget _buildBody(bool horizontal) {
+  Widget _buildBody(bool horizontal, ScheduleCalendarContext calendar) {
     if (_isLoading) {
       return const AppLoadingState();
     }
@@ -700,6 +785,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         week: null,
         horizontal: horizontal,
         showToggle: showToggle,
+        calendar: calendar,
       );
     }
 
@@ -711,6 +797,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         week: week,
         horizontal: false,
         showToggle: showToggle,
+        calendar: calendar,
       );
     }
 
@@ -724,11 +811,13 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       enabled: _swipeEnabled(context),
       // 长按周数回本周要横划过去（横版只有这一处分页器）。
       smoothRequest: _smoothWeekRequest,
+      onSettled: _onPagerSettled,
       onWeekChanged: _onPagerWeekChanged,
       pageBuilder: (context, w) => _buildWeekView(
         week: w,
         horizontal: horizontal,
         showToggle: showToggle,
+        calendar: calendar,
       ),
     );
   }
@@ -738,6 +827,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     required int? week,
     required bool horizontal,
     required bool showToggle,
+    required ScheduleCalendarContext calendar,
   }) {
     final weekMonday = week == null ? _weekMonday : _mondayOfWeek(week);
     // 作息表（节次格里显示上下课时间）：实时优先，未回来时先用缓存/内置兜底
@@ -747,6 +837,10 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         ref.watch(cachedPeriodTableProvider).valueOrNull;
     // 周六 / 周日是否显示、是否显示表格线（设置页「课表」节，用户 2026-09-17 要求）。
     final display = ref.watch(scheduleDisplayPrefsStoreProvider).prefs;
+    // 「真的有课」的星期：按**已落定的那一周**算（[_layoutWeek]；分页动画途中冻结）
+    // —— 「第 5 周周六有补课 → 只有第 5 周显示周六列，别的周收起」（用户 2026-10-08）。
+    // 两个视图共用同一份（静态表头与相邻页必须一致，见 [_layoutWeek] 的注释）。
+    final visibleDays = _visibleDaysOf(_layoutWeek, calendar);
     return horizontal
         ? ScheduleHorizontalView(
             entries: _entries!,
@@ -761,7 +855,11 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             periods: periods,
             showSaturday: display.showSaturday,
             showSunday: display.showSunday,
+            visibleDays: visibleDays,
             showGridLines: display.showGridLines,
+            // 校历事件（假期不排课 / 补课日改上被补那天的课 / 隐藏周六周日只在
+            // 没课时生效）：竖版与横版共用同一份上下文（用户 2026-10-07）。
+            calendar: calendar,
           )
         : ScheduleGridView(
             entries: _entries!,
@@ -776,7 +874,9 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             periods: periods,
             showSaturday: display.showSaturday,
             showSunday: display.showSunday,
+            visibleDays: visibleDays,
             showGridLines: display.showGridLines,
+            calendar: calendar,
             // 竖版周视图内部分页（表头静态 + 节数列拖动淡出）；
             // 整学期模板没有相邻周 → 不分页。
             pagerWeekCount: week == null ? null : _lastWeek,
@@ -784,6 +884,8 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             // 长按周数回本周要**横划过去**（见 `_goToWeek(smooth:)`）。
             pagerSmoothRequest: _smoothWeekRequest,
             onPagerWeekChanged: _onPagerWeekChanged,
+            // 停稳才允许换列集合（见 `_layoutWeek`）。
+            onPagerSettled: _onPagerSettled,
             mondayOfWeek: _mondayOfWeek,
           );
   }

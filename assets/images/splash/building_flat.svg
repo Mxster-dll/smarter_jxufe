@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1938 1314" width="646" height="438" fill="none">
+  <defs>
+    <!-- 基座下缘在照片里被树冠遮挡：亮度遮罩淡出（白=显示，黑=隐藏），
+         避免一条生硬的水平线。想要硬边就删掉各层的 mask="url(#baseFade)"。 -->
+    <linearGradient id="fadeGrad" gradientUnits="userSpaceOnUse"
+                    x1="0" y1="957" x2="0" y2="1101">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.5" stop-color="#cfcfcf"/>
+      <stop offset="1" stop-color="#000000"/>
+    </linearGradient>
+    <mask id="baseFade" maskUnits="userSpaceOnUse" x="0" y="0" width="1938" height="1314">
+      <rect x="0" y="0" width="1938" height="1314" fill="#ffffff"/>
+      <rect x="0" y="957" width="1938" height="144" fill="url(#fadeGrad)"/>
+    </mask>
+  </defs>
+  <g fill="#16283A" mask="url(#baseFade)">
+    <path d="M300 786L681 786L681 381L1305 381L1305 786L1704 786L1704 1095L300 1095Z"/>
+  </g>
+  <g fill="#C3282E">
+    <path d="M822 402L912 360L867 336L993 336L1119 336L1074 360L1164 402ZM822 402h342v12h-342Z"/>
+  </g>
+</svg>

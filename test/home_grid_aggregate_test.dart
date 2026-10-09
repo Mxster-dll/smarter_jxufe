@@ -1466,9 +1466,9 @@ void main() {
       final screen = File(
         'lib/features/home/presentation/home_screen.dart',
       ).readAsStringSync();
-      final settings = File(
-        'lib/features/settings/presentation/widgets/settings_cards.dart',
-      ).readAsStringSync();
+      // ⚠ 2026-10-08 第三轮：`settings_cards.dart` 已按类拆成 6 个分册（桶文件 + 5 个
+      // `settings_cards_*.dart`）→ 读**整族**（只读桶文件会读不到卡片里的 key）。
+      final settings = settingsCardsSource();
 
       // 用户 2026-09-21 十三轮原话：「我希望标题栏不显示编辑模式按钮和重置按钮，
       // 这两个都放到设置里」—— 顶栏这两枚按钮（连同它们的提示）一律不许复活。
@@ -1675,9 +1675,8 @@ void main() {
       expect(screen, contains('ref.watch(homeEditModeProvider)'));
       expect(screen, contains('editMode: editMode'));
 
-      final settings = File(
-        'lib/features/settings/presentation/widgets/settings_cards.dart',
-      ).readAsStringSync();
+      // ⚠ 2026-10-08 第三轮：卡片实现已拆到 `settings_cards_*.dart` → 读整族。
+      final settings = settingsCardsSource();
       expect(settings, contains("Key('homeEditModeSwitch')"));
       expect(settings, contains("Key('homeGridEditHint')"));
       expect(settings, contains("Key('homeGridReset')"));
@@ -2474,7 +2473,6 @@ void main() {
       await tester.pumpAndSettle();
     });
   });
-
 }
 
 /// 沿某张卡的**上边缘**扫一遍：返回（有墨的列数，连续段数）。
@@ -2559,4 +2557,19 @@ class _Pixels {
     if (a > fillAlpha + 40) return true;
     return a >= 200 && luminance(x, y) < fillLum - 6;
   }
+}
+
+/// lib/features/settings/presentation/widgets/settings_cards*.dart 全族源码。
+///
+/// 2026-10-08 第三轮把 settings_cards.dart（2297 行）按类拆成 6 个分册后，卡片实现
+/// 不在桶文件里了 —— 源码守卫一律读整族（与 settings_public_query_card_test.dart 同口径）。
+String settingsCardsSource() {
+  final paths =
+      Directory('lib/features/settings/presentation/widgets').listSync().whereType<File>().map(
+        (f) => f.path,
+      ).where(
+        (p) => p.endsWith('.dart') && p.contains('settings_cards'),
+      ).toList()
+        ..sort();
+  return paths.map((p) => File(p).readAsStringSync()).join('\n');
 }

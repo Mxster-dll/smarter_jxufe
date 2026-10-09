@@ -2,7 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:riverpod/riverpod.dart';
 
 import 'package:smarter_jxufe/core/network/current_account_provider.dart';
+import 'package:smarter_jxufe/core/network/debug_proxy.dart';
 import 'package:smarter_jxufe/core/network/device_profile_repository_provider.dart';
+import 'package:smarter_jxufe/core/network/dio_factory.dart';
 import 'package:smarter_jxufe/features/ims/auth/data/providers/ims_session_provider.dart';
 
 /// 当前登录账户卡号（学号）。
@@ -30,17 +32,16 @@ final currentImsDioProvider = Provider<Dio>(
 /// CAS 侧无可复用的会话状态，仅承载登录流程，因此仍按账号分例即可。
 final loginDioProvider = Provider.family<Dio, String>((ref, account) {
   final deviceProfileRepo = ref.watch(deviceProfileRepositoryProvider);
-  final dio = Dio(
-    BaseOptions(
-      baseUrl: 'https://ssl.jxufe.edu.cn',
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 15),
-      validateStatus: (status) => true,
-      followRedirects: false,
-      headers: {'User-Agent': deviceProfileRepo.userAgent},
-    ),
+  final dio = createAppDio(
+    baseUrl: 'https://ssl.jxufe.edu.cn',
+    connectTimeout: const Duration(seconds: 10),
+    receiveTimeout: const Duration(seconds: 15),
+    // CAS 换证链要逐跳看 `Set-Cookie`。
+    followRedirects: false,
+    userAgent: deviceProfileRepo.userAgent,
   );
-  // applyFiddlerProxy(dio); // [DEBUG] 抓包用，发布前取消注释
+  // 抓包：`--dart-define=FIDDLER_PROXY=true` 打开，默认常量 false（见 debug_proxy.dart）。
+  if (kFiddlerProxyEnabled) applyFiddlerProxy(dio);
   return dio;
 });
 

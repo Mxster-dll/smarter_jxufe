@@ -22,6 +22,7 @@ class WeekPager extends StatefulWidget {
     required this.pageBuilder,
     this.enabled = true,
     this.smoothRequest = 0,
+    this.onSettled,
   });
 
   /// 总周数（≥ 1），一页一周。
@@ -39,15 +40,23 @@ class WeekPager extends StatefulWidget {
   /// 是否允许手势翻页（桌面端 false → 只能靠外部改 [week]，仍会补间滚动）。
   final bool enabled;
 
+  /// 分页器**停稳**时回调（拖动松手 / 补间结束 / 跳转结束都算）。
+  ///
+  /// 课表页用它「冻结列集合」：可见天（隐藏周六 / 周日）只有在这一刻才允许变化 ——
+  /// 否则动画途中列数会 6↔5、列宽重排（用户 2026-10-08：「一旦切换周数时，起点或
+  /// 终点是本周，就会动画错乱」）。回调不带参数：调用方读自己的当前周即可。
+  final VoidCallback? onSettled;
+
   /// 「平滑跳转」请求序号：外部**希望这次改周横划过去**（哪怕跨十几周）时 +1。
   ///
-  /// 用户 2026-09-17：「长按周数返回本周要显示横划动画」。从前跨多周一律
-  /// `jumpToPage`（瞬间到位），只有 ±1 周才补间 —— 而长按回本周常常跨十几周，
-  /// 于是屏幕上是一次「瞬移」，看不出翻页方向。
+  /// 用户 2026-09-17：「长按周数返回本周要显示横划动画」；用户 2026-10-08：
+  /// 「课表点击顶部切换周数时，也要显示切换动画」——所以**顶部那两个入口都请求平滑**
+  /// （长按回本周 + 点周数选周）。从前跨多周一律 `jumpToPage`（瞬间到位），
+  /// 只有 ±1 周才补间，于是「点周数选到第 12 周」在屏幕上是一次瞬移，看不出方向。
   ///
-  /// 为什么不做成「跨多周一律补间」：**返回本周是一次有意的跳转，弹窗选周 /
-  /// 切学期是「定位到某一周」**，后者刷过去会让一整屏不相干的周次（切学期时
-  /// 甚至是另一个学期的内容）在眼前掠过。故只给显式请求这条路开补间。
+  /// 为什么不做成「跨多周一律补间」：**切学期 / 换学年仍是「定位到另一套数据」**，
+  /// 刷过去会让一整屏不相干的学期内容在眼前掠过（而且那些页要现建）。故只给显式
+  /// 请求这条路开补间 —— 判断权在调用方（`schedule_screen.dart` 的 `_goToWeek`）。
   final int smoothRequest;
 
   /// 单页切换（相邻周之间）的补间时长。
@@ -154,7 +163,7 @@ class _WeekPagerState extends State<WeekPager> {
   @override
   Widget build(BuildContext context) {
     final count = widget.weekCount < 1 ? 1 : widget.weekCount;
-    return PageView.builder(
+    final pager = PageView.builder(
       controller: _controller,
       itemCount: count,
       physics: widget.enabled
@@ -165,6 +174,17 @@ class _WeekPagerState extends State<WeekPager> {
         widget.onWeekChanged(index + 1);
       },
       itemBuilder: (context, index) => widget.pageBuilder(context, index + 1),
+    );
+    if (widget.onSettled == null) return pager;
+    // 「停稳」= 滚动结束通知（拖动松手 / 补间收尾 / `jumpToPage` 结束都会发）。
+    // 只认它、不看每帧位移：`onPageChanged` 在补间途中会逐页触发，用那个当判据
+    // 等于没冻结（列集合会在飞行中变 —— 正是用户 2026-10-08 报的「错乱」）。
+    return NotificationListener<ScrollNotification>(
+      onNotification: (n) {
+        if (n is ScrollEndNotification) widget.onSettled!();
+        return false; // 继续上传，别吞掉外层（分页板要拿它做节次列淡出）
+      },
+      child: pager,
     );
   }
 }

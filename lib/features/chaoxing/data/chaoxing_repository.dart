@@ -27,9 +27,11 @@ import 'package:smarter_jxufe/features/chaoxing/data/chaoxing_store.dart';
 import 'package:smarter_jxufe/features/chaoxing/data/datasources/chaoxing_auth_remote_datasource.dart';
 import 'package:smarter_jxufe/features/chaoxing/data/datasources/chaoxing_mooc_remote_datasource.dart';
 import 'package:smarter_jxufe/features/chaoxing/data/datasources/chaoxing_notice_remote_datasource.dart';
+import 'package:smarter_jxufe/features/chaoxing/data/datasources/chaoxing_sign_remote_datasource.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_course.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_notice.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_scan.dart';
+import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_sign.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_snapshot.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_work.dart';
 
@@ -51,6 +53,9 @@ enum ChaoxingPhase {
 
   /// 逐课扫描作业。
   works,
+
+  /// 逐课扫描签到（与作业同一批课程，每门课多 1 个请求）。
+  signs,
 
   /// 拉通知。
   notices,
@@ -84,6 +89,7 @@ class ChaoxingRepository {
     required ChaoxingAuthRemoteDataSource auth,
     required ChaoxingMoocRemoteDataSource mooc,
     required ChaoxingNoticeRemoteDataSource notice,
+    required ChaoxingSignRemoteDataSource sign,
     required ChaoxingTicketFetcher fetchTicket,
     required this.store,
     this.concurrency = 4,
@@ -94,6 +100,7 @@ class ChaoxingRepository {
   }) : _auth = auth,
        _mooc = mooc,
        _notice = notice,
+       _sign = sign,
        _fetchTicket = fetchTicket,
        _trace = trace,
        _now = now ?? DateTime.now;
@@ -125,6 +132,7 @@ class ChaoxingRepository {
   final ChaoxingAuthRemoteDataSource _auth;
   final ChaoxingMoocRemoteDataSource _mooc;
   final ChaoxingNoticeRemoteDataSource _notice;
+  final ChaoxingSignRemoteDataSource _sign;
   final ChaoxingTicketFetcher _fetchTicket;
 
   /// 快照缓存（按账号隔离）。
@@ -244,10 +252,12 @@ class ChaoxingRepository {
     final snapshot = ChaoxingSnapshot(
       courses: courses,
       works: works.works,
+      signs: works.signs,
       // 通知没取到**不是「没有通知」**：沿用上一次的列表，只把可用性降级。
       notices: notices ?? previous?.notices ?? const <ChaoxingNotice>[],
       fetchedAt: _now(),
       failedCourseKeys: works.failedCourseKeys,
+      failedSignCourseKeys: works.failedSignCourseKeys,
       pendingCourseKeys: works.pendingCourseKeys,
       skippedCourseKeys: works.skippedCourseKeys,
       throttled: works.challenged,
@@ -262,7 +272,7 @@ class ChaoxingRepository {
   /// 拿不到通知时返回 null（调用方保留旧列表）。
   Future<List<ChaoxingNotice>?> fetchNoticesOnly() => _fetchNotices();
 
-  /// 逐课扫描作业（**只扫当下学期** + 并发 + 逐课容错）。
+  /// 逐课扫描（**作业 + 签到**，只扫当下学期 + 并发 + 逐课容错）。
   ///
   /// 合并口径（本轮结果与旧数据的关系，**唯一实现，别在别处再拼**）：
   /// - 本轮**扫过**的课 → 一律采信本轮结果（哪怕它是「真空课」的空列表）；
@@ -270,6 +280,11 @@ class ChaoxingRepository {
   ///   记进 `pendingCourseKeys`；
   /// - 本轮**失败**的课 → 沿用旧作业，记进 `failedCourseKeys`；
   /// - **不在扫描范围内**的课（非当下学期）→ 沿用旧作业，记进 `skippedCourseKeys`。
+  ///
+  /// ⚠ 每门课两个请求：作业 2 个（课程详情 + 作业列表）、签到 1 个（活动清单）。
+  /// **两者各自容错**：签到失败不影响该课的作业（反之亦然），失败分别记进
+  /// `failedSignCourseKeys` / `failedCourseKeys` —— 合成一句话会把
+  /// 「作业拿到了但签到没拿到」说成整门课失败。
   ///
   /// ⚠ [currentTermCode] 非空时课程池先按学期筛一遍（实测 35 门 → 12 门 = 24 个请求，
   /// 一次扫完、不再轮转）—— 这是「刷新一次拿全」的关键，见 `chaoxing_scan.dart`。
@@ -307,9 +322,13 @@ class ChaoxingRepository {
     );
 
     final works = <ChaoxingWork>[];
+    final signs = <ChaoxingSign>[];
     final failed = <String>[];
+    final failedSigns = <String>[];
     /// **扫成功**的课（只有这些课的数据才允许替换旧数据）。
     final okIds = <String>{};
+    /// **签到清单**扫成功的课（与 [okIds] 分开：签到失败不该丢掉作业）。
+    final okSignIds = <String>{};
     /// **发过请求**的课（含失败的；用来把「撞风控后收手、根本没发出去」区分出来）。
     final attemptedIds = <String>{};
     var challenged = false;
@@ -335,6 +354,20 @@ class ChaoxingRepository {
           failed.add(course.key);
           debugPrint('[chaoxing] 课程 ${course.key} 作业扫描失败：$e');
         }
+        // 签到清单（1 个请求）：作业那一步撞了风控就不再发。
+        if (!challenged) {
+          try {
+            signs.addAll(await _signsOfCourse(course));
+            okSignIds.add(course.courseId);
+          } on ChaoxingChallengedException catch (e) {
+            challenged = true;
+            failedSigns.add(course.key);
+            debugPrint('[chaoxing] 命中风控，签到扫描提前收手：$e');
+          } catch (e) {
+            failedSigns.add(course.key);
+            debugPrint('[chaoxing] 课程 ${course.key} 签到清单失败：$e');
+          }
+        }
         done += 1;
         onProgress?.call(
           ChaoxingProgress(phase: ChaoxingPhase.works, done: done, total: targets.length),
@@ -348,11 +381,20 @@ class ChaoxingRepository {
     // ⚠ 兜底口径（本 bug 的修复要点）：**只要某门课本轮没扫成功，它的旧作业就原样搬过来**
     // —— 无论是「窗口外没轮到」还是「扫了但失败/被风控拦下」。所以刷新永远不会让
     // 作业凭空消失；只有「扫成功 + 页面确认」才允许替换（哪怕是替换成空）。
-    if (previous != null && previous.works.isNotEmpty) {
-      works.addAll([
-        for (final w in previous.works)
-          if (!okIds.contains(w.courseId)) w,
-      ]);
+    // 签到用**另一套** okSignIds（两个请求各自成功/失败）。
+    if (previous != null) {
+      if (previous.works.isNotEmpty) {
+        works.addAll([
+          for (final w in previous.works)
+            if (!okIds.contains(w.courseId)) w,
+        ]);
+      }
+      if (previous.signs.isNotEmpty) {
+        signs.addAll([
+          for (final s in previous.signs)
+            if (!okSignIds.contains(s.courseId)) s,
+        ]);
+      }
     }
 
     // 待补齐 = **课程池里**本轮既没扫成功、也没记失败的课（窗口外 + 撞风控后没发出去的）。
@@ -365,7 +407,9 @@ class ChaoxingRepository {
     ];
     return _WorksScan(
       works: works,
+      signs: signs,
       failedCourseKeys: failed,
+      failedSignCourseKeys: failedSigns,
       pendingCourseKeys: pending,
       skippedCourseKeys: [for (final c in skipped) c.key],
       challenged: challenged,
@@ -389,6 +433,156 @@ class ChaoxingRepository {
       return await _mooc.worksOf(fresh, course);
     }
   }
+
+  /// 一门课的**签到清单**（1 个请求）；失效重换口径同 [_worksOfCourse]。
+  Future<List<ChaoxingSign>> _signsOfCourse(ChaoxingCourse course) async {
+    final session = await _session();
+    try {
+      return await _sign.signsOf(session, course);
+    } on ChaoxingSessionExpiredException {
+      final fresh = await _session();
+      if (identical(fresh, session)) {
+        return await _sign.signsOf(await _session(force: true), course);
+      }
+      return await _sign.signsOf(fresh, course);
+    }
+  }
+
+  /// 一条签到活动的**我的状态**（1 个请求，按需调用）。
+  Future<ChaoxingSign> _signDetail(ChaoxingSign sign) async {
+    final session = await _session();
+    try {
+      return await _sign.detailOf(session, sign);
+    } on ChaoxingSessionExpiredException {
+      final fresh = await _session();
+      if (identical(fresh, session)) {
+        return await _sign.detailOf(await _session(force: true), sign);
+      }
+      return await _sign.detailOf(fresh, sign);
+    }
+  }
+
+  /// **按需**取一条签到活动的状态（用户点开某条时调），并把结果并进快照 + 落盘。
+  ///
+  /// 成本 = **1 个请求**；撞风控时记账并抛（界面提示冷却中）。
+  Future<ChaoxingSnapshot> refreshSignDetail(
+    ChaoxingSnapshot current,
+    ChaoxingSign sign,
+  ) async {
+    try {
+      final updated = await _signDetail(sign);
+      final next = current.copyWith(signs: _replaceSign(current.signs, updated));
+      await store.save(next);
+      return next;
+    } on ChaoxingChallengedException {
+      _challengedAt = _now();
+      rethrow;
+    }
+  }
+
+  /// **手动全量更新签到**（用户点按钮才走这条；自动刷新永远不碰）。
+  ///
+  /// 两步（都带节流 260ms，撞风控立刻收手）：
+  /// 1. 逐课取签到清单 —— [allCourses] = false 时**只扫当下学期**（与自动刷新同口径），
+  ///    true 时扫**全部课程**（含往期学期，请求数 = 课程数）；
+  /// 2. 逐条补「我的状态」（1 请求 / 活动）—— 只补 `statusLoaded == false` 的那些。
+  ///
+  /// ⚠ 这是本模块**唯一**可能一次发几十个请求的入口（实测 ≈60 个/窗口就撞验证码页），
+  /// 所以只允许用户明确触发，并把「撞风控就停、已拿到的照算」如实回报。
+  Future<ChaoxingSnapshot> refreshSignsFull(
+    ChaoxingSnapshot current, {
+    bool allCourses = false,
+    void Function(ChaoxingProgress progress)? onProgress,
+  }) async {
+    final pool = allCourses
+        ? current.courses
+        : chaoxingScanTargets(current.courses, currentTermCode: currentTermCode);
+    if (pool.isEmpty) return current;
+
+    var merged = current.signs;
+    final failedSigns = <String>{};
+    final okIds = <String>{};
+    var challenged = false;
+
+    // ① 清单：逐课（串行 —— 与流水线并发相比，这里更在意「可预期地撞上冷却」）。
+    for (var i = 0; i < pool.length; i++) {
+      if (challenged) break;
+      final course = pool[i];
+      onProgress?.call(
+        ChaoxingProgress(phase: ChaoxingPhase.signs, done: i, total: pool.length),
+      );
+      try {
+        final list = await _signsOfCourse(course);
+        okIds.add(course.courseId);
+        merged = [
+          for (final s in merged)
+            if (s.courseId != course.courseId) s,
+          ...list,
+        ];
+      } on ChaoxingChallengedException catch (e) {
+        challenged = true;
+        failedSigns.add(course.key);
+        debugPrint('[chaoxing] 签到全量更新命中风控，已收手：$e');
+      } catch (e) {
+        failedSigns.add(course.key);
+        debugPrint('[chaoxing] 课程 ${course.key} 签到清单失败：$e');
+      }
+    }
+
+    // ② 状态：只补还没查过的（一条一个请求）。
+    final unknown = [for (final s in merged) if (!s.statusLoaded) s];
+    for (var i = 0; i < unknown.length; i++) {
+      if (challenged) break;
+      onProgress?.call(
+        ChaoxingProgress(
+          phase: ChaoxingPhase.signs,
+          done: pool.length + i,
+          total: pool.length + unknown.length,
+        ),
+      );
+      try {
+        final updated = await _signDetail(unknown[i]);
+        merged = _replaceSign(merged, updated);
+      } on ChaoxingChallengedException catch (e) {
+        challenged = true;
+        debugPrint('[chaoxing] 补签到状态命中风控，已收手：$e');
+      } catch (e) {
+        debugPrint('[chaoxing] 签到 ${unknown[i].key} 详情失败：$e');
+      }
+    }
+
+    if (challenged) _challengedAt = _now();
+    onProgress?.call(
+      ChaoxingProgress(
+        phase: ChaoxingPhase.signs,
+        done: pool.length + unknown.length,
+        total: pool.length + unknown.length,
+      ),
+    );
+
+    final next = current.copyWith(
+      signs: merged,
+      // 没扫的课保留上一次的失败标记（否则界面会说「都成功」）。
+      failedSignCourseKeys: [
+        ...failedSigns,
+        ...current.failedSignCourseKeys.where(
+          (k) => !okIds.contains(k.split('/').first),
+        ),
+      ],
+      throttled: challenged,
+    );
+    await store.save(next);
+    return next;
+  }
+
+  /// 用 [updated] 替换列表里同键的那条（键 = `courseId/activeId`）。
+  static List<ChaoxingSign> _replaceSign(
+    List<ChaoxingSign> signs,
+    ChaoxingSign updated,
+  ) => [
+    for (final s in signs)
+      if (s.key == updated.key) updated else s,
+  ];
 
   /// 通知：取不到返回 null（不抛 —— 通知挂了不该让整次刷新失败）。
   Future<List<ChaoxingNotice>?> _fetchNotices() async {
@@ -439,14 +633,23 @@ class ChaoxingRepository {
 class _WorksScan {
   const _WorksScan({
     required this.works,
+    this.signs = const [],
     required this.failedCourseKeys,
+    this.failedSignCourseKeys = const [],
     this.pendingCourseKeys = const [],
     this.skippedCourseKeys = const [],
     this.challenged = false,
   });
 
   final List<ChaoxingWork> works;
+
+  /// 本轮扫到的签到（扫成功的课采用本轮；其余沿用旧数据）。
+  final List<ChaoxingSign> signs;
+
   final List<String> failedCourseKeys;
+
+  /// 签到清单失败的课程键（与 [failedCourseKeys] 分开记）。
+  final List<String> failedSignCourseKeys;
 
   /// 本轮窗口外（或撞风控后收手）而**没跑到**的课程键 —— 数据用的是上一次的。
   final List<String> pendingCourseKeys;

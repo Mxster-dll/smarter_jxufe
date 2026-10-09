@@ -128,6 +128,13 @@ class FeaturePalette {
   /// 材料库。
   static const materials = Color(0xFF795548);
 
+  /// 填表助手（上传 docx 自动填）。
+  ///
+  /// 用户 2026-10-07：这个功能从材料库里**独立**出来（自己一个模块 + 首页一个磁贴），
+  /// 强调色也独立取一个 —— 与「综测」的深红、「材料库」的棕区分开，
+  /// 取「表册 / 档案」语义的墨蓝。
+  static const fillForm = Color(0xFF3949AB);
+
   /// 校历。
   static const calendar = Color(0xFF039BE5);
 
@@ -221,6 +228,15 @@ class FeaturePalette {
   /// 暗紫** —— 这里取同族里**唯一的高饱和亮紫**，语义 = 「入口 / 导航」；
   /// 目录里它正好排在「公共查询」前一格，两枚紫但一眼分得开。
   static const siteNav = Color(0xFF6200EA);
+
+  /// 智慧江财（ehall 综合服务门户 · 内嵌网页）。
+  ///
+  /// 2026-10-08 立项时挑色：它是**学校所有服务的总入口**，语义 = 「门户」。
+  /// 青绿族已被毕业学分 `#00838F`、学校地址 `#00897B`、教务会话 `#00695C`、
+  /// 数据来源 `#00695C`、畅想之星 `#006064` 占了五档，这里取同族里**最深的一档**
+  /// （Teal 900）—— 与 `#00897B`（学校地址）在宫格里并排也不看混，且不与
+  /// 上述任何一个值相等。
+  static const ehall = Color(0xFF004D40);
 }
 
 /// 深色下功能强调色的**明度下限**。
@@ -347,6 +363,7 @@ class FeatureColors {
   Color get scoreEstimatePending => _t(FeaturePalette.scoreEstimatePending);
   Color get tice => _t(FeaturePalette.tice);
   Color get materials => _t(FeaturePalette.materials);
+  Color get fillForm => _t(FeaturePalette.fillForm);
   Color get calendar => _t(FeaturePalette.calendar);
   Color get rules => _t(FeaturePalette.rules);
   Color get leave => _t(FeaturePalette.leave);
@@ -374,6 +391,7 @@ class FeatureColors {
   Color get chaoxing => _t(FeaturePalette.chaoxing);
   Color get aaAccount => _t(FeaturePalette.aaAccount);
   Color get siteNav => _t(FeaturePalette.siteNav);
+  Color get ehall => _t(FeaturePalette.ehall);
 }
 
 /// [FeatureColors.of] 的简写：`fp(context).schedule`。

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 自适应圆形图标（API 26+，`android:roundIcon` 指向本文件）。层与 ic_launcher.xml 相同；
+     真正的圆形裁切由系统按启动器的遮罩做，这里不预裁（API 25 及以下的预裁圆在图里：
+     mipmap-*/ic_launcher_round.png，由 design/logo/make_icons.py 生成）。 -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@mipmap/ic_launcher_background" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+</adaptive-icon>

@@ -15,10 +15,11 @@ import 'package:smarter_jxufe/features/college/data/providers/college_repository
 import 'package:smarter_jxufe/features/college/domain/college.dart';
 import 'package:smarter_jxufe/features/ims/curriculum/data/providers/curriculum_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/curriculum/domain/curriculum.dart';
-// ⚠ `graduationRequirementsProvider` 定义在**页面文件**里（不在 data/providers/），
-// 这是既成事实；别为了「层次好看」把它复制一份过来，那会变成两份口径。
-import 'package:smarter_jxufe/features/ims/graduation_requirements/domain/graduation_requirement.dart';
-import 'package:smarter_jxufe/features/ims/graduation_requirements/presentation/graduation_requirements_screen.dart';
+// ⚠ 毕业学分现在只经 `graduationCreditReportProvider`（要求 + 已修进度一套算完）。
+// 它内部的 `graduationRequirementsProvider` 定义在**页面文件**里（不在
+// data/providers/），这是既成事实；别为了「层次好看」把要求表再复制一份过来。
+import 'package:smarter_jxufe/features/ims/graduation_requirements/data/providers/credit_progress_provider.dart'
+    show GraduationCreditReport, graduationCreditReportProvider;
 import 'package:smarter_jxufe/features/ims/student_info/data/providers/student_info_repository_provider.dart';
 import 'package:smarter_jxufe/features/major/data/providers/major_repository_provider.dart';
 import 'package:smarter_jxufe/features/major/domain/major.dart';
@@ -205,7 +206,7 @@ class GetCurriculumTool extends AiTool {
   }
 }
 
-/// 查毕业学分要求（教务「毕业学分」页的学分构成表）。
+/// 查毕业学分要求**与进度**（教务「毕业学分」页）。
 class GetGraduationCreditsTool extends AiTool {
   const GetGraduationCreditsTool();
 
@@ -213,12 +214,13 @@ class GetGraduationCreditsTool extends AiTool {
   AiToolSpec get spec => AiToolSpec(
     name: 'get_graduation_credits',
     description:
-        '查毕业学分**要求**（教务「毕业学分」页那张构成表：各分项各要多少学分、'
-        '合计多少）。问「毕业要修满多少学分」「XX 类要多少学分」用它。'
-        '注意：这张表只有**要求值**，没有「已修多少」——已修看 get_grades。'
-        '需要教务会话（在线）。',
+        '查毕业学分要求**与已修进度**：必修课还差多少学分（按本专业培养方案）、'
+        '选修课各分项还差多少（教务「毕业学分」页那张构成表 + 已修成绩推算）。'
+        '问「毕业还要修多少学分」「XX 类还差几分」「我离毕业还差多少」用它。'
+        '需要教务会话（在线）；培养方案只读本地缓存，没打开过培养方案页时'
+        '必修进度会缺，此时会如实说明。',
     parameters: aiObjectSchema({
-      'item': aiStrProp('只看分项名包含该关键词的行（如「通识」「专业」「实践」）'),
+      'item': aiStrProp('只看分项名包含该关键词的行（如「通识」「专业」「美育」）'),
     }),
   );
 
@@ -228,48 +230,103 @@ class GetGraduationCreditsTool extends AiTool {
     final item = a.optStr('item');
     if (a.hasError) return AiToolResult.fail(a.errorText);
 
-    final List<GraduationRequirement> rows;
+    final GraduationCreditReport report;
     try {
-      rows = await ctx.ref.read(graduationRequirementsProvider.future);
+      report = await ctx.ref.read(graduationCreditReportProvider.future);
     } catch (e) {
       return AiToolResult.fail(
-        '毕业学分要求读取失败：$e（这一项要教务会话，可以先打开一次「毕业学分」页面）。',
+        '毕业学分读取失败：$e（这一项要教务会话，可以先打开一次「毕业学分」页面）。',
       );
     }
-    if (rows.isEmpty) {
-      return const AiToolResult.fail('教务没有返回毕业学分构成表。');
+    final progress = report.progress;
+
+    if (!progress.hasElectives && !progress.compulsory.available) {
+      return AiToolResult.fail(
+        report.requirementsError == null
+            ? '教务没有返回毕业学分构成表。'
+            : '毕业学分要求读取失败：${report.requirementsError}'
+                  '（这一项要教务会话，可以先打开一次「毕业学分」页面）。',
+      );
+    }
+
+    final buffer = StringBuffer()..writeln('毕业学分进度：');
+
+    final c = progress.compulsory;
+    if (c.available) {
+      buffer.writeln(
+        '· 必修课：已修 ${_trim(c.earned)} / 要求 ${_trim(c.required)} 学分，'
+        '${c.satisfied ? '已修完' : '还差 ${_trim(c.remaining)} 学分'}'
+        '（${c.doneCount}/${c.totalCount} 门）',
+      );
+    } else {
+      buffer.writeln('· 必修课：拿不到本专业培养方案，无法统计。');
+    }
+
+    if (progress.hasElectives) {
+      buffer.writeln(
+        '· 选修课：已修 ${_trim(progress.electiveCounted)} / '
+        '要求 ${_trim(progress.electiveRequired)} 学分，'
+        '${progress.electiveRemaining <= 0 ? '已全部满足' : '还差 ${_trim(progress.electiveRemaining)} 学分'}',
+      );
     }
 
     final wanted = item == null
-        ? rows
+        ? progress.electives
         : [
-            for (final r in rows)
-              if (r.item.contains(item)) r,
+            for (final e in progress.electives)
+              if (e.title.contains(item)) e,
           ];
-    if (wanted.isEmpty) {
-      return AiToolResult.ok('没有分项名含「$item」的学分要求行。');
+    if (item != null && wanted.isEmpty) {
+      buffer.writeln('没有分项名含「$item」的学分要求行。');
+    } else {
+      for (final e in wanted) {
+        buffer.writeln(
+          '· ${e.title}：要求 ${_trim(e.required)} 学分，'
+          '已修 ${_trim(e.earned)} 学分，'
+          '${e.satisfied ? '已满足' : '还差 ${_trim(e.remaining)} 学分'}'
+          '｜口径：${e.rule}',
+        );
+      }
     }
 
-    final buffer = StringBuffer()..writeln('毕业学分要求：');
-    for (final r in wanted) {
+    if (progress.electives.isEmpty && report.requirementsError != null) {
       buffer.writeln(
-        '· ${r.item}：${_trim(r.credit)} 学分${r.isTotal ? '（合计行）' : ''}',
+        '（选修要求表没取到：${report.requirementsError}；'
+        '这一项要教务会话，可以先打开一次「毕业学分」页面）',
       );
     }
-    final total = rows.where((r) => r.isTotal).toList();
-    if (total.isEmpty) {
-      var sum = 0.0;
-      for (final r in rows) {
-        sum += r.credit;
+
+    if (progress.unmatched.isNotEmpty) {
+      buffer.writeln(
+        '未归类课程 ${progress.unmatched.length} 门 / '
+        '${_trim(progress.unmatchedCredits)} 学分（没被算进上面任何一项）：',
+      );
+      for (final u in progress.unmatched.take(10)) {
+        buffer.writeln('· ${u.course.name}：${_reasonShort(u.reason)}');
       }
-      buffer.writeln('（表里没有「合计」行，各分项相加 = ${_trim(sum)} 学分）');
+      if (progress.unmatched.length > 10) {
+        buffer.writeln('（其余 ${progress.unmatched.length - 10} 门从略）');
+      }
     }
+
+    buffer.writeln('已修学分合计 ${_trim(progress.earnedTotal)} 学分（含未归类课程）。');
 
     return AiToolResult.ok(
       buffer.toString(),
-      ui: {'kind': 'graduationCredits', 'count': wanted.length},
+      ui: {
+        'kind': 'graduationCredits',
+        'count': wanted.length,
+        'electiveRemaining': progress.electiveRemaining,
+        'compulsoryRemaining': c.remaining,
+      },
     );
   }
+}
+
+/// 把未归类原因压成一句短的（给模型看，不占太多 token）。
+String _reasonShort(String reason) {
+  if (reason.length <= 28) return reason;
+  return '${reason.substring(0, 27)}…';
 }
 
 String _trim(double v) =>

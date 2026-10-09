@@ -83,9 +83,9 @@ class DataCenterScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           ...dcExtraCards(context, ref, const [DzjExtraModule.courses]),
-          dcPeerCard(context, ref),
-          const SizedBox(height: 12),
-          dcRelatedCard(context, ref),
+          // 「校内关系」与「相关人员」已合成一张两组卡（用户 2026-10-09：
+          // 「整合…并增强显示」）—— 两组各自取数、各自四态，见 data_center_social_cards.dart。
+          dcRelationCard(context, ref),
           const SizedBox(height: 12),
           slot('基础指标', Icons.speed, (o) => dcMetricsCard(context, o)),
           const SizedBox(height: 12),

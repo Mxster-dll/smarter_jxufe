@@ -97,9 +97,10 @@ class ScheduleSemesterSelector extends StatelessWidget {
 ///   **整个不渲染**（回周视图靠标题栏右侧的视图切换按钮）；
 /// ③「标题栏中不显示本周按钮，但是当前周数如果是本周的话，则高亮；同时，长按
 ///   周数可以回到本周」——`本周` 按钮已删，改为主色高亮 + `onLongPress`；
-/// ④ 用户 2026-09-17：「长按周数返回本周要显示横划动画」——长按走
-///   [onReturnToCurrentWeek]（课表页据此请求分页器横划过去），未传时退回
-///   [onGoToWeek]（默认直接跳）。
+/// ④ 换周要**看得见翻页**（用户 2026-09-17「长按周数返回本周要显示横划动画」
+///   + 用户 2026-10-08「课表点击顶部切换周数时，也要显示切换动画」）——
+///   长按走 [onReturnToCurrentWeek]、弹窗选周走 [onGoToWeek]，**两条都由课表页
+///   请求分页器横划过去**；本控件只上报「用户选了第几周」，是否补间由调用方决定。
 ///
 /// 首/末周边界由调用方在 [onGoToWeek] 里夹取（`clampTeachingWeek`）。
 class ScheduleWeekSwitcher extends StatelessWidget {
@@ -121,13 +122,18 @@ class ScheduleWeekSwitcher extends StatelessWidget {
   final int? currentWeek;
   final bool isCurrentTerm;
   final bool compact;
+
+  /// 选中某一周（弹窗选周 / 输入周数 / 输入日期）时回调。
+  ///
+  /// 课表页据此让分页器**横划过去**（用户 2026-10-08）；是否补间由调用方决定 ——
+  /// 本控件只上报周数，不碰动画。
   final ValueChanged<int> onGoToWeek;
 
   /// 长按周数回本周时走这里（可缺省 = 退回 [onGoToWeek]）。
   ///
-  /// 单独一条回调是因为**回本周是一次有意的跨周跳转**：课表页要让分页器横划
-  /// 过去（用户 2026-09-17），而弹窗选周 / 切学期仍是直接跳 —— 两者都走
-  /// `onGoToWeek`，分不出意图。
+  /// 单独一条回调是给调用方一个**区分意图**的位置：长按是「回到我该在的那一周」
+  /// （用户 2026-09-17 要求横划过去），而 [onGoToWeek] 收的是弹窗选周的结果
+  /// （用户 2026-10-08 起也要求横划过去）。
   final ValueChanged<int>? onReturnToCurrentWeek;
 
   /// 视图切换按钮（周视图 / 整学期）。

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'package:smarter_jxufe/core/network/device_profile_repository_provider.dart';
+import 'package:smarter_jxufe/core/network/dio_factory.dart';
 import 'package:smarter_jxufe/features/electricity/data/datasources/electricity_remote_datasource.dart';
 import 'package:smarter_jxufe/features/electricity/data/models/electricity_models.dart';
 
@@ -12,19 +13,16 @@ import 'package:smarter_jxufe/features/electricity/data/models/electricity_model
 /// 因此所有请求固定携带小程序页面来源头。
 final electricityDioProvider = Provider<Dio>((ref) {
   final deviceProfileRepo = ref.watch(deviceProfileRepositoryProvider);
-  return Dio(
-    BaseOptions(
-      baseUrl: 'https://wxcourse.jxufe.cn',
-      connectTimeout: const Duration(seconds: 12),
-      receiveTimeout: const Duration(seconds: 20),
-      validateStatus: (status) => true,
-      headers: {
-        'User-Agent': deviceProfileRepo.userAgent,
-        'Referer':
-            'https://servicewechat.com/wx70c0beda0bb7b021/143/page-frame.html',
-        'Accept': 'application/json, text/plain, */*',
-      },
-    ),
+  return createAppDio(
+    baseUrl: 'https://wxcourse.jxufe.cn',
+    connectTimeout: const Duration(seconds: 12),
+    receiveTimeout: const Duration(seconds: 20),
+    userAgent: deviceProfileRepo.userAgent,
+    headers: {
+      'Referer':
+          'https://servicewechat.com/wx70c0beda0bb7b021/143/page-frame.html',
+      'Accept': 'application/json, text/plain, */*',
+    },
   );
 });
 

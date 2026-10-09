@@ -70,7 +70,7 @@ presentation/widgets/  Markdown 渲染器、写操作确认弹窗、设置节卡
 | `get_score_estimate` | 分数估计：平时分、总评预测、加权汇总 | `geCoursesProvider` + `geSummarize` |
 | `get_deadlines` | 课程截止日期（重复条目自动滚到下一次） | `geCoursesProvider` 的 `deadlines` |
 | `get_curriculum` | 培养方案：要修哪些课、各多少学分、必修/选修 | 学籍 → 学院 → 专业 → `CurriculumRepository`（**命中缓存不发网络**） |
-| `get_graduation_credits` | 毕业学分构成**要求**（只有要求，没有已修） | `graduationRequirementsProvider`（在线，需教务会话） |
+| `get_graduation_credits` | 毕业学分**要求 + 已修进度**（必修还差多少 / 选修各分项还差多少） | `graduationCreditReportProvider`（要求表在线需教务会话；培养方案与成绩走本地缓存） |
 | `get_volunteer_hours` | 志愿时长（累计 + **本学年** + 活动记录） | `volunteerActivitiesProvider` + `volunteerHoursStats(xn: 教学学年)` |
 | `get_zongce` | 综测：总评 + 五育得分与等次 + 明细；`detail: true` 时逐条材料给**「计入 / 未计入」**（德育按表 3~7 各板块、智育竞赛按封顶 5 分） | `zcMaterialsProvider` + `ZcStore.loadManual` + `zcCalculate` + `zcContestContributingIds` / `zcMoralContributingIds` |
 | `list_materials` | 材料库（按材料类型分组） | `zcMaterialsProvider` + `groupMaterialsByType` |
@@ -180,7 +180,9 @@ presentation/widgets/  Markdown 渲染器、写操作确认弹窗、设置节卡
   请求体形态（`content: null`、空 tools 不下发）、错误文案与降级判定；
 - `ai_tools_test`：md 切节与检索打分、工具注册表（名字唯一 / schema 合法 / 写操作标记）、
   用户点名的五项能力都有工具、**我的课表「先缓存后联网」的四条分支**；
-- `ai_more_tools_test`：培养方案总账口径（全量算账 / 清单才筛选）、毕业学分合计行、
+- `ai_more_tools_test`：培养方案总账口径（全量算账 / 清单才筛选）、毕业学分**要求 + 进度**
+  （逐项「要求 / 已修 / 还差」、拿不到培养方案时如实说「无法统计」、`item` 过滤、
+  没有「合计」行时选修汇总行就是分项之和）、
   志愿时长的学年归集与「—」、材料分组、校历连续非工作日合并。**全部靠 override
   底层 provider 来测** —— 不碰 Hive、不碰网络，测的就是工具自己的聚合与措辞；
 - `ai_markdown_test`（40 例）：块级（标题 / 段落 / 围栏 / 列表嵌套与任务项 / 引用 /

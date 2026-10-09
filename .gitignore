@@ -1,4 +1,4 @@
-# ---- 本地敏感与临时（绝不入库）----
+﻿# ---- 本地敏感与临时（绝不入库）----
 tmp.txt
 sensitive.txt
 app_data/
@@ -33,7 +33,6 @@ assets/capture_certs/*.key
 
 # 本地发布产物（走 GitHub Release 分发）
 /dist/
-/logos/
 /design_preview/
 
 # Miscellaneous

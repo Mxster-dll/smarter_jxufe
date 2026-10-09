@@ -40,11 +40,6 @@ class DataCenterOverview {
   /// 门户登录趋势（周一到周日次数）
   final List<DzjLoginDay> loginTrend;
 
-  /// 校内关系（同侪）人数：grade 同年级 / class 同班级 /
-  /// major 同年级同专业 / dorm 同宿舍 / college 同学院同天生日。
-  /// 失败维度记 -1（不展示）。
-  final Map<String, int> peerCounts;
-
   /// 当前周次信息（如「2026 第一学期 第0周」）与今日课程数
   final String weekTitle;
   final List<DzjWeekDay> weekDays;
@@ -73,7 +68,6 @@ class DataCenterOverview {
     this.textbookCount = 0,
     this.borrowCounts = const {},
     this.loginTrend = const [],
-    this.peerCounts = const {},
     this.weekTitle = '',
     this.weekDays = const [],
     this.todayClassCount = 0,

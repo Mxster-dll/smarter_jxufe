@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'package:smarter_jxufe/core/network/device_profile_repository_provider.dart';
+import 'package:smarter_jxufe/core/network/dio_factory.dart';
 import 'package:smarter_jxufe/core/network/dio_providers.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_provider.dart';
 import 'package:smarter_jxufe/features/cxstar/data/providers/cxstar_providers.dart';
@@ -23,21 +24,18 @@ import 'package:smarter_jxufe/features/read_credit/domain/read_credit_progress.d
 /// 阅读学分平台专用 Dio（https，不预设 Cookie —— 会话由仓库显式传入）。
 final readCreditDioProvider = Provider<Dio>((ref) {
   final deviceProfileRepo = ref.watch(deviceProfileRepositoryProvider);
-  return Dio(
-    BaseOptions(
-      baseUrl: ReadCreditAuthRemoteDataSource.origin,
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 30),
-      validateStatus: (status) => true,
-      followRedirects: false,
-      headers: {
-        'User-Agent': deviceProfileRepo.userAgent,
-        'Accept':
-            'text/html,application/xhtml+xml,application/xml;q=0.9,'
-            'image/avif,image/webp,image/apng,*/*;q=0.8',
-        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-      },
-    ),
+  return createAppDio(
+    baseUrl: ReadCreditAuthRemoteDataSource.origin,
+    connectTimeout: const Duration(seconds: 15),
+    receiveTimeout: const Duration(seconds: 30),
+    followRedirects: false,
+    userAgent: deviceProfileRepo.userAgent,
+    headers: {
+      'Accept':
+          'text/html,application/xhtml+xml,application/xml;q=0.9,'
+          'image/avif,image/webp,image/apng,*/*;q=0.8',
+      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+    },
   );
 });
 

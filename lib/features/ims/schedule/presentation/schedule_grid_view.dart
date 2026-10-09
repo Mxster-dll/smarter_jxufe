@@ -6,6 +6,7 @@ import 'package:smarter_jxufe/features/ims/schedule/domain/class_time.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/reschedule.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/period_time.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/reschedule_engine.dart';
+import 'package:smarter_jxufe/features/ims/schedule/domain/schedule_board.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/schedule_color_index.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/schedule_display_days.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/schedule_entry.dart';
@@ -72,10 +73,13 @@ class ScheduleGridView extends StatelessWidget {
     this.pagerEnabled = true,
     this.pagerSmoothRequest = 0,
     this.onPagerWeekChanged,
+    this.onPagerSettled,
     this.mondayOfWeek,
     this.showSaturday = true,
     this.showSunday = true,
+    this.visibleDays,
     this.showGridLines = true,
+    this.calendar = ScheduleCalendarContext.none,
   });
 
   /// 周视图分页：总周数（`null` = 不分页 —— 整学期视图、桌面端、横版视图）。
@@ -104,12 +108,32 @@ class ScheduleGridView extends StatelessWidget {
   final bool showSaturday;
   final bool showSunday;
 
+  /// 「真的有课」的星期集合（0 = 周一）——由**页面**按「**已落定的那一周**」算好传进来。
+  ///
+  /// 为什么要页面来定：分页器的静态表头与相邻页共用一份列集合，若它跟着「正在看
+  /// 第几周」走，翻页途中列数会 6↔5、列宽重排（用户 2026-10-08：「一旦切换周数时，
+  /// 起点或终点是本周，就会动画错乱」）。页面于是把它冻结在**分页器停稳**那一刻
+  /// （见 `schedule_screen.dart` 的 `_layoutWeek`）。
+  ///
+  /// `null` = 本组件自己按 [week] 现算（直接 pump 视图的用例与旧调用方）。
+  final Set<int>? visibleDays;
+
+  /// 分页器**停稳**回调：原样透传给 [SchedulePagedBoard.onSettled]。
+  final VoidCallback? onPagerSettled;
+
   /// 显示表格线（用户 2026-09-17 第 3 条；开关在设置页「课表」节）。
   ///
   /// 关掉后**所有**构成表格的分隔线都不画（节次列右线、行底线、课格右/底线、
   /// 表头里的白线）—— 表头色带与课格底色不受影响，仍然分得清列。
   /// **语义标记线照旧**：调课格的橙色上边（宽 2）、`调/停/补` 角标。
   final bool showGridLines;
+
+  /// 校历上下文（假期 / 补课效应 + 教学周范围，见 `domain/schedule_board.dart`）。
+  ///
+  /// 用户 2026-10-07：「课表的显示应该响应校历里的事件」——假期列不排课、
+  /// 补课列改上被补那天的课表、隐藏周六/周日的开关只在没课时生效。
+  /// 默认 [ScheduleCalendarContext.none] = 不按校历调整（既有测试与离线场景）。
+  final ScheduleCalendarContext calendar;
 
   // ─── 布局常量 ─────────────────────────────────────────────────
 
@@ -227,19 +251,42 @@ class ScheduleGridView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final grid = _buildGrid();
     // 整学期视图不展开单次调课，改为在原课位上出角标
     final onceMarks = week == null
         ? onceMarksBySlot(reschedules)
         : const <String, int>{};
+    // 本页的列数据（含校历效应：假期不排课、补课日取被补那天的课）。
+    final columns = scheduleBoardColumns(
+      entries: entries,
+      reschedules: reschedules,
+      week: week,
+      weekMonday: weekMonday,
+      calendar: calendar,
+    );
 
     return LayoutBuilder(
       builder: (context, constraints) {
         // 可见天（用户 2026-09-17 的两个开关）：关掉周六 / 周日 → 列数变少、
         // 剩下的天重新等分可用宽度（表头、空格子、课格全都按这份列表走）。
+        // ⚠ 用户 2026-10-07 修订：**只在没课时才真的隐藏** —— 有课的那一天
+        // （哪怕设置关着）照常显示（见 `scheduleDaysWithClass`）。
+        // ⚠ 用户 2026-10-08 二轮：判据按**「已落定的那一周」**算（页面通过
+        // [visibleDays] 传进来）—— 分页器的静态表头与相邻页共用这份列集合，
+        // 它若跟着「正在看第几周」逐页变，切周动画途中就会「列数 6→5、列宽重排」
+        // （实测：本周第 5 周周六是补课日，动画刚离开本周那一帧周六列就消失）。
+        // 不传时退回「按 [week] 现算」（直接 pump 视图的用例）。
         final days = scheduleVisibleDays(
           showSaturday: showSaturday,
           showSunday: showSunday,
+          daysWithClass:
+              visibleDays ??
+              scheduleDaysWithClass(
+                entries: entries,
+                reschedules: reschedules,
+                week: week,
+                weekMonday: weekMonday,
+                calendar: calendar,
+              ),
         );
         final dayCount = days.length;
         // 手机判定用**短边**：手机横屏时宽度已过断点，按宽度会误判成桌面。
@@ -306,8 +353,7 @@ class ScheduleGridView extends StatelessWidget {
                   dayCount,
                   (i) => _buildDayColumn(
                     context,
-                    days[i],
-                    grid[days[i]],
+                    columns[days[i]],
                     colWidth: colWidth,
                     compact: compact,
                     cellHeight: cellHeight,
@@ -334,14 +380,22 @@ class ScheduleGridView extends StatelessWidget {
             ),
             child: Center(
               child: SizedBox(
-                width: totalWidth,
+                // ⚠ **宽度 = 可用宽度（不是 totalWidth）**：分页器的视口必须与
+                // 「列集合」解耦 —— 非 compact 下列宽被夹在 80..160，列数一变总宽就变
+                // （6 列 996 / 5 列 836），视口若跟着变就会让**飞行中的补间像素目标失效**
+                // → 落点错周（用户 2026-10-08 四轮：「起点或终点为本周的 bug 又回来了」）。
+                // 表格内容按 totalWidth 居中（`SchedulePagedBoard.contentWidth`），
+                // 悬浮节数列也跟着那个偏移走。
+                width: available,
                 child: SchedulePagedBoard(
                   weekCount: pagerWeekCount!,
                   week: week ?? 1,
                   enabled: pagerEnabled,
                   smoothRequest: pagerSmoothRequest,
+                  onSettled: onPagerSettled,
                   onWeekChanged: onPagerWeekChanged ?? (int _) {},
                   bodyHeight: schedulePeriodCount * cellHeight + gapTotal,
+                  contentWidth: totalWidth,
                   // 节数列宽度：分页板靠它给每页左侧留出占位，使 7 天课格
                   // 与静态表头的列严格对齐（页面占满整块宽度 → 拖动时
                   // 「节数列那一栏」下面就是滑动中的课表）。
@@ -352,7 +406,7 @@ class ScheduleGridView extends StatelessWidget {
                       for (final day in days)
                         _buildDayHeader(
                           context,
-                          day,
+                          columns[day].plan,
                           colWidth: colWidth,
                           compact: compact,
                         ),
@@ -369,7 +423,7 @@ class ScheduleGridView extends StatelessWidget {
                   pageBuilder: (context, w) => _buildDayRow(
                     context,
                     week: w,
-                    grid: _buildGrid(w),
+                    columns: _columnsForWeek(w),
                     days: days,
                     colWidth: colWidth,
                     compact: compact,
@@ -601,10 +655,19 @@ class ScheduleGridView extends StatelessWidget {
 
   // ─── 一天列 ───────────────────────────────────────────────────
 
+  /// 分页器某一页的列数据（每一页各算各的周次与日期 —— 补课日是**具体日期**上的事，
+  /// 相邻周可能一个补课、一个放假）。
+  List<ScheduleColumn> _columnsForWeek(int w) => scheduleBoardColumns(
+    entries: entries,
+    reschedules: reschedules,
+    week: w,
+    weekMonday: mondayOfWeek?.call(w),
+    calendar: calendar,
+  );
+
   Widget _buildDayColumn(
     BuildContext context,
-    int day,
-    Map<int, List<EffectiveClass>> dayData, {
+    ScheduleColumn column, {
     required double colWidth,
     required bool compact,
     required double cellHeight,
@@ -613,8 +676,9 @@ class ScheduleGridView extends StatelessWidget {
     required List<int> gapsAfter,
     required double gapHeight,
     bool includeHeader = true,
-    DateTime? mondayOf,
   }) {
+    final day = column.dayIndex;
+    final dayData = column.slots;
     // 预计算每个节次是否被上方跨行课程占用
     final occupied = <int, bool>{};
     // 被跨行课程「吸收」进自己格子的矮行（它前后的节次属于同一门课时，
@@ -630,13 +694,7 @@ class ScheduleGridView extends StatelessWidget {
     // 表头（分页模式下表头被提到静态行走，这里传 includeHeader: false）
     if (includeHeader) {
       widgets.add(
-        _buildDayHeader(
-          context,
-          day,
-          colWidth: colWidth,
-          compact: compact,
-          mondayOf: mondayOf,
-        ),
+        _buildDayHeader(context, column.plan, colWidth: colWidth, compact: compact),
       );
     }
 
@@ -711,7 +769,7 @@ class ScheduleGridView extends StatelessWidget {
   Widget _buildDayRow(
     BuildContext context, {
     required int week,
-    required List<Map<int, List<EffectiveClass>>> grid,
+    required List<ScheduleColumn> columns,
     required List<int> days,
     required double colWidth,
     required bool compact,
@@ -729,8 +787,7 @@ class ScheduleGridView extends StatelessWidget {
         for (final day in days)
           _buildDayColumn(
             context,
-            day,
-            grid[day],
+            columns[day],
             colWidth: colWidth,
             compact: compact,
             cellHeight: cellHeight,
@@ -748,14 +805,14 @@ class ScheduleGridView extends StatelessWidget {
 
   Widget _buildDayHeader(
     BuildContext context,
-    int day, {
+    ScheduleDayPlan plan, {
     required double colWidth,
     required bool compact,
-    DateTime? mondayOf,
   }) {
     const names = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+    final day = plan.dayIndex;
     final isWeekend = day >= 5;
-    final date = (mondayOf ?? weekMonday)?.add(Duration(days: day));
+    final date = plan.date;
     // 表头是**实心底**：深浅两档都用原深色（[ScheduleTone.headerFill]）。
     // 深色下**不许**按「文字色」提亮 —— 提亮成 `#D96363` 后白字只剩 3.55:1，
     // [AppColors.onAccent] 会择近黑字，用户 2026-09-17 当场报
@@ -767,7 +824,14 @@ class ScheduleGridView extends StatelessWidget {
     // 表头前景色按**实测对比度**择白 / 近黑（浅色恒为白 → 逐像素不变）。
     final foreground = AppColors.onAccent(context, headerColor);
 
-    return Container(
+    // 校历标记（用户 2026-10-07 裁定「表头加小字标记」）：假期 = 假期名（红），
+    // 补课 = 「补第4周周五」（绿，与校历页「班」角标同色）。列宽不足时整行缩放
+    // （`FittedBox.scaleDown`）——宁可小一号，也不省略成「补第 4…」。
+    final badgeColor = plan.isHoliday
+        ? fp(context).calendarHoliday
+        : fp(context).calendarMakeup;
+
+    final cell = Container(
       width: colWidth,
       height: _headerHeightOf(compact),
       alignment: Alignment.center,
@@ -794,16 +858,56 @@ class ScheduleGridView extends StatelessWidget {
             ),
           ),
           if (date != null)
-            Text(
-              '${date.month}/${date.day}',
-              style: TextStyle(
-                color: foreground.withValues(alpha: 0.7),
-                fontSize: compact ? 8 : 9,
-                height: 1.2,
+            // 日期恒单行：`10/10`、`12/31` 这类 5 字符日期 + 继承的 0.3
+            // letterSpacing 量出来约 41.5dp，窄列（320dp 屏 7 列 ≈ 41.4dp）会折行
+            // → 表头变高、整表错位。放得下时 `scaleDown` 逐像素不变。
+            SizedBox(
+              width: colWidth - (compact ? 2 : 6),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  '${date.month}/${date.day}',
+                  maxLines: 1,
+                  style: TextStyle(
+                    color: foreground.withValues(alpha: 0.7),
+                    fontSize: compact ? 8 : 9,
+                    height: 1.2,
+                  ),
+                ),
+              ),
+            ),
+          if (plan.hasEffectLabel)
+            Padding(
+              padding: EdgeInsets.only(top: compact ? 1 : 2),
+              child: SizedBox(
+                width: colWidth - (compact ? 2 : 6),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    plan.effectLabel,
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: badgeColor,
+                      fontSize: compact ? 7.5 : 8.5,
+                      fontWeight: FontWeight.w600,
+                      height: 1.1,
+                    ),
+                  ),
+                ),
               ),
             ),
         ],
       ),
+    );
+
+    if (!plan.hasEffectLabel) return cell;
+    return Tooltip(
+      message: [
+        if (date != null) '${date.month}月${date.day}日 ${names[day]}',
+        plan.effectLabel,
+        if (plan.sourceHint.isNotEmpty) plan.sourceHint,
+      ].join(' · '),
+      child: cell,
     );
   }
 
@@ -1135,28 +1239,8 @@ class ScheduleGridView extends StatelessWidget {
   }
 
   // ─── 数据预处理 ───────────────────────────────────────────────
-
-  /// 构建 7 天 × 12 节次的网格
-  ///
-  /// 返回 `List<Map<int, List<EffectiveClass>>>`，索引为 day(0-6)，
-  /// Map 的 key 为起始节次(1-12)，value 为该节次开始的课节列表。
-  List<Map<int, List<EffectiveClass>>> _buildGrid([int? forWeek]) {
-    final grid = List.generate(7, (_) => <int, List<EffectiveClass>>{});
-
-    final classes = effectiveClasses(
-      entries: entries,
-      reschedules: reschedules,
-      week: forWeek ?? week,
-    );
-
-    for (final c in classes) {
-      final day = c.dayIndex - 1; // 0-based
-      final period = c.startPeriod;
-
-      grid[day].putIfAbsent(period, () => []);
-      grid[day][period]!.add(c);
-    }
-
-    return grid;
-  }
+  //
+  // 「哪个格子放哪些课」已上提到 `domain/schedule_board.dart` 的
+  // `scheduleBoardColumns()`（假期抑制 + 补课日取源 + 整学期模板都在一起实现），
+  // 本文件只负责画。别在这里再写一份 `effectiveClasses` 过滤。
 }

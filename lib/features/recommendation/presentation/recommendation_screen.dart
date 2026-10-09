@@ -5,8 +5,11 @@ import 'package:smarter_jxufe/core/navigation/page_auto_refresh.dart';
 import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
+import 'package:smarter_jxufe/design/fluent/fluent.dart';
 import 'package:smarter_jxufe/design/pane_chrome.dart';
 import 'package:smarter_jxufe/features/ims/grades/data/providers/curriculum_importance_provider.dart';
+import 'package:smarter_jxufe/features/ims/grades/data/providers/failed_grades_provider.dart';
+import 'package:smarter_jxufe/features/ims/grades/domain/failed_grade.dart';
 import 'package:smarter_jxufe/features/materials/domain/material_award_bridge.dart';
 import 'package:smarter_jxufe/features/recommendation/data/providers/recommendation_providers.dart';
 import 'package:smarter_jxufe/features/recommendation/data/recommendation_store.dart';
@@ -18,6 +21,45 @@ import 'package:smarter_jxufe/features/rules/presentation/rules_reader_screen.da
 import 'package:smarter_jxufe/features/score_estimate/presentation/ge_common.dart';
 import 'package:smarter_jxufe/features/zongce/data/zc_providers.dart';
 import 'package:smarter_jxufe/features/zongce/domain/zc_models.dart';
+
+/// 挂科 → 无推免资格 的警示条（2026-10-08 加）。
+///
+/// 用户原话：「挂科可以产生一个联动，那就是一旦有挂科记录，保研分页就显示您已挂科，
+/// 无保研资格之类的」。
+///
+/// ⚠ 三条口径：
+/// - **只陈述「有挂科记录」这个事实**，不替学校下最终结论 —— 实际资格以学校当年文件
+///   与学院认定为准（不同年份 / 学院口径可能不同）。所以文案是「按现行推免办法，
+///   一般不具备推免资格」而不是「你完蛋了」。
+/// - **重修通过也算有记录**（见 `domain/failed_grade.dart`）—— 推免看的是「有没有挂过」。
+/// - 数据取不到时**整条不画**（`failedGrades.isEmpty`），不会把「没取到」说成「没挂科」。
+class RecommendationFailedBar extends ConsumerWidget {
+  const RecommendationFailedBar({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final failed =
+        ref.watch(failedGradesProvider).valueOrNull ?? const <FailedGrade>[];
+    if (failed.isEmpty) return const SizedBox.shrink();
+
+    final names =
+        failed.take(3).map((f) => f.name).join('、') +
+        (failed.length > 3 ? ' 等' : '');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        FluentInfoBar(
+          key: const Key('recFailedBar'),
+          severity: FluentInfoSeverity.error,
+          title: '您已有挂科记录，${failed.length} 门',
+          message:
+              '$names。按推免工作办法，有课程考核不及格记录的一般不具备推免资格 —— '
+              '本页下面的加权成绩与附加分仍照常测算，供你了解自己的学业状况。',
+        ),
+      ],
+    );
+  }
+}
 
 /// 推免成绩（推荐免试研究生综合成绩测算）。
 ///
@@ -96,6 +138,9 @@ class _RecommendationScreenState extends ConsumerState<RecommendationScreen> {
     // 「直接按自动识别结果计入」）。自动条目不落库，每次由材料库现算，因此改了
     // 材料库这里立刻跟着变；被「忽略」的材料记在 store 里（见 material_award_bridge）。
     final materialsAsync = ref.watch(zcMaterialsProvider);
+    // 挂科记录（读不到 = 空表 → 不显示警示条，不当成「没挂科」的结论）
+    final failedGrades =
+        ref.watch(failedGradesProvider).valueOrNull ?? const <FailedGrade>[];
 
     final catalog = catalogAsync.valueOrNull ?? BonusCatalog.empty;
     final weightedResult = weightedAsync.valueOrNull;
@@ -124,6 +169,14 @@ class _RecommendationScreenState extends ConsumerState<RecommendationScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(24, 20, 24, 48),
         children: [
+          // 挂科 → 无推免资格（2026-10-08 加）。
+          // 用户原话：「挂科可以产生一个联动，那就是一旦有挂科记录，保研分页就显示
+          // 您已挂科，无保研资格之类的」。⚠ 挂在**最顶上**：这是「还有没有必要往下看」
+          // 级别的信息，塞在卡片下面等于没说。
+          if (failedGrades.isNotEmpty) ...[
+            const RecommendationFailedBar(),
+            const SizedBox(height: 12),
+          ],
           _SummaryCard(
             key: const Key('recSummaryCard'),
             weightedResult: weightedResult,

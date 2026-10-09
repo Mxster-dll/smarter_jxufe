@@ -209,9 +209,18 @@ void main() {
 
 /// 设置页源码（2026-09-20 架构审查 ⑥：14 个分节卡已外提到 `widgets/settings_cards.dart`）。
 ///
-/// 守卫改读**两文件并集** —— 原意不变（这些形态必须存在于设置页这一族里），
+/// 守卫改读**整族并集** —— 原意不变（这些形态必须存在于设置页这一族里），
 /// 只是不再假设它们住在同一个文件里。
-String _setSrc() => const [
+///
+/// ⚠ 2026-10-08 第三轮：`settings_cards.dart` 2297 行又**按类拆成 5 个分册**
+/// （`settings_cards_campus / display / schedule / session / widgets.dart`，
+/// 桶文件 `export` 它们）→ 这里改为扫 `widgets/` 下所有 `settings_cards*.dart`，
+/// 以后再拆也不会把这条守卫打红。
+String _setSrc() => [
   'lib/features/settings/presentation/settings_screen.dart',
-  'lib/features/settings/presentation/widgets/settings_cards.dart',
+  ...Directory('lib/features/settings/presentation/widgets')
+      .listSync()
+      .whereType<File>()
+      .where((f) => f.path.endsWith('.dart') && f.path.contains('settings_cards'))
+      .map((f) => f.path),
 ].map((p) => File(p).readAsStringSync()).join('\n');

@@ -11,7 +11,12 @@
 ///   侧栏已高亮当前服务，再写一遍名字是重复信息；原导航栏里的按钮下沉到内容首行，
 ///   见 `lib/design/pane_chrome.dart` 与 AGENTS.md §19）；二级页面照常显示完整导航栏
 ///   与返回按钮（那时它确实有上一页）；
-/// - [entry] 换人 = `ValueKey` 变 = 全新 Navigator（路由栈天然重置，不用手写 pop 逻辑）。
+/// - [paneKey] 换人 = `ValueKey` 变 = 全新 Navigator（路由栈天然重置，不用手写 pop 逻辑）。
+///
+/// ⚠ 2026-10-09 五轮：面板不只服务**目录条目**了 —— 侧栏底部固定区的「我的 / 设置」
+/// 也要在这里显示（用户原话：「我们目前『侧边栏』模式下，设置和我的页都不是在右侧
+/// 内容区显示，而是进入一个子页面，我希望与其他功能页统一」）。所以本类改成收
+/// [paneKey] + [builder]，目录条目走 [HomeDetailPane.entry] 那个便捷构造。
 library;
 
 import 'package:flutter/material.dart';
@@ -19,15 +24,31 @@ import 'package:flutter/material.dart';
 import 'package:smarter_jxufe/design/pane_chrome.dart';
 import 'package:smarter_jxufe/features/home/presentation/home_service_catalog.dart';
 
-/// 把 [entry] 的功能页内嵌在右侧面板里。
+/// 把一个功能页内嵌在右侧面板里。
 class HomeDetailPane extends StatelessWidget {
-  final HomeServiceEntry entry;
+  /// 面板 id：换 id 即换一个全新的面板 Navigator（路由栈重置）。
+  final String paneKey;
 
-  const HomeDetailPane({super.key, required this.entry});
+  /// 面板首路由要显示的功能页。
+  final Widget Function() builder;
 
-  /// 面板内 Navigator 的 Key（按条目区分 = 切换条目即重置路由栈）。
-  static Key navKeyOf(HomeServiceEntry entry) =>
-      ValueKey('homeDetailNav-${entry.title}');
+  const HomeDetailPane({
+    super.key,
+    required this.paneKey,
+    required this.builder,
+  });
+
+  /// 目录条目版（面板 id = 条目标题）。
+  HomeDetailPane.entry(HomeServiceEntry entry, {super.key})
+    : paneKey = entry.title,
+      builder = entry.builder;
+
+  /// 面板内 Navigator 的 Key（按 [paneKey] 区分 = 切换条目即重置路由栈）。
+  static Key navKeyOfId(String paneKey) =>
+      ValueKey<String>('homeDetailNav-$paneKey');
+
+  /// 目录条目版的 [navKeyOfId]（沿用旧签名，测试里有引用）。
+  static Key navKeyOf(HomeServiceEntry entry) => navKeyOfId(entry.title);
 
   @override
   Widget build(BuildContext context) {
@@ -36,10 +57,10 @@ class HomeDetailPane extends StatelessWidget {
     return PaneScope(
       embedded: true,
       child: Navigator(
-        key: navKeyOf(entry),
+        key: navKeyOfId(paneKey),
         onGenerateRoute: (settings) => MaterialPageRoute<void>(
           settings: settings,
-          builder: (_) => entry.builder(),
+          builder: (_) => builder(),
         ),
       ),
     );

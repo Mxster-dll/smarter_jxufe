@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/core/web/external_url.dart';
 import 'package:smarter_jxufe/core/web/in_app_web_screen.dart';
+import 'package:smarter_jxufe/core/web/web_session.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/features/network_service/data/providers/network_service_providers.dart';
@@ -636,9 +637,12 @@ class _EntriesCard extends ConsumerWidget {
     if (uri == null) return;
     if (ref.read(inAppWebViewSupportedProvider)) {
       final builder = ref.read(webViewScreenBuilderProvider);
-      await Navigator.of(
-        context,
-      ).push(MaterialPageRoute<void>(builder: (_) => builder('微信充值', url)));
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) =>
+              builder(EmbeddedWebRequest(title: '微信充值', url: url)),
+        ),
+      );
       return;
     }
     await ref.read(externalUrlOpenerProvider)(uri);

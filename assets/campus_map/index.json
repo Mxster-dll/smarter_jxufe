@@ -1,0 +1,81 @@
+{
+ "campuses": [
+  {
+   "id": "jiaoqiao",
+   "name": "蛟桥园校区",
+   "asset": "assets/campus_map/jiaoqiao.json",
+   "bounds": [
+    115.845336,
+    28.739677,
+    115.85923,
+    28.760912
+   ],
+   "counts": {
+    "water": 3,
+    "green": 0,
+    "sport": 21,
+    "road": 53,
+    "building": 46,
+    "label": 30
+   }
+  },
+  {
+   "id": "mailu",
+   "name": "麦庐园校区",
+   "asset": "assets/campus_map/mailu.json",
+   "bounds": [
+    115.808404,
+    28.726575,
+    115.815491,
+    28.737728
+   ],
+   "counts": {
+    "water": 3,
+    "green": 8,
+    "sport": 6,
+    "road": 47,
+    "building": 42,
+    "label": 55
+   }
+  },
+  {
+   "id": "fenglin",
+   "name": "枫林园校区",
+   "asset": "assets/campus_map/fenglin.json",
+   "bounds": [
+    115.828175,
+    28.730214,
+    115.833481,
+    28.738582
+   ],
+   "counts": {
+    "water": 0,
+    "green": 0,
+    "sport": 4,
+    "road": 17,
+    "building": 2,
+    "label": 5
+   }
+  },
+  {
+   "id": "qingshan",
+   "name": "青山园校区",
+   "asset": "assets/campus_map/qingshan.json",
+   "bounds": [
+    115.910166,
+    28.705106,
+    115.913105,
+    28.70891
+   ],
+   "counts": {
+    "water": 1,
+    "green": 0,
+    "sport": 0,
+    "road": 5,
+    "building": 2,
+    "label": 1
+   }
+  }
+ ],
+ "attribution": "地图数据 © OpenStreetMap 贡献者 (ODbL)"
+}

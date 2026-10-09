@@ -5,6 +5,7 @@ import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/design/feature_palette.dart';
 import 'package:smarter_jxufe/features/campus_address/data/my_campus_prefs.dart';
 import 'package:smarter_jxufe/features/campus_address/domain/my_campus.dart';
+import 'package:smarter_jxufe/features/campus_address/presentation/campus_vector_map_screen.dart';
 import 'package:smarter_jxufe/features/campus_address/presentation/my_campus_widgets.dart';
 import 'package:smarter_jxufe/design/pane_chrome.dart';
 import 'package:smarter_jxufe/design/settings_section.dart';
@@ -30,14 +31,22 @@ const campusMapEntries = <CampusMapEntry>[
   CampusMapEntry('青山园校区', '${_assetBase}qsxq.jpg'),
 ];
 
-/// 校区地图：展示官网四校区地图与交通示意图。
-/// 图片为官网静态资源,按需网络加载;点击缩略图进入全屏缩放查看。
+/// 校区地图：两种底图可切 —— **矢量图**（Flutter 原生绘制，见
+/// [CampusVectorMapPane]）与**官网原图**（官网静态资源，点击缩略图全屏缩放）。
 ///
-/// 「我的校区」（[myCampusStoreProvider]）一旦设置，该校区相关条目
-/// （北区 / 南区两条）置顶并带「我的校区」徽标；交通示意图等非校区条目
-/// 保持在原相对顺序，只是整体后移。
-class CampusMapScreen extends ConsumerWidget {
+/// 「我的校区」（[myCampusStoreProvider]）一旦设置：矢量图默认落在该校区；
+/// 官网原图列表里该校区相关条目（北区 / 南区两条）置顶并带「我的校区」徽标，
+/// 交通示意图等非校区条目保持在原相对顺序，只是整体后移。
+class CampusMapScreen extends ConsumerStatefulWidget {
   const CampusMapScreen({super.key});
+
+  @override
+  ConsumerState<CampusMapScreen> createState() => _CampusMapScreenState();
+}
+
+class _CampusMapScreenState extends ConsumerState<CampusMapScreen> {
+  /// false = 矢量图（默认），true = 官网原图。
+  bool _official = false;
 
   /// [index] 与 [entries] 必须同源：置顶会改变显示顺序，若仍用
   /// 顶层常量 [campusMapEntries] 的下标，全屏查看器会打开错图。
@@ -56,7 +65,56 @@ class CampusMapScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: paneAppBar(
+        context,
+        title: const Text('校区地图'),
+        centerTitle: true,
+        settingsSections: const [SettingsSection.campus],
+      ),
+      body: Column(
+        children: [
+          _modeSwitcher(),
+          Expanded(
+            child: _official ? _officialList() : const CampusVectorMapPane(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 两种底图的切换。默认矢量（能点建筑、能切风格），官网原图一键可达。
+  Widget _modeSwitcher() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
+      child: SegmentedButton<bool>(
+        key: const Key('campusMapModeSwitch'),
+        segments: const [
+          ButtonSegment(
+            value: false,
+            icon: Icon(Icons.polyline, size: 16),
+            label: Text('矢量图'),
+          ),
+          ButtonSegment(
+            value: true,
+            icon: Icon(Icons.image_outlined, size: 16),
+            label: Text('官网原图'),
+          ),
+        ],
+        selected: {_official},
+        showSelectedIcon: false,
+        style: const ButtonStyle(
+          visualDensity: VisualDensity.compact,
+          textStyle: WidgetStatePropertyAll(TextStyle(fontSize: 13)),
+        ),
+        onSelectionChanged: (s) => setState(() => _official = s.first),
+      ),
+    );
+  }
+
+  /// 官网原图列表（矢量之前就在用的那套：7 张图 + 全屏查看器）。
+  Widget _officialList() {
     final scheme = Theme.of(context).colorScheme;
     final mine = ref.watch(myCampusStoreProvider).campus;
     bool isMine(CampusMapEntry e) =>
@@ -67,88 +125,80 @@ class CampusMapScreen extends ConsumerWidget {
         if (isMine(e)) e.name,
     ];
 
-    return Scaffold(
-      appBar: paneAppBar(
-        context,
-        title: const Text('校区地图'),
-        centerTitle: true,
-        settingsSections: const [SettingsSection.campus],
-      ),
-      body: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
-        // 第 0 项是「我的校区」状态提示行，其后是地图卡片。
-        itemCount: ordered.length + 1,
-        separatorBuilder: (_, _) => const SizedBox(height: 14),
-        itemBuilder: (context, index) {
-          if (index == 0) {
-            return myCampusHint(context, mine: mine, pinnedNames: pinnedNames);
-          }
-          final entryIndex = index - 1;
-          final e = ordered[entryIndex];
-          final pinned = isMine(e);
-          return Material(
-            color: Theme.of(context).cardTheme.color,
-            shape: pinned
-                ? appCardShape(context).copyWith(
-                    side: BorderSide(color: fp(context).cardAccent),
-                  )
-                : appCardShape(context),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: () => _openViewer(context, entryIndex, ordered),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  AspectRatio(
-                    aspectRatio: 16 / 9,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Image.asset(e.asset, fit: BoxFit.cover),
-                        if (pinned)
-                          Positioned(
-                            left: 10,
-                            top: 10,
-                            child: myCampusBadge(context, onImage: true),
-                          ),
-                      ],
-                    ),
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
+      // 第 0 项是「我的校区」状态提示行，其后是地图卡片。
+      itemCount: ordered.length + 1,
+      separatorBuilder: (_, _) => const SizedBox(height: 14),
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return myCampusHint(context, mine: mine, pinnedNames: pinnedNames);
+        }
+        final entryIndex = index - 1;
+        final e = ordered[entryIndex];
+        final pinned = isMine(e);
+        return Material(
+          color: Theme.of(context).cardTheme.color,
+          shape: pinned
+              ? appCardShape(context).copyWith(
+                  side: BorderSide(color: fp(context).cardAccent),
+                )
+              : appCardShape(context),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => _openViewer(context, entryIndex, ordered),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.asset(e.asset, fit: BoxFit.cover),
+                      if (pinned)
+                        Positioned(
+                          left: 10,
+                          top: 10,
+                          child: myCampusBadge(context, onImage: true),
+                        ),
+                    ],
                   ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.zoom_in,
-                          size: 16,
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.zoom_in,
+                        size: 16,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          e.name,
+                          style: const TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '点击查看大图',
+                        style: TextStyle(
+                          fontSize: 11,
                           color: scheme.onSurfaceVariant,
                         ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            e.name,
-                            style: const TextStyle(
-                              fontSize: 14.5,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          '点击查看大图',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 }

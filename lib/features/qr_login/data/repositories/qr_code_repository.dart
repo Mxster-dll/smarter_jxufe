@@ -53,7 +53,6 @@ class QrCodeRepository {
   String? _mfaGid;
   String? _mfaAccount;
   String? _mfaPassword;
-  String? _mfaMfaState;
 
   void _setStatus(QrCodeStatus status) {
     if (!_statusSubject.isClosed) {
@@ -131,7 +130,6 @@ class QrCodeRepository {
     _pollingInterval = pollingInterval;
     _mfaAccount = account;
     _mfaPassword = password;
-    _mfaMfaState = mfaState;
 
     _setStatus(QrCodeStatus.loading);
 
@@ -169,7 +167,6 @@ class QrCodeRepository {
       if (!need) {
         throw QrLoginException('MFA 状态已失效，无法重新初始化二维码');
       }
-      _mfaMfaState = newState;
       return await _mfaLoginDs.initQrCode(newState);
     }
   }
@@ -195,7 +192,6 @@ class QrCodeRepository {
     final (attestServer, gid) = await _mfaLoginDs.initQrCode(mfaState);
     _mfaAttestServer = attestServer;
     _mfaGid = gid;
-    _mfaMfaState = mfaState;
 
     final (verifyCode, imgUrl) = await _mfaLoginDs.fetchQrCode(
       attestServer,
@@ -228,7 +224,6 @@ class QrCodeRepository {
       if (!need) {
         throw QrLoginException('手机验证码初始化失败，MFA 状态已失效');
       }
-      _mfaMfaState = newState;
       return await _mfaLoginDs.initSecurePhone(newState);
     }
   }

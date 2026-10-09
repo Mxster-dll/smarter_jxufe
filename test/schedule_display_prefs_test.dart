@@ -31,6 +31,8 @@ ScheduleEntry _entry({
   DayOfWeek day = DayOfWeek.monday,
   int startPeriod = 1,
   int endPeriod = 2,
+  int startWeek = 1,
+  int endWeek = 16,
 }) => ScheduleEntry(
   classCode: '$courseCode-01',
   className: '$courseName(01)',
@@ -46,8 +48,8 @@ ScheduleEntry _entry({
   hasTextbook: true,
   classTimes: [
     ClassTime(
-      startWeek: 1,
-      endWeek: 16,
+      startWeek: startWeek,
+      endWeek: endWeek,
       weekParity: WeekParity.every,
       dayOfWeek: day,
       startPeriod: startPeriod,
@@ -442,6 +444,75 @@ void main() {
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     });
+
+    testWidgets('关周六但这一周周六有课 → 周六照样显示（用户 2026-10-07 新口径）', (
+      tester,
+    ) async {
+      // 用户原话：「如果某周周 x 有课，但是设置又是隐藏周 x，那么此时这天还是显示的」。
+      await tester.pumpWidget(
+        harness(
+          ScheduleGridView(
+            entries: [_entry(day: DayOfWeek.saturday)],
+            week: 2,
+            weekMonday: mondayOf(2),
+            showToggle: false,
+            showSaturday: false,
+          ),
+        ),
+      );
+      expect(find.text('周六'), findsOneWidget, reason: '有课的列不许被开关藏掉');
+      expect(find.text('高等数学'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('★ 列集合按「这一周」算：周六只有第 3 周有课 → 只有第 3 周画周六列', (
+      tester,
+    ) async {
+      // 用户 2026-10-08 二轮原话：「如果周六在第 5 周因为补课而有课，但是其他周没有，
+      // 那么在其他周的视图中，周六就不应该显示。只有在第五周的视图中周六显示」。
+      // ⚠ 冻结（动画期间不变列）由页面负责，见 `schedule_pick_week_animation_test.dart`。
+      final entries = [
+        _entry(day: DayOfWeek.saturday, startWeek: 3, endWeek: 3),
+      ];
+      for (final (week, expected) in const [(2, false), (3, true), (5, false)]) {
+        await tester.pumpWidget(
+          harness(
+            ScheduleGridView(
+              entries: entries,
+              week: week,
+              weekMonday: mondayOf(week),
+              showToggle: false,
+              showSaturday: false,
+              showSunday: false,
+            ),
+          ),
+        );
+        expect(
+          find.text('周六'),
+          expected ? findsOneWidget : findsNothing,
+          reason: '第 $week 周：周六${expected ? "有" : "没"}课 → '
+              '${expected ? "要" : "不要"}画周六列',
+        );
+        await tester.pumpWidget(const SizedBox());
+      }
+    });
+
+    testWidgets('关周六且整学期周六都没课 → 仍按设置收起', (tester) async {
+      await tester.pumpWidget(
+        harness(
+          ScheduleGridView(
+            entries: [_entry()], // 只有周一有课
+            week: 2,
+            weekMonday: mondayOf(2),
+            showToggle: false,
+            showSaturday: false,
+          ),
+        ),
+      );
+      expect(find.text('周六'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    });
   });
 
   group('设置页「课表」节', () {
@@ -511,8 +582,11 @@ void main() {
     String read(String path) {
       // ⚠ 2026-09-20 架构审查 ⑥：设置页的 14 个分节卡已外提到 `widgets/settings_cards.dart`，
       // 读设置页时并上它（原意不变，只是不再假设两者住在同一个文件里）。
+      // ⚠ 2026-10-08 第三轮：那个文件**又按类拆成 6 个分册**（桶文件 + 5 个
+      // `settings_cards_*.dart`）→ 必须并**整族**，只并桶文件的话卡片里的 key / 文案
+      // 一个都读不到（实测：本族守卫因此红过 8 例）。
       final paths = path.endsWith('settings/presentation/settings_screen.dart')
-          ? [path, 'lib/features/settings/presentation/widgets/settings_cards.dart']
+          ? [path, ..._settingsCardsSources()]
           : [path];
       return paths.map((p) => File(p).readAsStringSync()).join('\n');
     }
@@ -546,14 +620,24 @@ void main() {
       expect(screen.contains('SettingsSection.schedule'), isTrue);
     });
 
-    test('设置页的开关读该学期课表缓存（不联网）+ 确认框文案', () {
+    test('设置页的开关读该学期课表缓存（不联网）+ 新口径文案', () {
       final settings = read(
         'lib/features/settings/presentation/settings_screen.dart',
       );
       expect(settings.contains('class SettingsScheduleDisplayCard'), isTrue);
       expect(settings.contains('scheduleCachedEntriesProvider'), isTrue);
       expect(settings.contains('scheduleDayCourseCount('), isTrue);
-      expect(settings.contains('仍然隐藏'), isTrue);
+      // ⚠ 2026-10-08 口径修订（用户原话「隐藏生效仅当没课时才生效」）：
+      // 有课的列从此永远照常显示 → 原来那个「隐藏后课表里就看不到它们了 /
+      // 仍然隐藏」的确认框**必须不存在**（留着就是在警告一件不可能发生的事）。
+      expect(
+        settings.contains('仍然隐藏'),
+        isFalse,
+        reason: '隐藏不再会让用户看不到课，确认框已删（别复活）',
+      );
+      expect(settings.contains('隐藏后课表里就看不到它们了'), isFalse);
+      // 文案要说清「有课的那一周仍会显示」——这是这张卡最容易被误解的地方。
+      expect(settings.contains('（有课的那一周仍会显示）'), isTrue);
       final section = read('lib/design/settings_section.dart');
       expect(section.contains("schedule('课表')"), isTrue);
     });
@@ -562,9 +646,18 @@ void main() {
 
 /// 设置页源码（2026-09-20 架构审查 ⑥：14 个分节卡已外提到 `widgets/settings_cards.dart`）。
 ///
-/// 守卫改读**两文件并集** —— 原意不变（这些形态必须存在于设置页这一族里），
+/// 守卫改读**整族并集** —— 原意不变（这些形态必须存在于设置页这一族里），
 /// 只是不再假设它们住在同一个文件里。
-String _setSrc() => const [
+/// ⚠ 2026-10-08 第三轮：`settings_cards.dart` 又按类拆成 6 个分册（桶文件 + 5 个
+/// `settings_cards_*.dart`）→ 这里扫 `widgets/` 下所有 `settings_cards*.dart`。
+String _setSrc() => [
   'lib/features/settings/presentation/settings_screen.dart',
-  'lib/features/settings/presentation/widgets/settings_cards.dart',
+  ..._settingsCardsSources(),
 ].map((p) => File(p).readAsStringSync()).join('\n');
+
+/// `lib/features/settings/presentation/widgets/settings_cards*.dart` 全族源码。
+List<String> _settingsCardsSources() => Directory(
+  'lib/features/settings/presentation/widgets',
+).listSync().whereType<File>().map((f) => f.path).where(
+  (p) => p.endsWith('.dart') && p.contains('settings_cards'),
+).toList()..sort();

@@ -53,8 +53,12 @@ class GePriorGrade {
 
 /// 解析成绩缓存中的全部已出成绩；[box] 为 null 时返回空列表。
 ///
-/// 与成绩页口径一致：排除名单（[kExcludedGradeCourses]）内的课程不计入。
-List<GePriorGrade> gePriorGradesFromBox(Box<String>? box) {
+/// 与成绩页口径一致：**实践类课程**（[filter]，默认 = 历史那份四个课名的名单）
+/// 不计入。2026-10-08 起 [filter] 可由本专业实践环节表推导，见 `grades_exclusions.dart`。
+List<GePriorGrade> gePriorGradesFromBox(
+  Box<String>? box, {
+  PracticeCourseFilter filter = PracticeCourseFilter.fallback,
+}) {
   if (box == null) {
     return const [];
   }
@@ -85,8 +89,8 @@ List<GePriorGrade> gePriorGradesFromBox(Box<String>? box) {
       if (name.isEmpty) {
         continue;
       }
-      // 与成绩页「课程加权」同口径：排除名单内的课程不参与统计。
-      if (isExcludedGradeCourse(name)) {
+      // 与成绩页「课程加权」同口径：实践类课程不参与统计。
+      if (filter.excludes(code: g.courseCode.trim(), name: name)) {
         excluded++;
         continue;
       }
@@ -121,10 +125,13 @@ List<GePriorGrade> gePriorGradesFromBox(Box<String>? box) {
 /// 任何异常（box 未初始化、读取失败）都吞掉并返回空列表——本模块的
 /// 加权平均只是增强信息，不应因成绩缓存问题阻塞页面。异常会打日志，
 /// 便于排查「合计里没有教务成绩」这类静默失败。
-Future<List<GePriorGrade>> loadGePriorGrades({String? account}) async {
+Future<List<GePriorGrade>> loadGePriorGrades({
+  String? account,
+  PracticeCourseFilter filter = PracticeCourseFilter.fallback,
+}) async {
   try {
     final box = await openAccountScopedBox(geGradesBoxName, account);
-    return gePriorGradesFromBox(box);
+    return gePriorGradesFromBox(box, filter: filter);
   } catch (e, st) {
     debugPrint('[score_estimate] 打开成绩缓存 box 失败：$e\n$st');
     return const [];

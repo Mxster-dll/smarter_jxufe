@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 
 import 'package:smarter_jxufe/core/errors/app_exception.dart';
+import 'package:smarter_jxufe/core/network/dio_factory.dart';
 import 'package:smarter_jxufe/core/network/trace_text.dart';
 import 'package:smarter_jxufe/features/tice/data/models/tice_models.dart';
 
@@ -21,22 +22,21 @@ class TiceRemoteDataSource {
   static const _school = '江西财经大学';
 
   static Dio _buildDio() {
-    return Dio(
-      BaseOptions(
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 15),
-        responseType: ResponseType.bytes, // 自行按 UTF-8 解码，不依赖 charset 探测
-        validateStatus: (status) => status != null && status < 500,
-        headers: {
-          'User-Agent':
-              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-                  '(KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 '
-                  'MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI '
-                  'MiniProgramEnv/Windows WindowsWechat/WMPF',
-          'Referer':
-              'https://servicewechat.com/wx6ff9ff67c25de356/44/page-frame.html',
-        },
-      ),
+    return createAppDio(
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 15),
+      responseType: ResponseType.bytes, // 自行按 UTF-8 解码，不依赖 charset 探测
+      // 体测后端把「查无此人」等业务语义放在 4xx 正文里（要读），5xx 才算失败。
+      validateStatus: (status) => status != null && status < 500,
+      headers: {
+        'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+                '(KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 '
+                'MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI '
+                'MiniProgramEnv/Windows WindowsWechat/WMPF',
+        'Referer':
+            'https://servicewechat.com/wx6ff9ff67c25de356/44/page-frame.html',
+      },
     );
   }
 

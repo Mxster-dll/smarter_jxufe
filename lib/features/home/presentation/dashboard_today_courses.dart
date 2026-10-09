@@ -23,6 +23,8 @@ import 'package:smarter_jxufe/features/ims/schedule/data/providers/live_class_pr
 
 import 'package:smarter_jxufe/features/ims/schedule/domain/period_time.dart';
 
+import 'package:smarter_jxufe/features/ims/schedule/presentation/reschedule_marks.dart';
+
 import 'package:smarter_jxufe/features/ims/splash/presentation/ims_splash_screen.dart';
 
 import 'package:smarter_jxufe/features/home/presentation/dashboard_common.dart';
@@ -36,6 +38,8 @@ Widget dashboardTodayCourses(BuildContext context, WidgetRef ref) {
   final PeriodTable? periods =
       ref.watch(currentPeriodTableProvider).valueOrNull ??
       ref.watch(cachedPeriodTableProvider).valueOrNull;
+  // 今日校历信息（官方事件 + 无课原因 + 假期/补课小字）：同步可得（用户 2026-10-07）。
+  final TodayCalendarInfo today = ref.watch(dashboardTodayCalendarProvider);
 
     return Material(
       key: const Key('dashTodayCard'),
@@ -61,6 +65,7 @@ Widget dashboardTodayCourses(BuildContext context, WidgetRef ref) {
               async,
               periods,
               narrow: narrow,
+              today: today,
             );
             return Padding(
               padding: narrow
@@ -104,7 +109,11 @@ Widget dashboardTodayCourses(BuildContext context, WidgetRef ref) {
                               ),
                             ),
                             Text(
-                              todayLabel(now),
+                              // 假期 / 补课日把小字缀在日期后面（用户 2026-10-07
+                              // 选「表头加小字标记」；首页同理，一眼看出今天特殊）。
+                              today.effectLabel.isEmpty
+                                  ? todayLabel(now)
+                                  : '${todayLabel(now)} · ${today.effectLabel}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -120,6 +129,14 @@ Widget dashboardTodayCourses(BuildContext context, WidgetRef ref) {
                     ],
                   ),
                   SizedBox(height: narrow ? 8 : 10),
+                  // 今日官方事件（用户 2026-10-07：「首页的今日课程，也要显示今日的
+                  // 事件」）——放在时间轴**上方**：移动端卡片高度被压到与指标卡区
+                  // 等高，时间轴自己还要滚动，事件放下面等于永远看不见。
+                  if (today.events.isNotEmpty) ...[
+                    for (final e in today.events)
+                      _todayEventRow(context, scheme, e, narrow: narrow),
+                    SizedBox(height: narrow ? 6 : 8),
+                  ],
                   // 高度受限时把剩余空间给时间轴、不够就滚动（卡片高度可能被压到
                   // 比时间轴还矮 —— 移动端要与指标卡区等高）；**高度不受限时一律
                   // 不挂 flex** —— 无限高约束 + 非零 flex 子项会直接抛
@@ -152,6 +169,7 @@ Widget dashboardTodayCourses(BuildContext context, WidgetRef ref) {
     AsyncValue<List<TodayCourse>> async,
     PeriodTable? periods, {
     bool narrow = false,
+    TodayCalendarInfo today = const TodayCalendarInfo(),
   }) {
     return async.when(
       loading: () => const [
@@ -175,11 +193,15 @@ Widget dashboardTodayCourses(BuildContext context, WidgetRef ref) {
       ],
       data: (courses) {
         if (courses.isEmpty) {
+          // 没课时给出原因（周末 / 暑假 / 寒假 / 国庆节假期…，用户 2026-10-07）；
+          // 说不出特别原因时保留原来那句。
           return [
             dashboardInlineStatus(
               scheme,
               Icons.event_available_outlined,
-              '今天没有课，好好休息吧',
+              today.noClassReason == null
+                  ? '今天没有课，好好休息吧'
+                  : '今天没有课 · ${today.noClassReason}',
             ),
           ];
         }
@@ -263,6 +285,48 @@ Widget dashboardTodayCourses(BuildContext context, WidgetRef ref) {
     );
 }
 
+  /// 今日的一条官方安排（首页「今日事件」）：
+  /// 小圆点 + 文字，最多两行（官方原文常有一整句，如「因法定节假日放假所差课程…」）。
+  Widget _todayEventRow(
+    BuildContext context,
+    ColorScheme scheme,
+    String text, {
+    bool narrow = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 3),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 4.5),
+            child: Container(
+              width: 4,
+              height: 4,
+              decoration: BoxDecoration(
+                color: scheme.onSurfaceVariant,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              text,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: narrow ? 10.5 : 11.5,
+                height: 1.3,
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _todayCourseCell(
     BuildContext context,
     ColorScheme scheme,
@@ -294,16 +358,29 @@ Widget dashboardTodayCourses(BuildContext context, WidgetRef ref) {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              course.courseName,
-              maxLines: roomy ? 2 : 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: nameSize,
-                height: 1.15,
-                fontWeight: FontWeight.w600,
-                color: scheme.onSurface,
-              ),
+            // 调 / 停 / 补角标（与课表页同一个 `rescheduleBadge`）：今日课程卡
+            // 也认本地调课记录，角标跟着一起出，别让同一节课在两处长得不一样。
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Flexible(
+                  child: Text(
+                    course.courseName,
+                    maxLines: roomy ? 2 : 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: nameSize,
+                      height: 1.15,
+                      fontWeight: FontWeight.w600,
+                      color: scheme.onSurface,
+                    ),
+                  ),
+                ),
+                if (rescheduleBadge(context, course.mark) case final badge?) ...[
+                  const SizedBox(width: 4),
+                  badge,
+                ],
+              ],
             ),
             if (course.classroom.isNotEmpty)
               Text(

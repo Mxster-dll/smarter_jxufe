@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:smarter_jxufe/core/network/current_account_provider.dart';
+import 'package:smarter_jxufe/core/network/dio_factory.dart';
 import 'package:smarter_jxufe/core/storage/local_data_revision.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_provider.dart';
 import 'package:smarter_jxufe/features/library_sync/data/datasources/libsp_auth_remote_datasource.dart';
@@ -21,15 +22,12 @@ import 'package:smarter_jxufe/features/library_sync/data/libsp_sync_service.dart
 
 /// 图书馆请求专用 Dio（与其它平台的会话互不干扰）。
 final libspDioProvider = Provider<Dio>((ref) {
-  return Dio(
-    BaseOptions(
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 25),
-      sendTimeout: const Duration(seconds: 25),
-      // 自己跟随重定向（换证链要逐跳看 Set-Cookie）。
-      followRedirects: false,
-      validateStatus: (_) => true,
-    ),
+  return createAppDio(
+    connectTimeout: const Duration(seconds: 15),
+    receiveTimeout: const Duration(seconds: 25),
+    sendTimeout: const Duration(seconds: 25),
+    // 自己跟随重定向（换证链要逐跳看 Set-Cookie）。
+    followRedirects: false,
   );
 });
 

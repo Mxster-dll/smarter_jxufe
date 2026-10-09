@@ -26,9 +26,11 @@ import 'package:smarter_jxufe/features/chaoxing/data/chaoxing_store.dart';
 import 'package:smarter_jxufe/features/chaoxing/data/datasources/chaoxing_auth_remote_datasource.dart';
 import 'package:smarter_jxufe/features/chaoxing/data/datasources/chaoxing_mooc_remote_datasource.dart';
 import 'package:smarter_jxufe/features/chaoxing/data/datasources/chaoxing_notice_remote_datasource.dart';
+import 'package:smarter_jxufe/features/chaoxing/data/datasources/chaoxing_sign_remote_datasource.dart';
 import 'package:smarter_jxufe/features/chaoxing/data/providers/chaoxing_providers.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_course.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_notice.dart';
+import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_sign.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_snapshot.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_text.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_work.dart';
@@ -745,6 +747,19 @@ void main() {
           body: fixture('chaoxing_work_empty.html'),
           contentType: 'text/html; charset=utf-8',
         ),
+        // 签到清单（**POST** `widget/pcpick/stu/activeList`）：1 请求/课；
+        // 假适配器只按 URL 分发，四门课拿到同一份（4 条签到）。
+        _Route(
+          (url) => url.contains('pcpick/stu/activeList'),
+          body: fixture('chaoxing_sign_list.json'),
+          contentType: Headers.jsonContentType,
+        ),
+        // 我的状态：**按需**逐活动取（1 请求/活动）。
+        _Route(
+          (url) => url.contains('pcStuSignController/preSign'),
+          body: fixture('chaoxing_sign_detail.html'),
+          contentType: 'text/html; charset=utf-8',
+        ),
         _Route(
           (url) => url.contains('notice/getNoticeList'),
           body: fixture('chaoxing_notices.json'),
@@ -765,6 +780,7 @@ void main() {
         auth: ChaoxingAuthRemoteDataSource(http),
         mooc: ChaoxingMoocRemoteDataSource(http),
         notice: ChaoxingNoticeRemoteDataSource(http),
+        sign: ChaoxingSignRemoteDataSource(http),
         fetchTicket: (casUrl) async {
           ticketCalls += 1;
           expect(casUrl, ChaoxingEndpoints.casServiceUrl);
@@ -790,6 +806,31 @@ void main() {
       expect(snapshot.unreadNoticeCount, 2);
       expect(snapshot.fetchedAt, isNotNull);
       expect(snapshot.works.first.courseName, '261学期 线性代数(工)');
+
+      // 签到：4 门课各 1 个请求 → 每门 4 条（fixture 里 3 条已结束 + 1 条进行中）
+      expect(snapshot.signs.length, 16, reason: '4 门课 × 4 条');
+      expect(snapshot.failedSignCourseKeys, isEmpty);
+      expect(snapshot.signsOfCourse('100000001').length, 4);
+      expect(
+        adapter.calls
+            .where((c) => c.uri.toString().contains('pcpick/stu/activeList'))
+            .length,
+        4,
+        reason: '签到清单是**每门课 1 个请求**',
+      );
+      expect(
+        adapter.calls
+            .firstWhere((c) => c.uri.toString().contains('activeList'))
+            .data
+            .toString(),
+        contains('courseId'),
+        reason: '清单是 POST form（courseId / classId / puid）',
+      );
+      expect(
+        snapshot.unknownSignStatusCount,
+        16,
+        reason: '清单接口不给我的状态 → 全部「未查」（**不是**未签）',
+      );
 
       // 进度：会话 → 课程 → 作业（逐门）→ 完成
       expect(progress.first.phase, ChaoxingPhase.session);
@@ -902,6 +943,7 @@ void main() {
             auth: ChaoxingAuthRemoteDataSource(http),
             mooc: ChaoxingMoocRemoteDataSource(http),
             notice: ChaoxingNoticeRemoteDataSource(http),
+            sign: ChaoxingSignRemoteDataSource(http),
             fetchTicket: (_) async => const Right(
               'https://unified-auth.chaoxing.com/login_auth/cas/jxufe/index'
               '?ticket=ST-fake',
@@ -1012,6 +1054,7 @@ void main() {
         auth: ChaoxingAuthRemoteDataSource(http),
         mooc: ChaoxingMoocRemoteDataSource(http),
         notice: ChaoxingNoticeRemoteDataSource(http),
+        sign: ChaoxingSignRemoteDataSource(http),
         fetchTicket: (_) async {
           ticketCalls += 1;
           return Right(
@@ -1037,6 +1080,7 @@ void main() {
         auth: ChaoxingAuthRemoteDataSource(http),
         mooc: ChaoxingMoocRemoteDataSource(http),
         notice: ChaoxingNoticeRemoteDataSource(http),
+        sign: ChaoxingSignRemoteDataSource(http),
         fetchTicket: (_) async => Left(UnknownFailure('尚未授权，无法获取平台会话')),
         store: ChaoxingStore(await Hive.openBox<String>('chaoxing_test_noticket')),
       );
@@ -1077,6 +1121,7 @@ void main() {
           auth: ChaoxingAuthRemoteDataSource(http),
           mooc: ChaoxingMoocRemoteDataSource(http),
           notice: ChaoxingNoticeRemoteDataSource(http),
+          sign: ChaoxingSignRemoteDataSource(http),
           fetchTicket: (_) async => Right(
             'https://unified-auth.chaoxing.com/login_auth/cas/jxufe/index'
             '?ticket=ST-fake',
@@ -1511,6 +1556,40 @@ class _FakeRepository implements ChaoxingRepository {
 
   @override
   Future<List<ChaoxingNotice>?> fetchNoticesOnly() async => null;
+
+  /// 签到：控制器「点开才查状态」用的（1 请求/活动）。
+  @override
+  Future<ChaoxingSnapshot> refreshSignDetail(
+    ChaoxingSnapshot current,
+    ChaoxingSign sign,
+  ) async {
+    signDetailCalls++;
+    return current.copyWith(
+      signs: [
+        for (final s in current.signs)
+          if (s.key == sign.key)
+            s.copyWith(status: ChaoxingSignStatus.signed, statusLoaded: true)
+          else
+            s,
+      ],
+    );
+  }
+
+  /// 签到：手动全量更新（清单 + 状态）。
+  @override
+  Future<ChaoxingSnapshot> refreshSignsFull(
+    ChaoxingSnapshot current, {
+    bool allCourses = false,
+    void Function(ChaoxingProgress progress)? onProgress,
+  }) async {
+    signFullCalls++;
+    signFullAllCourses = allCourses;
+    return current;
+  }
+
+  int signDetailCalls = 0;
+  int signFullCalls = 0;
+  bool? signFullAllCourses;
 
   @override
   bool get hasSession => false;

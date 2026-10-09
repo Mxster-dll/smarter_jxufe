@@ -20,7 +20,9 @@ import 'package:smarter_jxufe/features/comprehensive_service/presentation/jh_rea
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/second_class_credit_screen.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/presentation/volunteer_hours_screen.dart';
 import 'package:smarter_jxufe/features/data_center/presentation/data_center_screen.dart';
+import 'package:smarter_jxufe/features/ehall/presentation/ehall_screen.dart';
 import 'package:smarter_jxufe/features/electricity/presentation/electricity_screen.dart';
+import 'package:smarter_jxufe/features/fill_form/presentation/fill_form_screen.dart';
 import 'package:smarter_jxufe/features/ims/course_selection/presentation/course_selection_screen.dart';
 import 'package:smarter_jxufe/features/ims/menu/domain/ims_tab.dart';
 import 'package:smarter_jxufe/features/ims/public_query/presentation/classroom_free_screen.dart';
@@ -46,7 +48,10 @@ enum HomeServiceGroup {
   ims('教务系统'),
   study('学习与测评'),
   campus('校园生活'),
-  info('数据与信息');
+  info('数据与信息'),
+  /// 填表助手**自成一组**（用户 2026-10-07：「这个填材料的功能应该独立出来」，
+  /// 对「放哪个分组」的回答就是「独立」）—— 侧栏里单列一节，不塞进上面任何一组。
+  fillForm('评优评先');
 
   const HomeServiceGroup(this.title);
 
@@ -142,6 +147,16 @@ List<HomeServiceEntry> homeServiceEntries({
       () => const AiChatScreen(),
       sidebarPinned: true,
     ),
+    // 填表助手（用户 2026-10-07 从材料库里**独立**出来）：宫格排第 2 格
+    // （不抢 AI 助手 2026-09-19 定下的第一格），侧栏自成一组「评优评先」。
+    entry(
+      Icons.assignment_turned_in_outlined,
+      '填表助手',
+      '上传学校下发的 docx · 自动识别待填项并填好',
+      HomeServiceGroup.fillForm,
+      f.fillForm,
+      () => const FillFormScreen(),
+    ),
     entry(
       ImsTab.curriculum.icon,
       ImsTab.curriculum.title,
@@ -175,6 +190,20 @@ List<HomeServiceEntry> homeServiceEntries({
       () => imsTab(ImsTab.graduationRequirements),
     ),
     // 「我的」不在宫格里（用户 2026-09-11 裁定）——入口 = 顶栏右上角头像。
+    // 智慧江财（ehall 综合服务门户）（用户 2026-10-08 立项：「我希望内置一个 webview，
+    // 用于加载原生网页：http://ehall.jxufe.edu.cn/，但是支持直接复用当前项目里的
+    // 登录 cookie」）—— 全应用**第一个带登录态的内嵌网页**：把统一认证的 TGC 写进
+    // 内嵌浏览器的 Cookie 罐，页面直接是已登录门户（口径与实测链见 docs/agents/40）。
+    // 排位：紧接四枚教务磁贴之后 —— 它是教务 / 学工 / 后勤 / 图书馆的总入口，
+    // 「门户」挨着「教务」最符合找东西的顺序。
+    entry(
+      Icons.apps_outlined,
+      '智慧江财',
+      '综合服务门户 · 复用统一认证登录态直接进',
+      HomeServiceGroup.campus,
+      f.ehall,
+      () => const EhallScreen(),
+    ),
     entry(
       Icons.place_outlined,
       '学校地址',

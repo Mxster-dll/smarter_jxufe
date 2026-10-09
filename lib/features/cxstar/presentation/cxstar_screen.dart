@@ -84,8 +84,9 @@ class _CxstarScreenState extends ConsumerState<CxstarScreen> {
   /// [force] = true 的调用方 = 显式刷新（结算补刷等），不受 1 分钟窗口限制。
   void _refreshOverview({bool force = false}) {
     if (!mounted) return;
-    if (!force && !ref.read(cxstarRefreshGateProvider).allowsAutoRefresh)
+    if (!force && !ref.read(cxstarRefreshGateProvider).allowsAutoRefresh) {
       return;
+    }
     invalidateIfLoaded(ref, cxstarOverviewProvider);
     // 逐书报告（累计时长 / 完成时间）随统计一起刷新；统计还没到位时不动，
     // 免得把记录行刚发起的报告请求作废重发。

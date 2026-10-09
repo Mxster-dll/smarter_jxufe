@@ -17,6 +17,7 @@ import 'package:smarter_jxufe/features/data_center/data/providers/data_center_pr
 import 'package:smarter_jxufe/features/data_center/domain/dzj_extra.dart';
 import 'package:smarter_jxufe/features/data_center/domain/dzj_peer.dart';
 import 'package:smarter_jxufe/features/data_center/presentation/dzj_peer_sheet.dart';
+import 'package:smarter_jxufe/features/data_center/presentation/widgets/data_center_common.dart';
 
 // ---- 补充模块（本学期课程 / 图书馆座位预约 / 助学金与勤工助学）----
 
@@ -93,36 +94,28 @@ Widget dcExtraCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(module.icon, size: 18, color: accent),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  module.title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              if (block != null && block.total > 0)
-                Text(
-                  '${block.total} 条',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textMuted(context),
-                  ),
-                ),
-              if (block == null && async.hasError)
-                IconButton(
-                  key: Key('dzjExtraRetry-${module.key}'),
-                  tooltip: '重新读取',
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.refresh, size: 17),
-                  onPressed: () => ref.invalidate(dzjExtraProvider),
-                ),
-            ],
+          dcCardHeader(
+            context,
+            icon: module.icon,
+            title: module.title,
+            accent: accent,
+            trailing: block != null && block.total > 0
+                ? Text(
+                    '${block.total} 条',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textMuted(context),
+                    ),
+                  )
+                : (block == null && async.hasError
+                      ? IconButton(
+                          key: Key('dzjExtraRetry-${module.key}'),
+                          tooltip: '重新读取',
+                          visualDensity: VisualDensity.compact,
+                          icon: const Icon(Icons.refresh, size: 17),
+                          onPressed: () => ref.invalidate(dzjExtraProvider),
+                        )
+                      : null),
           ),
           const SizedBox(height: 10),
           body,
@@ -177,111 +170,126 @@ Widget dcExtraRow(BuildContext context, DzjInfoItem item) {
   );
 }
 
-// ---- 校内关系 / 相关人员（点人数看名单）----
+// ---- 校内关系（融合后的 8 目 · 一张卡 · 点人数看名单）----
 
-/// 「校内关系」卡（组件 `u:fcd2d17a9131`，5 维 + 派生 1 维）。
+/// 名单卡里一枚关系方格的**固定宽度**。
 ///
-/// 五维人数来自 [dzjPeerCountsProvider]（**2026-10-01 从概览里拆出**：
-/// 它们是五条 `count(distinct …)` 关联子查询，压在首屏就等于让"进页面
-/// 先见人"看这五条查询的脸色）；派生那一维（「同年级同学院」）走
-/// [dzjGradeCollegeCountProvider]。
+/// 固定宽是为了让占比条彼此可比 —— 宽度随文字长短变的话，条长就不再是比例了。
+/// 108 ≈ 一行放得下 6 个字的目名（「同年级同专业」），390 宽的手机一行三枚。
+const double dcPeerTileWidth = 108;
+
+/// 「校内关系」卡：**一份网格 8 目**（融合了从前的「校内关系」与「相关人员」两张卡）。
 ///
-/// 额外挂一枚 **「同年级同学院」**（用户 2026-09-20 立项）：它不在服务端五路里，
-/// 是「同年级」行集按本人学院过滤出来的（[dzjCollegeFilterSql] 一次请求拿 total），
-/// 排在同年级后面；取不到就整枚不画（不谎报 0 人）。
+/// 用户 2026-10-09 原话：「这两个功能本身就很极高的相似度，那不如直接融合为一个功能。
+/// 所有的卡片统一样式，然后重复的卡片不重复显示，可以归并的信息就归并显示」
+/// → 一个关系只出现一次（[DzjPeerRelation]）：人数取主口径（行里带学号 / 班级 / 年级），
+/// 主口径没取到才回落到另一份；点开弹层可切换另一份口径，两套系统的名单差一眼可见。
 ///
-/// 四态与「相关人员」卡同口径：**没到 = 「正在读取…」、失败 = 说失败 +
-/// 一枚重试**（从前失败会整块空白，用户看不出是没数据还是没取到）。
-Widget dcPeerCard(BuildContext context, WidgetRef ref) {
-  final async = ref.watch(dzjPeerCountsProvider);
-  final counts = async.valueOrNull;
-  final visible = DzjPeerDimension.relationDims
-      .where((d) => (counts?[d.key] ?? -1) >= 0)
-      .toList();
+/// 四态（一张卡只有一份，判据看**两份**取数）：
+/// - 有目可铺 → 网格；某一份失败时**脚注如实说「那一份没取到」**（不静默）；
+/// - 没有目可铺且失败 → 「读取失败：…」；
+/// - 还有一份在飞 → 「正在读取…」；两份都到、一个目都没有 → 「暂无关系数据」。
+///
+/// 卡头那枚「重新读取」把**三路**一起重取（两份人数 + 派生的「同年级同学院」）。
+Widget dcRelationCard(BuildContext context, WidgetRef ref) {
+  final peerAsync = ref.watch(dzjPeerCountsProvider);
+  final relatedAsync = ref.watch(dzjRelatedCountsProvider);
   final gradeCollege = ref.watch(dzjGradeCollegeCountProvider).valueOrNull;
-  if (gradeCollege != null && gradeCollege > 0) {
-    final at = visible.indexOf(DzjPeerDimension.grade);
-    visible.insert(at < 0 ? 0 : at + 1, DzjPeerDimension.gradeCollege);
-  }
-  // 有哪一枚就画哪一枚：五维来自 `dzjPeerCountsProvider`，「同年级同学院」
-  // 来自它自己那条过滤查询 —— 后者拿到了就该显示，哪怕五维那一份整体没取到。
-  final String? emptyText;
-  if (async.hasError) {
-    emptyText = '读取失败：${friendlyErrorText(async.error!)}';
-  } else if (visible.isEmpty) {
-    emptyText = async.isLoading ? '正在读取…' : '暂无关系数据';
-  } else {
-    emptyText = null;
-  }
-  return dcRosterCard(
-    context,
-    icon: Icons.people_outline,
-    accent: Colors.pink[400]!,
-    title: '校内关系',
-    visible: visible,
-    countOf: (d) => d == DzjPeerDimension.gradeCollege
-        ? (gradeCollege ?? 0)
-        : (counts?[d.key] ?? 0),
-    hint: '点人数可查看名单（含学号 / 班级 / 年级）',
-    emptyText: emptyText,
-    retryKey: const Key('dzjPeerRetry'),
-    onRetry: () => ref.invalidate(dzjPeerCountsProvider),
-  );
-}
 
-/// 「相关人员」卡（组件 `u:af43933a919c`，6 维）。
-///
-/// 用户 2026-09-19 二轮原话点名了学校第二个页面（`228583a5077f`）——
-/// 「这两个部分的同学名单我都要，但是后者可以查看学号班级和年级，前者只能看姓名学院」
-/// → 与「校内关系」并列的第二张名单卡；这六个维度**只有姓名 / 性别 / 校园卡号 / 学院**，
-/// 所以名单行里不会有班级年级（那是服务端本来就没给的列）。
-///
-/// 人数单独按需取（[dzjRelatedCountsProvider]）：首屏 19 个请求已经够重，
-/// 这张卡先画「正在读取…」，到了再填数；失败给「重试」，不谎报 0 人。
-Widget dcRelatedCard(BuildContext context, WidgetRef ref) {
-  final async = ref.watch(dzjRelatedCountsProvider);
-  final counts = async.valueOrNull;
-  final visible = DzjPeerDimension.relatedDims
-      .where((d) => (counts?[d.key] ?? -1) >= 0)
-      .toList();
-  final String? emptyText;
-  if (async.hasError) {
-    emptyText = '读取失败：${friendlyErrorText(async.error!)}';
-  } else if (visible.isEmpty) {
-    emptyText = async.isLoading ? '正在读取…' : '暂无相关人员数据';
-  } else {
-    emptyText = null;
-  }
-  return dcRosterCard(
-    context,
-    icon: Icons.hub_outlined,
-    accent: Colors.indigo[400]!,
-    title: '相关人员',
-    visible: visible,
-    countOf: (d) => counts?[d.key] ?? 0,
-    hint: '点人数可查看名单（该名单只有姓名 / 学院）',
-    emptyText: emptyText,
-    retryKey: const Key('dzjRelatedRetry'),
-    onRetry: () => ref.invalidate(dzjRelatedCountsProvider),
+  final relationCounts = peerAsync.valueOrNull;
+  final entries = DzjPeerEntry.build(
+    relationCounts: relationCounts,
+    relatedCounts: relatedAsync.valueOrNull,
+    gradeCollege: gradeCollege,
   );
-}
+  final gradeCount = relationCounts?[DzjPeerDimension.grade.key];
+  final failureNotes = <String>[
+    if (peerAsync.hasError)
+      '「校内关系」那一份没取到：${friendlyErrorText(peerAsync.error!)}',
+    if (relatedAsync.hasError)
+      '「相关人员」那一份没取到：${friendlyErrorText(relatedAsync.error!)}',
+  ];
 
-/// 名单卡外壳：标题 + 人数胶囊（可点）+ 脚注。
-///
-/// 两张名单卡（校内关系 / 相关人员）只有**来源组件与配色**不同，壳子共用一份
-/// —— 免得胶囊的圆角、点击区、key 规则在两边各写一遍后慢慢分叉。
-Widget dcRosterCard(
-  BuildContext context, {
-  required IconData icon,
-  required Color accent,
-  required String title,
-  required List<DzjPeerDimension> visible,
-  required int Function(DzjPeerDimension) countOf,
-  required String hint,
-  required String? emptyText,
-  Key? retryKey,
-  VoidCallback? onRetry,
-}) {
+  // 合并名单（同班 / 舍友）自己那一份失败时：方格回落成主口径人数，这里如实交代。
+  // ⚠ 这里 watch 的是与方格**同一个** provider（同一份缓存，不会多发请求）。
+  final mergeNotes = <String>[];
+  for (final e in entries) {
+    if (!e.relation.merges) continue;
+    final merged = ref.watch(dzjPeerMergedProvider(e.relation));
+    if (merged.hasError) {
+      mergeNotes.add(
+        '「${e.relation.label}」的合并名单没取到：'
+        '${friendlyErrorText(merged.error!)}'
+        '（方格显示的是「校内关系」那一份的人数）',
+      );
+    }
+  }
+
+  final muted = TextStyle(fontSize: 11, color: AppColors.textMuted(context));
+  final Widget body;
+  if (entries.isNotEmpty) {
+    final hasBar = entries.any(
+      (e) =>
+          dzjPeerGradeRatio(
+            e.dimension,
+            count: e.count,
+            gradeCount: gradeCount,
+          ) !=
+          null,
+    );
+    body = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final e in entries)
+              dcPeerTile(context, ref, entry: e, gradeCount: gradeCount),
+          ],
+        ),
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 画得出条就意味着分母拿到了（[dzjPeerGradeRatio] 的判据）→ 直接印，
+              // 不写「分母未知」那种会被误读成 0 人的话。
+              Text(
+                [
+                  '点人数可查看名单',
+                  // 同义的两对是**合并**显示的（不是二选一），脚注交代一句。
+                  if (entries.any((e) => e.relation.merges))
+                    '同班 / 舍友 = 两份名单已合并去重（人数为合并后）',
+                  if (hasBar) '占比条 = 占同年级 $gradeCount 人',
+                ].join(' · '),
+                style: muted,
+              ),
+              for (final note in [...failureNotes, ...mergeNotes])
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(note, style: muted),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  } else {
+    body = Text(
+      dcPeerStateText(
+        errorText: peerAsync.hasError
+            ? friendlyErrorText(peerAsync.error!)
+            : (relatedAsync.hasError
+                  ? friendlyErrorText(relatedAsync.error!)
+                  : null),
+        loading: peerAsync.isLoading || relatedAsync.isLoading,
+        emptyLabel: '暂无关系数据',
+      ),
+      style: TextStyle(fontSize: 12, color: AppColors.textMuted(context)),
+    );
+  }
+
   return Card(
     shape: appCardShape(context),
     child: Padding(
@@ -289,84 +297,89 @@ Widget dcRosterCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(icon, size: 18, color: AppColors.tone(context, accent)),
-              const SizedBox(width: 6),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const Spacer(),
-              if (onRetry != null)
-                IconButton(
-                  // 两张名单卡各给各的 key（同页两个「重新读取」按钮不能撞 key）。
-                  key: retryKey,
-                  tooltip: '重新读取',
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.refresh, size: 17),
-                  onPressed: onRetry,
-                ),
-            ],
+          dcCardHeader(
+            context,
+            icon: Icons.people_outline,
+            title: '校内关系',
+            accent: AppColors.tone(context, Colors.pink[400]!),
+            trailing: IconButton(
+              // 融合后只剩这一枚「重新读取」：它把两份人数一起重取。
+              key: const Key('dzjPeerRetry'),
+              tooltip: '重新读取',
+              visualDensity: VisualDensity.compact,
+              icon: const Icon(Icons.refresh, size: 17),
+              onPressed: () {
+                ref.invalidate(dzjPeerCountsProvider);
+                ref.invalidate(dzjRelatedCountsProvider);
+                ref.invalidate(dzjGradeCollegeCountProvider);
+              },
+            ),
           ),
-          const SizedBox(height: 12),
-          if (emptyText != null)
-            Text(
-              emptyText,
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textMuted(context),
-              ),
-            )
-          else
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final d in visible)
-                  dcPeerPill(
-                    context,
-                    dimension: d,
-                    value: countOf(d),
-                    accent: accent,
-                  ),
-              ],
-            ),
-          if (emptyText == null)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                hint,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textMuted(context),
-                ),
-              ),
-            ),
+          const SizedBox(height: 10),
+          body,
         ],
       ),
     ),
   );
 }
 
-/// 人数胶囊：`3 人 / 舍友`，整格可点 → 该维度的名单弹层。
-Widget dcPeerPill(
-  BuildContext context, {
-  required DzjPeerDimension dimension,
-  required int value,
-  required Color accent,
+/// 没有目可铺时的四态文案（一张卡只有一份，所以判据看**两份**取数）。
+///
+/// 顺序是刻意的：**失败优先于「正在读取」**（一份死了、另一份还在飞 —— 先说失败，
+/// 等另一份到了自然会变成网格，失败原因转由脚注继续交代，不静默）。
+String dcPeerStateText({
+  required String? errorText,
+  required bool loading,
+  required String emptyLabel,
 }) {
-  final tone = AppColors.tone(context, accent);
+  if (errorText != null) return '读取失败：$errorText';
+  if (loading) return '正在读取…';
+  return emptyLabel;
+}
+
+/// 一个关系目的的方格：`45 人` + 目名 +（可选）占比条。
+///
+/// 整格可点 → 该关系的名单弹层（[showDzjPeerSheet]）。
+///
+/// **同义的两对（同班 / 舍友）显示的是两份名单合并去重后的真实人数**
+/// （用户 2026-10-09：「做成信息归并式的」+ 拍板「方格预取并显示合并后的真实人数」）：
+/// 数据来自 [dzjPeerMergedProvider] —— 那两份进页面就取，与弹层用的是**同一份缓存**，
+/// 所以方格上的数与点开的名单永远一致，且弹层秒开。合并还没到就画「… 人」
+/// （**不拿主口径的数冒充**）；万一合并那一份失败，回落主口径人数并由卡片脚注交代。
+Widget dcPeerTile(
+  BuildContext context,
+  WidgetRef ref, {
+  required DzjPeerEntry entry,
+  int? gradeCount,
+}) {
+  final relation = entry.relation;
+  final tone = AppColors.tone(context, Colors.pink[400]!);
+  final muted = AppColors.textMuted(context);
+
+  final mergedAsync = relation.merges
+      ? ref.watch(dzjPeerMergedProvider(relation))
+      : null;
+  final mergedCount = mergedAsync?.valueOrNull?.count;
+  final value = relation.merges
+      ? (mergedCount ?? (mergedAsync!.hasError ? entry.count : null))
+      : entry.count;
+
+  final ratio = dzjPeerGradeRatio(
+    entry.dimension,
+    count: value ?? 0,
+    gradeCount: gradeCount,
+  );
   return InkWell(
-    key: Key('dzjPeer-${dimension.key}'),
+    key: Key('dzjPeer-${relation.key}'),
     borderRadius: BorderRadius.circular(10),
-    onTap: () =>
-        showDzjPeerSheet(context, dimension: dimension, count: value),
+    onTap: () => showDzjPeerSheet(
+      context,
+      dimension: entry.dimension,
+      count: value,
+    ),
     child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      width: dcPeerTileWidth,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: AppColors.statusFill(context, tone),
         borderRadius: BorderRadius.circular(10),
@@ -375,23 +388,65 @@ Widget dcPeerPill(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ellipsis：人数可能四位数（如「7716 人」），大字号 / 无障碍放大时也要能缩，
+          // 不能把方格撑破。
           Text(
-            '$value 人',
+            value == null ? '… 人' : '$value 人',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.bold,
-              color: value > 0 ? tone : AppColors.textMuted(context),
+              color: (value ?? 0) > 0 ? tone : muted,
             ),
           ),
           const SizedBox(height: 1),
           Text(
-            dimension.label,
-            style: TextStyle(
-              fontSize: 11,
-              color: AppColors.textMuted(context),
-            ),
+            relation.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 11, color: muted),
           ),
+          if (ratio != null) ...[
+            const SizedBox(height: 6),
+            dcPeerRatioBar(
+              context,
+              ratio: ratio,
+              color: tone,
+              barKey: Key('dzjPeerBar-${relation.key}'),
+            ),
+          ],
         ],
+      ),
+    ),
+  );
+}
+
+/// 占比条：底槽 + 按比例的填充。
+///
+/// 长度只在自己这一行内横比（同一组里每枚方格都是 [dcPeerTileWidth] 宽），
+/// 分母与「只对哪几维画」的口径在 [dzjPeerGradeRatio] 里，别在这里另判一次。
+Widget dcPeerRatioBar(
+  BuildContext context, {
+  required double ratio,
+  required Color color,
+  Key? barKey,
+}) {
+  return SizedBox(
+    key: barKey,
+    height: 3,
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(2),
+      child: ColoredBox(
+        color: AppColors.stroke(context),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: FractionallySizedBox(
+            widthFactor: ratio.clamp(0.0, 1.0),
+            heightFactor: 1,
+            child: ColoredBox(color: color.withValues(alpha: 0.55)),
+          ),
+        ),
       ),
     ),
   );

@@ -18,8 +18,13 @@ import 'package:smarter_jxufe/features/ims/student_info/domain/student_info.dart
 import 'package:smarter_jxufe/features/ims/student_info/presentation/account_screen.dart';
 import 'package:smarter_jxufe/shared/widgets/account_avatar.dart';
 import 'package:smarter_jxufe/design/app_states.dart';
+import 'package:smarter_jxufe/design/pane_chrome.dart';
 
 /// 「我的」页面 —— 左右双列纵排，纯色标题背景。
+///
+/// [showAppBar] 默认 true = 照旧带自己的导航栏；**内嵌在侧栏右栏**时（`PaneScope`
+/// 注入，见 `lib/design/pane_chrome.dart` §19）由 [paneAppBar] 自动整条不画 —— 那时
+/// 侧栏已高亮「我的」，再画一条只剩重复信息（2026-10-09 五轮，与设置页同一口径）。
 class StudentInfoScreen extends ConsumerWidget {
   final bool showAppBar;
 
@@ -42,7 +47,11 @@ class StudentInfoScreen extends ConsumerWidget {
 
     if (showAppBar) {
       return Scaffold(
-        appBar: AppBar(title: const Text('我的'), centerTitle: true),
+        appBar: paneAppBar(
+          context,
+          title: const Text('我的'),
+          centerTitle: true,
+        ),
         body: body,
       );
     }

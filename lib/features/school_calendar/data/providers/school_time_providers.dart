@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/school_calendar_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/school_calendar.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/school_time.dart';
+import 'package:smarter_jxufe/features/school_calendar/domain/school_time_timeline.dart';
 
 /// 学校时间轴（学年 / 学期 / 假期）—— **其它模块取学校时间的唯一入口**。
 ///
@@ -21,9 +22,13 @@ import 'package:smarter_jxufe/features/school_calendar/domain/school_time.dart';
 /// final breaks = table.breaksOf(2026);  // 寒假 / 暑假
 /// ```
 export 'package:smarter_jxufe/features/school_calendar/domain/school_time.dart';
+export 'package:smarter_jxufe/features/school_calendar/domain/school_time_timeline.dart'
+    show schoolYearTermSegments;
 
-/// 一个学年要问的三个学段（0 第一学期 / 1 第二学期 / 2 第二阶段）。
-const List<int> schoolYearTermSegments = [0, 1, 2];
+/// 一个学年要问的三个学段（0 第一学期 / 1 第二学期 / 2 第二阶段）——
+/// **唯一定义在 `domain/school_time_timeline.dart`**（2026-10-09 从本文件收上去：
+/// 展示层的时间线也要用它，留在 data 会让 domain 反向依赖 data），
+/// 名字由上面那条 `export` 转发出去。
 
 /// [xn] 学年的学校时间表。
 final schoolTimeTableProvider =

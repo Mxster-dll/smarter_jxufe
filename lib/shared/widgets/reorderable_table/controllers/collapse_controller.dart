@@ -55,9 +55,4 @@ class CollapseController extends ChangeNotifier {
     }
     return widget.collapsedColHeaderHeight;
   }
-
-  @override
-  void dispose() {
-    super.dispose();
-  }
 }

@@ -65,11 +65,15 @@ class GuidCaptureProxy {
     _server = null;
     try {
       await srv?.close();
-    } catch (_) {}
+    } catch (_) {
+      // 停止阶段尽力而为：监听套接字关不掉也无所谓（引用已置空，端口随进程回收）。
+    }
     for (final s in List<Socket>.of(_live)) {
       try {
         s.destroy();
-      } catch (_) {}
+      } catch (_) {
+        // 同一个道理：单条连接销毁失败不影响其余连接与整体拆除。
+      }
     }
     _live.clear();
   }
@@ -99,7 +103,10 @@ class GuidCaptureProxy {
       if (sinkSet) {
         try {
           sink!(data);
-        } catch (_) {}
+        } catch (_) {
+          // 抓包代理是**尽力而为的旁路**：目标 socket 断了就丢掉这一段，
+          // 绝不能把异常抛回 App 的正常请求路径（那会为了抓包把功能弄坏）。
+        }
       } else {
         outbox.add(data);
       }
@@ -118,7 +125,10 @@ class GuidCaptureProxy {
               for (final o in outbox) {
                 try {
                   s(o);
-                } catch (_) {}
+                } catch (_) {
+                  // 目标就绪后补发积压数据：某一段发不出去就跳过，
+                  // 不能让一段坏数据把整条连接卡死（同一「尽力而为」口径）。
+                }
               }
               outbox.clear();
             });
@@ -286,7 +296,10 @@ class GuidCaptureProxy {
         if (_stopping) return;
         try {
           down.add(data);
-        } catch (_) {}
+        } catch (_) {
+          // 上行（目标 → App）转发失败：对端已断，丢掉这一段，
+          // 拆除交给下面 onDone / onError 的 destroy。
+        }
       },
       onDone: () => down.destroy(),
       onError: (_) => down.destroy(),

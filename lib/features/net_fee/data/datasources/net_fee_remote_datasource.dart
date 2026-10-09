@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 
 import 'package:smarter_jxufe/core/errors/app_exception.dart';
 import 'package:smarter_jxufe/features/net_fee/domain/net_fee_models.dart';
+import 'package:smarter_jxufe/features/net_fee/domain/net_fee_recharge.dart';
 
 /// 网费接口异常（message 面向 UI 直显）。
 class NetFeeApiException extends AppException {
@@ -125,6 +126,109 @@ class NetFeeRemoteDataSource {
   /// `features/network_service/data/datasources/network_service_remote_datasource.dart`，
   /// 本常量只作为该 appId 的登记处（网费与网络服务同属 wxcourse 平台域）。
   static const String networkServiceAppId = '1575336885141';
+
+  // ---------- 充值方式（微信 / 校园卡）· 2026-10-09 四轮 ----------
+  //
+  // 口径来源 = **智慧江财小程序「网费充值」页**（`pages/modules/developer/wfcz/recharge/view.js`，
+  // 从 PC 微信的 wxapkg 解包读出来的，版本 145）：
+  //
+  // ```js
+  // getPayTypeList() → POST /interface/api/interface/getWfczPayType {pageNum,pageSize,accept}
+  //    → {code:1, result:{result:{result:[{dict_key,dict_value,desc}]}}}
+  //      dict_key = 'weixin' | 'card'，**dict_value 就是该方式的充值接口地址**
+  // recharge(amount) → POST <dict_value> {username, openId, total_fee}
+  //    weixin → 回微信支付参数（小程序走 wx.requestPayment）
+  //    card   → 回 {code:0} 即「网费充值成功！」（直接从校园卡余额扣）
+  // chargeTypeChange: 非 weixin 时锁死账号 → '校园卡扣费只能给自己充值'
+  // ```
+  //
+  // ⚠ **校园卡这条路 App 侧用的是「小程序那套接口」（wxcourse 域）**，与微信那条
+  // （走 Dr.COM `self.jxufe.cn` 的二维码）不是同一套 —— 因为 Dr.COM 的 WebPay
+  // **不提供校园卡**（它的 paytype 只有 微信/支付宝/PayPal/银联，实测只渲染微信）。
+
+  /// 充值方式列表（只读；`dict_value` 是充值接口地址，别写死）。
+  Future<List<WfczChargeType>> fetchChargeTypes() async {
+    final resp = await _dio.post<dynamic>(
+      '/interface/api/interface/getWfczPayType',
+      data: <String, dynamic>{'pageNum': 1, 'pageSize': 20, 'accept': 'accept'},
+    );
+    final data = _body(resp);
+    // 三层嵌套是服务端原样（`result.result.result`），别「优化」掉。
+    final result = data['result'];
+    final inner = result is Map ? result['result'] : null;
+    final list = inner is Map ? inner['result'] : null;
+    if (list is! List) return const <WfczChargeType>[];
+    return <WfczChargeType>[
+      for (final item in list)
+        if (item is Map)
+          WfczChargeType(
+            key: item['dict_key']?.toString() ?? '',
+            url: item['dict_value']?.toString() ?? '',
+            desc: item['desc']?.toString() ?? '',
+          ),
+    ]..removeWhere((t) => t.key.isEmpty || t.url.isEmpty);
+  }
+
+  /// 小程序侧的网费身份：`enc`（= 加密 userId）+ `openId`（都在 `checkAppAuth` 里）。
+  ///
+  /// ⚠ `openId` **只能在 `pageUrl` 的 query 里拿**（它是 44 字符的加密串，含 `+` / `=`，
+  /// 交给 form 编码时别自己拼字符串）。小程序侧会对它做 `@`→`=`、`!`→`+` 的还原，
+  /// 但 `checkAppAuth` 直接给的就是原始值，这里**不需要**再做那一步。
+  Future<WfczIdentity> fetchWfczIdentity(String guid) async {
+    final trimmed = guid.trim();
+    if (trimmed.isEmpty) {
+      throw const NetFeeApiException('未配置微信平台标识（GUID）');
+    }
+    final resp = await _dio.get<dynamic>(
+      checkAppAuthUrl,
+      queryParameters: <String, dynamic>{
+        'appid': appId,
+        'platformUsername': trimmed,
+      },
+    );
+    final data = _body(resp);
+    final result = data['result'];
+    if (result is! Map) {
+      throw const NetFeeApiException('平台账号换取失败：响应缺少 result');
+    }
+    final enc = result['username']?.toString() ?? '';
+    final pageUrl = result['pageUrl']?.toString() ?? '';
+    if (enc.isEmpty) {
+      throw const NetFeeApiException('平台账号换取失败：未返回加密账号');
+    }
+    // ⚠ **必须从 rawQuery 手动取**：`Uri.queryParameters` 是 form 语义，会把
+    // openId 里合法的 `+` 解成空格（实测 `OID+AB=` → `OID AB=`）。那是 base64 串，
+    // `+` 是**真实字符** —— 解错了校方直接拒（而且报错未必说清是参数问题）。
+    final rawQuery = Uri.tryParse(pageUrl)?.query ?? '';
+    final match = RegExp(r'(?:^|&)openId=([^&]*)').firstMatch(rawQuery);
+    final openId = match == null ? '' : Uri.decodeComponent(match.group(1)!);
+    return WfczIdentity(enc: enc, openId: openId);
+  }
+
+  /// **校园卡支付**网费：直接从校园卡余额扣款。
+  ///
+  /// ⚠⚠ 这是**真扣款**：校方接口一提交就扣，没有密码、没有二次确认、也没有「未支付」
+  /// 这种中间态。所以 UI 上必须自己给足二次确认（见 `net_fee_recharge_sheet.dart`）。
+  ///
+  /// 返回 `null` = 成功；非 null = 服务端给的原因（直接上屏）。
+  Future<String?> payByCampusCard({
+    required WfczIdentity identity,
+    required double amount,
+    required String payUrl,
+  }) async {
+    final resp = await _dio.post<dynamic>(
+      payUrl,
+      data: <String, dynamic>{
+        'username': identity.enc,
+        'openId': identity.openId,
+        'total_fee': fmtYuan(netFeeNormalizeAmount(amount)),
+      },
+    );
+    final data = _body(resp);
+    final code = data['code'];
+    if (code == 0 || code == '0') return null;
+    return _message(data, '校园卡支付失败（code $code）');
+  }
 
   Map<String, dynamic> _body(Response<dynamic> resp) {
     final data = resp.data;

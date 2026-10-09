@@ -15,6 +15,7 @@ import 'package:smarter_jxufe/features/ims/student_info/data/providers/student_i
 import 'package:smarter_jxufe/features/qr_login/presentation/qr_login_viewmodel.dart';
 import 'package:smarter_jxufe/core/navigation/navigator_key.dart';
 import 'package:smarter_jxufe/features/auth/data/mfa_relogin_service.dart';
+import 'package:smarter_jxufe/features/splash/presentation/splash_flow_light_stage.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -215,16 +216,24 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    // 开屏主视觉（蛟桥图书馆插画 + 流动光效）：见 `SplashFlowLightStage`。
+    //
+    // 用户 2026-10-08 定稿：**只留这一件**。此前的「主体建筑线条稿逐层生长」
+    // 与页面底部那条来回滑动的细进度条一并撤掉 —— 光在图上流动本身就在说
+    // 「正在加载」，再加一根进度条是两套加载语言打架（同 §3「三态组件」的
+    // 口径：转圈已经在说这件事，就别再叠一句话）。
     return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(color: theme.colorScheme.error),
-            const SizedBox(height: 16),
-            const Text('加载中...'),
-          ],
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) => Align(
+            alignment: Alignment.center,
+            child: SplashFlowLightStage(
+              imageWidth: SplashFlowLightStage.responsiveWidth(
+                constraints.maxWidth,
+                availableHeight: constraints.maxHeight,
+              ),
+            ),
+          ),
         ),
       ),
     );

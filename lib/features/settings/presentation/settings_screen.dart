@@ -1,4 +1,4 @@
-/// 设置页 —— 全局偏好的集中入口（首页右上角齿轮进入）。
+﻿/// 设置页 —— 全局偏好的集中入口（首页右上角齿轮进入）。
 ///
 /// 目前承载「我的校区」与「校历」两组偏好：校区一旦设置，电费绑定免手动选校区、
 /// 学校地址与校区地图把该校区条目置顶；校历偏好控制月历「假/班」角标的画法与
@@ -17,6 +17,7 @@ import 'package:smarter_jxufe/features/campus_address/data/my_campus_prefs.dart'
 import 'package:smarter_jxufe/features/campus_address/domain/my_campus.dart';
 import 'package:smarter_jxufe/features/library_sync/presentation/libsp_sync_card.dart';
 import 'package:smarter_jxufe/features/score_estimate/presentation/ge_common.dart';
+import 'package:smarter_jxufe/design/pane_chrome.dart';
 import 'package:smarter_jxufe/design/settings_section.dart';
 import 'package:smarter_jxufe/features/settings/presentation/widgets/settings_cards.dart';
 import 'package:smarter_jxufe/features/ai/presentation/widgets/ai_settings_section.dart';
@@ -50,6 +51,8 @@ class SettingsScreen extends ConsumerWidget {
     final blocks = <({SettingsSection section, Widget title, Widget card})>[
       // 外观（跟随系统 / 浅色 / 深色）：2026-09-16 深色模式适配新增。
       // 用户裁定「全局偏好入口 = 设置页」，故不另开弹层；排在第一节。
+      // 2026-10-09 同一节再加一张「窗口标题栏」（三键风格 / logo 与三键左右互换）：
+      // 两者都是外观，分成两节会让「外观」这一节只剩主题、看着像漏了东西。
       (
         section: SettingsSection.appearance,
         title: geCardTitle(
@@ -57,7 +60,14 @@ class SettingsScreen extends ConsumerWidget {
           text: '外观',
           accent: fp(context).cardAccent,
         ),
-        card: const SettingsAppearanceCard(),
+        card: const Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SettingsAppearanceCard(),
+            // 卡片自带 12 的上边距（非 Windows 平台它整块是 shrink，不留空）。
+            SettingsWindowBarCard(),
+          ],
+        ),
       ),
       // 内置 AI 助手（用户 2026-09-19 立项）：供应商预设 / 多套配置 / 悬浮球开关。
       // 整块的实现放在 `features/ai/presentation/widgets/ai_settings_section.dart`，
@@ -159,7 +169,12 @@ class SettingsScreen extends ConsumerWidget {
         if (sections.isEmpty || sections.contains(b.section)) b,
     ];
     return Scaffold(
-      appBar: AppBar(
+      // ⚠ 用 `paneAppBar` 而不是裸 `AppBar`（2026-10-09 五轮）：侧栏视图下设置页是
+      // **内嵌在右栏**显示的（`HomeDetailPane` 注入 `PaneScope(embedded: true)`），
+      // 那时整条导航栏都不该画 —— 侧栏已高亮「设置」，再画一条就只有重复信息。
+      // 整页模式（宫格视图的齿轮 / 首页标题栏的齿轮）照旧返回真 AppBar。
+      appBar: paneAppBar(
+        context,
         title: Text(sections.length == 1 ? sections.first.label : '设置'),
         centerTitle: true,
       ),
@@ -238,4 +253,5 @@ class SettingsScreen extends ConsumerWidget {
         .save(picked == settingsClearSentinel ? null : MyCampus.fromName(picked));
   }
 }
+
 

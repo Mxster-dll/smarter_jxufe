@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -65,7 +65,9 @@ void main() {
                 width: homeSidebarWidth,
                 child: Center(child: Text('侧栏占位')),
               ),
-              Expanded(child: HomeDetailPane(entry: current)),
+              // 2026-10-09 五轮：`HomeDetailPane` 改成收 `paneKey` + `builder`
+              // （目录条目走 `HomeDetailPane.entry` 便捷构造）—— 这里跟着换写法。
+              Expanded(child: HomeDetailPane.entry(current)),
             ],
           ),
         ),
@@ -193,3 +195,4 @@ class _GateState extends State<_Gate> {
   Widget build(BuildContext context) =>
       const Scaffold(body: Center(child: Text('闸门')));
 }
+

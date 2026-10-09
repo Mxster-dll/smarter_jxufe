@@ -44,9 +44,16 @@ class FluentCard extends StatelessWidget {
     this.padding,
     this.fill,
     this.stroke,
-    this.radius = FluentRadius.overlay,
+    this.radius = defaultRadius,
     this.elevated = false,
   });
+
+  /// 默认圆角 = [FluentRadius.overlay]（8）。
+  ///
+  /// ⚠ 提成具名常量，是为了让**别的模块能引用"毕业学分页那种卡片圆角"**而不用抄字面量：
+  /// 侧栏视图的区域卡片圆角默认值取的就是它（`features/home/domain/home_card_radius.dart`
+  /// 的 `kCardRadiusDefault`，用户 2026-10-09 十六轮的口径）。
+  static const double defaultRadius = FluentRadius.overlay;
 
   final Widget child;
   final EdgeInsetsGeometry? padding;

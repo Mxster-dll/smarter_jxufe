@@ -15,6 +15,7 @@ export 'settings_cards_display.dart';
 export 'settings_cards_schedule.dart';
 export 'settings_cards_session.dart';
 export 'settings_cards_widgets.dart';
+export 'settings_cards_window.dart';
 
 /// 「不设置」在选择面板里的哨兵值。
 ///

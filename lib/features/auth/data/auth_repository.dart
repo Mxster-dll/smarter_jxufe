@@ -459,4 +459,34 @@ class AuthRepository {
       return Left(UnknownFailure('获取平台会话错误：$e'));
     }
   }
+
+  /// 取一枚**当下可用**的 TGC —— 给「把登录态交给内嵌浏览器」用
+  /// （2026-10-08 加 · AGENTS.md §40）。
+  ///
+  /// 复用 [getServiceRedirectUrl]：它先拿 TGC 去 CAS 换一次票，**TGC 过期就用缓存
+  /// 凭据静默重登一次再重试**（`_relogin`），所以返回 `Right` 时 `_tgc` 一定是 CAS
+  /// 当下认的那一枚 —— 正好是内嵌浏览器需要的东西
+  /// （原理与实测链见 `core/network/cas_browser_session.dart`）。
+  ///
+  /// ⚠ 换回来的**回调地址刻意丢弃**：它带的 `ticket` 是给「service 那一跳」用的，
+  /// 而 ehall 的 `loginSuccess` 还要一个**每次现生成的 `sessionToken`**，
+  /// 只有浏览器从头走那条 302 链才拿得到。所以这里只要「TGC 是活的」这一个副作用。
+  ///
+  /// ⚠ 返回值是**凭据本体**：只许交给 `CookieManager`，不许进日志 / 异常文案 / 磁盘
+  /// （`WebSessionCookie.toString()` 只报名字与域，打那个才是安全的）。
+  Future<Either<Failure, String>> ensureTgcFor(String casLoginUrl) async {
+    final result = await getServiceRedirectUrl(casLoginUrl);
+    return result.fold<Either<Failure, String>>(
+      (failure) => Left<Failure, String>(failure),
+      (_) {
+        final tgc = _tgc;
+        if (tgc == null || tgc.isEmpty) {
+          return Left<Failure, String>(
+            UnknownFailure('统一认证状态不可用，请重新登录'),
+          );
+        }
+        return Right<Failure, String>(tgc);
+      },
+    );
+  }
 }

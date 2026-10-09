@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/core/network/device_profile_repository_provider.dart';
+import 'package:smarter_jxufe/core/network/dio_factory.dart';
 import 'package:smarter_jxufe/core/network/dio_providers.dart';
 import 'package:smarter_jxufe/features/leave/data/datasources/leave_remote_datasource.dart';
 import 'package:smarter_jxufe/features/leave/domain/leave_models.dart';
@@ -13,19 +14,16 @@ import 'package:smarter_jxufe/features/platform_guid/data/providers/guid_provide
 /// GUID + bn 签名的鉴权在请求体内（见 [LeaveRemoteDataSource]）。
 final leaveDioProvider = Provider<Dio>((ref) {
   final deviceProfileRepo = ref.watch(deviceProfileRepositoryProvider);
-  return Dio(
-    BaseOptions(
-      baseUrl: 'https://wxcourse.jxufe.edu.cn',
-      connectTimeout: const Duration(seconds: 12),
-      receiveTimeout: const Duration(seconds: 20),
-      validateStatus: (status) => true,
-      headers: {
-        'User-Agent': deviceProfileRepo.userAgent,
-        'Referer':
-            'https://servicewechat.com/wx70c0beda0bb7b021/143/page-frame.html',
-        'Accept': 'application/json, text/plain, */*',
-      },
-    ),
+  return createAppDio(
+    baseUrl: 'https://wxcourse.jxufe.edu.cn',
+    connectTimeout: const Duration(seconds: 12),
+    receiveTimeout: const Duration(seconds: 20),
+    userAgent: deviceProfileRepo.userAgent,
+    headers: {
+      'Referer':
+          'https://servicewechat.com/wx70c0beda0bb7b021/143/page-frame.html',
+      'Accept': 'application/json, text/plain, */*',
+    },
   );
 });
 

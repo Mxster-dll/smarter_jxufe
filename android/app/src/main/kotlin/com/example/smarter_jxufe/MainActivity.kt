@@ -11,6 +11,7 @@ import android.os.Bundle
 import android.util.Log
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import com.example.smarter_jxufe.settings.AppSettingsBridge
 import com.example.smarter_jxufe.share.FileShareBridge
 import com.example.smarter_jxufe.widget.HomeWidgetBridge
 import com.example.smarter_jxufe.widget.HomeWidgetStore
@@ -22,6 +23,7 @@ class MainActivity : FlutterActivity() {
 
     private var widgetBridge: HomeWidgetBridge? = null
     private var fileShareBridge: FileShareBridge? = null
+    private var appSettingsBridge: AppSettingsBridge? = null
     private var unlockReceiver: BroadcastReceiver? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -95,6 +97,8 @@ class MainActivity : FlutterActivity() {
         unlockReceiver = null
         fileShareBridge?.dispose()
         fileShareBridge = null
+        appSettingsBridge?.dispose()
+        appSettingsBridge = null
         super.onDestroy()
     }
 
@@ -104,6 +108,9 @@ class MainActivity : FlutterActivity() {
         widgetBridge = HomeWidgetBridge(this, flutterEngine.dartExecutor.binaryMessenger)
         // 「导出文件 + 调起系统分享」桥（自研，零第三方依赖）
         fileShareBridge = FileShareBridge(this, flutterEngine.dartExecutor.binaryMessenger)
+        // 「应用后台保护设置」桥（自研，零第三方依赖）：课前提醒在华为/荣耀上被划掉后
+        // 不触发（系统限制），把用户送到「应用启动管理」页去开自启动 / 后台活动。
+        appSettingsBridge = AppSettingsBridge(this, flutterEngine.dartExecutor.binaryMessenger)
         handleWidgetIntent(intent)
     }
 

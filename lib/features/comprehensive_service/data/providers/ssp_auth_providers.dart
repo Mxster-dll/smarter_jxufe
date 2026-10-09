@@ -4,6 +4,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import 'package:smarter_jxufe/core/constants/hive_box_names.dart';
 import 'package:smarter_jxufe/core/network/device_profile_repository_provider.dart';
+import 'package:smarter_jxufe/core/network/dio_factory.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_provider.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/datasource/ssp_auth_local_datasource.dart';
 import 'package:smarter_jxufe/features/comprehensive_service/data/datasource/ssp_auth_remote_datasource.dart';
@@ -16,22 +17,19 @@ import 'package:smarter_jxufe/features/comprehensive_service/data/ssp_auth_repos
 /// 避免再出现「硬编码一个过期 JSESSIONID」的问题。
 final sspDioProvider = Provider<Dio>((ref) {
   final deviceProfileRepo = ref.watch(deviceProfileRepositoryProvider);
-  return Dio(
-    BaseOptions(
-      baseUrl: 'http://ssp.jxufe.edu.cn',
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 30),
-      validateStatus: (status) => true,
-      followRedirects: false,
-      headers: {
-        'User-Agent': deviceProfileRepo.userAgent,
-        'Accept':
-            'text/html,application/xhtml+xml,application/xml;q=0.9,'
-            'image/avif,image/webp,image/apng,*/*;q=0.8,'
-            'application/signed-exchange;v=b3;q=0.7',
-        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
-      },
-    ),
+  return createAppDio(
+    baseUrl: 'http://ssp.jxufe.edu.cn',
+    connectTimeout: const Duration(seconds: 15),
+    receiveTimeout: const Duration(seconds: 30),
+    followRedirects: false,
+    userAgent: deviceProfileRepo.userAgent,
+    headers: {
+      'Accept':
+          'text/html,application/xhtml+xml,application/xml;q=0.9,'
+          'image/avif,image/webp,image/apng,*/*;q=0.8,'
+          'application/signed-exchange;v=b3;q=0.7',
+      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
+    },
   );
 });
 

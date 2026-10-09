@@ -49,6 +49,8 @@
 | 作业列表 | `GET /mooc-ans/work/getAllWork?<原样 query>` | **HTML**：`li > .titTxt > a.inspectTask[data]` + 三个 `span.pt5`（开始/截止/状态）+ `div.titOper`（已完成时 `90分`）。⚠ query 必须**原样拼进 URL**，走 `queryParameters` 会再编码 → 签名对不上 |
 | 通知 | `GET notice.chaoxing.com/pc/notice/getNoticeList?s=<token>` | JSON，一次最近 20 条；发件人字段是 **`createrName`**（没有 `senderName`）、已读是 **`isread`**（小写 r） |
 | 红点 | `GET i.chaoxing.com/base/getNoticeCount` | `msg` 是**布尔**不是条数（实测 20 条通知时也是 `false`）→ **不用于界面计数** |
+| 签到清单 | `POST mobilelearn.chaoxing.com/widget/pcpick/stu/activeList` | **POST form**（`courseId`/`classId`/`puid`）→ JSON `data.startList` + `data.endList`；只认 `activeType == 2`（签到），**1 请求/课** |
+| 我的签到状态 | `GET /widget/sign/pcStuSignController/preSign?activeId=&classId=&courseId=` | HTML；`<span class="greenColor">签到成功</span>` + `<em id="st">` 时刻；**1 请求/活动**，按需取 |
 | ⚠ 作废 | `POST /mooc-ans/api/workTestPendingNew` | 恒返回 `[]`（7 种变体全试过）→ 别拿它当「待做作业」筛选器 |
 | ⚠ 未破解 | 通知翻页 | `lastGetId` / `lastPage` / `page` / `pageNum` 都返回同一页 → 只取第一页 |
 
@@ -59,10 +61,10 @@
 ```
 domain/            纯领域：课程 / 作业 / 通知 / 快照 / 文案（无 Flutter、无 Hive、无网络）
 data/              会话、端点表、Cookie 罐、HTTP 客户端、仓库（编排）、缓存、刷新闸门
-data/anti_corruption/   三个解析器：课程清单 HTML、作业入口 query、作业页 HTML、通知 JSON
-data/datasources/       三个远端数据源：换证（auth）/ 课程与作业（mooc）/ 通知（notice）
+data/anti_corruption/   四个解析器：课程清单 HTML、作业入口 query、作业页 HTML、通知 JSON、签到（清单 JSON + 详情页 HTML）
+data/datasources/       四个远端数据源：换证（auth）/ 课程与作业（mooc）/ 通知（notice）/ 签到（sign）
 data/providers/          Dio、数据源、仓库、控制器、角标、刷新闸门
-presentation/           主页 + 作业 / 通知 / 课程三个二级页 + 共享行/卡组件
+presentation/           主页 + 作业 / 通知 / 课程 / 签到四个二级页 + 共享行/卡组件
 ```
 
 - `ChaoxingEndpoints` 是**全部地址的唯一出处**（守卫生效点见下）。
@@ -199,6 +201,38 @@ presentation/           主页 + 作业 / 通知 / 课程三个二级页 + 共�
   `9月20日24:00前提交作业` 正是通知标题的后半段）→ 已扫到的不重复显示。
   ⚠ 只认 `作业:` / `作业：` 开头这一种形态：「作业结束提醒」是已结束，不是发布。
 
+## 签到（2026-10-09 加 · 用户：「我希望还能接入学习通里的签到记录」）
+
+签到**不在** mooc1 网页端（课程详情页与「统计」页都没有这个入口，实测），在**学习通 App 侧**
+`mobilelearn.chaoxing.com`。三处口径：
+
+1. **清单 = 1 请求/课**（`POST widget/pcpick/stu/activeList`）：拿到这门课的**全部签到**
+   （进行中 + 已结束）、类型名（二维码 / 手势 / 位置签到…）、起止时间、**全班**签到人数。
+   只保留 `activeType == 2`（选人 / 抢答 / 投票等别的活动不进列表）。
+2. **「我的状态」清单接口不给**（实测 `userStatus` **恒为 null**，加 `stuid`/`uid`/`studentId`/
+   `showUserStatus` 都不变；`/v2/apis/sign/*` 与 `/pptSign/*` 全 `500`）→ 只能**逐活动**打详情页
+   （`GET …/pcStuSignController/preSign`，**1 请求/活动**）。所以：
+   - 列表里未查过的条目显示 **「状态未知」**，**绝不说成「未签」**（`statusLoaded` 分档）；
+   - 点开某条 → 弹窗里一键查（1 个请求），结果并进快照落盘；
+   - 「全部签到」页有**手动**「补全全部状态」（逐活动）与「含往期课程一起更新」
+     （连全部课程的清单也重扫）—— 都先弹确认，撞风控立刻收手、已拿到的照算。
+3. **成本**（用户拍板「自动只扫本学期、允许手动全量」）：自动刷新与作业同一批课程，
+   **每门课多 1 个请求**（本学期 12 门 → +12），「我的状态」不进自动扫描。
+
+状态码字典（站方 `util2.js`，`activeType == 2` 分支）：
+`0 未签 / 1 已签 / 2 代签 / 4 请假 / 5 缺勤 / 7 病假 / 8 事假 / 9 迟到 / 10 早退 / 11 签到已过期`；
+详情页只给**文案**（类名是 `greenColor`/`redColor` 这种，别按类名判档）。
+`ChaoxingSignStatus` 给三档归类：`isSigned`（已签 / 代签）、`isAbsent`（未签 / 缺勤 / 已过期）、
+`isKnown`（查过了）。⚠ 详情页的 `activeStatus` 是**活动**状态（`2` = 已结束），不是我的。
+
+落点：端点唯一出处 `data/chaoxing_endpoints.dart`（`signHost` / `signListPath` / `signPagePath` /
+`signDetailPath`）· 模型 `domain/chaoxing_sign.dart` · 解析 `data/anti_corruption/chaoxing_sign_parser.dart` ·
+数据源 `data/datasources/chaoxing_sign_remote_datasource.dart` · 仓库 `refreshSignDetail`（点开查）与
+`refreshSignsFull`（手动全量）· 页面 `presentation/chaoxing_signs_screen.dart` +
+`chaoxing_common.dart` 的 `ChaoxingSignRow` / `ChaoxingSignStatusChip` / `showChaoxingSignDetail`。
+⚠ `ChaoxingHttpClient.post` 是**只读查询**用的（站方自己用 POST 查数据），**永不**调用签到提交
+（`pptSign/stuSignajax`）。
+
 ## 页面
 
 | 页面 | 内容 |
@@ -242,12 +276,19 @@ presentation/           主页 + 作业 / 通知 / 课程三个二级页 + 共�
 
 - `test/chaoxing_parser_test.dart`（24 例）：三个解析器 + **端点与换证链守卫**
   （CAS service 必须是网关那个百分号编码串、refer 必须是学习空间、桥接参数回代）。
+- `test/chaoxing_sign_parser_test.dart`（**19 例**）：**签到纯域守卫** —— 只认 `activeType == 2`
+  （选人与缺 id 的条目都要丢）、字段口径（`id`/类型名/起止/人数/`clazzid`）、`userStatus` 缺失 →
+  **状态未知而不是未签**、服务端将来给码值也认、按开始时间倒序、`result == 1` 才算成功、
+  两种坏数据容错；状态字典全表（码值与文案两套，含「未签到」不许被「签到」抢先命中）；
+  详情页解析（真机页面形态 / 认不出 → 保持未知 / `setDate` 兜底 / 「未签到」文案档）；
+  模型（`key`、JSON 往返、旧缓存缺字段、`isOpenAt`、`durationText` 三档）。
 - `test/chaoxing_data_test.dart`（**45 例**）：Cookie 罐按域匹配、快照派生与文案（含 1 分钟闸门、
   `chaoxingCourseNameOf`、`chaoxingMomentText`）、**业务请求跳转口径 3 例**（真机 302 回归，见下）、
   **风控与「可信空」口径 13 例**（挑战页 202 / 200 两种识别、课程页与作业页的挑战页、
   抠不出作业入口、作业页 0 条无空标记、真·空课仍返回空、课程清单空 / 挑战页、限速器串行、
   **限速器并发**、换证链不排队）、**端到端 7 例**（假 HTTP 走完整换证链 + 真解析器：
-  4 门课 / 3 条作业 / 4 条通知 + 落缓存 + Cookie 归属；会话失效只重换一次票；换票失败抛带原因的异常；
+  4 门课 / 3 条作业 / 4 条通知 / **16 条签到**（**每门课 1 个 `activeList` 请求**、
+  POST form 带 `courseId`、状态全部「未查」） + 落缓存 + Cookie 归属；会话失效只重换一次票；换票失败抛带原因的异常；
   **风控截断 → 已扫到的照算 / 没扫到的沿用旧数据 + 冷却期一个请求不发**；**分批轮转**；
   **可信空压过旧数据**；**通知失败沿用旧通知**；**单课结构变化 → 逐课容错仍落盘**）、
   **控制器 3 例**（★ **并发 `refresh` 只跑一次全扫**（假仓库 `implements ChaoxingRepository`，
@@ -257,11 +298,15 @@ presentation/           主页 + 作业 / 通知 / 课程三个二级页 + 共�
   子类，只覆盖 `build` 与四个动作，**不碰网络与 Hive**）喂固定快照：主页四区块 + 概览三个 Key、
   空快照不崩且首次进入会取数（闸门只拦「有数据」的情形）、作业页四档筛选、通知页弹全文且不写已读、
   课程页展开看作业、刷新按钮真的调 `refresh`、**手动刷新带 `force` 而自动刷新不带**、
+  **签到 6 例**（主页区块：进行中排最前 + 「状态未知」不许写成「未签」+ 三枚概览 Key；
+  空态如实说「另有 N 门课的签到没取到」；点开弹窗「查询我的状态」→ 回调记账；已查过的不再给按钮；
+  「全部签到」页按课分组 + 两个手动按钮都先确认（`allCourses` 两档）＋ 未取到的课标注）、
   **主页通知行点开详情**（「所属课程」只有查得到才印）、
   通知行 **`onTap` 非空才出右箭头**、**作业详情弹窗**（待做有「剩余」+ 开始时间缺失给 `—` / 已完成
   「已完成 90 分」且**无**「剩余」）、**主页两个作业区块的行直接可点**、作业行 **`onTap` 门控箭头**、
   ★ **未扫到的课如实说**（全部课程页写「本轮未扫到」而**不写**「这门课没有作业记录」；主页
   「待做作业」空态标注「另有 N 门课本轮未扫到，可能有遗漏」）。
+  （签到那 6 例的时间用**相对 now** —— 页面读真实时钟 `DateTime.now()`，写死日期会随时间失效。）
   ⚠ 弹窗文案要用 `find.descendant(of: find.byType(AlertDialog), matching: find.text(…))`（列表行与
   弹窗常同文案，直接 `find.text` 会命中两个）。
   ⚠ 两个测试坑：①主页是长滚动页，默认 800×600 视口下第四个区块**根本不会 build** → 要放大视口，
@@ -283,13 +328,15 @@ presentation/           主页 + 作业 / 通知 / 课程三个二级页 + 共�
 ```
 
 用本机 `app_data/auth.hive` 里的 TGC 把**真服务端**跑一遍：换票 → 网关桥接 → 会话 →
-课程 → 逐课作业 → 通知 → 快照派生，逐项 ✓/✗。`--diag` 会把第一门课的
+课程 → 逐课作业 → **签到（清单 × 3 门 + 1 条详情）** → 通知 → 快照派生，逐项 ✓/✗。`--diag` 会把第一门课的
 课程详情页与作业列表原样落盘到 `.scratch/xxt_smoke_*.html`，并打出重定向链。
 ⚠ **逐课作业默认只扫「当下学期」**（= 生产口径，见上节 A；学期码取课程里最大的那个，
 `--term=252` 可手动指定）；`--all` 才全扫 35 门 —— 那**会撞风控**（末尾几门被验证码页拦下），是诊断用，不是验收。
 ⚠ 前置：TGC **没过期**（App 关闭久了票会失效，CAS 会回登录页 —— 脚本会明确报出来并打出逐跳）。
 实测 2026-09-20（只扫当下学期）：**12/35 门（261 学期 10 + 无前缀 2）、24 个请求、6059 ms、0 风控**、
 通知 19 条、12 项全过；学期分布 `261学期=10 / 无前缀=2 / 252学期=12 / 251学期=11`。
+实测 2026-10-09（含签到）：**15/15 全过** —— 3 门课拿到 **11 条签到**（全是「二维码签到」）、
+抽 1 条详情 = `已签 · 2026-10-09 09:51`、清单条目的状态**全部「未查」**（`userStatus` 恒 null 的实测复核）。
 ⚠ **代价（用户已知情并选定）**：往期学期的作业不再取数 —— 老用户靠缓存里的旧数据继续显示，
 **全新安装只会看到当下学期的作业**（界面写「只扫当下学期（12/35 门）」）。
 实测 2026-09-19（改前，分批轮转）：35 门 / 通知 19 条；`--all` 时末尾 6 门被风控拦下

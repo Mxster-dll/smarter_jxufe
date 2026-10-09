@@ -114,6 +114,54 @@ class ChaoxingHttpClient {
     }
   }
 
+  /// 发一个 **读取型** POST（form 编码），并把响应里的 Cookie 收进 [jar]。
+  ///
+  /// ⚠ 本模块**只读**：这里只服务站方自己的「用 POST 查数据」接口
+  /// （签到清单 `widget/pcpick/stu/activeList` 就是这种 —— 见 `chaoxing_endpoints.dart`）。
+  /// **永不**用它提交任何东西（点名：`pptSign/stuSignajax` 是签到提交，不许调用）。
+  ///
+  /// 不跟随重定向（同 [get] 的默认）：被踢回登录页的 302 原样返回，
+  /// 交给调用方的 `ensureUsable` 判失效重换。
+  Future<Response<dynamic>> post(
+    String url, {
+    SessionCookieJar? jar,
+    Map<String, dynamic>? form,
+    Map<String, String>? headers,
+    String? referer,
+    Duration timeout = const Duration(seconds: 25),
+    bool throttle = false,
+  }) async {
+    if (throttle) await _waitTurn();
+    final uri = Uri.parse(url);
+    final cookie = jar?.headerFor(uri.host) ?? '';
+    try {
+      final response = await _dio.post<dynamic>(
+        uri.toString(),
+        data: form,
+        options: Options(
+          followRedirects: false,
+          validateStatus: (_) => true,
+          responseType: ResponseType.plain,
+          contentType: Headers.formUrlEncodedContentType,
+          receiveTimeout: timeout,
+          headers: {
+            if (cookie.isNotEmpty) 'Cookie': cookie,
+            'Referer': referer ?? 'https://${uri.host}/',
+            'User-Agent': kChaoxingUserAgent,
+            'X-Requested-With': 'XMLHttpRequest',
+            if (headers != null) ...headers,
+          },
+        ),
+      );
+      jar?.absorbResponse(uri, response);
+      return response;
+    } on DioException catch (e) {
+      throw ChaoxingSessionException(
+        '学习通请求失败（${uri.host}）：${e.message ?? e.type.name}',
+      );
+    }
+  }
+
   /// 单跳请求（含 Cookie 拼装与吸收）。
   Future<Response<dynamic>> _send(
     Uri uri,

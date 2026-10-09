@@ -17,7 +17,10 @@ import 'package:smarter_jxufe/features/ims/course/data/models/course_importance.
 import 'package:smarter_jxufe/features/ims/course/data/models/course_nature.dart';
 import 'package:smarter_jxufe/features/ims/course/data/models/course_requirement.dart';
 import 'package:smarter_jxufe/features/ims/course/data/models/credit_hour.dart';
+import 'package:smarter_jxufe/features/ims/curriculum/data/providers/my_curriculum_provider.dart';
 import 'package:smarter_jxufe/features/ims/curriculum/domain/curriculum.dart';
+import 'package:smarter_jxufe/features/ims/graduation_requirements/data/providers/credit_progress_provider.dart';
+import 'package:smarter_jxufe/features/ims/graduation_requirements/domain/credit_progress.dart';
 import 'package:smarter_jxufe/features/ims/graduation_requirements/domain/graduation_requirement.dart';
 import 'package:smarter_jxufe/features/ims/graduation_requirements/presentation/graduation_requirements_screen.dart';
 import 'package:smarter_jxufe/features/ims/schedule/data/providers/live_class_providers.dart';
@@ -51,6 +54,7 @@ Course course({
   required String name,
   required double credit,
   required String mainCategory,
+  String subCategory = '',
   CourseRequirement requirement = CourseRequirement.compulsory,
 }) => Course(
   code: code,
@@ -58,7 +62,7 @@ Course course({
   credit: credit,
   creditHour: const CreditHour(total: 64, lecture: 64, weekly: 4),
   mainCategory: mainCategory,
-  subCategory: '',
+  subCategory: subCategory,
   tertiaryCategory: null,
   requirement: requirement,
   nature: CourseNature.values.first,
@@ -198,14 +202,26 @@ void main() {
   });
 
   group('get_graduation_credits', () {
-    ProviderContainer withReqs(List<GraduationRequirement> rows) =>
-        ProviderContainer(
-          overrides: [
-            graduationRequirementsProvider.overrideWith((ref) async => rows),
-          ],
-        );
+    // ⚠ 这一组**必须**把 `myStudentInfoProvider` 一起 override 掉：不 override 时
+    // 它会去 `Hive.openBox('studentInfo')`，而本组没有 `Hive.init` →
+    // `HiveError: You need to initialize Hive…` 会被 flutter_test 当成未捕获错误打红
+    // （哪怕调用方 try/catch 接住了，Riverpod 仍会往 zone 报一次）。
+    // `graduationInProgressProvider` 同理（它会读课表缓存 box）→ 直接给空表。
+    ProviderContainer withReqs(
+      List<GraduationRequirement> rows, {
+      Curriculum? curriculum,
+      List<TakenCourse> taken = const [],
+    }) => ProviderContainer(
+      overrides: [
+        graduationRequirementsProvider.overrideWith((ref) async => rows),
+        myStudentInfoProvider.overrideWith((ref) async => null),
+        myCurriculumProvider.overrideWith((ref) async => curriculum),
+        graduationTakenCoursesProvider.overrideWith((ref) async => taken),
+        graduationInProgressProvider.overrideWith((ref) async => const []),
+      ],
+    );
 
-    test('有「合计」行时标出来', () async {
+    test('逐项给出「要求 / 已修 / 还差」与判定口径；「合计」行不当分项列', () async {
       final container = withReqs(const [
         GraduationRequirement(index: 1, item: '通识必修课', credit: 40),
         GraduationRequirement(index: 2, item: '专业必修课', credit: 60),
@@ -222,11 +238,13 @@ void main() {
         contextWith(container),
         {},
       );
-      expect(r.content, contains('通识必修课：40 学分'));
-      expect(r.content, contains('合计：100 学分（合计行）'));
+      expect(r.ok, isTrue);
+      expect(r.content, contains('通识必修课：要求 40 学分'));
+      expect(r.content, contains('专业必修课：要求 60 学分'));
+      expect(r.content, isNot(contains('合计：')), reason: '「合计」行不是分项');
     });
 
-    test('没有「合计」行时把各分项相加并说明这是自己加的', () async {
+    test('没有「合计」行时，选修汇总行给的就是各分项之和', () async {
       final container = withReqs(const [
         GraduationRequirement(index: 1, item: '通识必修课', credit: 40.5),
         GraduationRequirement(index: 2, item: '专业必修课', credit: 60),
@@ -237,7 +255,100 @@ void main() {
         contextWith(container),
         {},
       );
-      expect(r.content, contains('各分项相加 = 100.5 学分'));
+      expect(r.content, contains('要求 100.5 学分'));
+      expect(r.content, contains('还差 100.5 学分'));
+    });
+
+    test('拿不到培养方案时，必修如实说「无法统计」而不是 0', () async {
+      final container = withReqs(const [
+        GraduationRequirement(index: 1, item: '2024美育选修2学分', credit: 2),
+      ]);
+      addTearDown(container.dispose);
+
+      final r = await const GetGraduationCreditsTool().run(
+        contextWith(container),
+        {},
+      );
+      expect(r.content, contains('必修课：拿不到本专业培养方案，无法统计'));
+    });
+
+    test('★ 有培养方案 + 成绩时给出必修与选修的真实进度', () async {
+      final container = withReqs(
+        const [
+          GraduationRequirement(index: 1, item: '2024公共外语选修课', credit: 2),
+          GraduationRequirement(index: 2, item: '2024学科开放选修课', credit: 3),
+        ],
+        curriculum: Curriculum(
+          year: 2025,
+          collegeName: '计算机与人工智能学院',
+          majorName: '计算机科学与技术',
+          courses: [
+            course(
+              code: '1004600232',
+              name: '大学英语I',
+              credit: 2,
+              mainCategory: '2024公共课',
+              subCategory: '公共外语课',
+            ),
+            course(
+              code: '1004701034',
+              name: '高等数学I',
+              credit: 4,
+              mainCategory: '2024公共课',
+              subCategory: '公共数学课',
+            ),
+            course(
+              code: '1004601702',
+              name: '六级英语专题',
+              credit: 2,
+              mainCategory: '2024公共课',
+              subCategory: '公共外语课',
+              requirement: CourseRequirement.elective,
+            ),
+            course(
+              code: '1004501303',
+              name: '管理学原理',
+              credit: 3,
+              mainCategory: '2024专业教育课',
+              subCategory: '学科开放课',
+              requirement: CourseRequirement.elective,
+            ),
+          ],
+        ),
+        taken: const [
+          TakenCourse(code: '1004600232', name: '大学英语I', credit: 2, earned: 2),
+          TakenCourse(code: '1004601702', name: '六级英语专题', credit: 2, earned: 2),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final r = await const GetGraduationCreditsTool().run(
+        contextWith(container),
+        {},
+      );
+      expect(r.ok, isTrue);
+      // 必修：要求 2 + 4 = 6，已修 2 → 还差 4，1/2 门
+      expect(r.content, contains('必修课：已修 2 / 要求 6 学分，还差 4 学分（1/2 门）'));
+      // 公共外语：要求 2，已修 2 → 已满足
+      expect(r.content, contains('2024公共外语选修课：要求 2 学分，已修 2 学分，已满足'));
+      // 学科开放：要求 3，已修 0 → 还差 3
+      expect(r.content, contains('2024学科开放选修课：要求 3 学分，已修 0 学分，还差 3 学分'));
+      // 口径要带上，方便模型解释「为什么这门课算这一项」
+      expect(r.content, contains('培养方案「公共外语课」'));
+    });
+
+    test('item 过滤只留匹配的分项', () async {
+      final container = withReqs(const [
+        GraduationRequirement(index: 1, item: '2024美育选修2学分', credit: 2),
+        GraduationRequirement(index: 2, item: '2024学科开放选修课', credit: 3),
+      ]);
+      addTearDown(container.dispose);
+
+      final r = await const GetGraduationCreditsTool().run(contextWith(container), {
+        'item': '美育',
+      });
+      expect(r.content, contains('2024美育选修2学分'));
+      expect(r.content, isNot(contains('2024学科开放选修课：')));
     });
 
     test('取不到时提示要教务会话', () async {
@@ -246,6 +357,10 @@ void main() {
           graduationRequirementsProvider.overrideWith(
             (ref) async => throw Exception('JSESSIONID 为空'),
           ),
+          myStudentInfoProvider.overrideWith((ref) async => null),
+          myCurriculumProvider.overrideWith((ref) async => null),
+          graduationTakenCoursesProvider.overrideWith((ref) async => const []),
+          graduationInProgressProvider.overrideWith((ref) async => const []),
         ],
       );
       addTearDown(container.dispose);

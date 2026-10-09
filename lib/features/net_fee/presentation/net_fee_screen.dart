@@ -5,8 +5,12 @@ import 'package:smarter_jxufe/core/errors/app_exception.dart';
 import 'package:smarter_jxufe/core/navigation/page_auto_refresh.dart';
 import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/design/section_title.dart';
+import 'package:smarter_jxufe/features/net_fee/data/datasources/net_fee_remote_datasource.dart';
 import 'package:smarter_jxufe/features/net_fee/data/providers/net_fee_providers.dart';
 import 'package:smarter_jxufe/features/net_fee/domain/net_fee_models.dart';
+import 'package:smarter_jxufe/features/net_fee/domain/net_fee_recharge.dart';
+import 'package:smarter_jxufe/features/net_fee/presentation/net_fee_pay_screen.dart';
+import 'package:smarter_jxufe/features/net_fee/presentation/net_fee_recharge_sheet.dart';
 import 'package:smarter_jxufe/features/network_service/data/providers/network_service_providers.dart';
 import 'package:smarter_jxufe/features/network_service/presentation/network_service_section.dart';
 import 'package:smarter_jxufe/features/platform_guid/data/providers/guid_providers.dart';
@@ -188,6 +192,7 @@ class _NetFeeScreenState extends ConsumerState<NetFeeScreen> {
     ColorScheme scheme,
     NetFeeSummary summary,
   ) {
+    final account = summary.username?.trim() ?? '';
     return _whiteCard(
       context,
       child: Padding(
@@ -284,12 +289,27 @@ class _NetFeeScreenState extends ConsumerState<NetFeeScreen> {
                   color: scheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: 6),
-                Text(
-                  '账号 ${summary.username ?? ''}',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    color: scheme.onSurfaceVariant,
+                Expanded(
+                  child: Text(
+                    '账号 ${summary.username ?? ''}',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton.icon(
+                  key: const Key('netfee_recharge'),
+                  onPressed: account.isEmpty
+                      ? null
+                      : () => _startRecharge(summary),
+                  style: FilledButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                  ),
+                  icon: const Icon(Icons.add_card_outlined, size: 18),
+                  label: const Text('充值'),
                 ),
               ],
             ),
@@ -297,6 +317,177 @@ class _NetFeeScreenState extends ConsumerState<NetFeeScreen> {
         ),
       ),
     );
+  }
+
+  // ---------- 充值（2026-10-09 加） ----------
+
+  /// 充值：面板收集「账号 + 金额」→ **App 自己的收银台**（二维码就在里面）→ 回来自动刷新。
+  ///
+  /// ⚠ **刻意不在这里手动 invalidate**：本页挂着 `PageAutoRefresher.subscribeRoute`，
+  /// 「从子页面返回」会走 `didPopNext → _refreshAll()`。两条路都留着就是同一 tick
+  /// 的重复取数（AGENTS §3 那条「能 await push 就 await push」的反面教材）。
+  ///
+  /// ⚠ 实测（`test/net_fee_recharge_test.dart`）：**关掉充值面板本身也会触发一次
+  /// 刷新** —— `ModalBottomSheetRoute` 被 pop 时 `appRouteObserver` 同样发
+  /// `didPopNext`（取数量 1 → 2）。这一次数**有意留下**：用户刚离开余额卡，
+  /// 支付前后本来就该看到新值；要省掉它得引入「抑制下一次 didPopNext」的机制，不值。
+  ///
+  /// 口径（下单 / 取码 / 轮询那三步）见
+  /// `data/datasources/net_fee_recharge_remote_datasource.dart` 文件头。
+  Future<void> _startRecharge(NetFeeSummary summary) async {
+    final request = await showNetFeeRechargeSheet(
+      context,
+      account: summary.username,
+      balance: summary.balance,
+    );
+    if (request == null || !mounted) return;
+
+    // 「不是给自己充」要单独确认一次：钱进了别人账号就退不回来（2026-10-09 六轮）。
+    final self = summary.username?.trim() ?? '';
+    if (self.isNotEmpty && request.account != self) {
+      if (request.kind == NetFeeChargeKind.campusCard) {
+        // 校方写死「校园卡扣费只能给自己充值」——面板里已经把账号锁回自己了，
+        // 这一条是兜底（例如余额是门户兜底值、或以后面板改了）。
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(
+            const SnackBar(
+              content: Text('校园卡只能给自己充值（校方限制），请把账号改回自己的。'),
+            ),
+          );
+        return;
+      }
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          icon: const Icon(Icons.warning_amber_outlined),
+          title: const Text('给别人充值？'),
+          content: Text(
+            '账号 ${request.account} 不是你的上网账号（$self）。\n\n'
+            '充值成功后这笔钱会进对方账号，退不回来。',
+            style: const TextStyle(fontSize: 13, height: 1.6),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              key: const Key('netfeeOtherAccountConfirm'),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('确认给别人充'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+    }
+
+    // 校园卡：直接从卡余额扣，没有二维码那一步（校方 `…/pay/cardPay`）。
+    if (request.kind == NetFeeChargeKind.campusCard) {
+      await _payByCampusCard(request);
+      return;
+    }
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => NetFeePayScreen(request: request),
+      ),
+    );
+  }
+
+  /// 校园卡支付：**真扣款**。
+  ///
+  /// 链路口径见 `data/datasources/net_fee_remote_datasource.dart` 的
+  /// `fetchChargeTypes` / `payByCampusCard`：先换 `enc` + `openId`，
+  /// 再向校方下发的 `card` 地址提交 `{username, openId, total_fee}`。
+  ///
+  /// ⚠ 校方接口一提交就扣、没有密码也没有「未支付」中间态 → 这里**必须**再确认一次
+  /// （面板里已经用红字说清，但那是说明不是确认）。
+  Future<void> _payByCampusCard(NetFeeRechargeRequest request) async {
+    final amountText = fmtYuan(request.amount);
+    final account = request.account;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(Icons.credit_card_outlined),
+        title: const Text('用校园卡支付？'),
+        content: Text(
+          '将从校园卡余额中扣除 $amountText 元，为账号 $account 充值网费。\n\n'
+          '校方说明：校园卡扣费只能给自己充值；扣款成功即为网费充值成功。',
+          style: const TextStyle(fontSize: 13, height: 1.6),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            key: const Key('netfeeCampusPayConfirm'),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text('确认扣款 $amountText 元'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
+      ..clearSnackBars()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('正在从校园卡扣款…'),
+          duration: Duration(seconds: 30),
+        ),
+      );
+    try {
+      final guid = await ref.read(platformGuidProvider.future);
+      if (guid == null || guid.isEmpty) {
+        throw const NetFeeApiException('未配置平台标识（GUID），无法使用校园卡支付');
+      }
+      final source = ref.read(netFeeRemoteDataSourceProvider);
+      final identity = await source.fetchWfczIdentity(guid);
+      final types = await source.fetchChargeTypes();
+      WfczChargeType? card;
+      for (final t in types) {
+        if (t.kind == NetFeeChargeKind.campusCard) {
+          card = t;
+          break;
+        }
+      }
+      if (card == null) {
+        throw const NetFeeApiException('校方当前没有开通校园卡支付');
+      }
+      final error = await source.payByCampusCard(
+        identity: identity,
+        amount: request.amount,
+        payUrl: card.url,
+      );
+      if (!mounted) return;
+      messenger
+        ..clearSnackBars()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              error ??
+                  '校园卡扣款成功，$amountText 元已充入账号 $account。'
+                      '到账可能略有延迟，余额马上刷新。',
+            ),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      if (error == null) _refreshAll();
+    } catch (e) {
+      if (!mounted) return;
+      messenger
+        ..clearSnackBars()
+        ..showSnackBar(
+          SnackBar(
+            content: Text('校园卡支付失败：${friendlyErrorText(e)}'),
+            duration: const Duration(seconds: 6),
+          ),
+        );
+    }
   }
 
   // ---------- 未配置 GUID 提示 ----------

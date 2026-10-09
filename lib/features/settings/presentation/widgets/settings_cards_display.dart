@@ -13,6 +13,9 @@ import 'package:smarter_jxufe/features/campus_address/domain/my_campus.dart';
 import 'package:smarter_jxufe/features/home/data/home_edit_mode.dart';
 import 'package:smarter_jxufe/features/home/data/home_grid_prefs.dart';
 import 'package:smarter_jxufe/features/home/data/home_layout_prefs.dart';
+import 'package:smarter_jxufe/features/home/domain/home_card_gap.dart';
+import 'package:smarter_jxufe/features/home/domain/home_card_radius.dart';
+import 'package:smarter_jxufe/features/home/domain/home_card_style.dart';
 import 'package:smarter_jxufe/features/home/domain/home_layout.dart';
 import 'package:smarter_jxufe/features/score_estimate/presentation/ge_common.dart';
 import 'package:smarter_jxufe/features/settings/data/theme_prefs.dart';
@@ -264,6 +267,85 @@ class SettingsHomeLayoutCard extends ConsumerWidget {
             ),
           ),
           const Divider(height: 1),
+          // 卡片形态（用户 2026-10-09 二轮：「我希望 内容区一个卡片、侧栏一个卡片，
+          // 然后都是在设置了可选的。可以都不显示为卡片样式」+「要阴影」）。
+          // 四档 = 两块区域「选 / 不选」的全部组合；默认「都不显示」，
+          // 与改造前逐像素一致（见 `HomeCardStyle` 与 `lib/design/card_frame.dart`）。
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Text(
+              '卡片样式',
+              style: TextStyle(
+                fontSize: 14.5,
+                fontWeight: FontWeight.w600,
+                color: scheme.onSurface,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            child: Text(
+              '把侧栏 / 内容区框成浮起的圆角卡片（带阴影），与窗口边缘留一道缝；'
+              '只在侧栏视图（电脑端）下可见。',
+              style: TextStyle(
+                fontSize: 12.5,
+                height: 1.3,
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          for (final value in HomeCardStyle.values)
+            InkWell(
+              key: Key('homeCardOption-${value.name}'),
+              onTap: () => store.saveCardStyle(value),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      value == store.cardStyle
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked,
+                      size: 20,
+                      color: value == store.cardStyle
+                          ? fp(context).cardAccent
+                          : scheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            value.label,
+                            style: const TextStyle(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            value.description,
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              height: 1.25,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          const Divider(height: 1),
+          // 卡片间距（用户 2026-10-09 三轮原话：「我希望卡片与卡片之间的距离为 2a、
+          // 卡片与窗口之间（卡片与标题栏之间的距离不受此限制）的距离为 a；
+          // 然后 a 可以通过设置调」）。滑杆按 `kCardGapStops` 吸附，落盘整数文本。
+          _cardGapRow(context, scheme, store),
+          const Divider(height: 1),
           // 宫格聚合（用户 2026-09-21 需求）：拖动说明 + 恢复默认布局。
           // 拖动/合并发生在**主页宫格**上，这里只放口径说明与兜底按钮
           // （用户 2026-09-11 裁定「偏好入口一律收在设置页」）。
@@ -349,6 +431,146 @@ class SettingsHomeLayoutCard extends ConsumerWidget {
       ),
     );
   }
+
+  /// 「卡片间距」那一行（滑杆 + 当前派生量）。只在**有卡片**时才有意义，所以
+  /// 「都不显示」时压暗并禁用（不是藏起来：藏了用户会以为这功能不存在）。
+  Widget _cardGapRow(
+    BuildContext context,
+    ColorScheme scheme,
+    HomeLayoutStore store,
+  ) {
+    final enabled = store.cardStyle.anyCard;
+    final gap = cardGapMetricsOf(store.cardGap);
+    final label = TextStyle(
+      fontSize: 12.5,
+      height: 1.3,
+      color: enabled ? scheme.onSurfaceVariant : scheme.outline,
+    );
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '卡片间距',
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w600,
+                    color: enabled ? scheme.onSurface : scheme.outline,
+                  ),
+                ),
+              ),
+              Text(
+                '卡片之间 ${_num(gap.between)} · 距窗口 ${_num(gap.edge)}',
+                key: const Key('homeCardGapSummary'),
+                style: label,
+              ),
+            ],
+          ),
+          const SizedBox(height: 3),
+          Text(
+            '设定值 a = ${_num(store.cardGap)}：卡片与卡片之间、卡片与窗口左 / 右 / 底边'
+            '的距离都是 a（与标题栏之间不留缝，不受此限）。',
+            style: label,
+          ),
+          Slider(
+            key: const Key('homeCardGapSlider'),
+            value: store.cardGap,
+            min: kCardGapMin,
+            max: kCardGapMax,
+            // **每 1 像素一档**（用户 2026-10-09 十四轮：「我希望卡片间距可以调整的最小
+            // 步长应该是 1，现在是 2」）。`divisions` = 22 **段** → 23 个刻度
+            // （2, 3, …, 24，每段正好 1），与 `kCardGapStops`（2..24 全部整数，23 格）
+            // 同口径；`snapCardGap` 在现行档位表下是恒等映射，留着当"落盘值必在允许
+            // 集合内"的保险。
+            // ⚠ **别只改这里不改 `kCardGapStops`**：上一版的 bug 就是"滑杆每格 1、
+            // 档位表却很稀"，拖到 5 被吸附回 4/6，看起来像步长 2。
+            divisions: (kCardGapMax - kCardGapMin).round(),
+            label: _num(store.cardGap),
+            onChanged: enabled
+                ? (next) => unawaited(store.saveCardGap(snapCardGap(next)))
+                : null,
+          ),
+          const SizedBox(height: 2),
+          Row(
+            children: [
+              Text('a 越小越紧凑', style: label),
+              const Spacer(),
+              TextButton(
+                key: const Key('homeCardGapReset'),
+                onPressed: enabled
+                    ? () => unawaited(store.saveCardGap(kCardGapDefault))
+                    : null,
+                child: const Text('恢复默认'),
+              ),
+            ],
+          ),
+          const Divider(height: 20),
+          // 卡片圆角：用户 2026-10-09 十五轮「我希望卡片圆角大小也是可控的」。
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '卡片圆角',
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w600,
+                    color: enabled ? scheme.onSurface : scheme.outline,
+                  ),
+                ),
+              ),
+              Text(
+                '${_num(store.cardRadius)} px',
+                key: const Key('homeCardRadiusSummary'),
+                style: label,
+              ),
+            ],
+          ),
+          const SizedBox(height: 3),
+          Text(
+            '区域卡片的圆角大小；0 = 直角（纯色块 + 投影）。'
+            '只影响侧栏 / 内容区这两张区域卡片，不影响页面里的小卡。',
+            style: label,
+          ),
+          Slider(
+            key: const Key('homeCardRadiusSlider'),
+            value: store.cardRadius,
+            min: kCardRadiusMin,
+            max: kCardRadiusMax,
+            // 每 1 像素一档：`divisions` 是**段数**（28 段 → 29 个刻度 0..28），
+            // 与 `kCardRadiusStops`（0..28 每个整数，29 格）同口径 ——
+            // 与间距那条同一教训（十四轮），别让两处口径不一致。
+            divisions: (kCardRadiusMax - kCardRadiusMin).round(),
+            label: _num(store.cardRadius),
+            onChanged: enabled
+                ? (next) => unawaited(store.saveCardRadius(snapCardRadius(next)))
+                : null,
+          ),
+          const SizedBox(height: 2),
+          Row(
+            children: [
+              Text('0 = 直角，越大越圆', style: label),
+              const Spacer(),
+              TextButton(
+                key: const Key('homeCardRadiusReset'),
+                onPressed: enabled
+                    ? () => unawaited(store.saveCardRadius(kCardRadiusDefault))
+                    : null,
+                child: const Text('恢复默认'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 去掉小数的整数写法（档位都是整数，`6.0` 读起来别扭）。
+  String _num(double value) =>
+      value == value.roundToDouble() ? value.round().toString() : '$value';
 
   /// 拨「编辑模式」开关（原主页顶栏的剪刀按钮）。
   ///

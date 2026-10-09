@@ -463,7 +463,7 @@ void main() {
             'lib/features/cxstar/data/datasources/cxstar_auth_remote_datasource.dart',
         'CxstarApiException': 'lib/features/cxstar/domain/cxstar_models.dart',
         'DzjApiException':
-            'lib/features/data_center/data/datasource/dzj_api_remote_datasource.dart',
+            'lib/features/data_center/data/datasource/dzj_api_support.dart',
         'DzjSessionExpiredException':
             'lib/features/data_center/data/datasource/dzj_auth_remote_datasource.dart',
         'ElectricityApiException':
@@ -583,7 +583,9 @@ void main() {
         'lib/features/comprehensive_service/data/datasource/ssp_auth_remote_datasource.dart',
         'lib/features/cxstar/data/datasources/cxstar_auth_remote_datasource.dart',
         'lib/features/cxstar/domain/cxstar_models.dart',
-        'lib/features/data_center/data/datasource/dzj_api_remote_datasource.dart',
+        // 2026-10-08：`DzjApiException` 随「低层收发」一起搬到了 `dzj_api_support.dart`
+        //（数据源拆分第一阶段），台账跟着搬 —— 异常类在哪个文件，这一条就指哪儿。
+        'lib/features/data_center/data/datasource/dzj_api_support.dart',
         'lib/features/data_center/data/datasource/dzj_auth_remote_datasource.dart',
         'lib/features/electricity/data/models/electricity_models.dart',
         'lib/features/ims/course_selection/data/datasources/course_selection_remote_datasource.dart',

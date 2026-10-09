@@ -44,19 +44,24 @@ Widget myCampusBadge(BuildContext context, {bool onImage = false}) {
 /// 列表顶部的一行状态提示：未设置 / 已置顶哪几条 / 本列表无对应条目。
 ///
 /// [pinnedNames] 由调用方按自己的条目粒度给出（校区地图是北区、南区两条）。
+/// [note] 给「不是列表置顶、而是切换式」的页面换一句话说
+/// （校区矢量地图页是胶囊切换，说「已置顶」会对不上）。
 Widget myCampusHint(
   BuildContext context, {
   required MyCampus? mine,
   required List<String> pinnedNames,
+  String? note,
 }) {
   final scheme = Theme.of(context).colorScheme;
   final accent = fp(context).cardAccent;
   final isSet = mine != null;
-  final text = !isSet
-      ? '未设置我的校区 · 可在「设置」中指定，本列表将自动置顶对应条目'
-      : pinnedNames.isEmpty
-      ? '我的校区：${mine.label} · 本列表无对应条目'
-      : '已置顶我的校区：${pinnedNames.join('、')}';
+  final text =
+      note ??
+      (!isSet
+          ? '未设置我的校区 · 可在「设置」中指定，本列表将自动置顶对应条目'
+          : pinnedNames.isEmpty
+          ? '我的校区：${mine.label} · 本列表无对应条目'
+          : '已置顶我的校区：${pinnedNames.join('、')}');
   return Row(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [

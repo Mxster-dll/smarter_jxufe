@@ -54,6 +54,10 @@ class UnifiedMfaPage extends ConsumerStatefulWidget {
     bool barrierDismissible = false,
   }) async {
     bool authorized = false;
+    // 先把 ProviderContainer 拿到手：下面 `await Navigator.push` 之后再用 `context`
+    // 就属于跨 async 使用（`use_build_context_synchronously`）。容器本身跨 await
+    // 依然有效，而**读取时机仍在对话框关闭之后** → trustDevice 取到的还是最终值。
+    final container = ProviderScope.containerOf(context);
 
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -79,9 +83,9 @@ class UnifiedMfaPage extends ConsumerStatefulWidget {
       ),
     );
 
-    final trustDevice = ProviderScope.containerOf(
-      context,
-    ).read(qrLoginViewModelProvider).trustDevice;
+    final trustDevice = container
+        .read(qrLoginViewModelProvider)
+        .trustDevice;
     return (authorized: authorized, trustDevice: trustDevice);
   }
 

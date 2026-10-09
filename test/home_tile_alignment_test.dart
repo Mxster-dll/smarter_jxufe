@@ -16,14 +16,29 @@ void main() {
   final entries = homeServiceEntries(push: (_) {});
   final titles = entries.map((e) => e.title).toList();
 
-  test('目录条目齐全（30 条）', () {
+  test('目录条目齐全（32 条）', () {
     // 25 = 并行工作流新增两项后的 23 + 2026-09-17 新增「推免成绩 / 竞赛奖励」两项；
     // 26 = 2026-09-19 新增「AI 助手」（内置对话式问答，排在第一格）；
     // 27 = 2026-09-19 新增「学习通」（超星课程 / 作业 / 通知只读接入）；
     // 28 = 2026-09-19 新增「AA 算账」（纯本地记账：成员 + 开销 → 两两转账）；
     // 29 = 2026-09-19 新增「找空闲教室」（公共查询 SB11 / SB12 两个子功能独立成磁贴）；
+    // 31 = 2026-10-07 新增「填表助手」（从材料库独立出来，自成一组 fillForm）。
     // 30 = 2026-09-19 新增「网站导航」（137 条全校站点目录 + 星标收藏）。
-    expect(entries.length, 30, reason: '增删服务入口请同步本测试与 AGENTS.md §3');
+    // 32 = 2026-10-08 新增「智慧江财」（ehall 综合服务门户 · 带登录态内嵌网页，
+    //      排在四枚教务磁贴之后，见 docs/agents/40）。
+    expect(entries.length, 32, reason: '增删服务入口请同步本测试与 AGENTS.md §3');
+  });
+
+  test('「智慧江财」是内嵌网页入口，且排在四枚教务磁贴之后', () {
+    final ehall = entries.firstWhere((e) => e.title == '智慧江财');
+    expect(ehall.builder().runtimeType.toString(), contains('EhallScreen'));
+    expect(ehall.group, HomeServiceGroup.campus);
+    // 它自己**不**跳系统浏览器（跳了就没有登录态）——「内嵌」这条链路由
+    // `test/ehall_session_test.dart` 守卫，这里只钉住它紧跟在「毕业学分」后面
+    // （那枚磁贴的标题就是 `ImsTab.graduationRequirements.title` = 「毕业学分」）。
+    final graduationAt = entries.indexWhere((e) => e.title == '毕业学分');
+    expect(graduationAt, isNonNegative);
+    expect(entries[graduationAt + 1].title, '智慧江财');
   });
 
   test('「找空闲教室」在「教务系统」组里，且页面是 ClassroomFreeScreen', () {

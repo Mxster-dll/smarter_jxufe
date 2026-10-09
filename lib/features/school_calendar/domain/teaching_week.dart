@@ -82,8 +82,8 @@ TeachingWeek? resolveTeachingWeek(
   final term = _pickTerm(day, terms);
   if (term == null) return null;
 
-  final firstMonday = _firstTeachingMonday(term);
-  final rawWeek = (day.difference(firstMonday).inDays / 7).floor() + 1;
+  final firstMonday = firstTeachingMondayOf(term.start);
+  final rawWeek = teachingWeekOn(day, termStart: term.start);
 
   return TeachingWeek(
     week: rawWeek < 0 ? 0 : rawWeek,
@@ -128,8 +128,19 @@ WxSemesterArrangement? _pickTerm(
 ///
 /// 注：2018 年及更早的学期 `start` 有的是报到日（周六/周日），此时取所在周的周一；
 /// 这些历史学期不参与「当前教学周」（调用方都有学期匹配守卫），故无影响。
-DateTime _firstTeachingMonday(WxSemesterArrangement term) =>
-    _mondayOf(term.start);
+DateTime firstTeachingMondayOf(DateTime termStart) => _mondayOf(termStart);
+
+/// [day] 在「起始日为 [termStart] 的那个学期」里是第几教学周
+/// （第 0 周 = 开学前，可为负 = 学期未到）。
+///
+/// 与 [resolveTeachingWeek] 共用同一个锚点算法（此前那个算式内联在它里面）——
+/// 课表要按**任意日期**算周次（如翻到第 4 周看 10-10 的补课日），
+/// 校历效应索引 `CalendarDayEffectIndex.weekOf` 也走这里，口径必须是一处。
+int teachingWeekOn(DateTime day, {required DateTime termStart}) {
+  final firstMonday = firstTeachingMondayOf(termStart);
+  final d = DateTime(day.year, day.month, day.day);
+  return (d.difference(firstMonday).inDays / 7).floor() + 1;
+}
 
 /// [d] 所在周的周一（当天即为周一时返回当天）。
 DateTime _mondayOf(DateTime d) =>

@@ -1,6 +1,7 @@
-/// 学习通（超星）服务主页 —— 只读：课程 / 作业 / 通知。
+/// 学习通（超星）服务主页 —— 只读：课程 / 作业 / 签到 / 通知。
 ///
-/// 数据来源 = 学习通网页端（`i.chaoxing.com` + `mooc1.chaoxing.com` + `notice.chaoxing.com`），
+/// 数据来源 = 学习通网页端（`i.chaoxing.com` + `mooc1.chaoxing.com` +
+/// `mobilelearn.chaoxing.com` + `notice.chaoxing.com`），
 /// **零密码**复用 App 内已登录的 CAS 票据换证，不写任何学习通数据。
 /// 链路与字段口径见 `reverse_engineering/学习通接口.md`，模块约定见
 /// `lib/features/chaoxing/README.md`。
@@ -17,18 +18,21 @@ import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/pane_chrome.dart';
 import 'package:smarter_jxufe/features/chaoxing/data/chaoxing_repository.dart';
 import 'package:smarter_jxufe/features/chaoxing/data/providers/chaoxing_providers.dart';
+import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_sign.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_snapshot.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_text.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_work.dart';
 import 'package:smarter_jxufe/features/chaoxing/presentation/chaoxing_common.dart';
 import 'package:smarter_jxufe/features/chaoxing/presentation/chaoxing_courses_screen.dart';
 import 'package:smarter_jxufe/features/chaoxing/presentation/chaoxing_notices_screen.dart';
+import 'package:smarter_jxufe/features/chaoxing/presentation/chaoxing_signs_screen.dart';
 import 'package:smarter_jxufe/features/chaoxing/presentation/chaoxing_works_screen.dart';
 
 /// 主页里每个区块最多直接铺几条（其余走「查看全部」）。
 const int kChaoxingPreviewWorks = 5;
 const int kChaoxingPreviewNotices = 4;
 const int kChaoxingPreviewCourses = 6;
+const int kChaoxingPreviewSigns = 4;
 
 /// 主页「通知里的作业提醒」最多显示几条。
 const int kChaoxingPreviewWorkHints = 3;
@@ -171,6 +175,8 @@ class _ChaoxingScreenState extends ConsumerState<ChaoxingScreen> {
                     const SizedBox(height: 12),
                     ..._buildWorkSection(snapshot, busy),
                     const SizedBox(height: 12),
+                    _buildSignSection(snapshot, busy),
+                    const SizedBox(height: 12),
                     _buildNoticeSection(snapshot, busy),
                     const SizedBox(height: 12),
                     _buildCourseSection(snapshot, busy),
@@ -244,6 +250,7 @@ class _ChaoxingScreenState extends ConsumerState<ChaoxingScreen> {
     final accent = appCardAccent(context);
     final muted = AppColors.textMuted(context);
     final updated = snapshot.fetchedAt;
+    final openSigns = snapshot.openSignsAt(_now).length;
     return Card(
       elevation: 0,
       shape: appCardShape(context),
@@ -312,10 +319,35 @@ class _ChaoxingScreenState extends ConsumerState<ChaoxingScreen> {
               ],
             ),
             const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: _metric(
+                    '签到次数',
+                    '${snapshot.signs.length}',
+                    accent,
+                    key: const Key('chaoxingSignCount'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _metric('进行中签到', '$openSigns', accent,
+                      key: const Key('chaoxingOpenSignCount')),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _metric('已确认未签', '${snapshot.absentSignCount}', accent,
+                      key: const Key('chaoxingAbsentSignCount')),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
             Text(
               '共 ${snapshot.works.length} 条作业记录'
+              ' · ${chaoxingSignSummary(snapshot, _now)}'
               '${snapshot.skippedCourseKeys.isEmpty ? '' : ' · 只扫当下学期（${snapshot.courses.length - snapshot.skippedCourseKeys.length}/${snapshot.courses.length} 门）'}'
               '${snapshot.failedCourseKeys.isEmpty ? '' : ' · ${snapshot.failedCourseKeys.length} 门课扫描失败'}'
+              '${snapshot.failedSignCourseKeys.isEmpty ? '' : ' · ${snapshot.failedSignCourseKeys.length} 门课签到没取到'}'
               '${snapshot.pendingCourseKeys.isEmpty ? '' : ' · 另有 ${snapshot.pendingCourseKeys.length} 门课本轮没跑到'}'
               '${snapshot.throttled ? ' · 学习通限流，本轮沿用上次数据' : ''}'
               '${snapshot.noticesAvailable ? '' : ' · 通知暂不可用'}',
@@ -522,12 +554,79 @@ class _ChaoxingScreenState extends ConsumerState<ChaoxingScreen> {
     );
   }
 
+  /// 「签到记录」区块（用户 2026-10-09：「我希望还能接入学习通里的签到记录」）。
+  ///
+  /// 口径：
+  /// - 进行中的签到排最前（那才是「现在要不要签」），其余按时间倒序；
+  /// - **状态是「点开才查」的**（清单接口不给我的状态），所以这里显示「状态未知」
+  ///   而不是「未签」；点开某条 → 弹窗里一键查（1 个请求）；
+  /// - 区块底部给「查看全部签到」入口 → 那一页有**手动全量更新**（清单 + 状态）。
+  Widget _buildSignSection(ChaoxingSnapshot snapshot, bool busy) {
+    final now = _now;
+    final open = snapshot.openSignsAt(now);
+    final openIds = {for (final s in open) s.key};
+    final rest = [
+      for (final s in snapshot.signs)
+        if (!openIds.contains(s.key)) s,
+    ];
+    final preview = [...open, ...rest].take(kChaoxingPreviewSigns).toList();
+    final failedSignCourses = snapshot.failedSignCourseKeys.length;
+    return ChaoxingSectionCard(
+      title: '签到记录',
+      trailing: _countChip(chaoxingSignSummary(snapshot, now)),
+      onSeeAll: snapshot.signs.isEmpty && !busy
+          ? null
+          : () => _openChild(const ChaoxingSignsScreen()),
+      seeAllLabel: '查看全部签到',
+      children: [
+        if (preview.isEmpty)
+          ChaoxingEmptyHint(
+            // ⚠ 「本轮没取到」与「这门课没有签到」必须分开说。
+            text: busy
+                ? '正在读取各门课程的签到…'
+                : (failedSignCourses > 0
+                      ? '暂时没有签到记录（另有 $failedSignCourses 门课的签到没取到，可能有遗漏）'
+                      : '暂时没有签到记录'),
+            icon: Icons.how_to_reg_outlined,
+          )
+        else
+          for (final sign in preview) _signRow(sign),
+        if (snapshot.signs.length > preview.length)
+          Padding(
+            padding: const EdgeInsets.only(top: 2, bottom: 6),
+            child: Text(
+              '还有 ${snapshot.signs.length - preview.length} 条未显示',
+              style: TextStyle(fontSize: 12, color: AppColors.textMuted(context)),
+            ),
+          ),
+      ],
+    );
+  }
+
   /// 一条作业行 + **点开详情**（`showChaoxingWorkDetail` 是全模块唯一实现）。
   Widget _workRow(ChaoxingWork work) => ChaoxingWorkRow(
     work: work,
     now: _now,
     onTap: () => showChaoxingWorkDetail(context, work, now: _now),
   );
+
+  /// 一条签到行 + **点开详情**（状态未知时弹窗里会给「查询我的状态」按钮）。
+  Widget _signRow(ChaoxingSign sign) => ChaoxingSignRow(
+    sign: sign,
+    now: _now,
+    onTap: () => showChaoxingSignDetail(
+      context,
+      sign,
+      now: _now,
+      onRefresh: () => _loadSignStatus(sign),
+    ),
+  );
+
+  /// 按需取这条签到的「我的状态」（1 个请求）—— 取完刷新本页。
+  Future<void> _loadSignStatus(ChaoxingSign sign) async {
+    await ref.read(chaoxingControllerProvider.notifier).loadSignDetail(sign);
+    if (mounted) setState(() {});
+  }
 
   Widget _countChip(String text) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -551,6 +650,7 @@ class _ChaoxingScreenState extends ConsumerState<ChaoxingScreen> {
       ChaoxingPhase.session => '正在用统一认证换取学习通会话…',
       ChaoxingPhase.courses => '正在读取课程列表…',
       ChaoxingPhase.works => '正在扫描作业 ${progress.done}/${progress.total} 门课',
+      ChaoxingPhase.signs => '正在更新签到 ${progress.done}/${progress.total} 步',
       ChaoxingPhase.notices => '正在读取通知…',
       ChaoxingPhase.done => '正在整理数据…',
     };

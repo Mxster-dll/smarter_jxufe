@@ -356,7 +356,10 @@ class GetSchoolCalendarTool extends AiTool {
     try {
       final tw = await ctx.ref.read(teachingWeekProvider.future);
       if (tw != null) weekLabel = tw.label;
-    } catch (_) {}
+    } catch (_) {
+      // 教学周取不到 → weekLabel 保持空串：答案里少一个「今天是第 N 周」而已，
+      // 不该让整个工具调用失败（下面校历取不到才 `fail`，因为那是主体数据）。
+    }
 
     final SchoolCalendar cal;
     try {

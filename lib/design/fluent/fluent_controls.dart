@@ -340,6 +340,13 @@ class FluentShareSegment {
   final String? tooltip;
 }
 
+/// 占比条第 [index] 段（共 [count] 段）的**不透明度**。
+///
+/// [FluentShareBar] 内部按它给每一段上色（单色深浅递变），图例小圆点/色块
+/// 也必须用同一个函数取色 —— 否则条与图例会对不上（调用方别自己再抄一遍公式）。
+double fluentShareAlpha(int index, int count) =>
+    count <= 1 ? 0.9 : 0.9 - (index / (count - 1)) * 0.55;
+
 /// Fluent 占比条：一条细分段进度条，按权重分配宽度，accent 单色深浅区分各段。
 ///
 /// 顺序**保持调用方给定顺序**（与列表一一对应），不做排序 —— 免得条与表对不上。
@@ -364,7 +371,7 @@ class FluentShareBar extends StatelessWidget {
     final children = <Widget>[];
     for (var i = 0; i < n; i++) {
       final segment = segments[i];
-      final alpha = n == 1 ? 0.9 : 0.9 - (i / (n - 1)) * 0.55;
+      final alpha = fluentShareAlpha(i, n);
       final flex = (segment.weight * 1000).round().clamp(1, 1 << 20);
       if (i > 0) children.add(SizedBox(width: gap));
       children.add(
@@ -385,5 +392,85 @@ class FluentShareBar extends StatelessWidget {
     }
 
     return Row(children: children);
+  }
+}
+
+/// Fluent 进度条：一条圆角轨道 + 完成度填充，用于「已修 / 要求」这类单一比率。
+///
+/// 与 [FluentShareBar] 的分工：ShareBar 画**多项占比**（每段一个权重、单色深浅），
+/// 本件画**一项的完成度**（0~1，可着色表示「已满足 / 未满足」）。
+///
+/// [secondary] 是**紧跟在 [value] 之后**的第二段（毕业学分页用它表示「已选未考」，
+/// 用户 2026-10-08 原话：「用更更浅一点的红色，标识已选但是未考试的学分部分」）。
+/// 实现 = 先铺整段 `value + secondary`（[secondaryTone] 浅色），再把 `value`
+/// （[tone] 深色）压在左边 —— 于是浅色只从 [value] 处往外露，两段之间是硬边。
+///
+/// [value] / [secondary] 越界会被夹到 0~1；`NaN` 视作 0、`±∞` 夹到 0 / 1。
+class FluentProgressBar extends StatelessWidget {
+  const FluentProgressBar({
+    super.key,
+    required this.value,
+    this.secondary = 0,
+    this.tone,
+    this.secondaryTone,
+    this.height = 4,
+    this.semanticLabel,
+  });
+
+  /// 完成度，0~1。
+  final double value;
+
+  /// 紧随其后的第二段（「在修」）占比，0~1。
+  final double secondary;
+
+  /// 主段填充色；不传用 accent。
+  final Color? tone;
+
+  /// 第二段填充色；不传用主色的 40%（更浅那一档）。
+  final Color? secondaryTone;
+
+  final double height;
+
+  /// 无障碍标签（如「必修课已修 50%」）。
+  final String? semanticLabel;
+
+  static double _clamp01(double v) {
+    // ⚠ 不能用 `v.isFinite ? clamp : 0` —— 那会把 `+∞` 也压成 0（本末倒置）；
+    // `NaN` 的比较恒为 false，所以先单独挡掉，再让 `<=0 / >=1` 兜住 ±∞。
+    if (v.isNaN || v <= 0) return 0;
+    if (v >= 1) return 1;
+    return v;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = fluent(context);
+    final fill = tone ?? p.accent;
+    final tail = secondaryTone ?? fill.withValues(alpha: 0.40);
+    final safe = _clamp01(value);
+    // 两段加起来也不许越过 100%
+    final tailEnd = _clamp01(safe + _clamp01(secondary));
+    final radius = BorderRadius.circular(height / 2);
+    return Semantics(
+      label: semanticLabel,
+      value: '${(safe * 100).round()}%'
+          '${tailEnd > safe ? '（在修 ${((tailEnd - safe) * 100).round()}%）' : ''}',
+      child: ClipRRect(
+        borderRadius: radius,
+        child: Stack(
+          children: [
+            Container(height: height, color: p.subtleSecondary),
+            FractionallySizedBox(
+              widthFactor: tailEnd,
+              child: Container(height: height, color: tail),
+            ),
+            FractionallySizedBox(
+              widthFactor: safe,
+              child: Container(height: height, color: fill),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

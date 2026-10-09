@@ -636,10 +636,14 @@ void main() {
   });
 
   group('内嵌 WebView 支持判定（微信充值 / 外部入口共用）', () {
-    test('只有 Android / iOS 能内嵌', () {
+    test('Android / iOS / Windows 能内嵌，Linux / macOS 不能', () {
       expect(inAppWebViewSupported('android'), isTrue);
       expect(inAppWebViewSupported('ios'), isTrue);
-      expect(inAppWebViewSupported('windows'), isFalse);
+      // ⚠ 2026-10-08 由 false 翻成 true：内嵌实现从 `webview_flutter`
+      // （桌面无平台实现）换成 `flutter_inappwebview`（Windows = WebView2），
+      // 桌面终于有真实现了。运行期前置 = 本机装了 WebView2 运行时，没装会落到
+      // `AppErrorState`（不是黑屏）。口径见 docs/agents/40。
+      expect(inAppWebViewSupported('windows'), isTrue);
       expect(inAppWebViewSupported('linux'), isFalse);
       expect(inAppWebViewSupported('macos'), isFalse);
     });

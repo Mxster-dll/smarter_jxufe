@@ -262,13 +262,14 @@ void main() {
     expect(WeekPager.jumpThreshold, 1);
   });
 
-  // ─── 长按回本周的横划动画（用户 2026-09-17）────────────────────────
+  // ─── 顶部切周的横划动画（用户 2026-09-17 长按回本周 / 2026-10-08 点周数选周）──
   //
-  // 「长按周数返回本周要显示横划动画」——回本周常常跨十几周，从前一律
+  // 「长按周数返回本周要显示横划动画」（2026-09-17）+「课表点击顶部切换周数时，
+  // 也要显示切换动画」（2026-10-08）——回本周 / 选周都常常跨十几周，从前一律
   // `jumpToPage` 瞬移；`smoothRequest` 序号变化时改为**跨多少周都补间**，
-  // 且补间途中的逐页上报不许把自己拽回去。
+  // 且补间途中的逐页上报不许把自己拽回去。切学期仍不请求平滑（换一整套数据）。
 
-  group('平滑跳转（长按回本周）', () {
+  group('平滑跳转（长按回本周 / 点周数选周）', () {
     test('跨页时长：一页 = 单页时长，每多一页 +45ms，封顶 700ms', () {
       expect(WeekPager.smoothTransitionFor(1), WeekPager.pageTransition);
       expect(
@@ -330,7 +331,7 @@ void main() {
       );
     });
 
-    testWidgets('不请求平滑的跨多周仍然是瞬移（弹窗选周 / 切学期）', (tester) async {
+    testWidgets('不请求平滑的跨多周仍然是瞬移（切学期这类定位跳转）', (tester) async {
       final changed = <int>[];
       await pumpPager(tester, week: 3, weekCount: 20, changed: changed);
 
@@ -399,10 +400,19 @@ void main() {
       expect(changed.last, 3);
     });
 
-    test('源码守卫：长按回本周走平滑请求、两个视图都收到它', () {
+    test('源码守卫：两个周次入口都走平滑请求、两个视图都收到它', () {
       final src = File(
         'lib/features/ims/schedule/presentation/schedule_screen.dart',
       ).readAsStringSync();
+      // 用户 2026-10-08：「课表点击顶部切换周数时，也要显示切换动画」——
+      // 选周弹窗那条（`onGoToWeek`）也要请求平滑，不能退回直接跳。
+      expect(
+        'onGoToWeek: (week) => _goToWeek(week, smooth: true)'
+            .allMatches(src)
+            .length,
+        2,
+        reason: '两个周次入口的「选周」都要横划过去（AppBar 标题栏 + 内嵌工具条）',
+      );
       expect(
         'onReturnToCurrentWeek: (week) => _goToWeek(week, smooth: true)'
             .allMatches(src)
@@ -420,12 +430,26 @@ void main() {
         isTrue,
         reason: '横版直接建 WeekPager，也要传',
       );
-      // 弹窗选周 / 切学期是定位语义，不许变成横划
+      // 切学期（`_onTermPicked` / `_onYearChanged` / `_onSemesterChanged`）是
+      // 「定位到另一套数据」，仍是直接跳 —— 它不经过 `_goToWeek`，所以
+      // `smooth: true` 只应出现在上面那两个周次入口里（各两处 = 4）。
       expect(
         'smooth: true'.allMatches(src).length,
-        2,
-        reason: '只有长按回本周那一处允许 smooth: true（另一处是 _goToWeek 自身的参数默认值调用点）',
+        4,
+        reason: '只有「选周」与「回本周」两处 × 两条链路允许 smooth: true；切学期不许加',
       );
+      for (final call in const [
+        '_onTermPicked',
+        '_onYearChanged',
+        '_onSemesterChanged',
+      ]) {
+        final body = src.substring(src.indexOf('void $call('));
+        expect(
+          body.substring(0, 400).contains('smooth: true'),
+          isFalse,
+          reason: '$call 是切学期 / 换学年 —— 不许请求横划（会刷过另一个学期）',
+        );
+      }
     });
   });
 }

@@ -52,9 +52,24 @@ dependencies:
   path_provider: ^2.0.2
   path: ^1.9.0
   image: ^4.0.15
+  # 二维码**解码**（2026-10-09 四轮 · 手机端唤起微信支付要用）：校方二维码是服务端
+  # 生成的 jpg，内容 = `weixin://wxpay/bizpayurl?pr=…`（微信 Native 支付的 code_url）。
+  # 服务端**不暴露**这个链接（`checkOrder` 只回 orderno/paystate，另试 7 个可能的
+  # JSON 路径全是 404），所以只能在本地把二维码解出来、再交给系统打开唤起微信。
+  # 纯 Dart 实现、无平台配置；配对上面的 `image` 把 jpg 解成像素。
+  zxing2: ^0.2.4
   url_launcher: ^6.2.0
   rxdart: ^0.28.0
-  webview_flutter: ^4.4.2
+  # 内嵌网页的**唯一实现**（2026-10-08 换 · AGENTS.md §40）：原先是 `webview_flutter`，
+  # 而它**在 Windows 上没有平台实现**（`WebViewController()` 在桌面直接抛异常）→ 桌面只能
+  # 降级到系统浏览器，而系统浏览器**拿不到 App 的登录态**（「打开智慧江财就是登录页」）。
+  # `flutter_inappwebview` 自带 WebView2（Windows）实现，且**两端都有 CookieManager**
+  # —— 「把 app 的统一认证登录态交给内嵌浏览器」正需要按 host 写 Cookie
+  # （`webview_windows` **没有** Cookie API，只能靠 JS 塞 `document.cookie`，而跨域写不了）。
+  # 迁移完成后 `webview_flutter` 已从本文件**删除**（全仓 `package:webview_flutter/` 的
+  # import 命中为 0；`repo_hygiene_test` 的口径就是「只留真被 import 的包」）。
+  # ⚠ Windows 上编译本插件要求 `nuget` 在 PATH 里（见 §40.3）。
+  flutter_inappwebview: ^6.1.5
   collection: ^1.19.1
   freezed_annotation: 2.4.4
   # json_annotation 没有任何源码 import，但**必须保留**：freezed 生成的
@@ -77,6 +92,12 @@ dependencies:
   # 故头像两个入口统一走 image_picker（材料库仍用 file_picker，见 AGENTS.md §11.3）。
   image_picker: ^1.1.2
   pdfrx: ^2.2.24
+  # 「填表助手」读写 .docx（用户 2026-10-07：上传学校下发的 docx → 自动识别待填项
+  # → 自动填 → 手动调整 → 导出）。docx = 一个 zip（word/document.xml 等）：
+  # archive 负责解包/重打包，xml 负责 document.xml 的结构化读写。
+  # 两者本来就是 pdfrx 的传递依赖（pubspec.lock 里已在），此处只是提升为直接依赖。
+  archive: ^4.0.9
+  xml: ^6.6.1
 dev_dependencies:
   freezed: ^2.5.2
   json_serializable: ^6.8.0
@@ -110,7 +131,26 @@ flutter:
     - assets/rules/text/
     - assets/rules/pdf/
     - assets/images/campus_maps/
+    # 四校区**矢量**底图（OSM 快照裁剪而成）。生成脚本与实测台账 = `tool/jxufe_map/`
+    # （源 Overpass 快照 `_raw/` **不入库**：单个 0.5–1MB，且 `fetch_osm.py` 可重抓）。
+    # 口径见 docs/agents/41-校区矢量地图.md，守卫 = test/campus_map_test.dart。
+    - assets/campus_map/
+    # 开屏主视觉 = `library_shine.png`（蛟桥图书馆插画的透明底裁切，
+    # 源图 `design/蛟桥图书馆图片/svg导出_透明底_裁切.png`），
+    # 由 lib/features/splash/presentation/splash_flow_light_stage.dart 加载并叠流动光效。
+    # 同目录下几个 SVG + geometry.json 是早前那版「线条稿逐层生长」开屏的实测几何
+    # （生成脚本 .scratch/splash_art/make_splash_svg.py）——**那版已撤**，
+    # 这几个文件留着供 Web / 设计稿 / 其他端直接引用，别当它们在 Flutter 侧还有调用方。
+    - assets/images/splash/
+    # 品牌图形（主页顶栏品牌位）：`logos/new/logo.png` 的**紧构图**（楼体占 80% 宽，
+    # 圆角不烘死在资源里，由 UI 的 ClipRRect 负责），生成脚本
+    # `logos/new/icon-from-png/make_icons.py`（与桌面图标同一枚源图，取景不同）。
+    - assets/images/brand/
     - assets/capture_certs/
+    # 通识课程库（毕业学分页「这门通识课属于哪个模块」的唯一口径）。
+    # 源 xlsx 不入库，由 `tool/make_ge_catalog.py` 转成本 JSON 后入库 ——
+    # 学校改版时重跑那个脚本即可，守卫见 test/general_education_catalog_test.dart。
+    - assets/general_education/ge_catalog.json
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
@@ -153,3 +193,16 @@ flutter:
     - family: SmarterJxufeIcons
       fonts:
         - asset: assets/smarter_jxufe_icons.ttf
+    # 窗口标题栏三键的图标（2026-10-09 立 · 见 docs/agents §43.4）。
+    # 来源 = VS Code 的 @vscode/codicons（MIT），**只子集出标题栏要的四个字形**
+    # （chrome-minimize \eaba / chrome-maximize \eab9 / chrome-restore \eabb /
+    # chrome-close \eab8），原本 147 KB → **1.2 KB**。子集命令（在 vshell 那份
+    # codicon.ttf 上跑，本仓不留原字体）：
+    #   python -m fontTools.subset codicon.ttf --unicodes=EAB8,EAB9,EABA,EABB \
+    #     --no-hinting --desubroutinize --glyph-names \
+    #     --output-file=assets/fonts/codicon-titlebar.ttf
+    # ⚠ 用户 2026-10-09 指定「三键 icon 要跟 native/vshell 一致」，所以用这套字形，
+    # 不要退回自己拿 CustomPaint 画的近似线框。
+    - family: codicon
+      fonts:
+        - asset: assets/fonts/codicon-titlebar.ttf

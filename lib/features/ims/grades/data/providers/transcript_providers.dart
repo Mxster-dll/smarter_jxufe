@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/core/network/current_account_provider.dart';
 import 'package:smarter_jxufe/core/network/device_profile_repository_provider.dart';
+import 'package:smarter_jxufe/core/network/dio_factory.dart';
 import 'package:smarter_jxufe/features/ims/grades/data/datasources/transcript_remote_datasource.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/transcript_report.dart';
 import 'package:smarter_jxufe/features/my_mail/data/providers/my_mail_providers.dart'
@@ -18,19 +19,16 @@ const String kTranscriptNeedGuid = '未配置微信平台标识（GUID），无�
 /// 门户域专用 Dio（与网费/校历同款来源头）。
 final transcriptDioProvider = Provider<Dio>((ref) {
   final deviceProfileRepo = ref.watch(deviceProfileRepositoryProvider);
-  return Dio(
-    BaseOptions(
-      baseUrl: 'https://wxcourse.jxufe.cn',
-      connectTimeout: const Duration(seconds: 12),
-      receiveTimeout: const Duration(seconds: 30),
-      validateStatus: (status) => true,
-      headers: {
-        'User-Agent': deviceProfileRepo.userAgent,
-        'Referer':
-            'https://servicewechat.com/wx70c0beda0bb7b021/143/page-frame.html',
-        'Accept': 'application/json, text/plain, */*',
-      },
-    ),
+  return createAppDio(
+    baseUrl: 'https://wxcourse.jxufe.cn',
+    connectTimeout: const Duration(seconds: 12),
+    receiveTimeout: const Duration(seconds: 30),
+    userAgent: deviceProfileRepo.userAgent,
+    headers: {
+      'Referer':
+          'https://servicewechat.com/wx70c0beda0bb7b021/143/page-frame.html',
+      'Accept': 'application/json, text/plain, */*',
+    },
   );
 });
 

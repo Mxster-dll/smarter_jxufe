@@ -2,10 +2,13 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/core/network/device_profile_repository_provider.dart';
+import 'package:smarter_jxufe/core/network/dio_factory.dart';
 import 'package:smarter_jxufe/core/network/dio_providers.dart';
 import 'package:smarter_jxufe/features/data_center/data/providers/data_center_providers.dart';
+import 'package:smarter_jxufe/features/net_fee/data/datasources/net_fee_recharge_remote_datasource.dart';
 import 'package:smarter_jxufe/features/net_fee/data/datasources/net_fee_remote_datasource.dart';
 import 'package:smarter_jxufe/features/net_fee/domain/net_fee_models.dart';
+import 'package:smarter_jxufe/features/net_fee/domain/net_fee_recharge.dart';
 import 'package:smarter_jxufe/features/platform_guid/data/providers/guid_providers.dart';
 
 /// 网费计费域专用 Dio（智慧江财平台，与电费/校历同源反代）。
@@ -15,19 +18,16 @@ import 'package:smarter_jxufe/features/platform_guid/data/providers/guid_provide
 /// 业务接口走本 base（https://wxcourse.jxufe.cn）。
 final netFeeDioProvider = Provider<Dio>((ref) {
   final deviceProfileRepo = ref.watch(deviceProfileRepositoryProvider);
-  return Dio(
-    BaseOptions(
-      baseUrl: 'https://wxcourse.jxufe.cn',
-      connectTimeout: const Duration(seconds: 12),
-      receiveTimeout: const Duration(seconds: 20),
-      validateStatus: (status) => true,
-      headers: {
-        'User-Agent': deviceProfileRepo.userAgent,
-        'Referer':
-            'https://servicewechat.com/wx70c0beda0bb7b021/143/page-frame.html',
-        'Accept': 'application/json, text/plain, */*',
-      },
-    ),
+  return createAppDio(
+    baseUrl: 'https://wxcourse.jxufe.cn',
+    connectTimeout: const Duration(seconds: 12),
+    receiveTimeout: const Duration(seconds: 20),
+    userAgent: deviceProfileRepo.userAgent,
+    headers: {
+      'Referer':
+          'https://servicewechat.com/wx70c0beda0bb7b021/143/page-frame.html',
+      'Accept': 'application/json, text/plain, */*',
+    },
   );
 });
 
@@ -67,6 +67,32 @@ final netFeeSummaryProvider = FutureProvider<NetFeeSummary>((ref) async {
     return _fetchPortal(ref, account, hasGuid: true, liveError: '$e');
   }
 });
+
+/// 校方收银台专用 Dio（`self.jxufe.cn`）。
+///
+/// ⚠ **不能复用 [netFeeDioProvider]**：那是 wxcourse 小程序平台（baseUrl 与
+/// servicewechat Referer），而收银台的 Referer 必须是它**自己页面**的地址 ——
+/// 缺了直接 `403 Illegal Referer`（真机踩过）。UA 仍取同一份设备档案。
+final netFeeWebPayDioProvider = Provider<Dio>((ref) {
+  final deviceProfileRepo = ref.watch(deviceProfileRepositoryProvider);
+  return createAppDio(
+    baseUrl: kNetFeeWebPayOrigin,
+    connectTimeout: const Duration(seconds: 12),
+    receiveTimeout: const Duration(seconds: 20),
+    userAgent: deviceProfileRepo.userAgent,
+    headers: {'Accept': 'text/html,application/json,*/*'},
+  );
+});
+
+/// 校方收银台数据源（下单 / 二维码 / 轮询）。
+///
+/// **非 autoDispose**：一次充值里「下单 → 取二维码 → 轮询订单」要共用同一份会话
+/// （`JSESSIONID` 绑着订单），中途重建就查不到自己那笔单了。
+final netFeeRechargeRemoteDataSourceProvider =
+    Provider<NetFeeRechargeRemoteDataSource>(
+      (ref) =>
+          NetFeeRechargeRemoteDataSource(ref.watch(netFeeWebPayDioProvider)),
+    );
 
 /// 门户个人数据中心源兜底拉取。
 Future<NetFeeSummary> _fetchPortal(

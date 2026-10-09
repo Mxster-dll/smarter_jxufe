@@ -12,6 +12,7 @@ import '../../../core/storage/account_scoped_box.dart';
 import '../../chaoxing/domain/chaoxing_snapshot.dart';
 import '../../ims/curriculum/data/providers/curriculum_repository_provider.dart';
 import '../../ims/grades/data/providers/grades_box_provider.dart';
+import '../../ims/grades/data/providers/practice_course_filter_provider.dart';
 import '../../ims/student_info/data/providers/student_info_repository_provider.dart';
 import '../../major/data/providers/major_repository_provider.dart';
 import '../../major/domain/major.dart';
@@ -47,12 +48,17 @@ final geCoursesProvider = FutureProvider<List<GeCourse>>((ref) async {
 /// 排除课程口径过滤（见 ge_prior_grades.dart）。若该 provider 链路异常，
 /// 回退到直接按 box 名打开，避免「合计里没有教务成绩」的静默失败。
 final gePriorGradesProvider = FutureProvider<List<GePriorGrade>>((ref) async {
+  // 实践类课程由**本专业实践环节表**推导（拿不到 = 历史那份名单，行为不变）。
+  final filter = ref.watch(practiceCourseFilterProvider);
   try {
     final box = await ref.watch(gradesBoxProvider.future);
-    return gePriorGradesFromBox(box);
+    return gePriorGradesFromBox(box, filter: filter);
   } catch (e) {
     debugPrint('[score_estimate] gradesBoxProvider 链路失败，回退直连 box：$e');
-    return loadGePriorGrades(account: ref.read(currentAccountProvider));
+    return loadGePriorGrades(
+      account: ref.read(currentAccountProvider),
+      filter: filter,
+    );
   }
 });
 

@@ -169,7 +169,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                 duration: const Duration(milliseconds: 300),
                 builder: (context, t, child) {
                   return ElevatedButton(
-                    onPressed: () => _switchAccount(context, ref, account),
+                    onPressed: () => _switchAccount(ref, account),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Color.lerp(
                         AppColors.errorFill(context),
@@ -204,11 +204,12 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     );
   }
 
-  Future<void> _switchAccount(
-    BuildContext context,
-    WidgetRef ref,
-    Account account,
-  ) async {
+  /// ⚠ 本方法**不再收 `BuildContext` 参数**（原样是调用方把 `build` 的 context
+  /// 传进来，于是方法体内的 `if (!mounted)` 在分析器眼里是「守着一个不相干的
+  /// 对象」——`context` 是参数、`mounted` 是 State 的，守卫证明不了任何事）。
+  /// 改用 `State.context` 后，`mounted` 就是它的**真**守卫：
+  /// `use_build_context_synchronously` 的 7 条告警随之消失，行为逐字不变。
+  Future<void> _switchAccount(WidgetRef ref, Account account) async {
     if (_loggingInCardNumber != null) return; // 已有账户在登录中
     setState(() => _loggingInCardNumber = account.cardNumber);
     try {
@@ -224,7 +225,9 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       final isDesktop =
           defaultTargetPlatform != TargetPlatform.iOS &&
           defaultTargetPlatform != TargetPlatform.android;
-      final mfaHandler = (String mfaState) async {
+      // 用**函数声明**而不是 `final f = (…) async {…}`（lint：声明比变量赋值更清楚，
+      // 也免得一个 264 行闭包被当成值传来传去）。类型同 `AuthMfaHandler`。
+      Future<bool> mfaHandler(String mfaState) async {
         final ctx = navigatorKey.currentContext;
         if (ctx == null) throw ImsApiException('无法获取当前页面上下文');
         final result = await qrVm.unifiedMfaVerify(
@@ -239,7 +242,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
         if (!result.authorized) throw ImsApiException('用户取消 MFA 验证');
         // 把「信任此设备」带回 AuthRepository → 自动重登时继续登记到 CAS。
         return result.trustDevice;
-      };
+      }
       authRepo.onMfaRequired = mfaHandler;
       mfaReloginService.setHandler(mfaHandler);
 
@@ -247,7 +250,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       // （免密码、免 MFA）。这就是「切回来不用重新登录」。
       if (await authRepo.isTgcAlive()) {
         if (!mounted) return;
-        await _completeSwitch(context, ref, account);
+        await _completeSwitch(ref, account);
         return;
       }
 
@@ -256,7 +259,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       final prepareResult = await authRepo.prepareLogin();
       if (prepareResult.isLeft()) {
         final msg = prepareResult.fold((f) => f.message ?? '未知错误', (_) => '');
-        _showError(context, msg);
+        _showError(msg);
         return;
       }
 
@@ -266,7 +269,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
         account.password,
       );
       final mfaState = mfaResult.fold((failure) {
-        _showError(context, 'MFA检测失败: ${failure.message}');
+        _showError('MFA检测失败: ${failure.message}');
         return null;
       }, (r) => r);
       if (mfaState == null) return;
@@ -308,11 +311,11 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       );
 
       loginResult.fold(
-        (failure) => _showError(context, '登录失败: ${failure.message}'),
-        (_) => _completeSwitch(context, ref, account),
+        (failure) => _showError('登录失败: ${failure.message}'),
+        (_) => _completeSwitch(ref, account),
       );
     } catch (e) {
-      _showError(context, '切换失败: $e');
+      _showError('切换失败: $e');
     } finally {
       if (mounted) {
         setState(() => _loggingInCardNumber = null);
@@ -329,11 +332,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
   /// 这里**不再**调 `imsAuthRepo.logout()` / `studentInfoRepo.clearCache()`：
   /// 会话与个人缓存（成绩/学籍/课表/调课）都已按账号隔离存放，清掉反而会
   /// 把刚登录的新账号数据删了、也丢了切回来能直接复用的缓存。
-  Future<void> _completeSwitch(
-    BuildContext context,
-    WidgetRef ref,
-    Account account,
-  ) async {
+  Future<void> _completeSwitch(WidgetRef ref, Account account) async {
     ref.read(currentAccountProvider.notifier).state = account.cardNumber;
 
     // ⚠️ 必须在设置账号**之后**重新取仓库：切号前拿到的实例绑的是旧账号的 box。
@@ -364,7 +363,10 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     }
   }
 
-  void _showError(BuildContext context, String msg) {
+  /// 错误提示的唯一出口：**先判 `mounted` 再用 `State.context`**（见
+  /// [_switchAccount] 的注释：从前 `context` 是参数，这里的 `mounted` 证明不了
+  /// 那个 context 还活着）。
+  void _showError(String msg) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }

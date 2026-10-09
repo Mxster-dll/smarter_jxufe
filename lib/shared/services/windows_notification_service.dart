@@ -57,7 +57,12 @@ class WindowsNotificationService extends NotificationService {
           windows: WindowsNotificationDetails(),
         ),
       );
-    } catch (_) {}
+    } catch (_) {
+      // 通知发不出去不是致命错误（插件未就绪、用户关了通知权限、Windows 侧
+      // activator 注册失败等）——成绩页该刷还是刷，不能因为推送失败报错。
+      // ⚠ 桌面端 `initialize()` 曾原生 abort（见 notification_service.dart），
+      // 所以这里连「失败」都不该往上冒。
+    }
   }
 
   /// Windows 通知不支持常驻/进度/计时器，实况窗在桌面端为**空操作**。
@@ -127,7 +132,10 @@ class WindowsNotificationService extends NotificationService {
     for (final id in ids) {
       try {
         await _plugin!.cancel(id: id);
-      } catch (_) {}
+      } catch (_) {
+        // 取消一条失败就跳过这一条：要么它已经消失，要么过期后由系统清理，
+        // 不能让一条取消失败挡住后面所有提醒的取消。
+      }
     }
   }
 

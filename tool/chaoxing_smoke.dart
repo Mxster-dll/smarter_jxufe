@@ -38,8 +38,10 @@ import 'package:smarter_jxufe/features/chaoxing/data/chaoxing_http_client.dart';
 import 'package:smarter_jxufe/features/chaoxing/data/datasources/chaoxing_auth_remote_datasource.dart';
 import 'package:smarter_jxufe/features/chaoxing/data/datasources/chaoxing_mooc_remote_datasource.dart';
 import 'package:smarter_jxufe/features/chaoxing/data/datasources/chaoxing_notice_remote_datasource.dart';
+import 'package:smarter_jxufe/features/chaoxing/data/datasources/chaoxing_sign_remote_datasource.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_course.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_notice.dart';
+import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_sign.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_scan.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_snapshot.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_text.dart';
@@ -76,6 +78,19 @@ void _check(String what, bool ok, [String? detail]) {
 }
 
 void _step(String title) => print('\n=== $title ===');
+
+/// 计数分布（`二维码签到=3 / 手势签到=1`）。
+String _distribution(Iterable<String> values) {
+  final map = <String, int>{};
+  for (final v in values) {
+    map[v] = (map[v] ?? 0) + 1;
+  }
+  return map.entries.map((e) => '${e.key}=${e.value}').join(' / ');
+}
+
+/// 签到状态文案（冒烟脚本不 import 页面层，故在这里给一份最小映射）。
+String chainStatusText(ChaoxingSign sign) =>
+    sign.statusLoaded ? sign.status.label : '状态未知（还没查）';
 
 /// 掩码：任何 `key=value` 形态的凭据都只留键名。
 String _mask(String line) => line
@@ -361,6 +376,49 @@ Future<void> main(List<String> args) async {
       }
     }
 
+    // ── 4c. 签到（清单 1 请求/课 + 按需 1 请求/活动） ──────────────
+    //
+    // 成本口径：清单是**每门课 1 个请求**（`POST widget/pcpick/stu/activeList`）；
+    // 「我的状态」只能逐活动取（1 请求/活动），所以这里**只抽 1 条**验证链路
+    // （全量补状态是 App 里的手动动作，见 `chaoxing_signs_screen.dart`）。
+    _step('4c) 签到（清单 × ${scanCourses.length > 3 ? 3 : scanCourses.length} 门 + 1 条详情）');
+    final signSource = ChaoxingSignRemoteDataSource(http);
+    final signCourses = scanCourses.take(3).toList();
+    final signs = <ChaoxingSign>[];
+    final signFailures = <String>[];
+    for (final c in signCourses) {
+      try {
+        signs.addAll(await signSource.signsOf(session, c));
+      } catch (e) {
+        signFailures.add(c.key);
+        print('    （${c.key} 签到清单失败：$e）');
+      }
+    }
+    _check(
+      '每门课 1 个请求就拿到全部签到',
+      signFailures.isEmpty,
+      '${signCourses.length} 门课 → ${signs.length} 条签到'
+      '（进行中 ${signs.where((s) => s.isOpenAt(DateTime.now())).length} 条）',
+    );
+    if (signs.isNotEmpty) {
+      print('    类型分布：'
+          '${_distribution(signs.map((s) => s.typeName.isEmpty ? '（无名）' : s.typeName))}');
+      final sample = signs.first;
+      final detail = await signSource.detailOf(session, sample);
+      _check(
+        '抽 1 条取「我的状态」（1 请求/活动）',
+        true,
+        '状态 = ${chainStatusText(detail)}'
+        '${detail.signedAt == null ? '' : ' · 签到时刻 ${chaoxingMomentText(detail.signedAt)}'}'
+        ' · 状态已确认 = ${detail.statusLoaded}',
+      );
+    }
+    _check(
+      '签到「没查状态」与「未签」分得开',
+      signs.every((s) => !s.statusLoaded),
+      '清单接口不给我的状态（实测 userStatus 恒为 null）→ 全部「状态未知」',
+    );
+
     // ── 5. 通知 ─────────────────────────────────────────────────
     _step('5) 通知（收件箱红点 + 列表）');
     final notice = ChaoxingNoticeRemoteDataSource(http);
@@ -389,6 +447,7 @@ Future<void> main(List<String> args) async {
     final snapshot = ChaoxingSnapshot(
       courses: courses,
       works: works,
+      signs: signs,
       notices: notices,
       fetchedAt: DateTime.now(),
       failedCourseKeys: failedCourses,

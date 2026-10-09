@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1938 1314" width="646" height="438" fill="none">
+  <defs>
+    <!-- 基座下缘在照片里被树冠遮挡：亮度遮罩淡出（白=显示，黑=隐藏），
+         避免一条生硬的水平线。想要硬边就删掉各层的 mask="url(#baseFade)"。 -->
+    <linearGradient id="fadeGrad" gradientUnits="userSpaceOnUse"
+                    x1="0" y1="957" x2="0" y2="1101">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.5" stop-color="#cfcfcf"/>
+      <stop offset="1" stop-color="#000000"/>
+    </linearGradient>
+    <mask id="baseFade" maskUnits="userSpaceOnUse" x="0" y="0" width="1938" height="1314">
+      <rect x="0" y="0" width="1938" height="1314" fill="#ffffff"/>
+      <rect x="0" y="957" width="1938" height="144" fill="url(#fadeGrad)"/>
+    </mask>
+  </defs>
+  <g id="outline" stroke="#16283A" stroke-width="2.60" fill="none"
+     stroke-linejoin="round" mask="url(#baseFade)">
+    <path d="M681 381h624v405h-624Z"/>
+    <path d="M300 786h1404v309h-1404Z"/>
+  </g>
+  <g id="windows" stroke="#7FA8C9" stroke-width="1.50" fill="none"
+     mask="url(#baseFade)">
+    <path d="M714 411h90v84h-90ZM714 501h90v84h-90ZM714 522h90v39h-90ZM714 579h90v39h-90ZM714 636h90v39h-90ZM714 693h90v39h-90ZM870 411h90v84h-90ZM870 501h90v84h-90ZM870 522h90v39h-90ZM870 579h90v39h-90ZM870 636h90v39h-90ZM870 693h90v39h-90ZM1026 411h90v84h-90ZM1026 501h90v84h-90ZM1026 522h90v39h-90ZM1026 579h90v39h-90ZM1026 636h90v39h-90ZM1026 693h90v39h-90ZM1182 411h90v84h-90ZM1182 501h90v84h-90ZM1182 522h90v39h-90ZM1182 579h90v39h-90ZM1182 636h90v39h-90ZM1182 693h90v39h-90Z"/>
+    <path d="M348 906h42v36h-42ZM420 906h42v36h-42ZM492 906h42v36h-42ZM564 906h42v36h-42ZM636 906h42v36h-42ZM1356 906h42v36h-42ZM1428 906h42v36h-42ZM1500 906h42v36h-42ZM1572 906h42v36h-42ZM348 1008h42v36h-42ZM420 1008h42v36h-42ZM492 1008h42v36h-42ZM564 1008h42v36h-42ZM636 1008h42v36h-42ZM1356 1008h42v36h-42ZM1428 1008h42v36h-42ZM1500 1008h42v36h-42ZM1572 1008h42v36h-42Z"/>
+  </g>
+  <g id="roof" stroke="#C3282E" stroke-width="2.60" fill="none"
+     stroke-linejoin="round">
+    <path d="M822 402L912 360L867 336L993 336L1119 336L1074 360L1164 402ZM822 402h342v12h-342Z"/>
+  </g>
+</svg>

@@ -1,10 +1,8 @@
-import 'dart:convert';
-
 import 'package:dio/dio.dart';
-import 'package:fast_gbk/fast_gbk.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/core/network/device_profile_repository_provider.dart';
+import 'package:smarter_jxufe/core/network/dio_factory.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/anti_corruption/school_calendar_html_parser.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/datasources/school_calendar_remote_datasource.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/school_calendar_repository.dart';
@@ -16,34 +14,22 @@ export 'package:smarter_jxufe/features/school_calendar/domain/school_term.dart';
 
 /// 教务系统公开页专用 Dio（免登录，不挂 IMS 认证拦截器）。
 ///
-/// 响应为 GBK 编码的 HTML，这里与 IMS 会话用的 Dio
-/// （`core/network/ims_dio.dart` 的 `createImsDio`）一样按
-/// Content-Type 字符集自动解码为 String。
+/// 响应为 GBK 编码的 HTML：与 IMS 会话那条链共用
+/// `core/network/dio_factory.dart` 的 [gbkAwareResponseDecoder]（按
+/// Content-Type 字符集自动解码），不再各写一份 charset 探测。
 final schoolCalendarDioProvider = Provider<Dio>((ref) {
   final deviceProfileRepo = ref.watch(deviceProfileRepositoryProvider);
-  return Dio(
-    BaseOptions(
-      baseUrl: 'https://jwxt.jxufe.edu.cn',
-      connectTimeout: const Duration(seconds: 12),
-      receiveTimeout: const Duration(seconds: 20),
-      validateStatus: (status) => true,
-      headers: {
-        'User-Agent': deviceProfileRepo.userAgent,
-        'Accept':
-            'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'zh-CN,zh;q=0.9',
-      },
-      responseDecoder: (bytes, options, response) {
-        final contentType = response.headers['Content-Type']?.first;
-        final charsetMatch =
-            RegExp(r'charset=([^;]+)').firstMatch(contentType ?? '');
-        final charset = charsetMatch?.group(1)?.trim().toLowerCase() ?? '';
-        return switch (charset) {
-          'gbk' || 'gb2312' => gbk.decode(bytes),
-          _ => utf8.decode(bytes),
-        };
-      },
-    ),
+  return createAppDio(
+    baseUrl: 'https://jwxt.jxufe.edu.cn',
+    connectTimeout: const Duration(seconds: 12),
+    receiveTimeout: const Duration(seconds: 20),
+    userAgent: deviceProfileRepo.userAgent,
+    headers: {
+      'Accept':
+          'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'zh-CN,zh;q=0.9',
+    },
+    responseDecoder: gbkAwareResponseDecoder(),
   );
 });
 

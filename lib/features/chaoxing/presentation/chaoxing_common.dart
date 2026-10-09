@@ -13,6 +13,7 @@ import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_course.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_notice.dart';
+import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_sign.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_text.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_work.dart';
 import 'package:smarter_jxufe/features/score_estimate/presentation/ge_common.dart';
@@ -575,4 +576,253 @@ class ChaoxingEmptyHint extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 签到「我的状态」胶囊。
+///
+/// ⚠ 三档不能混：
+/// - `statusLoaded == false` → **灰字「状态未知」**（清单接口不给状态，还没查而已，
+///   说成「未签」就是骗人 —— 见 `domain/chaoxing_sign.dart`）；
+/// - 签上了（已签 / 代签）→ 绿（`AppColors.success`）；
+/// - 没签上（未签 / 缺勤 / 已过期）→ 红（`AppColors.critical`）；
+/// - 其余（请假 / 病假 / 事假 / 迟到 / 早退）→ 橙（`AppColors.info`），都是「有情况」。
+class ChaoxingSignStatusChip extends StatelessWidget {
+  const ChaoxingSignStatusChip({super.key, required this.sign});
+
+  final ChaoxingSign sign;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color fg;
+    if (!sign.statusLoaded) {
+      fg = AppColors.textMuted(context);
+    } else if (sign.status.isSigned) {
+      fg = AppColors.success(context);
+    } else if (sign.status.isAbsent) {
+      fg = AppColors.critical(context);
+    } else {
+      fg = AppColors.info(context);
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.tint(context, fg, 0.10),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        chaoxingSignStatusText(sign),
+        style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: fg),
+      ),
+    );
+  }
+}
+
+/// 一条签到（主页「签到记录」区块、「全部签到」页、按课分组共用）。
+///
+/// [onTap] 非空时整行可点（并出一枚右箭头提示），点开 = 签到详情弹窗
+/// （`showChaoxingSignDetail`）。[showCourse] 按课分组时关掉，避免每行重复课程名。
+class ChaoxingSignRow extends StatelessWidget {
+  const ChaoxingSignRow({
+    super.key,
+    required this.sign,
+    required this.now,
+    this.showCourse = true,
+    this.onTap,
+  });
+
+  final ChaoxingSign sign;
+  final DateTime now;
+  final bool showCourse;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final open = sign.isOpenAt(now);
+    final meta = <String>[
+      if (showCourse) sign.courseName,
+      chaoxingSignTimeText(sign.startAt, sign.endAt),
+      if (sign.attendCount > 0) '签到 ${sign.attendCount} 人',
+    ].where((s) => s.trim().isNotEmpty).join(' · ');
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          sign.typeName.isEmpty ? '签到' : sign.typeName,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ChaoxingSignStatusChip(sign: sign),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          meta,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textMuted(context),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      if (open)
+                        Text(
+                          '进行中',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        )
+                      else if (sign.signedAt != null)
+                        Text(
+                          chaoxingSignSignedAtText(sign),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textMuted(context),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            if (onTap != null)
+              Padding(
+                padding: const EdgeInsets.only(left: 6, top: 4),
+                child: Icon(
+                  Icons.chevron_right,
+                  size: 18,
+                  color: AppColors.textMuted(context),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 签到详情弹窗（**唯一实现**：主页区块 /「全部签到」页 / 课程页共用）。
+///
+/// ⚠ 我的状态**不是清单接口给的**：清单只有活动本身，状态要再打一次详情页
+/// （1 个请求 / 活动）。所以这里：
+/// - [statusLoaded] 为假时给一颗「查询我的状态」按钮，由调用方（
+///   `ChaoxingController.loadSignDetail`）按需取，取完刷新页面即可；
+/// - 已经查过的直接显示状态 + 签到时刻，不再发请求。
+Future<void> showChaoxingSignDetail(
+  BuildContext context,
+  ChaoxingSign sign, {
+  required DateTime now,
+  String? courseName,
+  Future<void> Function()? onRefresh,
+}) {
+  final course = (courseName ?? sign.courseName).trim();
+  final muted = TextStyle(fontSize: 12, color: AppColors.textMuted(context));
+  final rows = <(String, String, TextStyle?)>[
+    ('我的状态', chaoxingSignStatusText(sign), null),
+    if (sign.signedAt != null) ('签到时间', chaoxingMomentText(sign.signedAt), null),
+    if (course.isNotEmpty) ('课程', course, null),
+    ('方式', sign.typeName.isEmpty ? '签到' : sign.typeName, null),
+    ('开始时间', chaoxingMomentText(sign.startAt), null),
+    ('结束时间', chaoxingMomentText(sign.endAt), null),
+    if (sign.durationText != null) ('时长', sign.durationText!, null),
+    (
+      '当前',
+      chaoxingSignOpenText(sign, now),
+      TextStyle(
+        fontSize: 13.5,
+        fontWeight: FontWeight.w700,
+        color: sign.isOpenAt(now)
+            ? Theme.of(context).colorScheme.primary
+            : AppColors.textMuted(context),
+      ),
+    ),
+    if (sign.attendCount > 0) ('签到人数', '${sign.attendCount} 人', null),
+  ];
+  return showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      icon: const Icon(Icons.how_to_reg_outlined),
+      title: Text(sign.typeName.isEmpty ? '签到' : sign.typeName),
+      content: SizedBox(
+        width: 420,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final (label, value, style) in rows)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(width: 66, child: Text(label, style: muted)),
+                      Expanded(
+                        child: Text(
+                          value,
+                          style: style ?? const TextStyle(fontSize: 13.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              if (!sign.statusLoaded) ...[
+                const SizedBox(height: 2),
+                Text(
+                  '学习通只在每个活动的详情页给出「我的状态」，所以这条还没查过 ——'
+                  '点下面这颗按钮查一次（1 个请求）。',
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.4,
+                    color: AppColors.textMuted(context),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        if (!sign.statusLoaded && onRefresh != null)
+          TextButton(
+            key: const Key('chaoxingSignLoadStatus'),
+            onPressed: () async {
+              final navigator = Navigator.of(context);
+              await onRefresh();
+              if (navigator.mounted) navigator.pop();
+            },
+            child: const Text('查询我的状态'),
+          ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('关闭'),
+        ),
+      ],
+    ),
+  );
 }

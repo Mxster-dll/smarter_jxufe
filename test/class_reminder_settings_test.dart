@@ -1,4 +1,4 @@
-/// 设置页「上课提醒」卡 + 接线守卫。
+﻿/// 设置页「上课提醒」卡 + 接线守卫。
 ///
 /// 用户 2026-09-22 需求：「我希望在任何一节课上课前x分钟(x可设置，默认30）到上课前，
 /// 移动端显示一个常驻通知，下节课的名称和教室」。
@@ -19,6 +19,7 @@ import 'package:smarter_jxufe/design/settings_section.dart';
 import 'package:smarter_jxufe/features/ims/schedule/data/class_reminder_prefs.dart';
 import 'package:smarter_jxufe/features/ims/schedule/data/providers/class_reminder_providers.dart';
 import 'package:smarter_jxufe/features/settings/presentation/settings_screen.dart';
+import 'package:smarter_jxufe/features/settings/presentation/widgets/settings_cards.dart';
 
 /// ⚠️ 必须 `Hive.init`：设置页的偏好 store（我的校区 / 课表 / 平台标识 GUID）会在
 /// build 期间同步调 `ensureLoaded()`，Hive 没初始化会**同步抛** `HiveError`
@@ -137,10 +138,20 @@ void main() {
   });
 
   group('接线守卫（源码）', () {
-    String read(String path) =>
-        File(path).readAsStringSync().replaceAll('\r\n', '\n');
+    String read(String path) {
+      // ⚠ 2026-10-08 第三轮：`settings_cards.dart` 已按类拆成 6 个分册（桶文件 +
+      // 5 个 `settings_cards_*.dart`）→ 读桶文件时并上**整族**，否则卡片里的 key /
+      // 文案一个都读不到（实测：本文件曾因此红 2 例）。
+      final paths = path.endsWith('widgets/settings_cards.dart')
+          ? settingsCardsSources()
+          : [path];
+      return paths
+          .map((p) => File(p).readAsStringSync())
+          .join('\n')
+          .replaceAll('\r\n', '\n');
+    }
 
-    test('Android 通知服务：常驻 + 到点自动撤下 + 计时器 + 精确闹钟兜底', () {
+    test('Android 通知服务：常驻 + 到点自动撤下 + 计时器 + 系统闹钟档 + 逐档降级', () {
       final src = read('lib/shared/services/android_notification_service.dart');
       expect(src.contains('classStartChannelId'), isTrue);
       expect(src.contains("'上课提醒'"), isTrue);
@@ -149,14 +160,30 @@ void main() {
       expect(src.contains('usesChronometer: countdown'), isTrue);
       expect(src.contains('canScheduleExactNotifications()'), isTrue);
       expect(
+        src.contains('AndroidScheduleMode.alarmClock'),
+        isTrue,
+        reason: '2026-10-08 起：精确档优先用**系统闹钟**形式注册（setAlarmClock），'
+            '国产 ROM 划掉应用后最不容易被丢掉',
+      );
+      expect(
         src.contains('AndroidScheduleMode.exactAllowWhileIdle'),
         isTrue,
-        reason: '拿得到授权就走精确闹钟',
+        reason: '系统闹钟档拿不到授权时的次选（Android 14 起默认拒绝精确闹钟）',
       );
       expect(
         src.contains("AndroidScheduleMode.inexactAllowWhileIdle"),
         isTrue,
-        reason: '拿不到授权退回非精确（Android 14 默认拒绝精确闹钟）',
+        reason: '最后一档兜底：绝不因为一档失败就整条不排',
+      );
+      expect(
+        src.contains('Future<List<AndroidScheduleMode>> _scheduleModes'),
+        isTrue,
+        reason: '档位是一串（逐档 try/catch 降级），不是单个返回值',
+      );
+      expect(
+        src.contains('for (var i = 0; i < modes.length; i++)'),
+        isTrue,
+        reason: '逐档尝试的循环不能退化掉',
       );
     });
 
@@ -233,8 +260,162 @@ void main() {
       expect(
         card.contains('Platform.isAndroid'),
         isFalse,
-        reason: '平台门控只在 sync 里做，卡片不重复判平台',
+        reason: '平台门控只在 sync 里做，卡片不重复判平台（跳系统设置的门控也在桥里）',
       );
+    });
+
+    test('后台保护引导：卡片挂上 + 桥的候选降级链齐全（华为启动管理 → 应用详情 → 电池）', () {
+      final card = read(
+        'lib/features/settings/presentation/widgets/settings_cards.dart',
+      );
+      expect(card.contains("Key('classReminderProtectHint')"), isTrue);
+      expect(card.contains("Key('classReminderOpenStartup')"), isTrue);
+      expect(card.contains("Key('classReminderOpenBattery')"), isTrue);
+      expect(
+        card.contains('SettingsClassReminderProtectHint('),
+        isTrue,
+        reason: '引导块由卡片渲染',
+      );
+      expect(
+        card.contains('AppSettingsGuide.isSupported'),
+        isTrue,
+        reason: '桌面端不显示这套系统设置入口',
+      );
+      expect(
+        card.contains('AppSettingsGuide.openBackgroundSettings()'),
+        isTrue,
+      );
+      expect(card.contains('AppSettingsGuide.openBatterySettings()'), isTrue);
+
+      final bridge = read('lib/core/platform/app_settings.dart');
+      expect(
+        bridge.contains("MethodChannel(\n    'smarter_jxufe/app_settings',\n  )"),
+        isTrue,
+        reason: '通道名必须与 AppSettingsBridge.kt 的 CHANNEL 一致',
+      );
+      expect(bridge.contains("_invoke('openStartupSettings')"), isTrue);
+      expect(bridge.contains("_invoke('openAppDetails')"), isTrue);
+      expect(bridge.contains("_invoke('openBatteryOptimization')"), isTrue);
+      expect(
+        bridge.contains('allowAppDetailsFallback'),
+        isTrue,
+        reason: '原生候选全失败时再用应用详情页兜底',
+      );
+
+      final kotlin = read(
+        'android/app/src/main/kotlin/com/example/smarter_jxufe/settings/AppSettingsBridge.kt',
+      );
+      expect(
+        kotlin.contains('StartupNormalAppListActivity'),
+        isTrue,
+        reason: '华为 / 荣耀的「应用启动管理」页是主要落点',
+      );
+      expect(kotlin.contains('AutoStartManagementActivity'), isTrue);
+      expect(
+        kotlin.contains('Settings.ACTION_APPLICATION_DETAILS_SETTINGS'),
+        isTrue,
+        reason: '任何 Android 都有的兜底页',
+      );
+      expect(
+        kotlin.contains('Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS'),
+        isTrue,
+        reason: '电池优化只用官方设置列表页（避免 REQUEST_IGNORE_BATTERY_OPTIMIZATIONS 政策风险）',
+      );
+      expect(
+        kotlin.contains('intent.resolveActivity('),
+        isTrue,
+        reason: '每条候选先探存在性再跳，不做品牌判断',
+      );
+      // 主入口必须挂在组装根，否则通道根本不存在。
+      final activity = read(
+        'android/app/src/main/kotlin/com/example/smarter_jxufe/MainActivity.kt',
+      );
+      expect(activity.contains('AppSettingsBridge(this, flutterEngine.dartExecutor.binaryMessenger)'), isTrue);
+      expect(activity.contains('appSettingsBridge?.dispose()'), isTrue);
+    });
+  });
+
+  // 「后台保护」引导块（2026-10-08）：文案随厂商名换一版，两个按钮各自回调。
+  // 这是**纯展示组件**，单独 pump 即可验证 —— 卡片里它被 `AppSettingsGuide.isSupported`
+  // 包着（Windows/桌面端不显示），所以这里刻意不经过整个设置页。
+  group('后台保护引导块', () {
+    Future<void> pumpHint(
+      WidgetTester tester, {
+      String? manufacturer,
+      VoidCallback? onStartup,
+      VoidCallback? onBattery,
+    }) => tester.pumpWidget(
+      MaterialApp(
+        theme: appLightTheme,
+        home: Scaffold(
+          body: SettingsClassReminderProtectHint(
+            manufacturer: manufacturer,
+            onOpenStartup: onStartup ?? () {},
+            onOpenBattery: onBattery ?? () {},
+          ),
+        ),
+      ),
+    );
+
+    testWidgets('华为机：点名「应用启动管理」+ 讲清两步（开自启动 / 最近任务下拉锁定）', (tester) async {
+      await pumpHint(tester, manufacturer: 'HUAWEI');
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('classReminderProtectHint')), findsOneWidget);
+      expect(find.textContaining('华为 / 荣耀'), findsOneWidget);
+      expect(find.textContaining('应用启动管理'), findsWidgets);
+      expect(find.textContaining('下拉'), findsOneWidget, reason: '最近任务下拉锁定是华为官方三步之一');
+      expect(find.byKey(const Key('classReminderOpenStartup')), findsOneWidget);
+      expect(find.byKey(const Key('classReminderOpenBattery')), findsOneWidget);
+    });
+
+    testWidgets('其它品牌：走通用文案，不点名华为', (tester) async {
+      await pumpHint(tester, manufacturer: 'Xiaomi');
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('华为'), findsNothing);
+      expect(find.textContaining('后台保护'), findsWidgets);
+      expect(find.byKey(const Key('classReminderOpenStartup')), findsOneWidget);
+    });
+
+    testWidgets('取不到厂商名（桌面 / 桥失败）：退回通用文案而不是崩', (tester) async {
+      await pumpHint(tester);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('华为'), findsNothing);
+      expect(find.byKey(const Key('classReminderProtectHint')), findsOneWidget);
+    });
+
+    testWidgets('两个按钮各自触发回调（互不串台）', (tester) async {
+      var startup = 0;
+      var battery = 0;
+      await pumpHint(
+        tester,
+        manufacturer: 'HONOR',
+        onStartup: () => startup++,
+        onBattery: () => battery++,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('classReminderOpenStartup')));
+      await tester.pumpAndSettle();
+      expect(startup, 1);
+      expect(battery, 0);
+
+      await tester.tap(find.byKey(const Key('classReminderOpenBattery')));
+      await tester.pumpAndSettle();
+      expect(startup, 1);
+      expect(battery, 1);
     });
   });
 }
+
+/// lib/features/settings/presentation/widgets/settings_cards*.dart 全族源码。
+///
+/// 2026-10-08 第三轮拆分后，卡片实现不在桶文件里了 —— 源码守卫要读整族
+/// （与 settings_public_query_card_test.dart 同一口径）。
+List<String> settingsCardsSources() => Directory(
+  'lib/features/settings/presentation/widgets',
+).listSync().whereType<File>().map((f) => f.path).where(
+  (p) => p.endsWith('.dart') && p.contains('settings_cards'),
+).toList()..sort();

@@ -5,6 +5,7 @@
 library;
 
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_notice.dart';
+import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_sign.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_snapshot.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_work.dart';
 
@@ -68,6 +69,66 @@ String chaoxingWorkStatusText(ChaoxingWork work) {
 
 /// 距截止还差多久（中文短文案，用于分组标题行）。
 String chaoxingSpanText(Duration d) => _span(d);
+
+/// 签到时间行：同一天给 `10-09 09:51 ~ 09:52`，跨天给 `09-30 23:00 ~ 10-01 00:20`。
+///
+/// 给不出时刻时返回 `—`（别拿空串拼出「  · 」这种残缺行）。
+String chaoxingSignTimeText(DateTime? start, DateTime? end) {
+  if (start == null && end == null) return '—';
+  if (start == null) return '截止 ${_mdhm(end!)}';
+  final sameDay = end != null &&
+      start.year == end.year &&
+      start.month == end.month &&
+      start.day == end.day;
+  if (end == null) return _mdhm(start);
+  return '${_mdhm(start)} ~ ${sameDay ? _hm(end) : _mdhm(end)}';
+}
+
+/// 签到状态文案（`已签` / `未签` / `状态未知` …）。
+///
+/// ⚠ `statusLoaded == false` 时说「状态未知」而**不是**「未签」——清单接口不给我
+/// 自己的状态（见 `chaoxing_sign.dart`），把「没查」说成「没签」就是骗人。
+String chaoxingSignStatusText(ChaoxingSign sign) =>
+    sign.statusLoaded ? sign.status.label : '状态未知';
+
+/// 签到状态的补充说明（签上了给时刻：`10-09 09:51:58`）。
+String chaoxingSignSignedAtText(ChaoxingSign sign) =>
+    sign.signedAt == null ? '' : chaoxingMomentText(sign.signedAt);
+
+/// 这次签到现在还在进行中吗（列表右侧的即时提示）。
+String chaoxingSignOpenText(ChaoxingSign sign, DateTime now) =>
+    sign.isOpenAt(now) ? '进行中' : '已结束';
+
+/// 一门课的签到小结：`6 次签到 · 已签 5 · 未签 1`（只数**已确认**的状态）。
+String chaoxingSignCourseSummary(List<ChaoxingSign> signs) {
+  final signed = signs.where((s) => s.statusLoaded && s.status.isSigned).length;
+  final absent = signs.where((s) => s.statusLoaded && s.status.isAbsent).length;
+  final unknown = signs.where((s) => !s.statusLoaded).length;
+  final parts = <String>[
+    '${signs.length} 次签到',
+    if (signed > 0) '已签 $signed',
+    if (absent > 0) '未签 $absent',
+    if (unknown > 0) '$unknown 条状态未查',
+  ];
+  return parts.join(' · ');
+}
+
+/// 全部签到的一句话小结（主页区块标题右侧用）。
+String chaoxingSignSummary(ChaoxingSnapshot snapshot, DateTime now) {
+  final open = snapshot.openSignsAt(now).length;
+  final parts = <String>[
+    if (open > 0) '进行中 $open',
+    '共 ${snapshot.signs.length} 次',
+    if (snapshot.signedSignCount > 0) '已签 ${snapshot.signedSignCount}',
+    if (snapshot.absentSignCount > 0) '未签 ${snapshot.absentSignCount}',
+  ];
+  return parts.join(' · ');
+}
+
+/// 时间戳 → `10-09 09:51`（签到列表用的紧凑形态）。
+String _mdhm(DateTime t) =>
+    '${t.month.toString().padLeft(2, '0')}-${t.day.toString().padLeft(2, '0')} '
+    '${_hm(t)}';
 
 /// 按课程聚合作业：`课程键 → 该课作业`；顺序 = 课程顺序，无作业的课也保留空列表。
 ///

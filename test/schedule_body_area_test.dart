@@ -118,7 +118,7 @@ void main() {
       );
       expect(
         src.contains(
-          'Expanded(child: ScheduleBodyArea(child: _buildBody(horizontal)))',
+          'Expanded(child: ScheduleBodyArea(child: _buildBody(horizontal, calendar)))',
         ),
         isTrue,
         reason: '课表正文必须让开底部导航栏；加载 / 错误 / 空态也走这条路',

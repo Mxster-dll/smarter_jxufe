@@ -25,10 +25,28 @@ class DataCenterRepository {
        _remoteDataSource = remoteDataSource;
 
   /// 拉取指定账户的全量概览。
+  ///
+  /// 流程（2026-10-01 提速改造，实测口径见各步注释）：
+  /// 1. 取会话 —— Hive 缓存命中即用（它**不看 TTL**，见
+  ///    `dzj_auth_local_datasource.dart`）；
+  /// 2. **预检**：先打 1 个轻请求问一句「这会话还活着吗」。dzj 的会话过期不表现成
+  ///    401，而是每个组件接口各回一个 `code=50002`；不预检的话首屏那 19+5 个请求
+  ///    会**全部白打一轮**，仓库才靠"全都空"猜出来并整批重打 —— 实测 6568ms
+  ///    （冷连接）对 537ms（同一批紧接着再跑）；
+  /// 3. 批次：任一项报「会话失效」→ 换会话后**整批重来一次**。
   Future<DataCenterOverview> fetchOverview(String account) async {
-    final session = await _authRepository.getSession(account);
-    final first = await _collect(session);
-    if (!first.$2) return first.$1;
+    var session = await _authRepository.getSession(account);
+    if (!await _remoteDataSource.probeSession(session)) {
+      session = await _authRepository.refreshSession(account);
+    }
+
+    try {
+      final first = await _collect(session);
+      if (!first.$2) return first.$1;
+    } on DzjSessionExpiredException {
+      // 预检漏了 / 预检之后服务端才判过期 → 同样换会话重来一次。
+      // （`_guard` 不再吞这个异常，所以这里能**立刻**知道，不必等"全都空"。）
+    }
 
     // 全部卡片均失败 → 大概率会话失效，刷新会话后重试一次
     final freshSession = await _authRepository.refreshSession(account);
@@ -37,6 +55,16 @@ class DataCenterRepository {
       throw DzjApiException('个人数据中心数据加载失败，请稍后重试');
     }
     return retry.$1;
+  }
+
+  /// 强制换一次新会话（数据中心页「重新登录」按钮用）。
+  ///
+  /// 先丢掉本地那份死会话再换：不然 `getSession` 下一次还会把它捞回来。
+  /// 走的是 [DzjAuthRepository.refreshSession]，因此 TGC 过期时会自动用缓存
+  /// 凭据静默重登（需要 MFA 才弹框）—— 用户不必回登录页重输密码。
+  Future<void> renewSession(String account) async {
+    await _authRepository.clearSession(account);
+    await _authRepository.refreshSession(account);
   }
 
   /// 仅拉取指定账户的网费余额（轻量单卡查询，供仪表盘 / 网费页兜底）。
@@ -100,6 +128,33 @@ class DataCenterRepository {
     return _remoteDataSource.fetchPeerCount(freshSession, dimension);
   }
 
+  /// 「校内关系」五维**人数**（同年级 / 同班级 / 同年级同专业 / 舍友 / 同学院同生日）。
+  ///
+  /// **不从首屏批次里取**（2026-10-01 拆出）：这五条各自是
+  /// `select count(distinct userid) … from t_xssj_bzks where xx=(select xx from
+  /// t_xssj_bzks where userid=#{U_用户名})` 的关联子查询，是全组最重的 SQL；
+  /// 它压在首屏上，就等于「进页面先见人」要看这五条查询的脸色。
+  /// 现在由 `dzjPeerCountsProvider` 按需拉，卡片先画「正在读取…」。
+  ///
+  /// 会话失效时刷新会话后重试一次；两次都失败则抛（界面给「重试」）。
+  Future<Map<String, int>> fetchPeerCounts(String account) async {
+    final session = await _authRepository.getSession(account);
+    Map<String, int>? first;
+    try {
+      first = await _remoteDataSource.fetchPeerCounts(session);
+    } on DzjSessionExpiredException {
+      first = null; // 与"这一维真的没人"区分开：这里当作该换会话了
+    }
+    if (first != null) return first;
+
+    final freshSession = await _authRepository.refreshSession(account);
+    final retry = await _remoteDataSource.fetchPeerCounts(freshSession);
+    if (retry == null) {
+      throw DzjApiException('「校内关系」人数加载失败，请稍后重试');
+    }
+    return retry;
+  }
+
   /// 拉取「相关人员」（第二个页面）六个维度的**人数**（供数据中心「相关人员」卡）。
   ///
   /// 走 `DzjPeerDimension.relatedDims`（组件 `u:af43933a919c`）；与 [fetchPeers] 同理
@@ -119,7 +174,7 @@ class DataCenterRepository {
   /// 拉取「补充模块」（本学期课程 / 图书馆座位预约 / 助学金与勤工助学）。
   ///
   /// 三个模块**并发**取，单模块失败只让自己缺席（不发假卡片），全失败才抛 —— 与 [fetchPeers]
-  /// 同样按需调用、不进首屏 `_collect`（首屏已有 20 个请求）。
+  /// 同样按需调用、不进首屏 `_collect`（首屏已有 19 个请求）。
   Future<DzjExtraInfo> fetchExtra(String account) async {
     final session = await _authRepository.getSession(account);
     var first = await _collectExtra(session);
@@ -387,6 +442,12 @@ class DataCenterRepository {
   }
 
   /// 并行收集所有卡片；返回 (概览, 是否全部失败)。
+  ///
+  /// **19 个并发**（2026-10-01：校内关系五维已拆去 `dzjPeerCountsProvider`；
+  /// 身份文本 5 条在 [DzjApiRemoteDataSource.fetchIdentityTexts] 内部并发）。
+  ///
+  /// ⚠ 会话失效（`code=50002`）会**从这里冒出去**（`_guard` 不吞它），
+  /// 调用方据此换会话重来 —— 不再依赖"可惜全都空"的启发式。
   Future<(DataCenterOverview, bool)> _collect(DzjSession session) async {
     final api = _remoteDataSource;
 
@@ -410,7 +471,6 @@ class DataCenterRepository {
       api.fetchAwards(session),
       api.fetchWeekDays(session),
       api.fetchTodayClassCount(session),
-      api.fetchPeerCounts(session),
     ]);
 
     double asDouble(Object? v) {
@@ -493,7 +553,6 @@ class DataCenterRepository {
           .toList(),
       todayClassCount: (results[18] as int?) ?? 0,
       loginTrend: loginDays,
-      peerCounts: (results[19] as Map<String, int>?) ?? const {},
     );
 
     return (overview, allFailed);

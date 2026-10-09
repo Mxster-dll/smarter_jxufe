@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/core/network/current_account_provider.dart';
 import 'package:smarter_jxufe/core/network/device_profile_repository_provider.dart';
+import 'package:smarter_jxufe/core/network/dio_factory.dart';
 import 'package:smarter_jxufe/features/my_mail/data/datasources/my_mail_remote_datasource.dart';
 import 'package:smarter_jxufe/features/my_mail/domain/student_mailbox.dart';
 import 'package:smarter_jxufe/features/platform_guid/data/providers/guid_providers.dart'
@@ -20,19 +21,16 @@ bool myMailNeedsGuid(Object error) =>
 /// 服务器按来源放行：必须携带 servicewechat 页面 Referer 与浏览器 UA。
 final myMailDioProvider = Provider<Dio>((ref) {
   final deviceProfileRepo = ref.watch(deviceProfileRepositoryProvider);
-  return Dio(
-    BaseOptions(
-      baseUrl: 'https://wxcourse.jxufe.cn',
-      connectTimeout: const Duration(seconds: 12),
-      receiveTimeout: const Duration(seconds: 20),
-      validateStatus: (status) => true,
-      headers: {
-        'User-Agent': deviceProfileRepo.userAgent,
-        'Referer':
-            'https://servicewechat.com/wx70c0beda0bb7b021/143/page-frame.html',
-        'Accept': 'application/json, text/plain, */*',
-      },
-    ),
+  return createAppDio(
+    baseUrl: 'https://wxcourse.jxufe.cn',
+    connectTimeout: const Duration(seconds: 12),
+    receiveTimeout: const Duration(seconds: 20),
+    userAgent: deviceProfileRepo.userAgent,
+    headers: {
+      'Referer':
+          'https://servicewechat.com/wx70c0beda0bb7b021/143/page-frame.html',
+      'Accept': 'application/json, text/plain, */*',
+    },
   );
 });
 

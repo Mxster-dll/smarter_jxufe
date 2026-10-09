@@ -1,0 +1,53 @@
+{
+  "viewBox": "0 0 1938 1314",
+  "display_size": [
+    646,
+    438
+  ],
+  "scale": 3,
+  "envelope_src": {
+    "tower": [
+      227,
+      127,
+      435,
+      262
+    ],
+    "podium": [
+      100,
+      262,
+      568,
+      365
+    ],
+    "roof": [
+      104,
+      134
+    ]
+  },
+  "windows_tower": 24,
+  "windows_podium": 18,
+  "colonnade_columns": 19,
+  "colors": {
+    "ink": "#16283A",
+    "roof": "#C3282E",
+    "glass": "#7FA8C9",
+    "paper": "#FFFFFF"
+  },
+  "timing_ms": {
+    "roof": [
+      0,
+      420
+    ],
+    "tower": [
+      160,
+      480
+    ],
+    "podium": [
+      280,
+      560
+    ],
+    "windows": [
+      560,
+      900
+    ]
+  }
+}

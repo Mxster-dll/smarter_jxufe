@@ -12,7 +12,10 @@ import 'package:smarter_jxufe/features/school_calendar/data/wxcal_repository.dar
 import 'package:smarter_jxufe/features/school_calendar/domain/calendar_day_mark.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/school_calendar.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/wxcal_semester.dart';
+import 'package:smarter_jxufe/features/school_calendar/domain/school_time_timeline.dart';
+import 'package:smarter_jxufe/features/school_calendar/domain/teaching_week.dart';
 import 'package:smarter_jxufe/features/school_calendar/presentation/calendar_day_sheet.dart';
+import 'package:smarter_jxufe/features/school_calendar/presentation/widgets/school_year_timeline.dart';
 import 'package:smarter_jxufe/design/settings_section.dart';
 import 'package:smarter_jxufe/design/pane_chrome.dart';
 import 'package:smarter_jxufe/design/app_states.dart';
@@ -360,76 +363,36 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
     );
   }
 
-  /// 学年时间卡（2026-09-27 · 学校时间轴，用户原话：「融入校历页，包括学期时间与
-  /// 学年时间」）。
+  /// 学年时间线卡（2026-09-27 · 学校时间轴；**2026-10-09 改为一根单轴时间线**）。
   ///
   /// 与「关键日期」的分工：那一张**原样**列当前学段备注里的四行日期（含教务在
-  /// 未公布学段编的占位值，如 2026 学年寒假只给 4 天）；这一张把整学年拼起来 ——
-  /// - 学年 = `[xn] 第一学期第一天 ~ [xn+1] 第一学期第一天 − 1 天`，下学年未公布
-  ///   就写「起（下学年校历未公布）」而**不猜结束日**；
-  /// - 假期结束日一律派生自「下一学段起点 − 1 天」，教务给的跨度短于下限
-  ///   （寒 14 天 / 暑 21 天）判为占位 → 显示「结束日待公布」。
+  /// 未公布学段编的占位值，如 2026 学年寒假只给 4 天）；这一张把整学年拼成
+  /// **一条轴** —— 学段 / 假期是轴上的段，长度 ∝ 真实天数：
+  /// - 轴 = `SchoolYear`（学年 = `[xn] 第一学期第一天 ~ [xn+1] 第一学期第一天 − 1 天`，
+  ///   下学年未公布时退回固定窗口 09-01~08-31，只在轴上体现，**不猜结束时写进文案**）；
+  /// - 段的抽取与「待公布」判定全在 `domain/school_time_timeline.dart`（纯函数，可单测）；
+  /// - 假期结束日派生自「下一学段起点 − 1 天」，教务给的跨度短于下限（寒 14 / 暑 21 天）
+  ///   判为占位 → 该段画成虚线（`isOpen`），绝不画到假日期上。
   ///
   /// 取不到数据（离线 / 该学年未收录）时整卡不画 —— 上学段信息仍由「关键日期」覆盖。
   Widget _buildSchoolYearCard(BuildContext context, int xn) {
     final table = ref.watch(schoolTimeTableProvider(xn)).valueOrNull;
     if (table == null) return const SizedBox.shrink();
     final year = table.yearOf(xn);
-    final breaks = table.breaksOf(xn);
-    final segments = [
-      for (final xq in schoolYearTermSegments)
-        if ((table.termAt(xn, xq)?.termStart) != null) table.termAt(xn, xq)!,
-    ];
-    if (!year.isKnown && breaks.isEmpty && segments.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    final segments = schoolTimelineSegments(table, xn);
+    if (!year.isKnown && segments.isEmpty) return const SizedBox.shrink();
+
+    // 今天：只在「看的就是当下这个学年」时给周次说明（历史 / 未来学年没有意义）。
+    final now = DateTime.now();
+    final tw = resolveTeachingWeek(
+      now,
+      terms: ref.watch(offlineSemesterTermsProvider),
+    );
+    final todayNote = tw != null && tw.term.matches(xn: xn, xq: _xq)
+        ? '第 ${tw.week} 教学周'
+        : null;
 
     final textTheme = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
-    Widget row(IconData icon, String label, String value, {bool pending = false}) =>
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 5),
-          child: Row(
-            children: [
-              Icon(icon, size: 18, color: scheme.primary),
-              const SizedBox(width: 8),
-              SizedBox(
-                width: 92,
-                child: Text(
-                  label,
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textMuted(context),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  value,
-                  style: textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              if (pending)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                  decoration: BoxDecoration(
-                    color: AppColors.tint(context, scheme.outline, 0.12),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    '待公布',
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textMuted(context),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        );
-
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: _WhiteCard(
@@ -447,25 +410,13 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
                 ),
               ),
             ),
-            for (final t in segments)
-              row(
-                Icons.menu_book_outlined,
-                xqDisplayName(t.xq),
-                t.termEnd == null
-                    ? '${schoolDayText(t.termStart!)} 起'
-                    : '${schoolDayText(t.termStart!)} ~ ${schoolDayText(t.termEnd!)}',
-              ),
-            for (final b in breaks)
-              row(
-                b.kind == SchoolBreakKind.winter
-                    ? Icons.ac_unit_outlined
-                    : Icons.wb_sunny_outlined,
-                b.label,
-                b.end == null
-                    ? '${schoolDayText(b.start)} 起'
-                    : '${schoolDayText(b.start)} ~ ${schoolDayText(b.end!)}',
-                pending: b.end == null,
-              ),
+            const SizedBox(height: 4),
+            SchoolYearTimeline(
+              axis: schoolTimelineAxis(table, xn),
+              segments: segments,
+              today: year.contains(now) ? now : null,
+              todayNote: todayNote,
+            ),
           ],
         ),
       ),

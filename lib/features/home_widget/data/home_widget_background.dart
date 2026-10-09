@@ -1,10 +1,10 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
-import 'package:fast_gbk/fast_gbk.dart';
 import 'package:flutter/widgets.dart';
 
 import 'package:smarter_jxufe/core/network/device_profile_repository.dart';
+import 'package:smarter_jxufe/core/network/dio_factory.dart';
 import 'package:smarter_jxufe/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:smarter_jxufe/features/home_widget/data/home_widget_bridge.dart';
 import 'package:smarter_jxufe/features/home_widget/data/home_widget_exception.dart';
@@ -77,19 +77,16 @@ Future<String?> _refreshElectricity({
   required int roomId,
 }) async {
   try {
-    final dio = Dio(
-      BaseOptions(
-        baseUrl: 'https://wxcourse.jxufe.cn',
-        connectTimeout: const Duration(seconds: 12),
-        receiveTimeout: const Duration(seconds: 20),
-        validateStatus: (_) => true,
-        headers: {
-          'User-Agent': const DeviceProfileRepository().userAgent,
-          'Referer':
-              'https://servicewechat.com/wx70c0beda0bb7b021/143/page-frame.html',
-          'Accept': 'application/json, text/plain, */*',
-        },
-      ),
+    final dio = createAppDio(
+      baseUrl: 'https://wxcourse.jxufe.cn',
+      connectTimeout: const Duration(seconds: 12),
+      receiveTimeout: const Duration(seconds: 20),
+      userAgent: const DeviceProfileRepository().userAgent,
+      headers: {
+        'Referer':
+            'https://servicewechat.com/wx70c0beda0bb7b021/143/page-frame.html',
+        'Accept': 'application/json, text/plain, */*',
+      },
     );
     final response = await dio.get(
       '/electricity_charges/api/charges/findRoomBalance',
@@ -298,45 +295,30 @@ Future<String?> _renewJsessionId(String tgc) async {
 /// 教务侧 Dio（jwxt）：GBK 解码 + 超时，无拦截器（后台自己处理会话失效）。
 Dio _imsDio() {
   final ua = const DeviceProfileRepository().userAgent;
-  return Dio(
-    BaseOptions(
-      baseUrl: 'https://jwxt.jxufe.edu.cn',
-      followRedirects: false,
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 20),
-      validateStatus: (_) => true,
-      headers: {
-        'User-Agent': ua,
-        'Accept':
-            'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'zh-CN,zh;q=0.9',
-        'Referer': 'http://ehall.jxufe.edu.cn/',
-      },
-      responseDecoder: (bytes, options, response) {
-        final contentType = response.headers['Content-Type']?.first ?? '';
-        final match = RegExp(
-          r'charset=([^;]+)',
-        ).firstMatch(contentType.toLowerCase());
-        final charset = match?.group(1)?.trim() ?? '';
-        return switch (charset) {
-          'gbk' || 'gb2312' => gbk.decode(bytes),
-          _ => utf8.decode(bytes, allowMalformed: true),
-        };
-      },
-    ),
+  return createAppDio(
+    baseUrl: 'https://jwxt.jxufe.edu.cn',
+    followRedirects: false,
+    connectTimeout: const Duration(seconds: 10),
+    receiveTimeout: const Duration(seconds: 20),
+    userAgent: ua,
+    headers: {
+      'Accept':
+          'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'zh-CN,zh;q=0.9',
+      'Referer': 'http://ehall.jxufe.edu.cn/',
+    },
+    // 后台 isolate 里字节可能被截断：宁可留替换字符，也不要为坏字节判失败。
+    responseDecoder: gbkAwareResponseDecoder(allowMalformed: true),
   );
 }
 
 /// CAS 侧 Dio（ssl）：仅用于拿 IMS 重定向 URL。
-Dio _casDio() => Dio(
-  BaseOptions(
-    baseUrl: 'https://ssl.jxufe.edu.cn',
-    followRedirects: false,
-    connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 20),
-    validateStatus: (_) => true,
-    headers: {'User-Agent': const DeviceProfileRepository().userAgent},
-  ),
+Dio _casDio() => createAppDio(
+  baseUrl: 'https://ssl.jxufe.edu.cn',
+  followRedirects: false,
+  connectTimeout: const Duration(seconds: 10),
+  receiveTimeout: const Duration(seconds: 20),
+  userAgent: const DeviceProfileRepository().userAgent,
 );
 
 /// 读取已有快照：失败时若桌面已有可用数据（state=ok）则保留，

@@ -4,6 +4,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import 'package:smarter_jxufe/core/constants/hive_box_names.dart';
 import 'package:smarter_jxufe/core/network/device_profile_repository_provider.dart';
+import 'package:smarter_jxufe/core/network/dio_factory.dart';
 import 'package:smarter_jxufe/core/network/dio_providers.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_provider.dart';
 import 'package:smarter_jxufe/features/data_center/data/data_center_repository.dart';
@@ -23,17 +24,14 @@ import 'package:smarter_jxufe/features/data_center/domain/dzj_peer.dart';
 /// 注意：不预设 Cookie 默认头，会话 Cookie 由各数据源显式携带。
 final dzjDioProvider = Provider<Dio>((ref) {
   final deviceProfileRepo = ref.watch(deviceProfileRepositoryProvider);
-  return Dio(
-    BaseOptions(
-      baseUrl: 'https://dzj.jxufe.edu.cn',
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 30),
-      validateStatus: (status) => true,
-      headers: {
-        'User-Agent': deviceProfileRepo.userAgent,
-        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
-      },
-    ),
+  return createAppDio(
+    baseUrl: 'https://dzj.jxufe.edu.cn',
+    connectTimeout: const Duration(seconds: 15),
+    receiveTimeout: const Duration(seconds: 30),
+    userAgent: deviceProfileRepo.userAgent,
+    headers: {
+      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
+    },
   );
 });
 
@@ -118,9 +116,63 @@ final dzjPeersProvider =
       return repository.fetchPeers(account, dimension);
     });
 
+/// **同义关系的合并名单**（同班 / 舍友：两份名单并成一份，去重 + 字段取并集）。
+///
+/// 用户 2026-10-09：「同班和同宿舍，你不用做成切换式的，而是做成信息归并式的」
+/// → 这两目一进页面就**把两份都取回来**（用户同日拍板「方格预取并显示合并后的真实人数」），
+/// 方格上那个数 = 合并去重后的人数（[DzjPeerMerged.count]），**与点开的名单永远一致**；
+/// 代价是这一张卡从 3 个请求变 7 个（多出来的 4 个是这两对的两份名单，行集都小：
+/// 同班几十行、舍友几行）。
+///
+/// 两份**并发**取（`Future.wait`，与 2026-10-01「串行改并发」同一口径）。
+/// 只有 [DzjPeerRelation.merges] 的关系目该用它；其余维度仍走 [dzjPeersProvider] 按需拉。
+/// 刷新用 `ref.invalidate(dzjPeerMergedProvider(关系目))`。
+final dzjPeerMergedProvider =
+    FutureProvider.family<DzjPeerMerged, DzjPeerRelation>((ref, relation) async {
+      final twin = relation.twin;
+      if (twin == null) {
+        // 只有一份名单的关系目：合并 = 原样（调用点本不该用它，兜一下不抛）。
+        final rows = await ref.watch(dzjPeersProvider(relation.primary).future);
+        return dzjPeerMerge(
+          primary: rows,
+          primarySource: relation.primary.source,
+          twin: const [],
+          twinSource: DzjPeerSource.related,
+        );
+      }
+      final both = await Future.wait([
+        ref.watch(dzjPeersProvider(relation.primary).future),
+        ref.watch(dzjPeersProvider(twin).future),
+      ]);
+      return dzjPeerMerge(
+        primary: both[0],
+        primarySource: relation.primary.source,
+        twin: both[1],
+        twinSource: twin.source,
+      );
+    });
+
+/// 「校内关系」五维**人数**（同年级 / 同班级 / 同年级同专业 / 舍友 / 同学院同生日）。
+///
+/// 键 = `DzjPeerDimension.key`；单维失败记 `-1`（界面当「没有数据」不画那一格）。
+///
+/// **2026-10-01 从 [dataCenterOverviewProvider] 拆出来**：这五条是全组最重的 SQL
+/// （`count(distinct userid)` 关联子查询），压在首屏就等于「进页面先见人」要看
+/// 这五条查询的脸色。现在卡片自己 watch、先画「正在读取…」；成绩页的
+/// 「班级 / 专业」排名分母也改看它 —— 打开成绩页不必再连带打首屏那 19 个请求。
+/// 刷新用 `ref.invalidate(dzjPeerCountsProvider)`。
+final dzjPeerCountsProvider = FutureProvider<Map<String, int>>((ref) async {
+  final account = ref.watch(currentAccountProvider);
+  if (account.isEmpty) {
+    throw DzjApiException('请先登录后再查看个人数据中心');
+  }
+  final repository = await ref.watch(dataCenterRepositoryProvider.future);
+  return repository.fetchPeerCounts(account);
+});
+
 /// 「相关人员」（学校第二个页面）**六个维度的人数**（按需拉取）。
 ///
-/// 与 [dzjPeersProvider] 同理不进首屏：首屏 `_collect` 已有 20 个并发请求，再加 6 个
+/// 与 [dzjPeersProvider] 同理不进首屏：首屏 `_collect` 已有 19 个并发请求，再加 6 个
 /// 只会让「数据一览」更慢，而这张卡是次级信息 —— 卡片先画「…」，值到了再填。
 /// 键 = `DzjPeerDimension.key`（`relatedDorm` / `relatedCollege` / …）；
 /// 单个维度失败时该键为 `-1`（界面当「没有数据」不画那一格）。

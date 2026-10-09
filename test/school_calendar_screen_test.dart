@@ -15,6 +15,7 @@ import 'package:smarter_jxufe/features/school_calendar/domain/calendar_day_mark.
 import 'package:smarter_jxufe/features/school_calendar/domain/school_calendar.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/wxcal_semester.dart';
 import 'package:smarter_jxufe/features/school_calendar/presentation/school_calendar_screen.dart';
+import 'package:smarter_jxufe/features/school_calendar/presentation/widgets/school_year_timeline.dart';
 
 /// 校历页「假/班」角标的**真实渲染**测试。
 ///
@@ -84,23 +85,27 @@ void main() {
 
   int count(String text) => find.text(text).evaluate().length;
 
-  testWidgets('学年时间卡：学年窗口 + 学期 / 假期（未公布的一律留白）', (tester) async {
+  testWidgets('学年时间线卡：单轴 + 段 + 待公布（日期改由时间线承载）', (tester) async {
     await pumpTall(tester, app());
 
     expect(count('学年时间'), 1);
-    // 学年末 = 下学年第一学期第一天 − 1 天；2027 未公布 → 如实写「起」
+    // 轴头照旧写学年窗口：学年末 = 下学年第一学期第一天 − 1 天；2027 未公布 → 如实写「起」
     expect(count('2026-2027学年 · 2026-09-07 起（下学年校历未公布）'), 1);
-    // 已公布的第一学段（学期起止）
-    expect(count('2026-09-07 ~ 2027-01-15'), 1);
+    // ⚠ 2026-10-09 起这一张改成**一根单轴时间线**：段名与起止画在轴上（CustomPaint），
+    // 不再是 Text 行 → 断言走 Semantics（无障碍标签同源，也是这段文字的唯一出口）。
+    expect(find.byType(SchoolYearTimeline), findsOneWidget);
+    final label = tester
+        .getSemantics(find.byType(SchoolYearTimeline))
+        .label;
+    expect(label, contains('第一学期 09-07 ~ 01-15'));
     // 寒假：教务只给了占位跨度（01-16 ~ 01-19，4 天 < 14 天下限）
-    // → 结束日不采信，卡片写「起」+「待公布」；占位值只在「关键日期」原样出现一次
-    expect(count('寒假'), 1);
-    expect(count('2027-01-16 起'), 1);
-    expect(count('待公布'), 1);
+    // → 结束日不采信，段画成虚线 + 标「待公布」；占位值只在「关键日期」原样出现一次
+    expect(label, contains('寒假 01-16 起'));
+    expect(label, contains('待公布'));
     expect(count('2027-01-19'), 1, reason: '只有「关键日期」原样列了教务的占位结束日');
-    // 未公布的第二学段 / 暑期段：整行不画（不是画成空壳）
-    expect(count('2026-09-07 起'), 0);
-    expect(count('暑假'), 0);
+    // 未公布的第二学段 / 暑期段：整段不画（不是画成空壳）
+    expect(label, isNot(contains('第二学期')));
+    expect(label, isNot(contains('暑假')));
     expect(tester.takeException(), isNull);
   });
 

@@ -42,8 +42,31 @@ class DzjAuthRepository {
     return refreshSession(account);
   }
 
-  /// 走统一认证完整换取并持久化该账户会话。
-  Future<DzjSession> refreshSession(String account) async {
+  /// 正在进行的会话换取（按账户）—— **单飞**。
+  ///
+  /// 为什么必须单飞（2026-10-01 立）：数据中心页改成「先上屏、各卡自己取数」
+  /// 之后，页面一开，概览 / 子页面清单 / 补充模块 / 相关人员 / 校内关系
+  /// **会同时**发现会话已死并各自喊「换会话」——从前它们被首屏那一批
+  /// 串在后面，恰好只有一个在换。放任并发换票有两个后果：
+  /// ① 统一认证的 ST 是一次性的，并发换票互相作废；② 开一次页面白打
+  /// 多遍认证往返。这里按账户复用同一个 Future（与 [AuthRepository] 里
+  /// `_reloginCompleter` 防重入同一套路）。
+  final Map<String, Future<DzjSession>> _inFlight = {};
+
+  /// 走统一认证完整换取并持久化该账户会话（并发调用只换一次）。
+  Future<DzjSession> refreshSession(String account) {
+    final running = _inFlight[account];
+    if (running != null) return running;
+
+    final future = _establish(account);
+    _inFlight[account] = future;
+    return future.whenComplete(() {
+      if (identical(_inFlight[account], future)) _inFlight.remove(account);
+    });
+  }
+
+  /// 真正的换取动作（[refreshSession] 的单飞壳子包在外面）。
+  Future<DzjSession> _establish(String account) async {
     final redirectResult = await _authRepository.getServiceRedirectUrl(
       casServiceUrl,
     );

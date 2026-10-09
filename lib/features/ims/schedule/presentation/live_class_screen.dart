@@ -11,12 +11,15 @@ import 'package:smarter_jxufe/features/ims/schedule/data/providers/reschedule_pr
 import 'package:smarter_jxufe/features/ims/schedule/domain/live_session.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/period_time.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/reschedule.dart';
+import 'package:smarter_jxufe/features/ims/schedule/domain/schedule_board.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/schedule_entry.dart';
 import 'package:smarter_jxufe/features/ims/schedule/presentation/reschedule_marks.dart';
 import 'package:smarter_jxufe/features/ims/student_info/data/providers/student_info_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/student_info/domain/student_info.dart';
+import 'package:smarter_jxufe/features/school_calendar/data/providers/calendar_effect_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/school_calendar_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/wxcal_providers.dart';
+import 'package:smarter_jxufe/features/school_calendar/domain/calendar_day_effect.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/teaching_week.dart';
 import 'package:smarter_jxufe/features/score_estimate/presentation/ge_common.dart';
 import 'package:smarter_jxufe/shared/services/notification_service.dart';
@@ -64,6 +67,13 @@ class _LiveClassScreenState extends ConsumerState<LiveClassScreen> {
 
   /// 上一次推送的标识（`状态键#已上课分钟`），用于通知去重。
   String? _lastPushedKey;
+
+  /// 校历上下文（假期 / 补课效应）：实况窗与课前提醒、课表页同口径 —— 假期当天
+  /// 不推「下一节」，补课日按被补那天的课表推（用户 2026-10-07）。
+  ///
+  /// 每帧在 `build` 里按 `ref.watch` 刷新（`_resolve()` 由每秒计时器调用，
+  /// 读的是这个字段 —— `ref.watch` 不能出现在 build 之外）。
+  ScheduleCalendarContext _calendar = ScheduleCalendarContext.none;
 
   // ---- 调课（与课表页共享同一个 store，改完立刻影响倒计时与通知）----
   RescheduleStore? _rescheduleStore;
@@ -202,6 +212,7 @@ class _LiveClassScreenState extends ConsumerState<LiveClassScreen> {
       teachingWeek: tw.week,
       now: _now,
       reschedules: _reschedules,
+      calendar: _calendar,
     );
   }
 
@@ -249,6 +260,10 @@ class _LiveClassScreenState extends ConsumerState<LiveClassScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 校历效应每帧刷新（`_resolve()` 由计时器驱动，读的是这个字段）。
+    _calendar = ScheduleCalendarContext(
+      effects: ref.watch(calendarDayEffectIndexProvider),
+    );
     return Scaffold(
       appBar: AppBar(
         title: const Text('上课实况窗'),
@@ -559,7 +574,8 @@ class _LiveClassScreenState extends ConsumerState<LiveClassScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 18),
                 child: Center(
                   child: Text(
-                    tw?.isBeforeTerm == true ? '尚未开学' : '今天没有课',
+                    // 没课时给出原因（假期 / 周末 / 尚未开学），用户 2026-10-07 口径。
+                    _noClassReason() ?? '今天没有课',
                     style: TextStyle(
                       fontSize: 13,
                       color: scheme.onSurfaceVariant,
@@ -584,6 +600,17 @@ class _LiveClassScreenState extends ConsumerState<LiveClassScreen> {
       teachingWeek: week,
       day: _now,
       reschedules: _reschedules,
+      calendar: _calendar,
+    );
+  }
+
+  /// 今天一节都没有时的原因（假期 / 周末 / 尚未开学），没有特别原因返回 null。
+  String? _noClassReason() {
+    final tw = _teachingWeek;
+    return noClassReasonText(
+      effect: _calendar.effects?.effectOf(_now),
+      isWeekend: _now.weekday >= DateTime.saturday,
+      beforeTermStart: tw?.isBeforeTerm ?? false,
     );
   }
 

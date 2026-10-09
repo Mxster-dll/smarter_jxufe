@@ -23,6 +23,7 @@ import 'package:flutter/foundation.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/live_session.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/period_time.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/reschedule.dart';
+import 'package:smarter_jxufe/features/ims/schedule/domain/schedule_board.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/schedule_entry.dart';
 import 'package:smarter_jxufe/shared/services/notification_service.dart';
 
@@ -208,6 +209,10 @@ String classStartReminderPayload({
 /// 收集「未来 [days] 天内每节课」的课前提醒（纯函数；[now] 注入便于测试）。
 ///
 /// 排序：触发时刻 → 课程名 → 上课时刻（稳定，便于 id 分配与对账）。
+///
+/// [calendar] 为校历上下文（假期 / 补课，用户 2026-10-07）：假期当天不排提醒、
+/// 补课日按被补那天的课表排（与课表页、实况窗同源 —— 三处必须是同一个答案，
+/// 否则会出现「课表显示放假、手机却提醒去上课」）。
 List<ClassStartReminder> classStartRemindersFor({
   required List<ScheduleEntry> entries,
   required PeriodTable table,
@@ -218,6 +223,7 @@ List<ClassStartReminder> classStartRemindersFor({
   int days = classReminderHorizonDays,
   int max = classReminderMaxScheduled,
   Duration minLead = classReminderMinLead,
+  ScheduleCalendarContext calendar = ScheduleCalendarContext.none,
 }) {
   final base = DateTime(now.year, now.month, now.day);
   final earliest = now.add(minLead);
@@ -226,17 +232,24 @@ List<ClassStartReminder> classStartRemindersFor({
 
   for (var d = 0; d < days; d++) {
     final day = base.add(Duration(days: d));
-    final week = teachingWeekOfDay(
+    // 跨天按「周一对齐」推进教学周（[teachingWeekOfDay]）。
+    var week = teachingWeekOfDay(
       now: now,
       teachingWeek: teachingWeek,
       day: day,
     );
+    // 校历效应里的周次比「按周推」更权威（补课日可能跨到别的周上课）；
+    // 拿不到就沿用按周推的结果。
+    if (calendar.effects != null) {
+      week = calendar.effects!.weekOf(day) ?? week;
+    }
     final sessions = sessionsOfDay(
       entries: entries,
       table: table,
       teachingWeek: week,
       day: day,
       reschedules: reschedules,
+      calendar: calendar,
     );
     for (final s in sessions) {
       // 停课不提醒（与实况窗「下一节」同口径）。

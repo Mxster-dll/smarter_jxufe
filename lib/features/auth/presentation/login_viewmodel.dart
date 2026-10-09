@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart'
 import 'package:flutter/material.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:smarter_jxufe/core/errors/failures.dart';
-import 'package:smarter_jxufe/design/breakpoints.dart';
 import 'package:smarter_jxufe/features/auth/data/auth_exception.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/account_repository_provider.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_for_account_provider.dart';
@@ -130,6 +129,10 @@ class LoginViewModel extends _$LoginViewModel {
       // 第二步：如果需要 MFA（扫码/短信可切换）
       String? trustAgent;
       if (mfaState.needMfa) {
+        // ⚠ 上面几个 `await` 之后登录页可能已被销毁：`context` 是调用方传进来的，
+        // 跨 async 使用必须自己判活（`use_build_context_synchronously`）。
+        // 页面没了就不再弹 MFA，本次登录到此为止。
+        if (!context.mounted) return;
         final qrViewModel = ref.read(qrLoginViewModelProvider.notifier);
         final isDesktop =
             defaultTargetPlatform != TargetPlatform.iOS &&
@@ -218,19 +221,3 @@ class LoginViewModel extends _$LoginViewModel {
   }
 }
 
-/// 调试开关：电脑端强制使用手机验证码 MFA。
-/// 改为 [true] 后在 Windows/macOS 上也会走手机验证码流程。
-const _debugForceMobileMfa = false;
-
-/// 判断当前是否为手机平台。
-/// 电脑端可通过窗口宽度 < 600 模拟手机模式。
-bool _isMobilePlatform(BuildContext context) {
-  if (_debugForceMobileMfa) return true;
-  if (defaultTargetPlatform == TargetPlatform.iOS ||
-      defaultTargetPlatform == TargetPlatform.android) {
-    return true;
-  }
-  // 桌面端窗口较窄时也走手机模式（方便调试）
-  final size = MediaQuery.of(context).size;
-  return size.width < Breakpoints.narrow;
-}

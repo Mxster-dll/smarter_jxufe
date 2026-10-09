@@ -769,6 +769,11 @@ Widget _app(
   return ProviderScope(
     overrides: [
       dashboardTodayCoursesProvider.overrideWith((ref) async => courses),
+      // 今日校历信息（事件 / 无课原因，用户 2026-10-08）：不给它一个空值，
+      // 它会去 watch `wxArrangementsProvider` → `platformGuidBoxProvider` →
+      // 未初始化的 Hive box（抛 HiveError 把测试打挂，与下面作息表同一类坑）。
+      // 本文件只关心版式，故固定成「什么都没有」的普通日。
+      dashboardTodayCalendarProvider.overrideWithValue(const TodayCalendarInfo()),
       dashboardVolunteerHoursProvider.overrideWith(
         (ref) async => volunteerHoursStats(const [], xn: 2026),
       ),

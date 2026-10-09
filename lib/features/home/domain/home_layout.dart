@@ -1,4 +1,4 @@
-/// 主页布局口径（宫格视图 / 左侧导航栏视图）。
+﻿/// 主页布局口径（宫格视图 / 左侧导航栏视图）。
 ///
 /// 用户 2026-09-15 裁定：「电脑端主页可选宫格视图与左侧导航栏视图」，
 /// 切换入口**只在设置页**、选择**记住**（落 Hive，见 `data/home_layout_prefs.dart`）。
@@ -63,3 +63,5 @@ bool homeDesktopPlatform(String platformName) {
       return false;
   }
 }
+
+

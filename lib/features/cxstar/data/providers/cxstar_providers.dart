@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'package:smarter_jxufe/core/network/device_profile_repository_provider.dart';
+import 'package:smarter_jxufe/core/network/dio_factory.dart';
 import 'package:smarter_jxufe/core/network/dio_providers.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_provider.dart';
 import 'package:smarter_jxufe/features/cxstar/data/cxstar_auth_local_datasource.dart';
@@ -30,40 +31,33 @@ const String cxstarTokenKey = 'token';
 /// 畅想之星业务 Dio（base m.cxstar.com；接口必须在 `/api` 前缀下）。
 final cxstarDioProvider = Provider<Dio>((ref) {
   final deviceProfileRepo = ref.watch(deviceProfileRepositoryProvider);
-  return Dio(
-    BaseOptions(
-      baseUrl: 'https://m.cxstar.com',
-      connectTimeout: const Duration(seconds: 12),
-      receiveTimeout: const Duration(seconds: 20),
-      validateStatus: (status) => true,
-      followRedirects: true,
-      headers: {
-        'User-Agent': deviceProfileRepo.userAgent,
-        'Referer': 'https://m.cxstar.com/',
-        'Accept': 'application/json, text/plain, */*',
-      },
-    ),
+  return createAppDio(
+    baseUrl: 'https://m.cxstar.com',
+    connectTimeout: const Duration(seconds: 12),
+    receiveTimeout: const Duration(seconds: 20),
+    userAgent: deviceProfileRepo.userAgent,
+    headers: {
+      'Referer': 'https://m.cxstar.com/',
+      'Accept': 'application/json, text/plain, */*',
+    },
   );
 });
 
 /// 换证链专用 Dio：**不自动跟随重定向**（要逐跳检查 token 落在哪一跳）。
 final cxstarAuthDioProvider = Provider<Dio>((ref) {
   final deviceProfileRepo = ref.watch(deviceProfileRepositoryProvider);
-  return Dio(
-    BaseOptions(
-      baseUrl: CxstarAuthRemoteDataSource.origin,
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 30),
-      validateStatus: (status) => true,
-      followRedirects: false,
-      headers: {
-        'User-Agent': deviceProfileRepo.userAgent,
-        'Accept':
-            'text/html,application/xhtml+xml,application/xml;q=0.9,'
-            'image/avif,image/webp,image/apng,*/*;q=0.8',
-        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-      },
-    ),
+  return createAppDio(
+    baseUrl: CxstarAuthRemoteDataSource.origin,
+    connectTimeout: const Duration(seconds: 15),
+    receiveTimeout: const Duration(seconds: 30),
+    followRedirects: false,
+    userAgent: deviceProfileRepo.userAgent,
+    headers: {
+      'Accept':
+          'text/html,application/xhtml+xml,application/xml;q=0.9,'
+          'image/avif,image/webp,image/apng,*/*;q=0.8',
+      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+    },
   );
 });
 

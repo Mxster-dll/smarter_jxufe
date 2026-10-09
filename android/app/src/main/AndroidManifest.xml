@@ -12,6 +12,7 @@
         android:label="智慧er江财"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
@@ -355,6 +356,15 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- 微信支付（2026-10-09 加 · 校园网充值「手机端唤起微信支付」）：
+             Android 11+（API 30）默认对其它应用**不可见**，url_launcher 解析
+             `weixin://wxpay/bizpayurl?pr=…` 时拿不到目标 Activity → 唤起失败。
+             声明包名让微信可见（`weixin` scheme 那条是同一件事的更精确写法）。 -->
+        <package android:name="com.tencent.mm"/>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="weixin"/>
         </intent>
     </queries>
 </manifest>

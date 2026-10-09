@@ -3,7 +3,8 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 
 import 'package:smarter_jxufe/shared/services/android_notification_service.dart';
-import 'package:smarter_jxufe/shared/services/windows_notification_service.dart';
+// ⚠ `windows_notification_service.dart` 的 import **刻意去掉**了：桌面端不再实例化它
+// （原因见下面 `instance` 里的长注释与 AGENTS.md §1.3）。要恢复桌面通知就把这行加回来。
 
 /// 已排定的**定时**通知（对账用，见 `scheduleAt`）。
 @immutable
@@ -59,7 +60,8 @@ abstract class NotificationService {
   ///   （Android `timeoutAfter`）—— 课前提醒靠它实现「上课那一刻自动消失」；
   /// - [countdown]：用系统计时器走秒（Android `usesChronometer`，[when] 即目标时刻）；
   /// - [preferExact]：尽量用精确闹钟（Android 12+ 需要系统授权，拿不到就退回
-  ///   非精确 —— 见 `AndroidNotificationService`）。
+  ///   非精确 —— 见 `AndroidNotificationService`）。Android 侧优先用
+  ///   **系统闹钟档**（`setAlarmClock`，抗国产 ROM 省电策略），失败逐档降级。
   Future<bool> scheduleAt({
     required int id,
     required String title,
@@ -85,8 +87,26 @@ abstract class NotificationService {
       debugPrint('📱 通知平台: Android');
       _instance = AndroidNotificationService();
     } else if (Platform.isWindows) {
-      debugPrint('🪟 通知平台: Windows');
-      _instance = WindowsNotificationService();
+      // ⚠ 2026-10-07 实测（本机 Windows 11 25H2）：**桌面端不能碰
+      // `flutter_local_notifications_windows` 的原生初始化** ——
+      // 一调 `FlutterLocalNotificationsPlugin.initialize(windows: …)`，进程就原生
+      // `abort()`（弹 `Microsoft Visual C++ Runtime Library — Debug Error!
+      // abort() has been called`），窗口永远不出现，Dart 侧还**接不住**
+      // （`abort()` 杀进程，不是异常，try/catch 无效）。
+      //
+      // 定位方式（可复现）：用一个「只画一行字」的探针入口替换 `main`，逐项二分 ——
+      // 跳过这一步 → 2 秒出窗口；加上这一步 → 立刻 abort；引擎 / pdfium / Hive /
+      // 主题 / 首页全部无关。同一台机器上该进程连 `%TEMP%` 建目录都被拒
+      // （`PathAccessException … errno = 5`，而此时 `%TEMP%` 的 ACL 是干净的
+      // 继承 FullControl），推测是安全软件 / 远程桌面限制了新生成 exe 的注册表
+      // 与临时目录写入，插件注册 COM activator 失败后原生侧不处理 → `std::terminate`。
+      //
+      // 所以桌面端退回**空实现**：桌面本来也不需要系统通知（课前提醒只跑 Android，
+      // Windows 通知一直是「开发期验证」性质，见 §35）。要恢复：把下面这行换成
+      // `_instance = WindowsNotificationService();`（并把上面的 import 加回来），
+      // **先在能正常注册 COM 的机器上验证**，别再让启动被它拖死。
+      debugPrint('🪟 通知平台: Windows（桌面通知已停用，避免启动 abort · 见 AGENTS.md §1.3）');
+      _instance = _NoopNotificationService();
     } else {
       debugPrint('⚠ 通知平台: 不支持 (${Platform.operatingSystem})');
       _instance = _NoopNotificationService();

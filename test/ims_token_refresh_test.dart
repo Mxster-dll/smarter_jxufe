@@ -20,11 +20,21 @@ import 'package:smarter_jxufe/features/ims/auth/domain/ims_token_refresh.dart';
 String _read(String path) {
   // ⚠ 2026-09-20 架构审查 ⑥：设置页的 14 个分节卡已外提到 `widgets/settings_cards.dart`，
   // 读设置页时并上它（原意不变，只是不再假设两者住在同一个文件里）。
+  // ⚠ 2026-10-08 第三轮：那个文件**又按类拆成 6 个分册**（桶文件 + 5 个
+  // `settings_cards_*.dart`）→ 必须并**整族**，只并桶文件的话卡片里的 key / 文案
+  // 一个都读不到（实测：本族守卫因此红过 8 例）。
   final paths = path.endsWith('settings/presentation/settings_screen.dart')
-      ? [path, 'lib/features/settings/presentation/widgets/settings_cards.dart']
+      ? [path, ..._settingsCardsSources()]
       : [path];
   return paths.map((p) => File(p).readAsStringSync()).join('\n');
 }
+
+/// `lib/features/settings/presentation/widgets/settings_cards*.dart` 全族源码。
+List<String> _settingsCardsSources() => Directory(
+  'lib/features/settings/presentation/widgets',
+).listSync().whereType<File>().map((f) => f.path).where(
+  (p) => p.endsWith('.dart') && p.contains('settings_cards'),
+).toList()..sort();
 
 /// 去掉注释后的源码（注释里允许解释被废弃的写法，只禁**代码里**出现）。
 String _code(String path) {

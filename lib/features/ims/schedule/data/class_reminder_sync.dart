@@ -23,9 +23,11 @@ import 'package:smarter_jxufe/features/ims/schedule/data/providers/reschedule_pr
 import 'package:smarter_jxufe/features/ims/schedule/domain/class_start_reminder.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/period_time.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/reschedule.dart';
+import 'package:smarter_jxufe/features/ims/schedule/domain/schedule_board.dart';
 import 'package:smarter_jxufe/features/ims/schedule/domain/schedule_entry.dart';
 import 'package:smarter_jxufe/features/ims/student_info/data/providers/student_info_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/student_info/domain/student_info.dart';
+import 'package:smarter_jxufe/features/school_calendar/data/providers/calendar_effect_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/wxcal_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/school_term.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/teaching_week.dart';
@@ -44,6 +46,7 @@ Future<int> syncClassStartReminders({
   DateTime? now,
   int days = classReminderHorizonDays,
   int max = classReminderMaxScheduled,
+  ScheduleCalendarContext calendar = ScheduleCalendarContext.none,
 }) async {
   final at = now ?? DateTime.now();
   final svc = service ?? NotificationService.instance;
@@ -57,6 +60,7 @@ Future<int> syncClassStartReminders({
       reschedules: reschedules,
       days: days,
       max: max,
+      calendar: calendar,
     );
     final pending = await svc.pendingScheduled();
     if (classStartScheduleMatches(desired: desired, pending: pending)) {
@@ -81,7 +85,8 @@ Future<int> syncClassStartReminders({
         autoDismissAfter: r.dismissAfter,
         // 通知栏上由系统走秒，显示「距上课还有多久」。
         countdown: true,
-        // 课前提醒是时间敏感的：能精确就精确，拿不到授权自动退回非精确。
+        // 课前提醒是时间敏感的：走精确档（Android 侧优先「系统闹钟」档
+        // `setAlarmClock`，抗国产 ROM 省电策略；拿不到授权逐档降级）。
         preferExact: true,
       );
       if (done) ok++;
@@ -221,6 +226,11 @@ class ClassReminderSync {
         teachingWeek: tw.week,
         lead: prefs.lead,
         reschedules: rStore.recordsOf(rTerm),
+        // 校历效应：假期不排提醒、补课日按被补那天的课表排（用户 2026-10-07，
+        // 与课表页 / 实况窗同源 —— 不能出现「课表说放假、手机却提醒上课」）。
+        calendar: ScheduleCalendarContext(
+          effects: _ref.read(calendarDayEffectIndexProvider),
+        ),
       );
     } catch (e) {
       debugPrint('[classReminder] 课前提醒同步失败：$e');

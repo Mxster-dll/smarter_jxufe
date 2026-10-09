@@ -14,6 +14,27 @@ class CurriculumMapper {
     return ('', raw);
   }
 
+  /// 「开课学期」列的表头写法（教务原文是 `学年学期`；另两个是防表头改名的兜底）。
+  static const List<String> _termHeaders = ['学年学期', '开课学期', '学期'];
+
+  /// 取每行的**开课学期**原文（与 [fromRows] **同序、同长**）。
+  ///
+  /// 按**表头名**找列（表里夹着隐藏列与合并列，按下标会错位）；找不到这一列、
+  /// 或压根没有数据行时返回**空列表** —— 调用方按「这份方案没有开课学期信息」
+  /// 处理（界面写「未排定」），不要瞎兜一个默认学期。
+  ///
+  /// 单行这一列为空是**正常**的（真实表里确实有没排定学期的课），空串原样保留。
+  List<String> semestersFromRows(List<List<String>> rows) {
+    if (rows.isEmpty) return const [];
+    final thead = rows.first;
+    final at = thead.indexWhere((h) => _termHeaders.contains(h.trim()));
+    if (at < 0) return const [];
+    return [
+      for (final line in rows.skip(1))
+        at < line.length ? line[at].trim() : '',
+    ];
+  }
+
   List<Course> fromRows(List<List<String>> rows) {
     Map<String, int> idx = {};
 

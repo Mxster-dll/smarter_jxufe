@@ -10,6 +10,7 @@ import 'package:smarter_jxufe/features/ims/grades/data/providers/grades_reposito
 import 'package:smarter_jxufe/features/ims/grades/data/providers/weighted_grade_repository_provider.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grade.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/recommendation_weighted.dart';
+import 'package:smarter_jxufe/features/ims/grades/data/providers/practice_course_filter_provider.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grades_exclusions.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grades_query_params.dart';
 import 'package:smarter_jxufe/features/ims/grades/domain/grades_result.dart';
@@ -58,8 +59,16 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
   /// 首次进入时是否已触发自动后台刷新（检测与上次缓存的数据差异）。
   bool _initialAutoRefreshDone = false;
 
-  /// 统计中排除的课程（与分数估计模块共用同一份名单，见 grades_exclusions.dart）。
-  static const _excludedCourses = kExcludedGradeCourses;
+  /// 统计中排除的课程 = **实践类课程**（与分数估计模块共用同一份判据，
+  /// 见 `grades_exclusions.dart`）。
+  ///
+  /// 2026-10-08 改：从前是写死的四个课名，现在由**本专业实践环节表**推导
+  /// （`practiceCourseFilterProvider`），表拿不到时行为与从前逐字不变。
+  /// 每帧在 [build] 里用 provider 重新赋值 —— 与 `_retakeScores` 同一套路。
+  PracticeCourseFilter _practiceFilter = PracticeCourseFilter.fallback;
+
+  /// 只看名称的便捷视图（老调用方要 `Set<String>`）。
+  Set<String> get _excludedCourses => _practiceFilter.names;
 
   List<Grade> _sortGrades(List<Grade> grades, double avgScore) {
     if (_sortKey == null) return grades;
@@ -111,9 +120,11 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     // 排除课程始终排到最后
     if (_sortKey == 'contribution') {
       final excluded = sorted
-          .where((g) => _excludedCourses.contains(g.courseName))
+          .where((g) => _practiceFilter.excludes(code: g.courseCode, name: g.courseName))
           .toList();
-      sorted.removeWhere((g) => _excludedCourses.contains(g.courseName));
+      sorted.removeWhere(
+        (g) => _practiceFilter.excludes(code: g.courseCode, name: g.courseName),
+      );
       sorted.addAll(excluded);
     }
     return sorted;
@@ -147,6 +158,8 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(gradesViewModelProvider);
+    // 实践类课程（不计入加权）—— 每帧刷新，供下面所有统计用。
+    _practiceFilter = ref.watch(practiceCourseFilterProvider);
     final gradesAsync = ref.watch(gradesProvider(state.params));
     final importanceMapAsync = ref.watch(curriculumImportanceMapProvider);
     final importanceMap = importanceMapAsync.valueOrNull;
@@ -155,9 +168,13 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     // 排名比例的分母总人数：班级/专业取自个人数据中心（数据中心的
     // 「校内关系」人数，随会话实时刷新）；数据中心不可用（未登录 /
     // 会话失效 / 加载中）时回退到固定值。
+    //
+    // ⚠ 2026-10-01：改看 `dzjPeerCountsProvider`（**只发那 5 条人数查询**）。
+    // 从前这里 watch 的是整个 `dataCenterOverviewProvider` —— 意味着
+    // **打开成绩页会连带打数据中心首屏那 19 个请求**（学籍 / 学业 / 消费 /
+    // 教材 / 图书 / 登录趋势…），只为拿这两个分母。
     final peerCounts =
-        ref.watch(dataCenterOverviewProvider).valueOrNull?.peerCounts ??
-        const <String, int>{};
+        ref.watch(dzjPeerCountsProvider).valueOrNull ?? const <String, int>{};
     int totalOf(String key, int fallback) =>
         (peerCounts[key] ?? -1) > 0 ? peerCounts[key]! : fallback;
     final classTotal = totalOf('class', 46);
@@ -233,7 +250,10 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
         ).score;
       }
       final filtered = result.grades
-          .where((g) => !_excludedCourses.contains(g.courseName))
+          .where(
+            (g) =>
+                !_practiceFilter.excludes(code: g.courseCode, name: g.courseName),
+          )
           .toList();
       courseCount = filtered.length;
       double tc = 0, tgc = 0;
@@ -318,7 +338,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
                   showDeltas: _showDeltas,
                 )
               : const SizedBox.shrink(),
-          error: (_, _2) => const SizedBox.shrink(),
+          error: (_, _) => const SizedBox.shrink(),
         ),
         rankingAsync.when(
           data: (wg) => GradesRankingRow(
@@ -355,7 +375,10 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
 
   double _calcAvgScore(List<Grade> grades) {
     final filtered = grades
-        .where((g) => !_excludedCourses.contains(g.courseName))
+        .where(
+          (g) =>
+              !_practiceFilter.excludes(code: g.courseCode, name: g.courseName),
+        )
         .toList();
     if (filtered.isEmpty) return 0;
     double totalCredit = 0, totalScoreCredit = 0;
@@ -554,12 +577,12 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
     final state = ref.watch(gradesViewModelProvider);
     final showPicker = state.timeLimit != TimeLimit.sinceEnrollment;
 
-    Widget _wrapGroup(List<Widget> children) =>
+    Widget wrapGroup(List<Widget> children) =>
         Row(mainAxisSize: MainAxisSize.min, children: children);
 
     final groups = <Widget>[
       // Group 1: 年份 + 时间范围 + 学期
-      _wrapGroup([
+      wrapGroup([
         if (showPicker)
           AcademicYearPicker(
             startYear: 2018,
@@ -571,7 +594,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
         AnimatedOpacity(
           opacity: _pickerHovered ? 0.0 : 1.0,
           duration: const Duration(milliseconds: 200),
-          child: _wrapGroup([
+          child: wrapGroup([
             const SizedBox(width: 8),
             _dropdown<TimeLimit>(
               context,
@@ -598,7 +621,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
         ),
       ]),
       // Group 2: 主修 辅修 微专
-      _wrapGroup([
+      wrapGroup([
         _toggle(
           context,
           '主修',
@@ -621,7 +644,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
         ),
       ]),
       // Group 3: 仅未通过 + 有效成绩 + 刷新
-      _wrapGroup([
+      wrapGroup([
         _toggle(context, '仅未通过', state.onlyNotPassed, vm.toggleOnlyNotPassed),
         const SizedBox(width: 8),
         _toggle(
@@ -640,7 +663,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
           final w = constraints.maxWidth;
           if (w >= 720) {
             // 一行的空间：三组并排，悬浮年份时同行组件隐藏
-            Widget _opaque(Widget child) => AnimatedOpacity(
+            Widget opaque(Widget child) => AnimatedOpacity(
               opacity: _pickerHovered ? 0.0 : 1.0,
               duration: const Duration(milliseconds: 200),
               child: child,
@@ -650,7 +673,7 @@ class _GradesScreenState extends ConsumerState<GradesScreen> {
               runSpacing: 4,
               alignment: WrapAlignment.center,
               crossAxisAlignment: WrapCrossAlignment.center,
-              children: [groups[0], _opaque(groups[1]), _opaque(groups[2])],
+              children: [groups[0], opaque(groups[1]), opaque(groups[2])],
             );
           } else if (w >= 450) {
             // 两行的空间：第一组独占一行，二、三组同行

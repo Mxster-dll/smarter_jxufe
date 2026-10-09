@@ -101,6 +101,11 @@ class QrLoginViewModel extends _$QrLoginViewModel {
       return (authorized: false, trustDevice: false);
     }
 
+    // ⚠ 上面的 `await` 之后本页可能已被销毁：`context` 是调用方传进来的，跨 async
+    // 使用必须自己判活（`use_build_context_synchronously`）。页面没了就别再建订阅、
+    // 别再弹对话框，直接按「未授权」返回。
+    if (!context.mounted) return (authorized: false, trustDevice: false);
+
     // 监听验证成功状态
     bool authorized = false;
     late final StreamSubscription<QrCodeStatus> mfaSub;
@@ -173,6 +178,10 @@ class QrLoginViewModel extends _$QrLoginViewModel {
 
     await _repository.startMfaVerification(account, password, mfaState);
     _syncFromRepository();
+
+    // ⚠ `await` 之后本页可能已被销毁：`context` 跨 async 使用必须自己判活
+    // （`use_build_context_synchronously`）。页面没了就不弹对话框，按「未授权」返回。
+    if (!context.mounted) return (authorized: false, trustDevice: false);
 
     // 短信模式的 state（延迟初始化，切换时才请求）
     String? smsAttestServer;

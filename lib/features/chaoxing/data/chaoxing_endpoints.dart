@@ -69,6 +69,23 @@ class ChaoxingEndpoints {
   /// 未读红点（`msg` 是布尔）。
   static const String noticeCountPath = '/base/getNoticeCount';
 
+  /// 学习通 App 侧 host（签到 / 活动都在这边）。
+  static const String signHost = 'mobilelearn.chaoxing.com';
+
+  /// 签到活动清单 —— ⚠ **POST**（form：`courseId` / `classId` / `puid`）。
+  ///
+  /// 这是站方学生端活动页自己打的读取型接口（见 `util2.js` 的 `activeList`），
+  /// 本模块仍然**只读**：只查清单，不提交任何签到（提交是 `pptSign/stuSignajax`，
+  /// 本模块永不调用）。
+  static const String signListPath = '/widget/pcpick/stu/activeList';
+
+  /// 学生端活动首页（清单请求的 Referer；`?courseId=&jclassId=`）。
+  static const String signPagePath = '/widget/pcpick/stu/index';
+
+  /// 单个签到活动的详情页（GET，`?activeId=&classId=&courseId=`）——
+  /// 「我的状态 + 签到时刻」**只有**这里给，故按需逐个取（1 请求 / 活动）。
+  static const String signDetailPath = '/widget/sign/pcStuSignController/preSign';
+
   /// 学习通登录页 host（会话失效时被踢到这里）。
   static const String passportHost = 'passport2.chaoxing.com';
 

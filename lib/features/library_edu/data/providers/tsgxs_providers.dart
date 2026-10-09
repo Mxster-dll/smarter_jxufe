@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'package:smarter_jxufe/core/network/device_profile_repository_provider.dart';
+import 'package:smarter_jxufe/core/network/dio_factory.dart';
 import 'package:smarter_jxufe/core/network/dio_providers.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_provider.dart';
 import 'package:smarter_jxufe/features/library_edu/data/tsgxs_api_remote_datasource.dart';
@@ -20,22 +21,19 @@ import 'package:smarter_jxufe/features/library_edu/domain/tsgxs_models.dart';
 /// 由会话仓库显式传入(与 SSP 相同的约定)。
 final tsgxsDioProvider = Provider<Dio>((ref) {
   final deviceProfileRepo = ref.watch(deviceProfileRepositoryProvider);
-  return Dio(
-    BaseOptions(
-      baseUrl: 'http://tsgxs.jxufe.cn',
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 30),
-      validateStatus: (status) => true,
-      followRedirects: false,
-      headers: {
-        'User-Agent': deviceProfileRepo.userAgent,
-        'Accept':
-            'text/html,application/xhtml+xml,application/xml;q=0.9,'
-            'image/avif,image/webp,image/apng,*/*;q=0.8,'
-            'application/signed-exchange;v=b3;q=0.7',
-        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
-      },
-    ),
+  return createAppDio(
+    baseUrl: 'http://tsgxs.jxufe.cn',
+    connectTimeout: const Duration(seconds: 15),
+    receiveTimeout: const Duration(seconds: 30),
+    followRedirects: false,
+    userAgent: deviceProfileRepo.userAgent,
+    headers: {
+      'Accept':
+          'text/html,application/xhtml+xml,application/xml;q=0.9,'
+          'image/avif,image/webp,image/apng,*/*;q=0.8,'
+          'application/signed-exchange;v=b3;q=0.7',
+      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
+    },
   );
 });
 

@@ -37,46 +37,40 @@ Widget dcSubPageCard(BuildContext context, WidgetRef ref) {
   return Card(
     shape: appCardShape(context),
     child: Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 8, 8),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(
-                Icons.account_tree_outlined,
-                size: 18,
-                color: AppColors.tone(context, Colors.teal[400]!),
-              ),
-              const SizedBox(width: 6),
-              const Text(
-                '个人数据中心',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-              ),
-              const Spacer(),
-              if (pages.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: Text(
+          dcCardHeader(
+            context,
+            icon: Icons.account_tree_outlined,
+            title: '个人数据中心',
+            accent: AppColors.tone(context, Colors.teal[400]!),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (pages.isNotEmpty)
+                  Text(
                     '共 ${pages.length} 个子页面',
                     style: TextStyle(
                       fontSize: 11.5,
                       color: AppColors.textMuted(context),
                     ),
                   ),
-                ),
-              if (async.hasError)
-                IconButton(
-                  key: const Key('dzjSubPageTreeRetry'),
-                  tooltip: '重新读取子页面清单',
-                  icon: const Icon(Icons.refresh, size: 18),
-                  onPressed: () => ref.invalidate(dzjPageTreeProvider),
-                ),
-            ],
+                if (async.hasError)
+                  IconButton(
+                    key: const Key('dzjSubPageTreeRetry'),
+                    tooltip: '重新读取子页面清单',
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.refresh, size: 18),
+                    onPressed: () => ref.invalidate(dzjPageTreeProvider),
+                  ),
+              ],
+            ),
           ),
           if (pages.isEmpty)
             Padding(
-              padding: const EdgeInsets.fromLTRB(0, 6, 8, 6),
+              padding: const EdgeInsets.only(top: 6, bottom: 6),
               child: Text(
                 async.hasError
                     ? '子页面清单读取失败：${friendlyErrorText(async.error!)}'
@@ -215,29 +209,24 @@ Widget dcWeekCard(BuildContext context, DataCenterOverview o) {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(Icons.event_note, size: 18, color: AppColors.info(context)),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  o.weekTitle.isEmpty ? '本周课程' : o.weekTitle,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              if (o.weekDays.isNotEmpty)
-                Text(
-                  '今日 ${o.todayClassCount} 节',
-                  style: TextStyle(fontSize: 11, color: AppColors.textMuted(context)),
-                ),
-            ],
+          dcCardHeader(
+            context,
+            icon: Icons.event_note,
+            title: o.weekTitle.isEmpty ? '本周课程' : o.weekTitle,
+            accent: AppColors.info(context),
+            trailing: o.weekDays.isNotEmpty
+                ? Text(
+                    '今日 ${o.todayClassCount} 节',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textMuted(context),
+                    ),
+                  )
+                : null,
           ),
           if (o.weekDays.isEmpty)
             Padding(
-              padding: const EdgeInsets.only(top: 6),
+              padding: const EdgeInsets.only(top: 10),
               child: Text(
                 '暂无课程安排',
                 style: TextStyle(fontSize: 12, color: AppColors.textMuted(context)),
@@ -287,22 +276,14 @@ Widget dcAcademicCard(BuildContext context, DataCenterOverview o) {
   return Card(
     shape: appCardShape(context),
     child: Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          Row(
-            children: [
-              Icon(
-                Icons.menu_book,
-                size: 18,
-                color: AppColors.tone(context, Colors.deepPurple[500]!),
-              ),
-              const SizedBox(width: 6),
-              const Text(
-                '学业情况',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-              ),
-            ],
+          dcCardHeader(
+            context,
+            icon: Icons.menu_book,
+            title: '学业情况',
+            accent: AppColors.tone(context, Colors.deepPurple[500]!),
           ),
           const SizedBox(height: 10),
           Row(
@@ -352,19 +333,10 @@ Widget dcMetricsCard(BuildContext context, DataCenterOverview o) {
   return Card(
     shape: appCardShape(context),
     child: Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          Row(
-            children: [
-              Icon(Icons.speed, size: 18, color: AppColors.textMuted(context)),
-              const SizedBox(width: 6),
-              const Text(
-                '基础指标',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
+          dcCardHeader(context, icon: Icons.speed, title: '基础指标'),
           const SizedBox(height: 10),
           Row(
             children: [
@@ -417,19 +389,11 @@ Widget dcCardSpendCard(BuildContext context, DataCenterOverview o) {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(
-                Icons.credit_card,
-                size: 18,
-                color: AppColors.critical(context),
-              ),
-              const SizedBox(width: 6),
-              const Text(
-                '校园卡消费',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-              ),
-            ],
+          dcCardHeader(
+            context,
+            icon: Icons.credit_card,
+            title: '校园卡消费',
+            accent: AppColors.critical(context),
           ),
           const SizedBox(height: 10),
           Row(
@@ -519,34 +483,37 @@ Widget dcTextbookCard(BuildContext context, DataCenterOverview o) {
   return Card(
     shape: appCardShape(context),
     child: Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-      child: Row(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.menu_book_outlined,
-            size: 18,
-            color: AppColors.tone(context, Colors.brown[600]!),
-          ),
-          const SizedBox(width: 6),
-          const Text(
-            '本学期教材',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-          ),
-          const Spacer(),
-          dcScoreCell(
+          dcCardHeader(
             context,
-            label: '教材费用',
-            value: dcFmt(o.textbookFee),
-            unit: '元',
-            color: AppColors.tone(context, Colors.brown[600]!),
+            icon: Icons.menu_book_outlined,
+            title: '本学期教材',
+            accent: AppColors.tone(context, Colors.brown[600]!),
           ),
-          dcScoreDivider(context),
-          dcScoreCell(
-            context,
-            label: '教材数量',
-            value: dcFmt(o.textbookCount),
-            unit: '本',
-            color: AppColors.tone(context, Colors.brown[700]!),
+          const SizedBox(height: 10),
+          // 两枚指标与「学业情况 / 基础指标 / 校园卡消费」同形制：**标题一行、
+          // 指标一行**（从前它把标题与指标挤在同一行里，是这一页唯一的例外）。
+          Row(
+            children: [
+              dcScoreCell(
+                context,
+                label: '教材费用',
+                value: dcFmt(o.textbookFee),
+                unit: '元',
+                color: AppColors.tone(context, Colors.brown[600]!),
+              ),
+              dcScoreDivider(context),
+              dcScoreCell(
+                context,
+                label: '教材数量',
+                value: dcFmt(o.textbookCount),
+                unit: '本',
+                color: AppColors.tone(context, Colors.brown[700]!),
+              ),
+            ],
           ),
         ],
       ),
@@ -565,17 +532,13 @@ Widget dcBorrowCard(BuildContext context, DataCenterOverview o) {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(Icons.local_library, size: 18, color: AppColors.tone(context, Colors.teal[700]!)),
-              const SizedBox(width: 6),
-              const Text(
-                '图书借阅',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-              ),
-            ],
+          dcCardHeader(
+            context,
+            icon: Icons.local_library,
+            title: '图书借阅',
+            accent: AppColors.tone(context, Colors.teal[700]!),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Row(
             children: order.map((label) {
               final count = o.borrowCounts[label] ?? 0;
@@ -618,21 +581,13 @@ Widget dcAwardCard(BuildContext context, DataCenterOverview o) {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(
-                Icons.emoji_events_outlined,
-                size: 18,
-                color: AppColors.caution(context),
-              ),
-              const SizedBox(width: 6),
-              const Text(
-                '奖助贷勤',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-              ),
-            ],
+          dcCardHeader(
+            context,
+            icon: Icons.emoji_events_outlined,
+            title: '奖助贷勤',
+            accent: AppColors.caution(context),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           if (o.awards.isEmpty)
             Text(
               '暂无奖助贷勤记录',
@@ -681,15 +636,11 @@ Widget dcLoginTrendCard(BuildContext context, DataCenterOverview o) {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(Icons.timeline, size: 18, color: AppColors.tone(context, Colors.indigo[400]!)),
-              const SizedBox(width: 6),
-              const Text(
-                '门户登录趋势（本周）',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-              ),
-            ],
+          dcCardHeader(
+            context,
+            icon: Icons.timeline,
+            title: '门户登录趋势（本周）',
+            accent: AppColors.tone(context, Colors.indigo[400]!),
           ),
           const SizedBox(height: 14),
           if (o.loginTrend.isEmpty)

@@ -2,9 +2,11 @@
 library;
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/core/network/current_account_provider.dart';
+import 'package:smarter_jxufe/core/network/dio_factory.dart';
 import 'package:smarter_jxufe/core/storage/account_scoped_box.dart';
 import 'package:smarter_jxufe/features/auth/data/providers/auth_repository_provider.dart';
 import 'package:smarter_jxufe/features/chaoxing/data/chaoxing_gate.dart';
@@ -14,6 +16,8 @@ import 'package:smarter_jxufe/features/chaoxing/data/chaoxing_store.dart';
 import 'package:smarter_jxufe/features/chaoxing/data/datasources/chaoxing_auth_remote_datasource.dart';
 import 'package:smarter_jxufe/features/chaoxing/data/datasources/chaoxing_mooc_remote_datasource.dart';
 import 'package:smarter_jxufe/features/chaoxing/data/datasources/chaoxing_notice_remote_datasource.dart';
+import 'package:smarter_jxufe/features/chaoxing/data/datasources/chaoxing_sign_remote_datasource.dart';
+import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_sign.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_snapshot.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/wxcal_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/domain/school_term.dart';
@@ -23,14 +27,11 @@ import 'package:smarter_jxufe/features/school_calendar/domain/school_term.dart';
 /// `followRedirects: false`：换证链要**逐跳**看 `Set-Cookie` 与 `Location`
 /// （Cookie 归属哪个域只有服务端知道，交给 Dio 自动跟就跟丢了）。
 final chaoxingDioProvider = Provider<Dio>((ref) {
-  return Dio(
-    BaseOptions(
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 25),
-      sendTimeout: const Duration(seconds: 25),
-      followRedirects: false,
-      validateStatus: (_) => true,
-    ),
+  return createAppDio(
+    connectTimeout: const Duration(seconds: 15),
+    receiveTimeout: const Duration(seconds: 25),
+    sendTimeout: const Duration(seconds: 25),
+    followRedirects: false,
   );
 });
 
@@ -48,6 +49,10 @@ final chaoxingMoocRemoteDataSourceProvider = Provider<ChaoxingMoocRemoteDataSour
 
 final chaoxingNoticeRemoteDataSourceProvider = Provider<ChaoxingNoticeRemoteDataSource>(
   (ref) => ChaoxingNoticeRemoteDataSource(ref.watch(chaoxingHttpClientProvider)),
+);
+
+final chaoxingSignRemoteDataSourceProvider = Provider<ChaoxingSignRemoteDataSource>(
+  (ref) => ChaoxingSignRemoteDataSource(ref.watch(chaoxingHttpClientProvider)),
 );
 
 /// 快照缓存（**按账号隔离**：box 名 `chaoxing_<账号>`）。
@@ -73,6 +78,7 @@ final chaoxingRepositoryProvider = FutureProvider<ChaoxingRepository>((ref) asyn
     auth: ref.watch(chaoxingAuthRemoteDataSourceProvider),
     mooc: ref.watch(chaoxingMoocRemoteDataSourceProvider),
     notice: ref.watch(chaoxingNoticeRemoteDataSourceProvider),
+    sign: ref.watch(chaoxingSignRemoteDataSourceProvider),
     fetchTicket: authRepository.getServiceRedirectUrl,
     store: await ref.watch(chaoxingStoreProvider.future),
     currentTermCode: schoolTermCode(term.xn, term.xq),
@@ -185,6 +191,52 @@ class ChaoxingController extends AsyncNotifier<ChaoxingSnapshot> {
       previous.copyWith(notices: notices, noticesAvailable: true),
     );
     ref.read(chaoxingRefreshGateProvider).markUpdated();
+  }
+
+  /// **按需**取一条签到活动的状态（成本 1 个请求）。
+  ///
+  /// 用于「点开某条签到」：清单接口不给我自己的状态（见 `chaoxing_sign.dart`），
+  /// 所以状态是**点开才补**的。已有结论（`statusLoaded`）的条目不再重复请求。
+  /// 失败不抛出，返回 false（界面照旧显示「状态未知」）。
+  Future<bool> loadSignDetail(ChaoxingSign sign) async {
+    final current = state.valueOrNull;
+    if (current == null) return false;
+    if (sign.statusLoaded) return true;
+    final repository = await ref.read(chaoxingRepositoryProvider.future);
+    try {
+      final next = await repository.refreshSignDetail(current, sign);
+      state = AsyncValue<ChaoxingSnapshot>.data(next);
+      return true;
+    } catch (e) {
+      debugPrint('[chaoxing] 签到 ${sign.key} 状态取数失败：$e');
+      return false;
+    }
+  }
+
+  /// **手动全量更新签到**（清单 + 我的状态；见仓库的 `refreshSignsFull`）。
+  ///
+  /// ⚠ 这是本模块唯一可能一次发几十个请求的入口（≈60 个/窗口就撞风控），
+  /// 所以只由用户点按钮触发，并如实回报「撞风控就停、已拿到的照算」。
+  Future<void> refreshSignsFull({bool allCourses = false}) async {
+    final repository = await ref.read(chaoxingRepositoryProvider.future);
+    final previous = state.valueOrNull;
+    if (previous == null) return;
+    final progress = ref.read(chaoxingProgressProvider.notifier);
+    try {
+      final next = await repository.refreshSignsFull(
+        previous,
+        allCourses: allCourses,
+        onProgress: progress.set,
+      );
+      state = AsyncValue<ChaoxingSnapshot>.data(next);
+      ref.read(chaoxingRefreshGateProvider).markUpdated();
+    } catch (e, st) {
+      state = AsyncValue<ChaoxingSnapshot>.error(e, st).copyWithPrevious(
+        AsyncValue<ChaoxingSnapshot>.data(previous),
+      );
+    } finally {
+      progress.set(null);
+    }
   }
 
   /// 丢弃会话与缓存（「清除本机学习通数据」）。

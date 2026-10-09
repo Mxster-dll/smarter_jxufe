@@ -59,6 +59,15 @@ abstract final class StatusPalette {
 
   /// 体测「女」标签玫红（男走 `AppColors.info`）。
   static const ticeFemale = Color(0xFFAD1457);
+
+  /// 开屏流光那道**高光**的本色（2026-10-08 立）。
+  ///
+  /// 为什么是「本色 + 调用方自己调透明度」而不是直接写 `Colors.white`：
+  /// 建筑主体的石材面在白底下本来就接近 `#EDE7DF`，纯 `#FFFFFF` 扫过去差值太小、
+  /// 看不出「流动」；这里给一个**略偏冷的白**（比石材冷、比页面底亮），
+  /// 在浅色页面与深色页面（`#121212`）上都拉得出可读的对比度。
+  /// 深色下不换色 —— 建筑图本身是彩色位图、不随主题反相，换色只会让两边不一致。
+  static const splashShine = Color(0xFFEAF4FF);
 }
 
 /// 五育（综合素质测评）语义色 + 综测等级色。
@@ -151,4 +160,80 @@ abstract final class PlatformEntryTone {
   static const volunteer = Color(0xFFE65100);
   static const secondClass = Color(0xFF6A1B9A);
   static const jhRead = Color(0xFF1565C0);
+}
+
+/// 校区矢量地图的**两套配色**（浅色 / 深色）。
+///
+/// 用户 2026-10 要求「可以手动切换两种风格的地图」。这里只放色值，
+/// 语义与挑选理由见 `docs/agents/41-校区矢量地图.md`：
+/// - `light` 为默认，底图米白、道路白、建筑暖灰，与全站浅色主题一致；
+/// - `dark` 为夜间款，底图炭灰、道路中灰、建筑深灰，**不自发光**，
+///   深色模式下长时间看也不刺眼；
+/// - 两套的 `accent` 都是校红 `#C3282E` 系（校色），用于水体描边与
+///   「我的校区」高亮，保证换风格时品牌色不丢。
+///
+/// ⚠ 页面里**不许**再写 `Color(0x…)`（守卫见 `test/core_conventions_test.dart`
+/// 「设计色值唯一口径」）—— 地图配色只能从这里取。
+abstract final class CampusMapTone {
+  CampusMapTone._();
+
+  // ---------- 浅色（日间）----------
+  static const lightGround = Color(0xFFF7F5F0);
+  static const lightWater = Color(0xFFA9CCE3);
+  static const lightWaterEdge = Color(0xFF7FA8C4);
+  static const lightGreen = Color(0xFFCFE0BF);
+  static const lightSport = Color(0xFFE9D9A6);
+  static const lightSportEdge = Color(0xFFC9B47C);
+  static const lightRoad = Color(0xFFFFFFFF);
+  static const lightRoadCasing = Color(0xFFDCD7CD);
+  static const lightBuilding = Color(0xFFE0D9CD);
+  static const lightBuildingEdge = Color(0xFFBFB6A6);
+  static const lightBuildingNamed = Color(0xFFCEC3B0);
+  static const lightLabel = Color(0xFF3A3630);
+  static const lightLabelHalo = Color(0xF2FFFFFF);
+
+  // ---------- 深色（夜间）----------
+  static const darkGround = Color(0xFF1E1F22);
+  static const darkWater = Color(0xFF24455C);
+  static const darkWaterEdge = Color(0xFF3D6C8C);
+  static const darkGreen = Color(0xFF2A3A2A);
+  static const darkSport = Color(0xFF4A4029);
+  static const darkSportEdge = Color(0xFF6B5C36);
+  static const darkRoad = Color(0xFF4A4B4F);
+  static const darkRoadCasing = Color(0xFF2C2D30);
+  static const darkBuilding = Color(0xFF34363A);
+  static const darkBuildingEdge = Color(0xFF4E5156);
+  static const darkBuildingNamed = Color(0xFF42454A);
+  static const darkLabel = Color(0xFFE6E2DA);
+  static const darkLabelHalo = Color(0xE61E1F22);
+
+  // ---------- 两套共用：校色 ----------
+  static const accent = Color(0xFFC3282E);
+  static const accentSoft = Color(0xFFE57373);
+}
+
+/// 窗口标题栏（自绘三键）的语义色 —— Win 风格与 mac 风格各一套。
+///
+/// 取值不是挑出来的：**Windows 风格**的关闭键悬停底色就是 Win11 原生 caption
+/// 按钮的 `#C42B1C`（Windows 11 默认浅色主题下实测取样），其余按钮的悬停 / 按下
+/// 底色由主题的 `onSurface` 调透明度得到（不登记在这里 —— 它跟着深浅色走）。
+/// **mac 风格**三个指示灯用 macOS 的固定色（红 / 黄 / 绿），窗口失焦时整组转灰
+/// 也是 macOS 的规矩。守卫 = `test/window_title_bar_test.dart`。
+abstract final class WindowChromeTone {
+  WindowChromeTone._();
+
+  /// Windows 风格：关闭键悬停 / 按下时的底色（Win11 原生）。
+  static const windowsCloseHighlight = Color(0xFFC42B1C);
+
+  /// macOS 风格：关闭（红）。
+  static const macClose = Color(0xFFFF5F57);
+
+  /// macOS 风格：最小化（黄）。
+  static const macMinimize = Color(0xFFFEBC2E);
+
+  /// macOS 风格：最大化 / 全屏（绿）。
+  static const macZoom = Color(0xFF28C840);
+
+  /// macOS 风格：窗口失焦时三个指示灯一律转灰。
+  static const macInactive = Color(0xFFC6C6C6);
 }

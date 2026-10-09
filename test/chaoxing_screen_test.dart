@@ -15,12 +15,14 @@ import 'package:smarter_jxufe/core/navigation/page_auto_refresh.dart';
 import 'package:smarter_jxufe/features/chaoxing/data/providers/chaoxing_providers.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_course.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_notice.dart';
+import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_sign.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_snapshot.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_work.dart';
 import 'package:smarter_jxufe/features/chaoxing/presentation/chaoxing_common.dart';
 import 'package:smarter_jxufe/features/chaoxing/presentation/chaoxing_courses_screen.dart';
 import 'package:smarter_jxufe/features/chaoxing/presentation/chaoxing_notices_screen.dart';
 import 'package:smarter_jxufe/features/chaoxing/presentation/chaoxing_screen.dart';
+import 'package:smarter_jxufe/features/chaoxing/presentation/chaoxing_signs_screen.dart';
 import 'package:smarter_jxufe/features/chaoxing/presentation/chaoxing_works_screen.dart';
 
 /// 假控制器：`build` 直接给快照，四个动作只记账（**不碰仓库 / 网络 / Hive**）。
@@ -34,6 +36,34 @@ class _FakeController extends ChaoxingController {
 
   /// 手动刷新（force: true）的次数 —— 自动刷新不计入。
   int forcedRefreshes = 0;
+
+  /// 签到：点开某条时「查询我的状态」的次数（1 请求/活动）。
+  int signDetailCalls = 0;
+
+  /// 签到：手动全量更新的次数与档位（false = 只本学期，true = 含往期）。
+  int signFullCalls = 0;
+  bool? signFullAllCourses;
+
+  @override
+  Future<bool> loadSignDetail(ChaoxingSign sign) async {
+    signDetailCalls++;
+    snapshot = snapshot.copyWith(
+      signs: [
+        for (final s in snapshot.signs)
+          if (s.key == sign.key)
+            s.copyWith(status: ChaoxingSignStatus.signed, statusLoaded: true)
+          else
+            s,
+      ],
+    );
+    return true;
+  }
+
+  @override
+  Future<void> refreshSignsFull({bool allCourses = false}) async {
+    signFullCalls++;
+    signFullAllCourses = allCourses;
+  }
 
   @override
   Future<ChaoxingSnapshot> build() async => snapshot;
@@ -640,4 +670,186 @@ void main() {
       });
     },
   );
+
+  group('★ 签到记录（用户 2026-10-09：「我希望还能接入学习通里的签到记录」）', () {
+    /// 三条签到：一条**进行中**（未查状态）、一条已签、一条缺勤。
+    ///
+    /// ⚠ 时间用**相对 now**：页面读的是真实时钟（`_now = DateTime.now()`）。
+    ChaoxingSnapshot signSnapshot({List<String> failedSignCourses = const []}) {
+      final now = DateTime.now();
+      final yesterday = now.subtract(const Duration(days: 1));
+      return ChaoxingSnapshot(
+        courses: const [_course],
+        signs: [
+          ChaoxingSign(
+            activeId: '6000000000001',
+            courseId: _course.courseId,
+            classId: '200000002',
+            courseName: _course.name,
+            typeName: '二维码签到',
+            startAt: now.subtract(const Duration(minutes: 5)),
+            endAt: now.add(const Duration(minutes: 55)),
+            attendCount: 12,
+          ),
+          ChaoxingSign(
+            activeId: '6000000000003',
+            courseId: _course.courseId,
+            classId: '200000002',
+            courseName: _course.name,
+            typeName: '手势签到',
+            startAt: yesterday,
+            endAt: yesterday.add(const Duration(minutes: 13)),
+            attendCount: 64,
+            status: ChaoxingSignStatus.signed,
+            signedAt: yesterday.add(const Duration(seconds: 25)),
+            statusLoaded: true,
+          ),
+          ChaoxingSign(
+            activeId: '6000000000004',
+            courseId: _course.courseId,
+            classId: '200000002',
+            courseName: _course.name,
+            typeName: '位置签到',
+            startAt: yesterday.subtract(const Duration(days: 2)),
+            endAt: yesterday.subtract(const Duration(days: 2)),
+            attendCount: 60,
+            status: ChaoxingSignStatus.absent,
+            statusLoaded: true,
+          ),
+        ],
+        failedSignCourseKeys: failedSignCourses,
+        fetchedAt: now,
+      );
+    }
+
+    testWidgets('主页区块：进行中排最前、状态未知写「状态未知」而不是「未签」', (tester) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(1000, 2600);
+      addTearDown(tester.view.reset);
+
+      final controller = _FakeController(signSnapshot());
+      await tester.pumpWidget(_app(const ChaoxingScreen(), controller));
+      await tester.pumpAndSettle();
+
+      expect(find.text('签到记录'), findsOneWidget);
+      expect(find.text('二维码签到'), findsOneWidget);
+      expect(find.text('进行中'), findsWidgets, reason: '进行中那条右侧有标记');
+      expect(
+        find.text('状态未知'),
+        findsOneWidget,
+        reason: '清单接口不给我的状态 —— 说「未签」就是骗人',
+      );
+      expect(find.text('已签'), findsOneWidget);
+      expect(find.text('缺勤'), findsOneWidget);
+      expect(find.textContaining('签到 64 人'), findsOneWidget);
+
+      // 三枚概览 metric
+      expect(find.byKey(const Key('chaoxingSignCount')), findsOneWidget);
+      expect(find.byKey(const Key('chaoxingOpenSignCount')), findsOneWidget);
+      expect(find.byKey(const Key('chaoxingAbsentSignCount')), findsOneWidget);
+      expect(find.text('进行中 1 · 共 3 次 · 已签 1 · 未签 1'), findsOneWidget);
+    });
+
+    testWidgets('主页区块空态：签到没取到的课要如实说', (tester) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(1000, 2600);
+      addTearDown(tester.view.reset);
+
+      final controller = _FakeController(
+        signSnapshot(failedSignCourses: const ['100000002/200000002'])
+            .copyWith(signs: const []),
+      );
+      await tester.pumpWidget(_app(const ChaoxingScreen(), controller));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('暂时没有签到记录'), findsOneWidget);
+      expect(find.textContaining('另有 1 门课的签到没取到'), findsOneWidget);
+    });
+
+    testWidgets('点开一条：弹窗给「查询我的状态」，点了就查（1 请求）', (tester) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(1000, 2600);
+      addTearDown(tester.view.reset);
+
+      final controller = _FakeController(signSnapshot());
+      await tester.pumpWidget(_app(const ChaoxingScreen(), controller));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('二维码签到'));
+      await tester.pumpAndSettle();
+
+      expect(_inDialog('我的状态'), findsOneWidget);
+      expect(_inDialog('状态未知'), findsWidgets);
+      final load = find.byKey(const Key('chaoxingSignLoadStatus'));
+      expect(load, findsOneWidget, reason: '状态未知时才给这颗按钮');
+
+      await tester.tap(load);
+      await tester.pumpAndSettle();
+      expect(controller.signDetailCalls, 1, reason: '按需查询 = 1 个请求');
+    });
+
+    testWidgets('已查过的条目：详情直接给状态 + 签到时刻，不再给查询按钮', (tester) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(1000, 2600);
+      addTearDown(tester.view.reset);
+
+      final controller = _FakeController(signSnapshot());
+      await tester.pumpWidget(_app(const ChaoxingScreen(), controller));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('手势签到'));
+      await tester.pumpAndSettle();
+
+      expect(_inDialog('已签'), findsWidgets);
+      expect(_inDialog('签到时间'), findsOneWidget);
+      expect(find.byKey(const Key('chaoxingSignLoadStatus')), findsNothing);
+    });
+
+    testWidgets('「全部签到」页：按课程分组 + 两个手动按钮（都先确认再跑）', (tester) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(1000, 2600);
+      addTearDown(tester.view.reset);
+
+      final controller = _FakeController(signSnapshot());
+      await tester.pumpWidget(_app(const ChaoxingSignsScreen(), controller));
+      await tester.pumpAndSettle();
+
+      expect(find.text('全部签到'), findsOneWidget, reason: 'AppBar 标题');
+      expect(find.text('261学期 线性代数(工)'), findsOneWidget, reason: '按课程分组');
+      expect(find.textContaining('3 次签到 · 已签 1 · 未签 1 · 1 条状态未查'),
+          findsOneWidget);
+
+      // 「补全全部状态」→ 确认弹窗 → 开始
+      await tester.tap(find.byKey(const Key('chaoxingSignFillStatus')));
+      await tester.pumpAndSettle();
+      expect(find.text('补全全部签到状态？'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('chaoxingSignFullUpdateConfirm')));
+      await tester.pumpAndSettle();
+      expect(controller.signFullCalls, 1);
+      expect(controller.signFullAllCourses, isFalse, reason: '默认只本学期');
+
+      // 「含往期课程一起更新」→ allCourses = true
+      await tester.tap(find.byKey(const Key('chaoxingSignFullUpdate')));
+      await tester.pumpAndSettle();
+      expect(find.text('含往期课程更新？'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('chaoxingSignFullUpdateConfirm')));
+      await tester.pumpAndSettle();
+      expect(controller.signFullCalls, 2);
+      expect(controller.signFullAllCourses, isTrue);
+    });
+
+    testWidgets('「全部签到」页：没取到的课要标出来（不静默）', (tester) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(1000, 2600);
+      addTearDown(tester.view.reset);
+
+      final controller = _FakeController(
+        signSnapshot(failedSignCourses: const ['100000002/200000002']),
+      );
+      await tester.pumpWidget(_app(const ChaoxingSignsScreen(), controller));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('签到清单本轮没取到'), findsOneWidget);
+    });
+  });
 }

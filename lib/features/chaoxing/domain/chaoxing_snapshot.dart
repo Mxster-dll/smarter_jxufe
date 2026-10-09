@@ -7,6 +7,7 @@ library;
 
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_course.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_notice.dart';
+import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_sign.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_work.dart';
 
 /// 一次取数的结果。
@@ -14,9 +15,11 @@ class ChaoxingSnapshot {
   const ChaoxingSnapshot({
     this.courses = const [],
     this.works = const [],
+    this.signs = const [],
     this.notices = const [],
     this.fetchedAt,
     this.failedCourseKeys = const [],
+    this.failedSignCourseKeys = const [],
     this.pendingCourseKeys = const [],
     this.skippedCourseKeys = const [],
     this.throttled = false,
@@ -29,6 +32,12 @@ class ChaoxingSnapshot {
   /// 全部作业（**扁平**，跨课程）。
   final List<ChaoxingWork> works;
 
+  /// 全部签到活动（**扁平**，跨课程；只含 `activeType == 2` 的签到）。
+  ///
+  /// ⚠ `status` 默认是「未查」而不是「未签」：清单接口不给我自己的状态
+  /// （见 `chaoxing_sign.dart`），只有 `statusLoaded == true` 的那几条才有结论。
+  final List<ChaoxingSign> signs;
+
   /// 最近通知（实测一次 20 条，最新在前）。
   final List<ChaoxingNotice> notices;
 
@@ -37,6 +46,12 @@ class ChaoxingSnapshot {
 
   /// 扫描失败的课程键（`<courseId>/<classId>`）—— 如实展示，不要静默当成「没作业」。
   final List<String> failedCourseKeys;
+
+  /// **签到清单**扫描失败的课程键（与 [failedCourseKeys] 分开记）。
+  ///
+  /// 签到与作业是同一批课程上的两个请求，可能一个成一个败（实测存在），
+  /// 合成一句话说会把「作业拿到了但签到没拿到」说成整门课失败。
+  final List<String> failedSignCourseKeys;
 
   /// **本轮没扫到**的课程键（分批轮转：下一轮从这里接着扫）。
   ///
@@ -76,6 +91,48 @@ class ChaoxingSnapshot {
   /// 待做作业条数。
   int get todoCount => openWorks.length;
 
+  /// 进行中的签到（按开始时间倒序）—— 用户最关心的「现在要不要签」。
+  List<ChaoxingSign> openSignsAt(DateTime now) {
+    final list = [for (final s in signs) if (s.isOpenAt(now)) s];
+    list.sort((a, b) {
+      final da = a.startAt, db = b.startAt;
+      if (da == null && db == null) return 0;
+      if (da == null) return 1;
+      if (db == null) return -1;
+      return db.compareTo(da);
+    });
+    return list;
+  }
+
+  /// 某一门课的签到（开始时间倒序）。
+  List<ChaoxingSign> signsOfCourse(String courseId) =>
+      [for (final s in signs) if (s.courseId == courseId) s];
+
+  /// 按课程分组的签到（保持 [signs] 的顺序：课程内已是时间倒序）。
+  Map<String, List<ChaoxingSign>> signsByCourse() {
+    final out = <String, List<ChaoxingSign>>{};
+    for (final s in signs) {
+      out.putIfAbsent(s.courseId, () => <ChaoxingSign>[]).add(s);
+    }
+    return out;
+  }
+
+  /// **已确认**「签上了」的次数（未查状态的不算 —— 别把「没查」说成「签了」）。
+  int get signedSignCount =>
+      signs.where((s) => s.statusLoaded && s.status.isSigned).length;
+
+  /// **已确认**「没签上」的次数（未签 / 缺勤 / 已过期）。
+  int get absentSignCount =>
+      signs.where((s) => s.statusLoaded && s.status.isAbsent).length;
+
+  /// 状态还没查过的条数（界面据此提示「可补全状态」）。
+  int get unknownSignStatusCount =>
+      signs.where((s) => !s.statusLoaded).length;
+
+  /// 这门课的签到清单本轮没取到（数据用的是上一次的）。
+  bool isSignCourseFailed(String courseKey) =>
+      failedSignCourseKeys.contains(courseKey);
+
   /// 未读通知条数。
   int get unreadNoticeCount =>
       notices.where((n) => !n.read).length;
@@ -110,9 +167,11 @@ class ChaoxingSnapshot {
   Map<String, dynamic> toJson() => {
     'courses': [for (final c in courses) c.toJson()],
     'works': [for (final w in works) w.toJson()],
+    'signs': [for (final s in signs) s.toJson()],
     'notices': [for (final n in notices) n.toJson()],
     'fetchedAt': fetchedAt?.toIso8601String(),
     'failedCourseKeys': failedCourseKeys,
+    'failedSignCourseKeys': failedSignCourseKeys,
     'pendingCourseKeys': pendingCourseKeys,
     'skippedCourseKeys': skippedCourseKeys,
     'throttled': throttled,
@@ -123,9 +182,11 @@ class ChaoxingSnapshot {
   factory ChaoxingSnapshot.fromJson(Map<String, dynamic> json) => ChaoxingSnapshot(
     courses: _list(json['courses'], (m) => ChaoxingCourse.fromJson(m)),
     works: _list(json['works'], (m) => ChaoxingWork.fromJson(m)),
+    signs: _list(json['signs'], (m) => ChaoxingSign.fromJson(m)),
     notices: _list(json['notices'], (m) => ChaoxingNotice.fromJson(m)),
     fetchedAt: _date(json['fetchedAt']),
     failedCourseKeys: _keys(json['failedCourseKeys']),
+    failedSignCourseKeys: _keys(json['failedSignCourseKeys']),
     pendingCourseKeys: _keys(json['pendingCourseKeys']),
     skippedCourseKeys: _keys(json['skippedCourseKeys']),
     throttled: json['throttled'] == true,
@@ -160,9 +221,11 @@ class ChaoxingSnapshot {
   ChaoxingSnapshot copyWith({
     List<ChaoxingCourse>? courses,
     List<ChaoxingWork>? works,
+    List<ChaoxingSign>? signs,
     List<ChaoxingNotice>? notices,
     DateTime? fetchedAt,
     List<String>? failedCourseKeys,
+    List<String>? failedSignCourseKeys,
     List<String>? pendingCourseKeys,
     List<String>? skippedCourseKeys,
     bool? throttled,
@@ -170,9 +233,11 @@ class ChaoxingSnapshot {
   }) => ChaoxingSnapshot(
     courses: courses ?? this.courses,
     works: works ?? this.works,
+    signs: signs ?? this.signs,
     notices: notices ?? this.notices,
     fetchedAt: fetchedAt ?? this.fetchedAt,
     failedCourseKeys: failedCourseKeys ?? this.failedCourseKeys,
+    failedSignCourseKeys: failedSignCourseKeys ?? this.failedSignCourseKeys,
     pendingCourseKeys: pendingCourseKeys ?? this.pendingCourseKeys,
     skippedCourseKeys: skippedCourseKeys ?? this.skippedCourseKeys,
     throttled: throttled ?? this.throttled,
