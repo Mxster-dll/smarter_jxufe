@@ -32,15 +32,23 @@ class HomeDetailPane extends StatelessWidget {
   /// 面板首路由要显示的功能页。
   final Widget Function() builder;
 
+  /// 本面板是不是**侧栏视图右栏**的那一个（见 [PaneScope.sidebarPane]）。
+  ///
+  /// `home_screen._paneSwitcher` 建的时候传 true —— 那一格上**任何**路由都算
+  /// "面板首路由"（不画导航栏）；其余调用点不传，保持"只有首路由才不画"的老判据。
+  final bool sidebarPane;
+
   const HomeDetailPane({
     super.key,
     required this.paneKey,
     required this.builder,
+    this.sidebarPane = false,
   });
 
   /// 目录条目版（面板 id = 条目标题）。
   HomeDetailPane.entry(HomeServiceEntry entry, {super.key})
     : paneKey = entry.title,
+      sidebarPane = false,
       builder = entry.builder;
 
   /// 面板内 Navigator 的 Key（按 [paneKey] 区分 = 切换条目即重置路由栈）。
@@ -56,6 +64,7 @@ class HomeDetailPane extends StatelessWidget {
     // `pushReplacement` 换上去的那一页）都要查得到它，`paneEmbedded` 才是 true。
     return PaneScope(
       embedded: true,
+      sidebarPane: sidebarPane,
       child: Navigator(
         key: navKeyOfId(paneKey),
         onGenerateRoute: (settings) => MaterialPageRoute<void>(

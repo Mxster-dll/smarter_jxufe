@@ -369,6 +369,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// ⚠ 设置页 / 我的页的 builder 一律经**跳转缝**取（`serviceScreenBuilder`，
   /// 组装根 `lib/main.dart` 注册）：`home` 不许直接 import 别家 presentation 页面
   /// —— 那条边早在 2026-09-20 就收口了，守卫会拦（见 §33.6.1.1）。
+  ///
+  /// ⚠ 三者都带 `sidebarPane: true`：右栏这一格上**任何**路由都不画导航栏
+  /// （见 `_overviewPane()` 的注释）。
   Widget _buildPaneContent({
     required HomeSidebarFooter? footer,
     required HomeServiceEntry? selected,
@@ -382,10 +385,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       final builder = serviceScreenBuilder(seamId);
       // 未注册（单测只 pump 一个页面、不走组装根）→ 静默回落概览，与跳转缝同口径。
       if (builder == null) return _overviewPane();
-      return HomeDetailPane(paneKey: footer!.name, builder: builder);
+      return HomeDetailPane(
+        paneKey: footer!.name,
+        sidebarPane: true,
+        builder: builder,
+      );
     }
     if (selected == null) return _overviewPane();
-    return HomeDetailPane.entry(selected);
+    return HomeDetailPane(
+      paneKey: selected.title,
+      sidebarPane: true,
+      builder: selected.builder,
+    );
   }
 
   /// 右栏默认那一格「数据一览」。
@@ -402,10 +413,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// ⚠ 这里取的 id 是 **`kServiceOverview`**（不是 `kServiceHome`！）：缝里那一个是
   /// "整页打开主页"，用它当键会让**注册表永远查不中** → 每次都走就地兜底，
   /// 于是"注册了却没用上"（本轮真踩过：两者不一致时表现完全一样，光跑测试看不出来）。
+  ///
+  /// ⚠ `sidebarPane: true` 一并交给 [HomeDetailPane]：右栏这一格上**任何**路由都不画
+  /// 导航栏（用户 2026-10-10 二十六轮：「点击主页卡片后的效果还是不对，顶部不应该显示
+  /// 标题栏」）—— 从概览点卡片是往同一个 Navigator 压第二层，若仍按"只有首路由才不画"
+  /// 的判据，那一层就会凭空多出一条导航栏 + 返回键。
   Widget _overviewPane() {
     final builder = serviceScreenBuilder(kServiceOverview);
     return HomeDetailPane(
       paneKey: kServiceOverview,
+      sidebarPane: true,
       builder: builder ?? () => const HomeOverviewPane(),
     );
   }

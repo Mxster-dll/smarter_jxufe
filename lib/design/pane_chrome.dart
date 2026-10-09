@@ -25,15 +25,41 @@ class PaneScope extends InheritedWidget {
   /// 是否内嵌在面板里。宫格视图（整页 push）恒为 false。
   final bool embedded;
 
-  const PaneScope({super.key, required this.embedded, required super.child});
+  /// **本面板就是侧栏视图右栏的那一个**（`home_screen._paneSwitcher` 建的那个）。
+  ///
+  /// ⚠ 为什么要单独标出来（用户 2026-10-10 二十六轮：「点击主页卡片后的效果还是不对，
+  /// 顶部不应该显示标题栏」）：
+  ///
+  /// 右栏那一格「数据一览」概览现在是**面板的首路由**（§44.1.18），从它点卡片是往同一个
+  /// Navigator 上**压第二层**。而 [paneIsRoot] 的判据原本是「`canPop() == false`」，
+  /// 压了第二层之后就不再成立 → [paneAppBar] 照常画出一条完整导航栏 + 返回键。
+  ///
+  /// 但**右栏这一格**和"在内嵌服务页里再进二级页"（成绩 → 课程详情，那时候有返回键是对的）
+  /// 不是一回事：右栏本身就是"在侧栏视图里看某一格"，用户要的是**内容铺满、没有顶部条**。
+  /// 所以这一格上的**任何**路由都算"面板首路由"（都不画导航栏）。
+  ///
+  /// 其余调用点（单独的 `HomeDetailPane`、内嵌服务页里的二级页）**不传**，保持原判据。
+  final bool sidebarPane;
+
+  const PaneScope({
+    super.key,
+    required this.embedded,
+    this.sidebarPane = false,
+    required super.child,
+  });
 
   static bool of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<PaneScope>()?.embedded ??
       false;
 
+  /// 最近的这一层是不是"侧栏右栏那个面板"。
+  static bool isSidebarPaneOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<PaneScope>()?.sidebarPane ??
+      false;
+
   @override
   bool updateShouldNotify(PaneScope oldWidget) =>
-      oldWidget.embedded != embedded;
+      oldWidget.embedded != embedded || oldWidget.sidebarPane != sidebarPane;
 }
 
 /// 本页是否被内嵌在侧栏右侧面板里。
@@ -43,8 +69,15 @@ bool paneEmbedded(BuildContext context) => PaneScope.of(context);
 ///
 /// false = 整页模式（宫格 push / 独立页面），或面板内的二级页 —— 两种情况都照旧画
 /// 完整导航栏。
-bool paneIsRoot(BuildContext context) =>
-    paneEmbedded(context) && !Navigator.of(context).canPop();
+///
+/// ⚠ **侧栏右栏那一格是特例**：它是 `home_screen` 建的 [PaneScope.sidebarPane]，
+/// **不管栈里有几层都算"首路由"**（见那个字段的注释：从概览点卡片会压第二层，
+/// 但用户要的是内容铺满、没有顶部条）。
+bool paneIsRoot(BuildContext context) {
+  if (!paneEmbedded(context)) return false;
+  if (PaneScope.isSidebarPaneOf(context)) return true;
+  return !Navigator.of(context).canPop();
+}
 
 /// 服务页导航栏的**唯一入口**：整页模式照旧返回真 [AppBar]，内嵌服务主页返回 `null`
 /// （`Scaffold.appBar` 接受 null → 整条栏不画）。
