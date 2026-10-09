@@ -200,7 +200,10 @@ void WindowChrome::OnMethodCall(
     const double logical_width = read_num("width");
     const double logical_height = read_num("height");
     // 防呆：太小 / 非法值直接忽略（宁可保持系统默认，也不要缩成一个点）。
-    if (logical_width < 480 || logical_height < 360) {
+    // ⚠ 这条线与 Dart 侧 `window_size_keeper.dart` 的 `windowSizeMinimum` 同值 ——
+    // 一开始写的是 480×360，把用户「真心想拖得很窄」的窗口挡在门外（拖窄了重启又变宽 ✗），
+    // 现在只挡 0 / 负数 / 离谱值。改一处要一起改。
+    if (logical_width < 200 || logical_height < 140) {
       result->Success(flutter::EncodableValue(StateValue()));
       return;
     }

@@ -29,7 +29,13 @@ const String windowSizeKey = 'clientSize';
 const Duration windowSizeSaveDebounce = Duration(milliseconds: 700);
 
 /// 小于这个尺寸的一律不认（非法值 / 首帧的 0 尺寸），避免把窗口还原成一个点。
-const Size windowSizeMinimum = Size(480, 360);
+///
+/// ⚠ **别把这条线设高**（2026-10-10 实测踩到）：一开始写的是 480×360，结果用户把窗口
+/// 拖得比 480 还窄 → 保存被这条判据挡掉 → 重启时用的还是**上一次存下的宽值**，
+/// 表现就是「拖窄了重启又变宽」。这条线只该挡「0 / 负数 / 离谱值」，不该挡「用户真的
+/// 想要一个很窄的窗口」—— 本窗口没有最小宽度限制，用户能拖多窄就该记住多窄。
+/// 原生侧 `window_chrome.cpp` 的 `setClientSize` 有同值判据，改这里要一起改。
+const Size windowSizeMinimum = Size(200, 140);
 
 /// 启动后的**免疫期**：这段时间内不落盘。
 ///
