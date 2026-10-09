@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:smarter_jxufe/core/navigation/route_history.dart';
+import 'package:smarter_jxufe/core/web/browser_nav.dart';
 import 'package:smarter_jxufe/core/navigation/service_nav.dart';
 import 'package:smarter_jxufe/design/window_title_bar.dart';
 
@@ -200,6 +201,112 @@ void main() {
       expect(visited, ['概览', '设置']);
     });
 
+    // 用户 2026-10-10 二十九轮：「我不希望你手动记录，我只希望把浏览器原生的前进回退
+    // 融合进来」—— 一个「后退」键只有一种读法：**先退网页、退到底再退应用**。
+    group('与内嵌网页的浏览器前进/后退融合', () {
+      tearDown(browserNavService.detach);
+
+      testWidgets('★ 网页还能退时，顶部后退**只退网页**、不碰应用历史', (tester) async {
+        final history = RouteHistory();
+        final visited = <String>[];
+        history.record(RouteHistoryEntry(
+            label: '概览', key: 'a', restore: () => visited.add('概览')));
+        history.record(RouteHistoryEntry(
+            label: '智慧江财', key: 'b', restore: () => visited.add('智慧江财')));
+        await pump(tester, history);
+
+        var webBacks = 0;
+        browserNavService.attach(
+          onBack: () => webBacks++,
+          state: const BrowserNavState(canGoBack: true, canGoForward: false),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('windowTitleBarBack')));
+        await tester.pumpAndSettle();
+
+        expect(webBacks, 1, reason: '应当退的是网页');
+        expect(
+          history.current?.label,
+          '智慧江财',
+          reason: '**不许**顺手把应用历史也退了（那会一次退两层）',
+        );
+        expect(visited, isEmpty, reason: '应用那一边的 restore 一次都不该被调到');
+      });
+
+      testWidgets('网页退到底了 → 顶部后退才回应用的上一个位置', (tester) async {
+        final history = RouteHistory();
+        final visited = <String>[];
+        history.record(RouteHistoryEntry(
+            label: '概览', key: 'a', restore: () => visited.add('概览')));
+        history.record(RouteHistoryEntry(
+            label: '智慧江财', key: 'b', restore: () => visited.add('智慧江财')));
+        await pump(tester, history);
+
+        var webBacks = 0;
+        browserNavService.attach(
+          onBack: () => webBacks++,
+          // 网页已经回到底了
+          state: BrowserNavState.none,
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('windowTitleBarBack')));
+        await tester.pumpAndSettle();
+
+        expect(webBacks, 0, reason: '网页回不了了就不该动它');
+        expect(history.current?.label, '概览');
+        expect(visited, ['概览']);
+      });
+
+      testWidgets('网页一层都没点过时，后退的灰/亮仍按应用历史来', (tester) async {
+        final history = RouteHistory();
+        history.record(RouteHistoryEntry(label: '概览', key: 'a', restore: () {}));
+        await pump(tester, history);
+        // 只有一个位置、网页也不活跃 → 两枚都该是灰的
+        expect(
+          tester
+              .widget<IconButton>(find.byKey(const Key('windowTitleBarBack')))
+              .onPressed,
+          isNull,
+        );
+        expect(
+          tester
+              .widget<IconButton>(find.byKey(const Key('windowTitleBarForward')))
+              .onPressed,
+          isNull,
+        );
+      });
+
+      testWidgets('★ 网页里点了一层之后，顶部后退**自动亮起来**', (tester) async {
+        final history = RouteHistory();
+        history.record(RouteHistoryEntry(label: '概览', key: 'a', restore: () {}));
+        await pump(tester, history);
+        expect(
+          tester
+              .widget<IconButton>(find.byKey(const Key('windowTitleBarBack')))
+              .onPressed,
+          isNull,
+          reason: '起始：应用只有一个位置、网页也不活跃 → 灰',
+        );
+
+        // 网页里点进一层 → 它把新能力报上来
+        browserNavService.attach(onBack: () {}, state: BrowserNavState.none);
+        browserNavService.update(
+          const BrowserNavState(canGoBack: true, canGoForward: false),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          tester
+              .widget<IconButton>(find.byKey(const Key('windowTitleBarBack')))
+              .onPressed,
+          isNotNull,
+          reason: '网页能退了，顶部后退必须跟着亮（ListenableBuilder 的意义）',
+        );
+      });
+    });
+
     testWidgets('历史下拉：列出走过的位置，点一行跳过去', (tester) async {
       final history = RouteHistory();
       final visited = <String>[];
@@ -318,11 +425,6 @@ void main() {
       // 任何一步把面板收掉都算失败。
       final panelRect = tester.getRect(
         find.byKey(const Key('windowTitleBarHistoryPanel')),
-      );
-      // ignore: avoid_print
-      print(
-        'PROBE 按钮 ${tester.getRect(find.byKey(const Key('windowTitleBarHistoryMenu')))} '
-        '面板 ${panelRect} 按钮中心 $button',
       );
       final target = Offset(button.dx, panelRect.center.dy);
       const step = 3.0;

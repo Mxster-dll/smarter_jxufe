@@ -21,6 +21,7 @@ library;
 import 'dart:async';
 
 import 'package:smarter_jxufe/core/navigation/route_history.dart';
+import 'package:smarter_jxufe/core/web/browser_nav.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -716,47 +717,71 @@ class _WindowTitleBarHistoryState extends ConsumerState<WindowTitleBarHistory> {
     _panel.hide();
   }
 
+  @override
   Widget build(BuildContext context) {
     final history = ref.watch(routeHistoryProvider);
     final scheme = Theme.of(context).colorScheme;
     final iconColor = scheme.onSurfaceVariant;
 
-    Widget button({
-      required Key key,
-      required IconData icon,
-      String? tooltip,
-      VoidCallback? onTap,
-    }) =>
-        IconButton(
-          key: key,
-          // ⚠ 历史这三枚**一律不挂 tooltip**（用户 2026-10-09 二十五轮：
-          // 「把历史的悬浮提示文本关了」）。这里刻意**留空而不是删参数**：
-          // `tooltip` 为 null 时 `IconButton` 不会建 `Tooltip`，鼠标停在按钮上
-          // 既不会弹出那条文字、也不会因为它多出一层 hover 区域
-          // （后者正是「从按钮挪到面板上就消失」那条 bug 的同族隐患）。
-          tooltip: tooltip,
-          icon: Icon(icon, size: 17),
-          color: iconColor,
-          disabledColor: iconColor.withValues(alpha: 0.35),
-          onPressed: onTap,
-          visualDensity: VisualDensity.compact,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints.tightFor(width: 28, height: 28),
-          splashRadius: 14,
-        );
+    // ⚠ 顶部这两枚「后退 / 前进」= **应用位置回退 + 内嵌网页的原生回退**，一个键一种读法
+    // （用户 2026-10-10 二十九轮：「我不希望你手动记录，我只希望把浏览器原生的前进回退
+    // 融合进来」）：
+    //   - 当前有内嵌网页、且它还能往回走 → **回网页**（不碰 route_history）；
+    //   - 回不了了 → 才回应用的上一个位置。
+    // 用 `ListenableBuilder` 听那个单例，是为了让按钮的灰/亮跟着网页的历史变
+    // （网页里点一层，这里就亮起来）。
+    return ListenableBuilder(
+      listenable: browserNavService,
+      builder: (context, _) {
+        final browser = browserNavService.state;
+        final canBack = browser.canGoBack || history.canGoBack;
+        final canForward = browser.canGoForward || history.canGoForward;
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        button(
-          key: const Key('windowTitleBarBack'),
-          icon: Icons.arrow_back_rounded,
-          onTap: history.canGoBack ? history.goBack : null,
-        ),
+        Widget button({
+          required Key key,
+          required IconData icon,
+          VoidCallback? onTap,
+        }) =>
+            IconButton(
+              key: key,
+              // ⚠ 历史这三枚**一律不挂 tooltip**（用户 2026-10-09 二十五轮：
+              // 「把历史的悬浮提示文本关了」）。`tooltip` 为 null 时 `IconButton`
+              // 不会建 `Tooltip`，鼠标停上去既不弹文字、也不会多出一层 hover 区域
+              // （后者正是「从按钮挪到面板上就消失」那条 bug 的同族隐患）。
+              icon: Icon(icon, size: 17),
+              color: iconColor,
+              disabledColor: iconColor.withValues(alpha: 0.35),
+              onPressed: onTap,
+              visualDensity: VisualDensity.compact,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints.tightFor(width: 28, height: 28),
+              splashRadius: 14,
+            );
+
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            button(
+              key: const Key('windowTitleBarBack'),
+              icon: Icons.arrow_back_rounded,
+              onTap: !canBack
+                  ? null
+                  : () {
+                      // 先在网页里退（`browserNavService.goBack` 返回 true = 它处理了）。
+                      if (browserNavService.goBack()) return;
+                      history.goBack();
+                    },
+            ),
         button(
           key: const Key('windowTitleBarForward'),
           icon: Icons.arrow_forward_rounded,
-          onTap: history.canGoForward ? history.goForward : null,
+          onTap: !canForward
+              ? null
+              : () {
+                  // 先在网页里进（同上）。
+                  if (browserNavService.goForward()) return;
+                  history.goForward();
+                },
         ),
         if (!history.isEmpty)
           CompositedTransformTarget(
@@ -816,6 +841,8 @@ class _WindowTitleBarHistoryState extends ConsumerState<WindowTitleBarHistory> {
             ),
           ),
       ],
+    );
+      },
     );
   }
   /// 历史面板本体：**一张 git 提交图**（用户 2026-10-09：「我希望这个历史直接显示一个
