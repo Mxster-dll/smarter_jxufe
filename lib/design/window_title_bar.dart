@@ -723,6 +723,11 @@ class _WindowTitleBarHistoryState extends ConsumerState<WindowTitleBarHistory> {
     }) =>
         IconButton(
           key: key,
+          // ⚠ 历史这三枚**一律不挂 tooltip**（用户 2026-10-09 二十五轮：
+          // 「把历史的悬浮提示文本关了」）。这里刻意**留空而不是删参数**：
+          // `tooltip` 为 null 时 `IconButton` 不会建 `Tooltip`，鼠标停在按钮上
+          // 既不会弹出那条文字、也不会因为它多出一层 hover 区域
+          // （后者正是「从按钮挪到面板上就消失」那条 bug 的同族隐患）。
           tooltip: tooltip,
           icon: Icon(icon, size: 17),
           color: iconColor,
@@ -740,17 +745,11 @@ class _WindowTitleBarHistoryState extends ConsumerState<WindowTitleBarHistory> {
         button(
           key: const Key('windowTitleBarBack'),
           icon: Icons.arrow_back_rounded,
-          tooltip: history.canGoBack
-              ? '后退（回到上一个页面）'
-              : '后退（还没有可回退的页面）',
           onTap: history.canGoBack ? history.goBack : null,
         ),
         button(
           key: const Key('windowTitleBarForward'),
           icon: Icons.arrow_forward_rounded,
-          tooltip: history.canGoForward
-              ? '前进（回到后退前那一页）'
-              : '前进（先后退一次才有可前进的页面）',
           onTap: history.canGoForward ? history.goForward : null,
         ),
         if (!history.isEmpty)
