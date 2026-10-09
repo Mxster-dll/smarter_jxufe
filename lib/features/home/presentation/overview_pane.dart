@@ -9,10 +9,14 @@
 /// `paneEmbedded(context)` 恒为 false → **退回整页 push → 页面占满整个窗口**
 /// （用户原话：「点击主页卡片后，页面会占满整个窗口，而不是显示在右侧内容区」）。
 ///
-/// 提出来之后：`lib/main.dart` 把它注册成 `kServiceHome`，`home_screen` 的
-/// `_buildPaneContent` 用 `serviceScreenBuilder(kServiceHome)` 取它并交给
+/// 提出来之后：`lib/main.dart` 把它注册成 `kServiceOverview`，`home_screen` 的
+/// `_overviewPane()` 用 `serviceScreenBuilder(kServiceOverview)` 取它并交给
 /// `HomeDetailPane` —— 概览于是成了**面板的首路由**，`PaneScope` 有了，
 /// 里面的卡片点开就落在右栏（压在同一个面板 Navigator 上，卡片框与左栏一概不动）。
+///
+/// ⚠ 注册用的 id 是 `kServiceOverview`，**不是 `kServiceHome`**（后者是"整页打开主页"）。
+/// 两者混用会表现为"注册了却查不中、每次都走就地兜底"，而**测试照样全绿**
+/// （本轮踩过：`home_screen` 一时取了 `kServiceHome`）。
 library;
 
 import 'package:flutter/material.dart';

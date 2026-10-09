@@ -53,9 +53,10 @@ String? dashboardPaneKeyOf(Widget screen) {
 /// 被测系统喂饱了"）。现在这里**只用传进来的 [screen] 本体**，不看缝里有没有。
 void dashboardPush(BuildContext context, Widget screen) {
   final paneKey = dashboardPaneKeyOf(screen);
-  // ⚠ 判据 = `paneEmbedded`（本页在不在面板里）。**右栏默认那一格「数据一览」概览
-  // 不是面板的一条路由**（它是 `_paneSwitcher` 直接渲染的内容），所以从概览点卡片时
-  // 这里恒为 false —— 见 [dashboardPaneKeyOf] 上方那段说明。
+  // ⚠ 判据 = `paneEmbedded`（本页在不在面板里）。
+  // 右栏那一格「数据一览」概览**已经是面板的一条路由**（`home_screen._overviewPane()`
+  // 把它交给 `HomeDetailPane`，见 §44.1.18），所以从概览点卡片时这里为 **true** →
+  // 落在面板自己的 Navigator 上 → 页面显示在右栏。
   if (paneEmbedded(context) && paneKey != null) {
     // 面板首路由 = 目录里那一页；这里再推就是**二级页**（有返回键，正确）。
     // 溅屏入口不同：它会把首路由替换掉，所以这里也替换，别叠两层。

@@ -395,13 +395,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// 二十四轮的真因）：裸渲染时概览**不是面板路由**，它里面的卡片上查不到
   /// `PaneScope` → `dashboardPush` 退回整页 push → **页面占满整个窗口**。
   ///
-  /// 所以这里和别的服务一视同仁：`HomeDetailPane(paneKey: kServiceHome, builder: 概览)`。
+  /// 所以这里和别的服务一视同仁：`HomeDetailPane(paneKey: kServiceOverview, builder: 概览)`。
   /// 页面本体在 `presentation/overview_pane.dart`（能在跳转缝里注册，必须独立成文件）。
-  /// 未注册（单测不走组装根）→ 直接建一个，行为等价（只是少了那层面板标记）。
+  /// 未注册（单测不走组装根）→ 就地建一个，行为等价。
+  ///
+  /// ⚠ 这里取的 id 是 **`kServiceOverview`**（不是 `kServiceHome`！）：缝里那一个是
+  /// "整页打开主页"，用它当键会让**注册表永远查不中** → 每次都走就地兜底，
+  /// 于是"注册了却没用上"（本轮真踩过：两者不一致时表现完全一样，光跑测试看不出来）。
   Widget _overviewPane() {
-    final builder = serviceScreenBuilder(kServiceHome);
+    final builder = serviceScreenBuilder(kServiceOverview);
     return HomeDetailPane(
-      paneKey: kServiceHome,
+      paneKey: kServiceOverview,
       builder: builder ?? () => const HomeOverviewPane(),
     );
   }

@@ -19,6 +19,7 @@ import 'package:smarter_jxufe/features/home/data/home_layout_prefs.dart';
 import 'package:smarter_jxufe/features/home/domain/home_card_style.dart';
 import 'package:smarter_jxufe/features/home/domain/home_layout.dart';
 import 'package:smarter_jxufe/features/home/presentation/home_screen.dart';
+import 'package:smarter_jxufe/features/home/presentation/overview_pane.dart';
 
 /// 根 Navigator = 树里**第一个** `Navigator`（`MaterialApp` 自己那个；
 /// 右栏面板的 Navigator 在它下面）。
@@ -34,6 +35,17 @@ String navStackReport(WidgetTester tester) {
     out.add('#$i(canPop=${s.canPop()})');
   }
   return out.join(' ');
+}
+
+/// 概览那一个 id 上注册的探针：**它既是"id 取对了"的证据，又是真的概览**。
+///
+/// 为什么必须是真概览：这条用例后面要**真的点**里面的「电费余额」卡片 ——
+/// 换成一块色块就没有卡片可点了（实测踩过：换色块后 `find.text('电费余额')` 直接空）。
+class _OverviewProbe extends StatelessWidget {
+  const _OverviewProbe();
+
+  @override
+  Widget build(BuildContext context) => const HomeOverviewPane();
 }
 
 void main() {
@@ -52,8 +64,16 @@ void main() {
     } catch (_) {}
   });
 
-  // ⚠ 故意**什么都不往跳转缝里注册**（只清空）：真实应用里也只有 7 个 id。
-  setUp(clearServiceScreens);
+  // ⚠ **只注册概览那一个 id**（模拟组装根 `main.dart` 的最小注册），
+  // 而**不注册**仪表盘卡片那些 id —— 真实应用里也没有。
+  //
+  // 另外这条注册还兼当"**id 有没有取错**"的探针：`home_screen` 必须用
+  // `kServiceOverview` 取；一旦误用 `kServiceHome`，这里的探针就**不会出现**，
+  // 断言立刻红（本轮真踩过这个坑：两者不一致时表现完全一样、测试照样绿）。
+  setUp(() {
+    clearServiceScreens();
+    registerServiceScreen(kServiceOverview, () => const _OverviewProbe());
+  });
   tearDown(clearServiceScreens);
 
   testWidgets('★ 点概览里的卡片：根 Navigator 不许被压栈', (tester) async {
@@ -83,8 +103,14 @@ void main() {
       debugDefaultTargetPlatformOverride = null;
     }
 
-    // ignore: avoid_print
-    print('PROBE 起始 ');
+    // ⓪ **id 取对了没有**：概览必须是从缝里按 `kServiceOverview` 取到的那个探针。
+    //    取错 id（例如误用 `kServiceHome`）时它会静默走就地兜底 ——
+    //    外观、测试全都照绿，所以这条断言是本轮唯一能抓住那个错的守卫。
+    expect(
+      find.byType(_OverviewProbe),
+      findsOneWidget,
+      reason: '概览应当是缝里按 kServiceOverview 取到的（取错 id 会静默兜底）',
+    );
     expect(rootNav(tester).canPop(), isFalse, reason: '起始时根栈只有主页一层');
 
     // 概览面板里的「宿舍电费」卡片：按文案找到它，点它。
