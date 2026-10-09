@@ -1,4 +1,4 @@
-﻿#include "window_chrome.h"
+#include "window_chrome.h"
 
 #include <windowsx.h>
 
@@ -177,6 +177,51 @@ void WindowChrome::OnMethodCall(
     return;
   }
   if (call.method_name() == "getWindowState") {
+    result->Success(flutter::EncodableValue(StateValue()));
+    return;
+  }
+  // 还原上次的窗口大小（用户 2026-10-10：「我希望应用记住上次启动时的窗口大小」）。
+  // 传进来的是**逻辑像素**的客户区尺寸：这里按窗口 DPI 换成物理，再把「外框 − 客户区」
+  // 那圈加回去 —— 本工程保留了原生边框（只是被 WM_NCCALCSIZE 收进窗口内），不补就会越缩越小。
+  if (call.method_name() == "setClientSize") {
+    const auto* args = std::get_if<flutter::EncodableMap>(call.arguments());
+    if (args == nullptr || top_level_ == nullptr) {
+      result->Error("bad_args", "setClientSize 需要一个 map 且窗口已就绪");
+      return;
+    }
+    auto read_num = [&args](const char* key) -> double {
+      const auto it = args->find(flutter::EncodableValue(key));
+      if (it == args->end()) return 0;
+      const auto* real = std::get_if<double>(&it->second);
+      if (real != nullptr) return *real;
+      const auto* integer = std::get_if<int32_t>(&it->second);
+      return integer == nullptr ? 0 : static_cast<double>(*integer);
+    };
+    const double logical_width = read_num("width");
+    const double logical_height = read_num("height");
+    // 防呆：太小 / 非法值直接忽略（宁可保持系统默认，也不要缩成一个点）。
+    if (logical_width < 480 || logical_height < 360) {
+      result->Success(flutter::EncodableValue(StateValue()));
+      return;
+    }
+    const UINT dpi = GetDpiForWindow(top_level_);
+    const double scale = (dpi == 0) ? 1.0 : dpi / 96.0;
+    RECT client{};
+    RECT outer{};
+    if (GetClientRect(top_level_, &client) && GetWindowRect(top_level_, &outer)) {
+      const LONG frame_width =
+          (outer.right - outer.left) - (client.right - client.left);
+      const LONG frame_height =
+          (outer.bottom - outer.top) - (client.bottom - client.top);
+      const int target_width =
+          static_cast<int>(logical_width * scale + 0.5) + frame_width;
+      const int target_height =
+          static_cast<int>(logical_height * scale + 0.5) + frame_height;
+      Trace("[chrome] setClientSize %.0fx%.0f 逻辑 -> 外框 %dx%d (dpi=%u)",
+            logical_width, logical_height, target_width, target_height, dpi);
+      SetWindowPos(top_level_, nullptr, 0, 0, target_width, target_height,
+                   SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+    }
     result->Success(flutter::EncodableValue(StateValue()));
     return;
   }

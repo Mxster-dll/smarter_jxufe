@@ -1,7 +1,9 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+
+import 'package:smarter_jxufe/core/window/window_size_keeper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pdfrx/pdfrx.dart';
 
@@ -151,9 +153,18 @@ void main() async {
         themeModeStoreProvider.overrideWith((ref) => themeModeStore),
         windowBarPrefsProvider.overrideWith((ref) => windowBarStore),
       ],
-      child: const SmarterJxUFE(),
+      // `WindowSizeKeeper`：记住上次的窗口大小（用户 2026-10-10）。它挂在根上是为了
+      // 收 `didChangeMetrics`（窗口尺寸一变就落盘），`restore()` 则在首帧之后把上次
+      // 的尺寸交给原生 —— 两件事都不影响首帧渲染，失败一律静默降级。
+      child: const WindowSizeKeeper(child: SmarterJxUFE()),
     ),
   );
+
+  // 首帧之后再把上次的窗口大小交给原生 —— 太早（引擎还没建好窗口）原生会拒绝，
+  // 太晚用户会先看到默认尺寸再「跳」一下。
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    unawaited(WindowSizeKeeper.restore());
+  });
 }
 
 /// 顶部「路由历史」的接线（**组装根职责**，2026-10-09 · 用户要求「全局记录前进/后退」）。
