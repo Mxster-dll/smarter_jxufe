@@ -65,13 +65,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:smarter_jxufe/design/app_card.dart';
-import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/home/domain/home_grid_layout.dart';
 import 'package:smarter_jxufe/features/home/domain/home_grid_shape.dart';
 import 'package:smarter_jxufe/features/home/domain/home_grid_split.dart';
 import 'package:smarter_jxufe/features/home/presentation/home_grid_card.dart';
 import 'package:smarter_jxufe/features/home/presentation/home_grid_metrics.dart';
 import 'package:smarter_jxufe/features/home/presentation/home_service_catalog.dart';
+import 'widgets/home_grid_widgets.dart';
 
 /// 「卡片其余部分」在**缝**上的补充命中带：缝两侧各外扩这么多像素（12px 的缝 → 20px 带）。
 ///
@@ -238,7 +238,7 @@ class _HomeServiceGridState extends State<HomeServiceGrid> {
         final metrics = HomeGridMetrics.of(constraints.maxWidth);
         final saved = _savedLayout(metrics);
         final layout = _displayLayout(metrics, saved);
-        final seams = _tileSeams(saved);
+        final seams = hgTileSeams(saved);
         // 编辑模式里被剪开的碎块（不在已保存布局里 = 它是拆出来的一块）→ 画红色虚线轮廓。
         // 用户 2026-09-21 十一轮：「点击分割线后立刻分开，而不是只高亮分割线」—— 模型层面
         // 本来就立刻分开了，但卡片纯白、页面底也是纯白，12px 格缝肉眼看不出来，所以给每一块
@@ -311,7 +311,7 @@ class _HomeServiceGridState extends State<HomeServiceGrid> {
                   //   Element 一起 dispose，move / end 再也送不到（卡片卡在半空、松手没反应）。
                   for (final seam in seams)
                     _bodyHandle(seam.tile, seam.seam, metrics),
-                if (plan != null) ..._preview(plan, metrics, context),
+                if (plan != null) ...hgPreview(plan, metrics, context),
                 if (dragTile != null && pointer != null)
                   _lifted(dragTile, metrics, byTitle, pointer),
                 // 编辑模式：鼠标在网格上移动 → 「拿起」的那张卡与落点虚线框跟着走
@@ -397,12 +397,6 @@ class _HomeServiceGridState extends State<HomeServiceGrid> {
       tiles: homeGridSplitAll(saved.tiles, cuts),
     );
   }
-
-  /// 布局里每一条缝 + 它所属的卡（分割线图层与整卡拖动手势带共用）。
-  List<({HomeGridTile tile, GridSeam seam})> _tileSeams(HomeGridLayout layout) => [
-    for (final t in layout.tiles)
-      for (final s in gridSeamsOf(t.cells)) (tile: t, seam: s),
-  ];
 
   Widget _card(
     HomeGridTile tile,
@@ -556,55 +550,6 @@ class _HomeServiceGridState extends State<HomeServiceGrid> {
     );
   }
 
-  /// 缝的命中带：缝本身只有 12px 宽，向两侧各外扩 [kHomeGridSeamHitPad]。
-  Rect _seamBand(GridSeam seam, HomeGridMetrics metrics) {
-    const pad = kHomeGridSeamHitPad;
-    const gap = HomeGridMetrics.gap;
-    if (seam.a.x != seam.b.x) {
-      // 竖缝（左右相邻）：a 在左。
-      final x = seam.a.x * metrics.pitchX + metrics.cellWidth + gap / 2;
-      final top = seam.a.y * metrics.pitchY;
-      return Rect.fromLTRB(
-        x - gap / 2 - pad,
-        top,
-        x + gap / 2 + pad,
-        top + metrics.cellHeight,
-      );
-    }
-    final y = seam.a.y * metrics.pitchY + metrics.cellHeight + gap / 2;
-    final left = seam.a.x * metrics.pitchX;
-    return Rect.fromLTRB(
-      left,
-      y - gap / 2 - pad,
-      left + metrics.cellWidth,
-      y + gap / 2 + pad,
-    );
-  }
-
-  /// 缝的那条线（网格坐标）：竖缝取缝正中一条竖线，横缝同理；[inset] = 两端缩进
-  /// （分割线风格 12；断开后通长 0）。
-  (Offset, Offset) _seamLine(
-    GridSeam seam,
-    HomeGridMetrics metrics,
-    double inset,
-  ) {
-    const gap = HomeGridMetrics.gap;
-    if (seam.a.x != seam.b.x) {
-      final x = seam.a.x * metrics.pitchX + metrics.cellWidth + gap / 2;
-      final top = seam.a.y * metrics.pitchY;
-      return (
-        Offset(x, top + inset),
-        Offset(x, top + metrics.cellHeight - inset),
-      );
-    }
-    final y = seam.a.y * metrics.pitchY + metrics.cellHeight + gap / 2;
-    final left = seam.a.x * metrics.pitchX;
-    return (
-      Offset(left + inset, y),
-      Offset(left + metrics.cellWidth - inset, y),
-    );
-  }
-
   /// 编辑模式的分割线：**没断开** = 卡片描边同色的细实线；**断开了** = 主题红虚线
   /// （用户口径 2：「因此形成的边界，暂时显示为虚线」）。点一下切换断开 / 接回。
   ///
@@ -617,8 +562,8 @@ class _HomeServiceGridState extends State<HomeServiceGrid> {
     BuildContext context,
   ) {
     final cut = _cuts.contains(seam);
-    final band = _seamBand(seam, metrics);
-    final (a, b) = _seamLine(
+    final band = hgSeamBand(seam, metrics);
+    final (a, b) = hgSeamLine(
       seam,
       metrics,
       cut ? 0 : kHomeGridDividerInset,
@@ -664,7 +609,7 @@ class _HomeServiceGridState extends State<HomeServiceGrid> {
   /// [HomeGridCard.bodyWrapper] 同动作，见 [kHomeGridSeamHitPad] 的说明）。
   /// 透明命中（[HitTestBehavior.translucent]）→ 轻点仍穿透到下面那张脸，只有长按才起手。
   Widget _bodyHandle(HomeGridTile tile, GridSeam seam, HomeGridMetrics metrics) {
-    final band = _seamBand(seam, metrics);
+    final band = hgSeamBand(seam, metrics);
     return Positioned(
       left: band.left,
       top: band.top,
@@ -704,114 +649,6 @@ class _HomeServiceGridState extends State<HomeServiceGrid> {
       tiles: homeGridSplitAll(base.tiles, effective),
     );
     if (next.isValid) notify(next);
-  }
-
-  /// 虚线框：**合并后的整张卡**画虚线轮廓（不是贴在旁边的一个独立方框 ——
-  /// 用户 2026-09-21 二轮：「虚线框要与将要连接的卡片**相连**，展示合并后的卡片形状」），
-  /// 参与合并的每张卡各淡染一层。
-  List<Widget> _preview(
-    HomeGridDropTarget plan,
-    HomeGridMetrics metrics,
-    BuildContext context,
-  ) {
-    final accent = appCardAccent(context);
-    final out = <Widget>[];
-    final merged = plan.mergedResult;
-    var index = 0;
-    for (final tier in plan.joined) {
-      out.add(
-        _shapePreview(
-          // 第一张沿用老 key（守卫与用例都在找它），其余按卡片 key 区分。
-          key: index == 0
-              ? const Key('homeGridPreviewTarget')
-              : Key('homeGridPreviewTarget-${tier.key}'),
-          tile: tier,
-          metrics: metrics,
-          path: homeGridShapePath(
-            cells: tier.cells,
-            origin: (x: tier.bounds.left, y: tier.bounds.top),
-            metrics: metrics,
-          ),
-          color: accent.withValues(alpha: 0.55),
-          fill: AppColors.tint(context, accent, 0.06),
-          strokeWidth: 1.2,
-          dash: 5,
-          dashGap: 4,
-        ),
-      );
-      index++;
-    }
-    final landing = merged ?? plan.landing;
-    // 被**推开**（但不并入）的卡片：在它们的新位置上画一圈细实线 ——
-    // 合并会把后续卡片往后顶一位，不提前画出来的话松手后那一跳会很突然。
-    for (final pushed in plan.pushed.values) {
-      out.add(
-        _shapePreview(
-          key: Key('homeGridPreviewPush-${pushed.key}'),
-          tile: pushed,
-          metrics: metrics,
-          path: homeGridShapePath(
-            cells: pushed.cells,
-            origin: (x: pushed.bounds.left, y: pushed.bounds.top),
-            metrics: metrics,
-          ),
-          color: AppColors.textMuted(context),
-          fill: AppColors.tint(context, accent, 0.03),
-          strokeWidth: 1,
-          dash: 1e6, // 一整段 = 实线（同一个画笔，不再引第二个 painter）
-          dashGap: 0,
-        ),
-      );
-    }
-    out.add(
-      _shapePreview(
-        key: const Key('homeGridPreview'),
-        tile: landing,
-        metrics: metrics,
-        path: homeGridShapePath(
-          cells: landing.cells,
-          origin: (x: landing.bounds.left, y: landing.bounds.top),
-          metrics: metrics,
-        ),
-        color: accent,
-        fill: AppColors.tint(context, accent, 0.10),
-      ),
-    );
-    return out;
-  }
-
-  Widget _shapePreview({
-    required Key key,
-    required HomeGridTile tile,
-    required HomeGridMetrics metrics,
-    required Path path,
-    required Color color,
-    required Color fill,
-    double strokeWidth = 1.6,
-    double dash = 7,
-    double dashGap = 5,
-  }) {
-    final topLeft = metrics.topLeftOfTile(tile);
-    final size = metrics.sizeOfTile(tile);
-    return Positioned(
-      left: topLeft.dx,
-      top: topLeft.dy,
-      width: size.width,
-      height: size.height,
-      child: IgnorePointer(
-        child: CustomPaint(
-          key: key,
-          painter: HomeGridDashedPainter(
-            path: path,
-            color: color,
-            fill: fill,
-            strokeWidth: strokeWidth,
-            dash: dash,
-            dashGap: dashGap,
-          ),
-        ),
-      ),
-    );
   }
 
   /// 被抬起的卡片（跟着指针走，带投影；自己原来的格子先空着）。
