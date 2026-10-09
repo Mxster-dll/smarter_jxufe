@@ -31,6 +31,14 @@ const Duration windowSizeSaveDebounce = Duration(milliseconds: 700);
 /// 小于这个尺寸的一律不认（非法值 / 首帧的 0 尺寸），避免把窗口还原成一个点。
 const Size windowSizeMinimum = Size(480, 360);
 
+/// 启动后的**免疫期**：这段时间内不落盘。
+///
+/// ⚠ 必须有它（2026-10-10 实测踩到）：`restore()` 自己会把窗口改一次尺寸 →
+/// 触发 `didChangeMetrics` → 被当成「用户改了尺寸」记下来 ✗。实测症状 =
+/// 「关掉前 985×693，下次启动却变成 814×693」—— 记进去的是**还原过程中的瞬时值**。
+/// 长度取「足够覆盖还原 + 首帧布局」的 1.6s。
+const Duration windowSizeRestoreGrace = Duration(milliseconds: 1600);
+
 class WindowSizeKeeper extends StatefulWidget {
   const WindowSizeKeeper({super.key, required this.child});
 
@@ -76,9 +84,14 @@ class _WindowSizeKeeperState extends State<WindowSizeKeeper>
     with WidgetsBindingObserver {
   Timer? _debounce;
 
+  /// 免疫期截止时刻（见 [windowSizeRestoreGrace]）：在此之前 `didChangeMetrics`
+  /// 记的都是「还原动作自己引起的尺寸变化」，不许写盘 —— 否则会把上次存的好值覆盖掉。
+  late final DateTime _graceUntil;
+
   @override
   void initState() {
     super.initState();
+    _graceUntil = DateTime.now().add(windowSizeRestoreGrace);
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -92,6 +105,7 @@ class _WindowSizeKeeperState extends State<WindowSizeKeeper>
   /// 窗口尺寸变了（拖边框 / 最大化 / 换显示器）→ 防抖后落盘。
   @override
   void didChangeMetrics() {
+    if (DateTime.now().isBefore(_graceUntil)) return;
     _debounce?.cancel();
     _debounce = Timer(windowSizeSaveDebounce, _save);
   }
