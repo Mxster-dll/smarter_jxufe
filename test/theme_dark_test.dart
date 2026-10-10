@@ -1315,18 +1315,18 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // ⚠ 2026-10-10 三十二轮起这条线**不是 `Divider`**，改成
-      // `DecoratedBox` + `Border(top:)`：收起态的窄轨里 `Divider` 会横向溢出，
-      // 而且用户要的是"固定区上沿那一条框线"（见 `home_sidebar.dart` 的注释）。
+      // ⚠ 2026-10-10 三十四轮起这条线是**两侧留白的短分割线**（`SizedBox` +
+      // `ColoredBox`），既不是 `Divider`、也不再是 `Border(top:)`
+      // —— 用户原话：「算了，我希望改成不连接左右边界的轻分割线，去除阴影」。
       // 判据仍然只认颜色 —— 也就是这一册在守的那件事（`withValues` 是替换不是相乘）。
-      final decoration = tester
-          .widgetList<DecoratedBox>(find.byType(DecoratedBox))
-          .map((d) => d.decoration)
-          .whereType<BoxDecoration>()
-          .map((d) => d.border)
-          .whereType<Border>()
-          .firstWhere((b) => b.top.width > 0);
-      final color = decoration.top.color;
+      final color = tester
+          .widget<ColoredBox>(
+            find.descendant(
+              of: find.byKey(const Key('homeSidebarFooterDivider')),
+              matching: find.byType(ColoredBox),
+            ),
+          )
+          .color;
       expect(
         color,
         AppLadder.darkOutlineVariant,

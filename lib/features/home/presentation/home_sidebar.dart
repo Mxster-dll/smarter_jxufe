@@ -471,46 +471,6 @@ class _HomeSidebarState extends State<HomeSidebar>
     );
   }
 
-  /// 底部固定区**上沿那道向外（往上）的影子**。
-  ///
-  /// 用户 2026-10-10 三十三轮：「除了上框线，还在在上边加一个外阴影」。
-  ///
-  /// 口径：
-  /// - **复用卡片那套阴影取值**（[kCardFrameShadowsLight] / [kCardFrameShadowsDark]），
-  ///   只把 `dy` **翻成负的** —— 于是同一份"两层（小 blur 勾边 + 大 blur 撑扩散）"的
-  ///   语言从卡片搬到"区域分界"上，观感一致；**不新造一套颜色 / 强度**。
-  /// - **留白 = 最大 blur**：外面那层 `DecoratedBox` 的矩形要**高出内容**这么多，
-  ///   影子的"往上那一半"才露得出来（`BoxShadow` 是围着自己一圈画的，
-  ///   不留白就被下面的内容盖住 / 被算进布局）。
-  /// - 因为多出来的留白在**上面**，影子只会盖住线**以上**的滚动内容 ——
-  ///   固定区自己那两行（头像 / 设置）不会被打暗。
-  static List<BoxShadow> _footerOuterShadows(BuildContext context) {
-    final base = AppColors.isDark(context)
-        ? kCardFrameShadowsDark
-        : kCardFrameShadowsLight;
-    return [
-      for (final s in base)
-        BoxShadow(
-          color: s.color,
-          blurRadius: s.blurRadius,
-          spreadRadius: s.spreadRadius,
-          offset: Offset(s.offset.dx, -s.offset.dy),
-        ),
-    ];
-  }
-
-  /// 那道影子往上露多少（= 阴影里最大的 blur）。
-  static double _footerShadowBleed(BuildContext context) {
-    final base = AppColors.isDark(context)
-        ? kCardFrameShadowsDark
-        : kCardFrameShadowsLight;
-    var maxBlur = 0.0;
-    for (final s in base) {
-      if (s.blurRadius > maxBlur) maxBlur = s.blurRadius;
-    }
-    return maxBlur;
-  }
-
   /// 量一次「选中行」在**本栏坐标系**里的胶囊矩形。
   ///
   /// ⚠ 用 `globalToLocal` 相减而不是累加行高：滚动、分组标题、收起态宽度全都自动跟上。
@@ -760,55 +720,58 @@ class _HomeSidebarState extends State<HomeSidebar>
                       ),
                     ),
                   ),
+                // ⚠ **没有阴影**（用户 2026-10-10 三十四轮：「算了，我希望改成不连接左右边界的
+                // 轻分割线，去除阴影」）—— 三十三轮那道"往上投的外阴影"整条撤掉，
+                // 连同它的挂载点一起。撤掉的原因有两层：① 用户明确不要了；
+                // ② 它天生难挂 —— 落在固定区矩形里会把「我的 / 设置」压暗
+                // （实测浅色 `#fafafa` → 暗带 `#cbcbcb…#f3f3f3`），挂在滚动区那层
+                // 又只能靠渐变近似，收益不值这个复杂度。
               ],
             ),
           ),
           // 底部固定区：不随列表滚动（超长服务列表也压不到它）。
-          // ⚠ **只在它上沿画一条框线 + 一道向上的外阴影**（用户 2026-10-10：
+          // ⚠ **只在它上沿画一条"轻分割线"**（用户 2026-10-10：
           // 三十二轮「我希望侧边栏底部固定部分要有一个顶部框线，但是不要有别的框线」→
-          // 三十三轮「除了上框线，还在在上边加一个外阴影」）—— 本轮**推翻了**
-          // 2026-10-09 十三轮那句「侧边栏不要有边框线」在**这一条线上**的适用：
-          // 现在要的就是"固定区与上面那串会滚的列表分得开"，靠**线 + 影**两件一起。
-          // 除此之外侧栏里**一条线都不许再加**：分组之间没有、概览与教务系统之间没有
-          // （用户 2026-09-17 那条仍然有效）、左右与底部也不描边。
+          // 三十三轮「除了上框线，还在在上边加一个外阴影」→
+          // **三十四轮（现行）「算了，我希望改成不连接左右边界的轻分割线，去除阴影」**）：
+          // 于是它从"左右顶满 + 带阴影的框线"改成**两侧留白的短分割线**，阴影去掉。
+          // 除了这一条，侧栏里**一条线都不许再加**：分组之间没有、
+          // 概览与教务系统之间没有（用户 2026-09-17 那条仍然有效）、左右与底部也不描边。
           //
           // 线色用 `AppColors.hairline`（**不是**裸 `outlineVariant.withValues(alpha: 0.6)`）：
           // 2026-09-17 那次实测的坑 —— `outlineVariant` 在深色下**自带 alpha**
           // （10% 白），`withValues` 是**替换**不是相乘，写成 0.6 会变成 60% 白，
           // 在 #1A1A1A 上混出 `#A3A3A3` 那种刺眼的亮线（用户原话「太亮」）。
           if (widget.footer != null) ...[
+            // ⚠ **不连接左右边界**：左右各退 [HomeSidebar.pillInset]，
+            // 与那两行高亮胶囊的左右边界对齐（不另立一套留白口径）。
+            // ⚠ 画在**内容之外**（`Column` 的兄弟节点）而不是叠在内容上：
+            // 它是"分隔"，不该吃掉固定区那 1px 的行高。
+            Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: HomeSidebar.pillInset,
+              ),
+              child: SizedBox(
+                key: const Key('homeSidebarFooterDivider'),
+                height: 1,
+                child: ColoredBox(color: AppColors.hairline(context)),
+              ),
+            ),
             // ⚠ 那两行（[HomeSidebarFooterRow]）**不自带左右外边距** —— 缩进由这里给，
             // 这样它们的圆角胶囊与目录行的胶囊**左右对齐**（十轮口径）。
-            // ⚠ 里面那层 `ClipRect` 是给**收起动画**用的：那 200ms 里文本还在画、
+            // ⚠ 外面这层 `ClipRect` 是给**收起动画**用的：那 200ms 里文本还在画、
             // 轨道已经收窄 → 不裁就是 `RenderFlex overflowed`（见 [body] 的注释）。
-            // ⚠ 阴影由**外面**这层画（`ClipRect` 会把它裁掉），所以这层的矩形比
-            // 内容高 `blur` —— 露在「固定区上边」的那一条就是阴影本身，
-            // 即**影子往里、只盖住线以上的部分**，不会把自己的内容也罩暗。
-            DecoratedBox(
-              decoration: BoxDecoration(
-                boxShadow: _footerOuterShadows(context),
-                border: Border(
-                  top: BorderSide(color: AppColors.hairline(context)),
-                ),
-              ),
-              // ⚠ 上面留出 `blur` 这么多：影子的"往上那一半"要靠这段留白才露得出来
-              // （不留白就被滚动区盖住）。**只留上面** —— 左右 / 下面留白会把
-              // 那两条边也顶出缝来（用户要的是"只有上边"）。
+            ClipRect(
               child: Padding(
-                padding: EdgeInsets.only(top: _footerShadowBleed(context)),
-                child: ClipRect(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: HomeSidebar.pillInset,
-                    ),
-                    // ⚠ 底部那两行**自己归侧栏管**，可调用方给的是裸 `Column`（没有 key）——
-                    // 所以这里替它们套上测量锚点：**按 child 的顺序**（头像是「我的」、
-                    // 齿轮是「设置」，见 `home_screen.dart` 的装配口径）。
-                    // 这样高亮框才能飞到它们身上（否则点这两行时框整个消失 = 用户报的
-                    // 「位置会闪动」）。
-                    child: _footerWithAnchors(widget.footer!),
-                  ),
+                padding: EdgeInsets.symmetric(
+                  horizontal: HomeSidebar.pillInset,
                 ),
+                // ⚠ 底部那两行**自己归侧栏管**，可调用方给的是裸 `Column`
+                // （没有 key）—— 所以这里替它们套上测量锚点：**按 child 的顺序**
+                // （头像是「我的」、齿轮是「设置」，见 `home_screen.dart` 的装配口径）。
+                // 这样高亮框才能飞到它们身上（否则点这两行时框整个消失 =
+                // 用户报的「位置会闪动」）。
+                child: _footerWithAnchors(widget.footer!),
               ),
             ),
           ],
@@ -1041,11 +1004,6 @@ class _HomeSidebarState extends State<HomeSidebar>
   }
 }
 
-/// 侧栏滚动区用的 `ScrollBehavior`：**不画滚动条**。
-///
-/// 用户 2026-10-09 十三轮：「我希望侧边栏滚动不显示滚动条」。
-/// 只覆盖 `buildScrollbar`（把子件原样返回 = 不套那层 `Scrollbar`），
-/// 滚动本身（滚轮 / 拖拽 / 物理效果）走父类，行为不变。
 class _NoScrollbarBehavior extends MaterialScrollBehavior {
   const _NoScrollbarBehavior();
 

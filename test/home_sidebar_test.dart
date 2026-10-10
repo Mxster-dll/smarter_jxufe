@@ -259,93 +259,72 @@ void main() {
 
       // ② 底部固定区上沿**必须**有那条线。
       //
-      // ⚠ 判据要能把它与**卡片形态那圈描边**区分开：卡片描边是"四条边都有"，
-      // 而这条框线**只有上边**。只按"在侧栏范围里"筛会把卡片描边一起捞进来
-      // （实测踩过：报出 `top=4.0` 那条就是卡片的上边框）。
       final footerTop = tester.getRect(find.byKey(homeSidebarProfileKey)).top;
-      final topOnly = <(Rect, BoxDecoration)>[];
-      void collect(Element el) {
-        final widget = el.widget;
-        if (widget is DecoratedBox) {
-          final d = widget.decoration;
-          if (d is BoxDecoration && d.border is Border) {
-            final b = d.border! as Border;
-            final hasOthers =
-                b.bottom.width > 0 || b.left.width > 0 || b.right.width > 0;
-            if (!hasOthers && b.top.width > 0 && b.top.color.a > 0) {
-              final ro = el.renderObject;
-              if (ro is RenderBox && ro.hasSize) {
-                topOnly.add((ro.localToGlobal(Offset.zero) & ro.size, d));
-              }
-            }
-          }
+
+      // ③ 底部固定区上沿那道**轻分割线**（现行口径 · 三十四轮）：
+      //    「不连接左右边界的轻分割线，去除阴影」。
+      final lineRect = tester.getRect(
+        find.byKey(const Key('homeSidebarFooterDivider')),
+      );
+      final barRect = tester.getRect(find.byKey(const Key('homeSidebar')));
+      expect(find.byKey(homeSidebarProfileKey), findsOneWidget, reason: where);
+
+      // ★ **不连接左右边界**：左右各退 `pillInset`（与高亮胶囊左右对齐，
+      //   不另立一套留白口径）—— 这是本轮改动的重点。
+      expect(
+        lineRect.left - barRect.left,
+        HomeSidebar.pillInset,
+        reason: '★ 分割线左端不许贴到侧栏左边界$where',
+      );
+      expect(
+        barRect.right - lineRect.right,
+        HomeSidebar.pillInset,
+        reason: '★ 分割线右端不许贴到侧栏右边界$where',
+      );
+      expect(lineRect.height, 1, reason: '1px 细线$where');
+      expect(
+        lineRect.top,
+        lessThanOrEqualTo(footerTop + 0.5),
+        reason: '它应当在固定区上沿（实测 line=${lineRect.top}，固定区 top=$footerTop）'
+            '$where',
+      );
+
+      // ★ **没有阴影**：整棵树里不许再出现"只有上边 + 带 boxShadow"的那套
+      //   （三十三轮试过，用户 2026-10-10：「去除阴影」）。
+      final painted = <BoxShadow>[];
+      void collectShadows(Element el) {
+        final w = el.widget;
+        if (w is DecoratedBox) {
+          final d = w.decoration;
+          if (d is BoxDecoration) painted.addAll(d.boxShadow ?? const []);
         }
-        el.visitChildren(collect);
+        el.visitChildren(collectShadows);
       }
 
-      collect(tester.binding.rootElement!);
-
+      collectShadows(tester.binding.rootElement!);
+      // 卡片形态那圈阴影不在本用例里（`card: false`），所以这里应当是空的。
       expect(
-        topOnly.length,
-        1,
-        reason: '侧栏里"只有一条上边框"的装饰件**有且只有一个** —— 就是底部固定区上沿那道'
-            '（实测 ${topOnly.map((e) => e.$1.top).toList()}）$where',
-      );
-      final (lineRect, decoration) = topOnly.single;
-      final side = (decoration.border! as Border).top;
-      // ⚠ 那条线画在一个**比内容高出 `bleed` 的盒子**的上沿（`bleed` = 阴影最大 blur，
-      // 留给影子往上露；见 `_footerShadowBleed`）→ 线的 top 比固定区第一行**高** `bleed`。
-      final bleed = lineRect.top == footerTop
-          ? 0.0
-          : footerTop - lineRect.top;
-      expect(
-        bleed,
-        greaterThan(0),
-        reason: '那道线应当在固定区**上沿之上**留出阴影的余量'
-            '（实测 line=${lineRect.top}，固定区 top=$footerTop）$where',
-      );
-      expect(
-        bleed,
-        lessThanOrEqualTo(30),
-        reason: '阴影余量不该夸张（实测 $bleed）$where',
+        painted.where((s) => s.blurRadius > 0).isEmpty,
+        isTrue,
+        reason: '★ 固定区上沿不许再画阴影（三十四轮「去除阴影」）—— 实测 $painted$where',
       );
 
-      // ★ 三十三轮：「除了上框线，还在在上边加一个外阴影」——
-      // 那道影子的偏移必须**朝上**（dy < 0），否则就是往内容里糊。
-      final shadows = decoration.boxShadow ?? const <BoxShadow>[];
-      expect(shadows, isNotEmpty, reason: '固定区上沿必须有外阴影$where');
+      // 线色 = `AppColors.hairline`（换回裸写法在深色下会变成 60% 白，2026-09-17
+      // 实测过"太亮"）。
+      final lineColor = tester
+          .widget<ColoredBox>(
+            find.descendant(
+              of: find.byKey(const Key('homeSidebarFooterDivider')),
+              matching: find.byType(ColoredBox),
+            ),
+          )
+          .color;
       expect(
-        shadows.every((s) => s.offset.dy < 0),
-        isTrue,
-        reason: '★ 影子的 offset.dy 必须为负（往上投）—— 实测 '
-            '${shadows.map((s) => s.offset).toList()}',
-      );
-      expect(
-        shadows.any((s) => s.blurRadius > 0),
-        isTrue,
-        reason: '要有模糊，不是又画一条线$where',
-      );
-      expect(
-        shadows.every((s) => s.color.a > 0),
-        isTrue,
-        reason: '影子颜色得看得见$where',
-      );
-      expect(
-        lineRect.width,
-        closeTo(tester.getSize(find.byKey(const Key('homeSidebar'))).width, 0.5),
-        reason: '那道线要左右顶满（跟着 pillInset 缩进就成了悬空短线）$where',
-      );
-      expect(side.width, 1, reason: '1px 细线$where');
-      expect(
-        side.color,
+        lineColor,
         AppColors.hairline(tester.element(find.byKey(homeSidebarProfileKey))),
         reason: '★ 线色 = `AppColors.hairline` —— 换成裸 '
-            '`outlineVariant.withValues(alpha: 0.6)` 在深色下会变成 60% 白（"太亮"，'
-            '2026-09-17 实测过）$where',
+            '`outlineVariant.withValues(alpha: 0.6)` 在深色下会变成 60% 白（"太亮"）$where',
       );
-
-      // ③ 底部固定区确实在（有线是要求，不是没渲染）。
-      expect(find.byKey(homeSidebarProfileKey), findsOneWidget, reason: where);
     }
   });
 
