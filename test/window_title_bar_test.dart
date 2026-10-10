@@ -1074,7 +1074,7 @@ final bar = [
       // 里那棵 Column 同时含带子（SizedBox + kWindowTitleBarHeight）与 Expanded(child)。
       final overlayAt = src.indexOf('return Overlay(');
       expect(overlayAt, greaterThan(0), reason: 'AppWindowChrome 必须自带 Overlay（Tooltip 要祖先）');
-      final tail = src.substring(overlayAt, overlayAt + 900);
+      final tail = src.substring(overlayAt, (overlayAt + 900).clamp(0, src.length));
       expect(tail, contains('Expanded(child: child)'),
           reason: '页面内容要在同一个 Overlay 里（否则气泡会被带子的边界裁掉）');
       expect(tail, contains('kWindowTitleBarHeight'),
