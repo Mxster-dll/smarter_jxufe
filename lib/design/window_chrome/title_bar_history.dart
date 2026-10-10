@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/core/navigation/route_history.dart';
 import 'package:smarter_jxufe/core/web/browser_nav.dart';
+import 'package:smarter_jxufe/design/window_chrome/app_window_chrome.dart';
 import 'package:smarter_jxufe/design/window_chrome/history_graph_painter.dart';
 
 /// 顶部那条栏里的**全局路由历史**控件（`←` `→` `🕘`）。
@@ -125,6 +126,7 @@ class _WindowTitleBarHistoryState extends ConsumerState<WindowTitleBarHistory> {
               color: iconColor,
               disabledColor: iconColor.withValues(alpha: 0.35),
               onPressed: onTap,
+          style: kTitleBarIconButtonStyle,
               visualDensity: VisualDensity.compact,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints.tightFor(width: 28, height: 28),

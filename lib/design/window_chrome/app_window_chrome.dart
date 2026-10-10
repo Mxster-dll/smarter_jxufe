@@ -59,6 +59,17 @@ const Curve kWindowTitleBarSwitchCurve = Curves.easeOutCubic;
 /// 守卫 = `test/window_title_bar_test.dart`「窄窗口：品牌只留 logo，整条栏不溢出」。
 const double kWindowTitleBarCompactWidth = 460;
 
+/// 标题栏里**图标按钮的统一样式**：悬停 / 按下的高亮是**圆角矩形**而不是圆形
+/// （用户 2026-10-10：「我希望图标按钮悬停时不要显示一个圆形高亮，而是一个圆角矩形高亮」）。
+///
+/// Material 的 `IconButton` 默认把 ink 画成**圆**（`StadiumBorder` / 圆形 ✓），在方方正正的
+/// 标题栏里显得突兀；这里统一切成 6 圆角的矩形，圆角与卡片口径相近。
+/// ⚠ 用例：`title_bar_history.dart` 的三枚（← → 🕘）、`home_screen.dart` 的侧栏开关、
+/// 历史面板里的 📌 —— 新加图标按钮时也用它，别各写各的。
+final ButtonStyle kTitleBarIconButtonStyle = IconButton.styleFrom(
+  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+);
+
 /// 本平台是否画自绘标题栏（目前只有 Windows 桌面有原生实现）。
 ///
 /// 判据取 `Theme.platform` 而不是 `defaultTargetPlatform`：与 `homeDesktopPlatform`

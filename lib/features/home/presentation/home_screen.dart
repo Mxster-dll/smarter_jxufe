@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:smarter_jxufe/core/navigation/route_history.dart';
 import 'package:flutter/material.dart';
+
+import 'package:smarter_jxufe/design/window_chrome/app_window_chrome.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smarter_jxufe/core/navigation/service_nav.dart';
@@ -651,6 +653,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints.tightFor(width: 30, height: 30),
       visualDensity: VisualDensity.compact,
+      style: kTitleBarIconButtonStyle,
       onPressed: () {
         if (!mounted) return;
         // ⚠ 取**当下**的实际状态（闭包捕获的 `collapsed` 是外层旧值 → 「点展开后再也收不起来」）。
