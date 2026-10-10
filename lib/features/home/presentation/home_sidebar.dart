@@ -1,4 +1,4 @@
-/// 左侧导航栏视图（仅电脑端宽窗口；判定见 `domain/home_layout.dart`）。
+﻿/// 左侧导航栏视图（仅电脑端宽窗口；判定见 `domain/home_layout.dart`）。
 ///
 /// 用户 2026-09-15 裁定：
 /// - 第 1 条：侧栏按分组列出全部服务；
@@ -206,7 +206,7 @@ class HomeSidebarFooterRow extends StatelessWidget {
 }
 
 /// 左侧导航栏。
-class HomeSidebar extends StatelessWidget {
+class HomeSidebar extends StatefulWidget {
   final List<HomeServiceEntry> entries;
 
   /// 栏宽（默认 [homeSidebarWidth]）。
@@ -302,15 +302,14 @@ class HomeSidebar extends StatelessWidget {
   /// 胶囊上下各留多少（行高 38 → 胶囊高 30）。
   static const double pillVerticalInset = 4;
 
-  /// **高亮切换的动画时长**（用户 2026-10-10 三十轮：「我希望增加左侧侧边栏高亮切换动画」）。
+  /// **高亮切换的动画时长**（用户 2026-10-10 三十/三十一轮：先要"切换动画"，
+  /// 再明确要"**高亮框有移动和颜色大小改变动画**"）。
   ///
-  /// 口径说明（这一条决定了观感，改之前先读）：
-  /// - **胶囊的尺寸不变**（圆角 / 行高 / 左右退让都不参与动画），只让**填充与描边**
-  ///   在 0 ↔ 有 之间过渡 —— 于是切换是"旧的一格淡出、新的一格淡入"。
-  ///   ⚠ 刻意**不做**"一个胶囊从上滑到下"：那需要在滚动区里放一个绝对定位的共享指示器、
-  ///   还要处理分组 / 收起 / 滚动，收益不值这个复杂度；而尺寸也参与动画的话，
-  ///   胶囊会"从行中间长大"，看起来像闪一下。
-  /// - 时长与 [CardFrame.duration]（220ms）同档，切换侧栏/内容卡片时观感一致。
+  /// 口径（决定了观感，改之前先读）：
+  /// - 侧栏里**只有一个**高亮框，它**会飞**：换选中项时从旧行的矩形**平移到**新行的矩形
+  ///   （所以"位置"与"尺寸"一起补间 —— 行高一致、宽度在收起态会变，两者都由矩形插值覆盖）；
+  /// - **颜色也一起补间**：不同条目各有 accent，飞行途中从旧色渐变到新色；
+  /// - 时长与 [CardFrame.duration]（220ms）同档，切换侧栏 / 内容卡片时观感一致。
   static const Duration pillDuration = Duration(milliseconds: 200);
 
   /// 底部固定区单行行高（比服务行略高：头像外径 30）。
@@ -327,17 +326,206 @@ class HomeSidebar extends StatelessWidget {
   static const Duration collapseDuration = Duration(milliseconds: 200);
 
   @override
+  State<HomeSidebar> createState() => _HomeSidebarState();
+}
+
+/// [HomeSidebar] 的状态：**只为一件事存在 —— 那个会飞的高亮框**。
+///
+/// 用户 2026-10-10 三十一轮：「我希望是高亮框有移动和颜色大小改变动画」。
+/// 做法：侧栏里**只有一个**高亮框，换选中项时它在**旧行的矩形 → 新行的矩形**之间补间
+/// （于是位置与尺寸一起动 —— 行高 / 栏宽（收起态）变化都被矩形插值覆盖），
+/// 颜色同时从旧条目的 accent 渐变到新条目的 accent。
+///
+/// ⚠ 为什么不用 `AnimatedPositioned` + `AnimatedContainer`：那只能补间**目标值**，
+/// 表达不了"从旧矩形飞过来"（旧矩形的来源是**上一帧量出来的**，不是某个常量）；
+/// 所以这里自己拿一个 `AnimationController`，两端都是量出来的 `Rect`。
+class _HomeSidebarState extends State<HomeSidebar>
+    with SingleTickerProviderStateMixin {
+  /// 选中项的高亮矩形（**本栏坐标系**，见 [_measure]）；null = 还没有目标。
+  Rect? _target;
+
+  /// 补间起点（= 上一次画出来的矩形）。
+  Rect? _from;
+
+  /// 目标条目的 accent（飞行途中 `Color.lerp(_fromAccent → _accent, t)`）。
+  Color? _accent;
+  Color? _fromAccent;
+
+  /// ⚠ **必须在 `initState` 里就建出来**，不能写成 `late final … = AnimationController(…)`
+  /// 的惰性初始化：若这一帧没有任何人碰过它（例如首帧 `_rect` 还是 null），`dispose()` 里
+  /// 的 `_anim.dispose()` 才是**第一次**读它 → 那一刻 element 已经 deactivated →
+  /// `createTicker` 去查 `TickerMode` 会抛
+  /// 「Looking up a deactivated widget's ancestor is unsafe」（实测踩过）。
+  late final AnimationController _anim;
+
+  /// 侧栏的测量锚点。
+  static const Key _measureBarKey = Key('homeSidebar_pillAnchor');
+
+  /// 选中行的 key（直接复用既有的行 key，不必另挂一套）。
+  Key? _selectedRowKey() {
+    final overview = widget.overviewSelected ?? widget.selectedTitle == null;
+    if (overview) return const Key('homeSidebarOverview');
+    final title = widget.selectedTitle;
+    if (title == null) return null;
+    return Key('homeSidebarItem-$title');
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _anim = AnimationController(
+      vsync: this,
+      duration: HomeSidebar.pillDuration,
+    )..addListener(_onTick);
+    // 首帧之后才量得到（那时锚点都挂上了）。
+    WidgetsBinding.instance.addPostFrameCallback((_) => _retarget());
+  }
+
+  @override
+  void didUpdateWidget(HomeSidebar old) {
+    super.didUpdateWidget(old);
+    if (old.selectedTitle != widget.selectedTitle ||
+        old.overviewSelected != widget.overviewSelected ||
+        old.collapsed != widget.collapsed) {
+      // 换行 / 收起态变化都要重新量：目标可能变了，也可能只是宽度变了。
+      WidgetsBinding.instance.addPostFrameCallback((_) => _retarget());
+    }
+  }
+
+  @override
+  void dispose() {
+    _anim.dispose();
+    super.dispose();
+  }
+
+  void _onTick() {
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  /// 量一次「选中行」在**本栏坐标系**里的胶囊矩形。
+  ///
+  /// ⚠ 用 `globalToLocal` 相减而不是累加行高：滚动、分组标题、收起态宽度全都自动跟上。
+  /// ⚠ 外面那圈留白在这里让掉（[HomeSidebar.pillInset] / [HomeSidebar.pillVerticalInset]），
+  /// 所以量出来的就是**胶囊**的矩形（与从前每行自己画的那个一致）。
+  Rect? _measure() {
+    final rowKey = _selectedRowKey();
+    if (rowKey == null) return null;
+    final rowBox = _ctxOfKey(rowKey)?.findRenderObject();
+    final barBox = _ctxOfKey(_measureBarKey)?.findRenderObject();
+    if (rowBox is! RenderBox || barBox is! RenderBox) return null;
+    if (!rowBox.hasSize || !barBox.hasSize) return null;
+    final topLeft = barBox.globalToLocal(rowBox.localToGlobal(Offset.zero));
+    final rowRect = topLeft & rowBox.size;
+    return Rect.fromLTWH(
+      rowRect.left + HomeSidebar.pillInset,
+      rowRect.top + HomeSidebar.pillVerticalInset,
+      rowRect.width - HomeSidebar.pillInset * 2,
+      rowRect.height - HomeSidebar.pillVerticalInset * 2,
+    );
+  }
+
+  /// 按 key 找 element（用来取 RenderBox）。
+  ///
+  /// ⚠ 不引入 `GlobalKey` 表：行 key 已经存在（`homeSidebarItem-<标题>` / 概览行），
+  /// 用 `WidgetsBinding.instance.rootElement` 自上而下找一次即可 —— 只发生在
+  /// "选中项变了 / 收起态变了"这两种时刻，不在每帧热路径上。
+  Element? _ctxOfKey(Key key) {
+    Element? found;
+    void visit(Element element) {
+      if (found != null) return;
+      if (element.widget.key == key) {
+        found = element;
+        return;
+      }
+      element.visitChildren(visit);
+    }
+
+    final root = WidgetsBinding.instance.rootElement;
+    if (root != null) visit(root);
+    return found;
+  }
+
+  /// 把高亮框挪到当前选中行；从**此刻画着的矩形**开始补间（颜色同理）。
+  void _retarget() {
+    if (!mounted) return;
+    final next = _measure();
+    final nextAccent = next == null ? null : _accentOfCurrent();
+    if (next == null) {
+      if (_target == null) return;
+      setState(() {
+        _from = _target;
+        _target = null;
+        _fromAccent = _accent;
+      });
+      _anim.forward(from: 0);
+      return;
+    }
+    if (_target == next) return; // 没变，别打断正在跑的补间
+    setState(() {
+      // ⚠ 补间途中目标变了（收起动画每帧都在改宽度）：**保留起点**，只换终点 ——
+      // 若把 `_from` 也改成新量到的值，框会"粘"在当前位置不再飞。
+      _from ??= next;
+      _target = next;
+      // 颜色只在**真的换了条目**时才重设起点（宽度变化不该让颜色重跑一遍）。
+      if (nextAccent != _accent) {
+        _fromAccent = _currentAccent ?? nextAccent;
+        _accent = nextAccent;
+        _anim.forward(from: 0);
+      }
+    });
+  }
+
+  /// 当前选中项该用的 accent（概览 = 主题色；条目 = 自己的 accent）。
+  Color? _accentOfCurrent() {
+    final overview = widget.overviewSelected ?? widget.selectedTitle == null;
+    if (overview) return Theme.of(context).colorScheme.primary;
+    final title = widget.selectedTitle;
+    for (final e in widget.entries) {
+      if (e.title == title) return e.accent;
+    }
+    return Theme.of(context).colorScheme.primary;
+  }
+
+  /// 此刻该画出来的**胶囊纵向位置与高度**（把 t 缓动后在 `_from` 与 `_target`
+  /// 之间插值）。
+  ///
+  /// ⚠ **只取纵向**：横向（左右退让 / 宽度）一律由 `LayoutBuilder` 现拿栏的宽度算
+  /// —— 收起侧栏时栏宽自己也在补间，而"量"出来的宽度永远是**上一帧**的
+  /// （实测：`_measure()` 在收起动画里一路读到 232，框纹丝不动地停在展开态宽度）。
+  /// 布局阶段拿到的宽度才是这一帧真正在用的那个。
+  ({double top, double height})? get _pillVertical {
+    final from = _from;
+    final target = _target;
+    if (target == null) return null;
+    final rect = from == null
+        ? target
+        : Rect.lerp(from, target, Curves.easeOutCubic.transform(_anim.value))!;
+    return (top: rect.top, height: rect.height);
+  }
+
+  /// 此刻该画出来的 accent（旧色 → 新色）。
+  Color? get _currentAccent {
+    final base = _accent ?? _fromAccent;
+    if (base == null) return null;
+    final from = _fromAccent ?? base;
+    return Color.lerp(from, base, Curves.easeOutCubic.transform(_anim.value));
+  }
+
+  @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     // 通栏 = `surfaceContainerLow`（原口径，逐像素不变）；
     // 卡片 = 「卡片色」（浅色纯白 / 深色 `#1A1A1A`，见 [card] 的说明）。
-    final background = card ? appCardColorOf(scheme) : scheme.surfaceContainerLow;
+    final background = widget.card
+        ? appCardColorOf(scheme)
+        : scheme.surfaceContainerLow;
     // ⚠ **收起态不是另一棵子树**（2026-10-09 十一轮 · 用户：「侧边栏折叠也要显示图标，
     // 只是不显示每一项的文本了，高亮什么的照旧」）：原来是「窄轨 = 只有一枚按钮」，
     // 现在收起只是**宽度变窄 + 所有文本不画**，列表 / 分组 / 底部固定区 / 选中胶囊
     // 全部照旧 —— 也从根上避免了"换子树 → 滚动位置归零"那类问题（见 §44.4 ②）。
     // ⚠ 宽度是**补间**的（用户 2026-10-09 十二轮：「展开收起侧边栏要有动画」）：
-    // `AnimatedContainer` 在 `width` 与 `collapsedWidth` 之间跑 [collapseDuration]，
+    // `AnimatedContainer` 在 `width` 与 `HomeSidebar.collapsedWidth` 之间跑 [collapseDuration]，
     // 与 `home_screen` 那两层 `AnimatedPadding`（左缝 / 块间缝）**同时启动、同一时长**
     // → 收起来是「文字先消失、整块缩回去」，右栏同时让开。
     // ⚠ **两种形态返回的是同一个组件类型**（九轮那次的教训，见 §44.4 ②）：`collapsed`
@@ -349,14 +537,24 @@ class HomeSidebar extends StatelessWidget {
     // （实测：光把文字夹成 0 宽度**不管用**，那 8px 是图标 + 缝本身撑出去的）。
     // 工具行与底部固定区外面那两层 `ClipRect` 只是第二道保险（视觉上"切掉"而不是溢出）。
     final body = AnimatedContainer(
+      // ⚠ `homeSidebar` 这个 key **测试在用**（量宽度 / 量矩形），不许换成测量用的那个。
       key: const Key('homeSidebar'),
-      duration: collapseDuration,
+      duration: HomeSidebar.collapseDuration,
       curve: Curves.easeOutCubic,
-      width: collapsed ? collapsedWidth : width,
+      width: widget.collapsed ? HomeSidebar.collapsedWidth : widget.width,
       color: background,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      // ⚠ `Stack` 是为了那个**会飞的高亮框**（三十一轮）：它画在整栏之上、内容之下，
+      // 位置由 `_rect` 给（本栏坐标系 → 滚动也跟着动，因为它量的是行的全局位置）。
+      // ⚠ **不能**给这个 Stack 挂 `clipBehavior`：栏宽是补间的，收起那一下内容照旧
+      // 由各行的 `ClipRect` 兜着（见上面那段），这里再裁一层会连带把高亮框裁掉。
+      child: Stack(
+        // 测量锚点与 `homeSidebar` 是**同一个盒子**（Stack 铺满 AnimatedContainer），
+        // 所以行矩形减出来的就是本栏坐标系里的位置。
+        key: _measureBarKey,
         children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
           // ⚠ 展开 / 收起那枚按钮 2026-10-09 起**只在标题栏**（用户：「我希望展开 / 收起
           // 侧边栏的按钮放在标题栏」）：首页把它发布到 `WindowTitleBarActions.leading`，
           // 侧栏这里整行撤掉 —— 不再需要那 36 高的工具行（它的唯一作用是给按钮占位、
@@ -374,11 +572,11 @@ class HomeSidebar extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.only(bottom: 12),
                 children: [
-                  if (onOverview != null) _overviewRow(context, scheme),
+                  if (widget.onOverview != null) _overviewRow(context, scheme),
                   // 顶部固定项：紧贴「数据一览」下方**不分节**（用户 2026-09-19：
                   // 「电脑端AI助手在侧边栏放到和"数据一览"下方紧贴」）——
-                  // 中间不插分组标题、不加分割线，两行同高（rowHeight）直接相接。
-                  for (final item in homePinnedSidebarEntries(entries))
+                  // 中间不插分组标题、不加分割线，两行同高（HomeSidebar.rowHeight）直接相接。
+                  for (final item in homePinnedSidebarEntries(widget.entries))
                     _row(context, item),
                   for (final group in HomeServiceGroup.values)
                     ..._group(context, scheme, group),
@@ -391,18 +589,52 @@ class HomeSidebar extends StatelessWidget {
           // 侧栏本来就靠底色与内容分界（宫格页那一侧也一样），再压一根线只是噪点。
           // 历史：2026-09-17 用户曾报「底部固定项最顶部的分割线太亮」→ 当时把
           // `outlineVariant.withValues(alpha: 0.6)` 换成 `hairline`；现在整条撤掉。
-          if (footer != null) ...[
+          if (widget.footer != null) ...[
             // ⚠ 那两行（[HomeSidebarFooterRow]）**不自带左右外边距** —— 缩进由这里给，
             // 这样它们的圆角胶囊与目录行的胶囊**左右对齐**（十轮口径）。
             // ⚠ 外面这层 `ClipRect` 是给**收起动画**用的：那 200ms 里文本还在画、
             // 轨道已经收窄 → 不裁就是 `RenderFlex overflowed`（见 [body] 的注释）。
             ClipRect(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: pillInset),
-                child: footer!,
+                padding: EdgeInsets.symmetric(horizontal: HomeSidebar.pillInset),
+                child: widget.footer!,
               ),
             ),
           ],
+        ],
+          ),
+          // 会飞的高亮框：**唯一一个**，画在内容之上（`Stack` 里排在后面）。
+          // ⚠ `IgnorePointer`：它只是观感，不许吃点击（行自己的 `InkWell` 照旧收事件）。
+          // ⚠ `LayoutBuilder` 拿的是**这一帧真正在用的栏宽**（见 [_pillVertical] 的说明）：
+          // 收起动画的每一帧都能跟上，不必等"量"出来的下一帧。
+          if (_pillVertical != null)
+            Align(
+              alignment: Alignment.topLeft,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final v = _pillVertical!;
+                  return Padding(
+                    padding: EdgeInsets.only(top: v.top),
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        key: const Key('homeSidebarFlyingPill'),
+                        decoration: sidebarPillDecoration(
+                          context,
+                          _currentAccent ?? scheme.primary,
+                          selected: true,
+                        ),
+                        child: SizedBox(
+                          width: (constraints.maxWidth -
+                                  HomeSidebar.pillInset * 2)
+                              .clamp(0.0, double.infinity),
+                          height: v.height,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
         ],
       ),
     );
@@ -410,7 +642,7 @@ class HomeSidebar extends StatelessWidget {
     // ⚠ **不挂 key**（2026-10-09 九轮）：`CardFrame` 两种形态返回的是同一个
     // `AnimatedContainer`，就地补间即可；挂一个「随 card 变」的 Key 会让整棵子树
     // 重新挂载（侧栏不内含设置页，但同一份口径要一致）。
-    return CardFrame(card: card, radius: radius, child: body);
+    return CardFrame(card: widget.card, radius: widget.radius, child: body);
   }
 
   /// 顶部「数据一览」：右侧面板的默认内容，也是唯一的「返回概览」入口。
@@ -420,11 +652,11 @@ class HomeSidebar extends StatelessWidget {
   /// 不消失」）——底部固定区的两行**不是目录条目**，选中它们时 `selectedTitle` 也是
   /// null，于是「数据一览」被误判成选中，侧栏上下一同高亮 ✗。
   Widget _overviewRow(BuildContext context, ColorScheme scheme) {
-    final selected = _overviewSelected;
+    final selected = widget._overviewSelected;
     final accent = scheme.primary;
     return InkWell(
       key: const Key('homeSidebarOverview'),
-      onTap: onOverview,
+      onTap: widget.onOverview,
       hoverColor: accent.withValues(alpha: 0.06),
       child: _rowShell(
         context,
@@ -447,19 +679,19 @@ class HomeSidebar extends StatelessWidget {
   ) {
     // 固定项已经在「数据一览」下方单独渲染过 → 从分组里摘掉，别出现两次。
     final items = [
-      for (final e in homeServiceEntriesInGroup(entries, group))
+      for (final e in homeServiceEntriesInGroup(widget.entries, group))
         if (!e.sidebarPinned) e,
     ];
     if (items.isEmpty) return const [];
     return [
       // 分组标题：**收起时不画文字**，改成一条与图标同宽的分隔线 ——
       // 既保住「这里换了一组」这个信息，又不会在 40 宽的轨道里换行 / 溢出。
-      if (collapsed)
+      if (widget.collapsed)
         Padding(
-          padding: const EdgeInsets.fromLTRB(
-            rowPadding + pillInset,
+          padding: EdgeInsets.fromLTRB(
+            HomeSidebar.rowPadding + HomeSidebar.pillInset,
             10,
-            rowPadding,
+            HomeSidebar.rowPadding,
             10,
           ),
           child: Divider(height: 1, thickness: 1, color: AppColors.hairline(context)),
@@ -467,10 +699,10 @@ class HomeSidebar extends StatelessWidget {
       else
         Padding(
           // 分组标题与行内容左对齐（缩进跟着行的外边距走，见 [_rowShell]）。
-          padding: const EdgeInsets.fromLTRB(
-            rowPadding + pillInset,
+          padding: EdgeInsets.fromLTRB(
+            HomeSidebar.rowPadding + HomeSidebar.pillInset,
             14,
-            rowPadding,
+            HomeSidebar.rowPadding,
             6,
           ),
           child: Text(
@@ -489,11 +721,11 @@ class HomeSidebar extends StatelessWidget {
 
   Widget _row(BuildContext context, HomeServiceEntry item) {
     final scheme = Theme.of(context).colorScheme;
-    final selected = item.title == selectedTitle;
+    final selected = item.title == widget.selectedTitle;
     return InkWell(
       key: Key('homeSidebarItem-${item.title}'),
       onTap: () {
-        final select = onSelect;
+        final select = widget.onSelect;
         if (select != null) {
           select(item);
         } else {
@@ -588,8 +820,8 @@ class HomeSidebar extends StatelessWidget {
   /// 取代原来那条**通高 3px 左侧指示条**（胶囊的样式与三个口径见
   /// [sidebarPillDecoration]）。
   ///
-  /// 两层缩进的账：外层 [pillInset]（胶囊与侧栏左右边缘之间）＋ 内层
-  /// [pillHorizontalPadding]（胶囊内部留白）＝ [rowPadding] —— 于是**图标 / 文字仍在
+  /// 两层缩进的账：外层 [HomeSidebar.pillInset]（胶囊与侧栏左右边缘之间）＋ 内层
+  /// [HomeSidebar.pillHorizontalPadding]（胶囊内部留白）＝ [HomeSidebar.rowPadding] —— 于是**图标 / 文字仍在
   /// 原来的 x 上**，只有高亮块自己缩了进来。
   Widget _rowShell(
     BuildContext context, {
@@ -598,21 +830,24 @@ class HomeSidebar extends StatelessWidget {
     required Widget child,
   }) {
     return Container(
-      height: rowHeight,
-      padding: const EdgeInsets.symmetric(
-        horizontal: pillInset,
-        vertical: pillVerticalInset,
+      height: HomeSidebar.rowHeight,
+      padding: EdgeInsets.symmetric(
+        horizontal: HomeSidebar.pillInset,
+        vertical: HomeSidebar.pillVerticalInset,
       ),
-      // ⚠ **`AnimatedContainer` 而不是 `Container`**（用户 2026-10-10 三十轮：
-      // 「我希望增加左侧侧边栏高亮切换动画」）：胶囊尺寸不变、只让填充/描边过渡，
-      // 于是"旧的一格淡出、新的一格淡入"。行本身是常驻的（不是 `selected` 决定挂不挂），
-      // 所以 State 复用、动画真的跑得起来 —— 换成 `if (selected) …` 就会变成瞬切。
-      child: AnimatedContainer(
-        duration: pillDuration,
-        curve: Curves.easeOutCubic,
-        decoration: sidebarPillDecoration(context, accent, selected: selected),
-        padding: const EdgeInsets.symmetric(
-          horizontal: pillHorizontalPadding,
+      // ⚠ **这里只留几何，不再画高亮**（用户 2026-10-10 三十一轮：
+      // 「我希望是高亮框有移动和颜色大小改变动画」）。
+      //
+      // 高亮本身由侧栏那一层**唯一一个会飞的框**负责（见 [_flyingHighlight] /
+      // `TweenAnimationBuilder<Rect?>`）：换选中项时它从旧行**平移**到新行，
+      // 同时把颜色与尺寸一起补间过去。所以本行只用一个**透明**的占位盒把矩形与内边距占住
+      // （图标 / 文案的 x 不变），填充与描边都交给那个飞行的框。
+      //
+      // ⚠ 于是"本行选不选中"不再影响这里的观感 —— 但仍要把 [selected] / [accent] 留在签名里：
+      // 旧调用点与测试都在用，而且飞行框的目标矩形就是按这些行算出来的。
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: HomeSidebar.pillHorizontalPadding,
         ),
         alignment: Alignment.centerLeft,
         child: child,
@@ -640,33 +875,3 @@ class _NoScrollbarBehavior extends MaterialScrollBehavior {
 /// 展开 / 收起侧栏的那枚小按钮（用户 2026-10-09 七轮：「我希望侧边栏可收起」）。
 ///
 /// 两种位置同一个组件（所以 Key 只有一个）：
-/// - **展开态**：侧栏顶部的工具行右端，图标 = 「收起」（chevron 朝左）；
-/// - **收起态**：窄轨里，图标 = 「展开」（chevron 朝右）。
-///
-/// 尺寸 / 视觉与 `lib/design/settings_entry.dart` 的 `SettingsActionButton` 同口径
-/// （`iconSize 18` + `visualDensity compact` + 30×30 命中区 → 实测点击区 40）。
-class SidebarToggleButton extends StatelessWidget {
-  const SidebarToggleButton({
-    super.key,
-    required this.collapsed,
-    required this.onTap,
-  });
-
-  /// 当前是否收起（决定图标朝向与 tooltip 文案）。
-  final bool collapsed;
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => IconButton(
-    key: homeSidebarToggleKey,
-    tooltip: collapsed ? '展开侧边栏' : '收起侧边栏',
-    icon: Icon(collapsed ? Icons.chevron_right : Icons.chevron_left, size: 18),
-    padding: EdgeInsets.zero,
-    visualDensity: VisualDensity.compact,
-    constraints: const BoxConstraints.tightFor(width: 30, height: 30),
-    onPressed: onTap,
-  );
-}
-
-
