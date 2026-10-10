@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -868,6 +868,69 @@ void main() {
       );
     });
 
+    testWidgets('★ 滚动时框**逐帧贴合**，不许"慢慢追"', (tester) async {
+      // 用户 2026-10-10 三十五轮：「当左侧导航栏滚动时，会导致高亮矩形位置不能随着滚动
+      // 立刻相应位置，而是慢慢变到目标位置」。
+      //
+      // 真因（逐帧实测）：滚动通知是在 **reflow 之前**到的 —— 那一刻"重新量"读到的还是
+      // **上一帧**的位置（行已经到 784，量出来仍是 788），于是**恒定落后一个滚动步长**
+      // （实测浅色 4px）。修法 = 按 `ScrollPosition` 的增量把框平移
+      // （行的 y 与 pixels 严格反向），当帧就对齐。
+      //
+      // ⚠ 这条守卫**必须**：① 用 `startGesture` + `moveBy` 一小步一小步推
+      // （`tester.drag` 会一次走完并带上回弹，中间帧看不到）；
+      // ② 每步只 `pump()` **一帧**就量 —— 用 `pumpAndSettle` 的话"慢慢追"也能追平，
+      // 守卫就白写了（第一版如此，恒落后 4px 却照样绿）。
+      final many = [
+        for (var i = 0; i < 60; i++)
+          entry('条目$i', HomeServiceGroup.info, accent: const Color(0xFF536DFE)),
+      ];
+      tester.view.physicalSize = const Size(1200, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await pumpSidebar(
+        tester,
+        many,
+        selectedTitle: '条目20',
+        onSelect: (_) {},
+      );
+      await tester.pumpAndSettle();
+
+      double lag() =>
+          pillRect(tester).top -
+          tester.getRect(find.byKey(const Key('homeSidebarItem-条目20'))).top -
+          HomeSidebar.pillVerticalInset;
+
+      expect(lag(), closeTo(0, 0.5), reason: '起始就贴合');
+
+      var moved = 0;
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byKey(const Key('homeSidebar'))),
+      );
+      for (var step = 0; step < 8; step++) {
+        final before = tester
+            .getRect(find.byKey(const Key('homeSidebarItem-条目20')))
+            .top;
+        await gesture.moveBy(const Offset(0, -12));
+        await tester.pump(); // 只一帧
+        final after = tester
+            .getRect(find.byKey(const Key('homeSidebarItem-条目20')))
+            .top;
+        if ((after - before).abs() < 0.5) continue; // 这一步没真的滚（到边界了）
+        moved++;
+        expect(
+          lag(),
+          closeTo(0, 0.5),
+          reason: '★ 第 $step 步滚完的**当帧**，框必须还贴在那一行上'
+              '（实测落后 ${lag()}；行 $before → $after）——'
+              '落后就是"慢慢变到目标位置"那个 bug 复活了',
+        );
+      }
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(moved, greaterThanOrEqualTo(3), reason: '前提：这几步真的滚动了');
+      expect(lag(), closeTo(0, 0.5), reason: '松手（含回弹）之后仍然贴合');
+    });
     testWidgets('★ 选中行滚出可视区时，框不许糊到底部固定区上', (tester) async {
       final many = [
         for (var i = 0; i < 40; i++)

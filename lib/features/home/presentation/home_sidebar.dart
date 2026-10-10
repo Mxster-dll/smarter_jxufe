@@ -514,8 +514,33 @@ class _HomeSidebarState extends State<HomeSidebar>
     return found;
   }
 
-  /// 把高亮框挪到当前选中行；从**此刻画着的矩形**开始补间（颜色同理）。
-  void _retarget() {
+  /// 把高亮框**按滚动增量平移**（不重新量、不补间）。
+  ///
+  /// 只给滚动那条路用：滚动的每一帧里，"行在可视区里的 y"与 `ScrollPosition.pixels`
+  /// **严格反向**，所以平移量与滚动增量一一对应 —— 当帧就能严丝合缝。
+  /// ⚠ 别改成"重新量一次"：滚动通知在 reflow **之前**到，量到的是上一帧（会恒定落后）。
+  void _shiftPill(double dy) {
+    final target = _target;
+    if (target == null || dy == 0) return;
+    setState(() {
+      // 平移的是**整条补间**（起点与终点一起走）—— 于是正在飞的框也会跟着滚，
+      // 而不会因为滚动被打断。
+      _from = _from?.shift(Offset(0, dy));
+      _target = target.shift(Offset(0, dy));
+    });
+  }
+
+  /// 把高亮框挪到当前选中行。
+  ///
+  /// [animate] 决定"是飞过去还是立刻到位"，两者必须分开（用户 2026-10-10 三十五轮：
+  /// 「当左侧导航栏滚动时，会导致高亮矩形位置不能随着滚动立刻相应位置，而是慢慢变到
+  /// 目标位置」）：
+  /// - **换选中项 / 收起展开** → `animate: true`：从此刻画着的矩形**平移到**新位置
+  ///   （"高亮框会飞"就是这个）；
+  /// - **滚动** → `animate: false`：行是被手指/滚轮**连续**推着走的，框必须**每一帧都钉在
+  ///   那一行上**。给它跑 200ms 补间的话，每一帧都在追一个又变了的目标 ——
+  ///   观感就是"糊在后面慢慢追"。
+  void _retarget({bool animate = true}) {
     if (!mounted) return;
     final next = _measure();
     final nextAccent = next == null ? null : _accentOfCurrent();
@@ -526,30 +551,30 @@ class _HomeSidebarState extends State<HomeSidebar>
         _target = null;
         _fromAccent = _accent;
       });
-      _anim.forward(from: 0);
+      if (animate) _anim.forward(from: 0);
       return;
     }
     if (_target == next) return; // 没变，别打断正在跑的补间
     // ⚠ **起点必须是"此刻画着的位置"，而不是上一帧的目标**（用户报「位置会闪动」）：
-    // 补间途中目标变了（收起动画每帧都在改宽度、滚动也在改位置）时，如果保留旧的
-    // `_from` 而让控制器继续跑，下一帧就会把**已经跑了一半的 t** 重新作用到
-    // "旧起点 → 新终点"上 —— 位置"啪"地跳一下，看起来就是闪。
+    // 补间途中目标变了时，如果保留旧的 `_from` 而让控制器继续跑，下一帧就会把
+    // **已经跑了一半的 t** 重新作用到"旧起点 → 新终点"上 —— 位置"啪"地跳一下。
     // 正确做法：先把当前**实际画出来的**矩形固化成新起点，再从头补间到新终点。
     final current = _rectNow;
     setState(() {
-      _from = current ?? next;
+      // 不补间 = 起点直接等于终点（`_rectNow` 于是恒等于目标）。
+      _from = animate ? (current ?? next) : next;
       _target = next;
-      // 颜色同理：从"此刻的颜色"接着走，而不是从上一帧的目标色。
       final currentAccent = _currentAccent;
       if (nextAccent != _accent) {
+        // 颜色只在**真的换了条目**时才重设起点（滚动不该让颜色重跑一遍）。
         _fromAccent = currentAccent ?? nextAccent;
         _accent = nextAccent;
-        _anim.forward(from: 0);
+        if (animate) _anim.forward(from: 0);
       } else {
         _fromAccent = currentAccent ?? _fromAccent;
-        // 位置变了（滚动 / 收起）也要重跑，且从此刻的位置起。
-        if (_from != next) _anim.forward(from: 0);
+        if (animate && _from != next) _anim.forward(from: 0);
       }
+      if (!animate) _anim.stop();
     });
   }
 
@@ -666,9 +691,22 @@ class _HomeSidebarState extends State<HomeSidebar>
                     child: NotificationListener<ScrollNotification>(
                       key: _measureScrollKey,
                       onNotification: (notification) {
-                        // 度量要等这一帧的布局落定（滚动位置刚变），所以挂到帧末。
+                        // ⚠ **滚动时不能只靠"重新量"**（用户 2026-10-10 三十五轮：
+                        // 「滚动时…不能随着滚动立刻相应位置，而是慢慢变到目标位置」）：
+                        // 滚动通知是在 **reflow 之前**到的 —— 那一刻 `_measure()` 读到的
+                        // 还是**上一帧**的位置（实测：行已经到 784，量出来仍是 788，
+                        // 恒定落后一个滚动步长）。观感就是"糊在后面慢慢追"。
+                        //
+                        // 但这一帧的滚动**增量**是已知的，而"行在可视区里的 y"与
+                        // `pixels` **严格反向**（内容往上走多少，行就往上走多少）
+                        // → 直接按增量把框平移，当帧严丝合缝；
+                        // 再挂一次帧末的量测兜底（回弹 / 边界 / 累积误差）。
+                        if (notification is ScrollUpdateNotification) {
+                          final d = notification.scrollDelta ?? 0;
+                          if (d != 0) _shiftPill(-d);
+                        }
                         WidgetsBinding.instance.addPostFrameCallback((_) {
-                          _retarget();
+                          _retarget(animate: false);
                         });
                         return false;
                       },
