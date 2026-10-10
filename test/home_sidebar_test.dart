@@ -1,6 +1,7 @@
-import 'dart:io';
+﻿import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:smarter_jxufe/design/app_card.dart';
@@ -491,6 +492,151 @@ void main() {
       await pumpSidebar(tester, stubEntries());
       expect(find.byKey(homeSidebarProfileKey), findsNothing);
       expect(find.byKey(homeSidebarSettingsKey), findsNothing);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // 高亮切换动画（用户 2026-10-10 三十轮：「我希望增加左侧侧边栏高亮切换动画」）。
+  //
+  // 口径（见 `HomeSidebar.pillDuration` 的注释）：**胶囊尺寸不变、只让填充/描边过渡**
+  // —— 切换读起来是"旧的一格淡出、新的一格淡入"，而不是瞬切、也不是"从行中间长大"。
+  // ---------------------------------------------------------------------------
+  group('高亮切换是补间的', () {
+    /// 取某一行的胶囊**此刻画出来的**填充色。
+    ///
+    /// ⚠ 必须读 **render object 上正在生效的装饰**，不能读 `AnimatedContainer.decoration`
+    /// —— 后者是**目标值**，动画中途也一直是终点值，于是"有没有补间"根本测不出来
+    /// （一开始我就踩了这个：改成 `AnimatedContainer` 之后测试照样绿，等于没测）。
+    Color? pillColorOf(WidgetTester tester, String title) {
+      final render = tester.renderObject(
+        find.descendant(
+          of: find.byKey(Key('homeSidebarItem-$title')),
+          matching: find.byType(DecoratedBox),
+        ),
+      );
+      final decoration = (render as RenderDecoratedBox).decoration;
+      if (decoration is! BoxDecoration) return null;
+      return decoration.color;
+    }
+
+    /// 在**同一个** `HomeSidebar` 实例上换选中项（不重挂），让补间真的跑起来。
+    ///
+    /// ⚠ 不能在同一个用例里再调一次 `pumpSidebar`：那个 helper 每次都
+    /// `addTearDown(tester.view.reset)`，第二次调用会让整棵树重挂 →
+    /// `AnimatedContainer` 的 State 重建 → **动画从终点开始**
+    /// （实测：中间帧直接是终值，看着像"没动画"）。
+    Future<void> pumpWithSelection(WidgetTester tester, String? title) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Row(
+              children: [
+                HomeSidebar(
+                  entries: stubEntries(),
+                  selectedTitle: title,
+                  onSelect: (_) {},
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    testWidgets('★ 换选中项：中间帧停在"半透明"，不是瞬切', (tester) async {
+      tester.view.physicalSize = const Size(1200, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      await pumpWithSelection(tester, '课程');
+      await tester.pump();
+      expect(pillColorOf(tester, '课程'), isNotNull, reason: '选中那行应当有填充色');
+      expect(
+        pillColorOf(tester, '选课')?.a ?? 0,
+        0,
+        reason: '未选中那行没有填充（首帧就该是透明的）',
+      );
+      await tester.pumpAndSettle();
+      final active = pillColorOf(tester, '课程');
+      expect(active?.a, greaterThan(0));
+
+      // 换成「选课」选中 —— **同一个实例上重建**，动画才会跑。
+      await pumpWithSelection(tester, '选课');
+      await tester.pump();
+      await tester.pump(HomeSidebar.pillDuration ~/ 2);
+
+      final oldMid = pillColorOf(tester, '课程');
+      final newMid = pillColorOf(tester, '选课');
+      expect(
+        oldMid?.a ?? 1,
+        allOf(greaterThan(0), lessThan(active!.a)),
+        reason: '旧那一格应当**淡到一半**（实测 $oldMid）——'
+            '等于 0 是瞬切、等于 ${active.a} 是没动画',
+      );
+      expect(
+        newMid?.a ?? 0,
+        allOf(greaterThan(0), lessThan(active.a)),
+        reason: '新那一格应当**淡到一半**（实测 $newMid）',
+      );
+
+      // 走完动画：旧的归零、新的到位。
+      await tester.pumpAndSettle();
+      expect(
+        pillColorOf(tester, '课程')?.a ?? 0,
+        0,
+        reason: '淡出到底 = 无填充',
+      );
+      expect(
+        pillColorOf(tester, '选课')?.a,
+        active.a,
+        reason: '淡入到底 = 与原来那格同样的填充',
+      );
+    });
+
+    testWidgets('★ 胶囊的**尺寸不参与动画**（不闪、也不从行中间长大）', (tester) async {
+      await pumpSidebar(
+        tester,
+        stubEntries(),
+        selectedTitle: '课程',
+        onSelect: (_) {},
+      );
+      Rect rectOf(String title) => tester.getRect(
+        find.descendant(
+          of: find.byKey(Key('homeSidebarItem-$title')),
+          matching: find.byType(AnimatedContainer),
+        ),
+      );
+      final before = rectOf('选课');
+
+      await pumpSidebar(
+        tester,
+        stubEntries(),
+        selectedTitle: '选课',
+        onSelect: (_) {},
+      );
+      await tester.pump();
+      await tester.pump(HomeSidebar.pillDuration ~/ 2);
+      expect(
+        rectOf('选课'),
+        before,
+        reason: '动画中途胶囊的矩形也必须一模一样（尺寸不参与补间）',
+      );
+
+      await tester.pumpAndSettle();
+      expect(rectOf('选课'), before);
+    });
+
+    testWidgets('时长与侧栏其它补间同档（200ms 级，不是几十毫秒的闪）', (tester) async {
+      expect(
+        HomeSidebar.pillDuration.inMilliseconds,
+        greaterThanOrEqualTo(120),
+        reason: '太短就等于瞬切',
+      );
+      expect(
+        HomeSidebar.pillDuration.inMilliseconds,
+        lessThanOrEqualTo(320),
+        reason: '太长会显得粘滞',
+      );
     });
   });
 

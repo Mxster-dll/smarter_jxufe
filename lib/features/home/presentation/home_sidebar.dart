@@ -141,7 +141,11 @@ class HomeSidebarFooterRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(
           vertical: HomeSidebar.pillVerticalInset,
         ),
-        child: Container(
+        // ⚠ `AnimatedContainer`（与目录行的 `_rowShell` 同口径，见那边的注释）：
+        // 底部固定区这两行的选中胶囊也要淡入淡出，不然"目录行会动、这两行瞬切"。
+        child: AnimatedContainer(
+          duration: HomeSidebar.pillDuration,
+          curve: Curves.easeOutCubic,
           decoration: sidebarPillDecoration(
             context,
             accentColor,
@@ -297,6 +301,17 @@ class HomeSidebar extends StatelessWidget {
 
   /// 胶囊上下各留多少（行高 38 → 胶囊高 30）。
   static const double pillVerticalInset = 4;
+
+  /// **高亮切换的动画时长**（用户 2026-10-10 三十轮：「我希望增加左侧侧边栏高亮切换动画」）。
+  ///
+  /// 口径说明（这一条决定了观感，改之前先读）：
+  /// - **胶囊的尺寸不变**（圆角 / 行高 / 左右退让都不参与动画），只让**填充与描边**
+  ///   在 0 ↔ 有 之间过渡 —— 于是切换是"旧的一格淡出、新的一格淡入"。
+  ///   ⚠ 刻意**不做**"一个胶囊从上滑到下"：那需要在滚动区里放一个绝对定位的共享指示器、
+  ///   还要处理分组 / 收起 / 滚动，收益不值这个复杂度；而尺寸也参与动画的话，
+  ///   胶囊会"从行中间长大"，看起来像闪一下。
+  /// - 时长与 [CardFrame.duration]（220ms）同档，切换侧栏/内容卡片时观感一致。
+  static const Duration pillDuration = Duration(milliseconds: 200);
 
   /// 底部固定区单行行高（比服务行略高：头像外径 30）。
   static const double footerRowHeight = 46;
@@ -588,7 +603,13 @@ class HomeSidebar extends StatelessWidget {
         horizontal: pillInset,
         vertical: pillVerticalInset,
       ),
-      child: Container(
+      // ⚠ **`AnimatedContainer` 而不是 `Container`**（用户 2026-10-10 三十轮：
+      // 「我希望增加左侧侧边栏高亮切换动画」）：胶囊尺寸不变、只让填充/描边过渡，
+      // 于是"旧的一格淡出、新的一格淡入"。行本身是常驻的（不是 `selected` 决定挂不挂），
+      // 所以 State 复用、动画真的跑得起来 —— 换成 `if (selected) …` 就会变成瞬切。
+      child: AnimatedContainer(
+        duration: pillDuration,
+        curve: Curves.easeOutCubic,
         decoration: sidebarPillDecoration(context, accent, selected: selected),
         padding: const EdgeInsets.symmetric(
           horizontal: pillHorizontalPadding,
