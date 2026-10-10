@@ -700,6 +700,117 @@ void main() {
       expect(taps, ['选课'], reason: '高亮框不许抢走点击');
     });
 
+    testWidgets('★ 列表滚动时框**跟着行走**（不是钉在原地）', (tester) async {
+      // 造一个长到必须滚的列表；选**中段**那一行 —— 滚一点点它还在可视区里
+      // （滚出可视区时框会被有意藏起来，那是另一条用例的事）。
+      final many = [
+        for (var i = 0; i < 40; i++)
+          entry('条目$i', HomeServiceGroup.info, accent: const Color(0xFF536DFE)),
+      ];
+      tester.view.physicalSize = const Size(1200, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await pumpSidebar(
+        tester,
+        many,
+        selectedTitle: '条目20',
+        onSelect: (_) {},
+      );
+      await tester.pumpAndSettle();
+
+      /// 框与它该在的那一行的相对位置（= 0 表示正正好）。
+      double offsetFrom(String title) =>
+          pillRect(tester).top -
+          tester.getRect(find.byKey(Key('homeSidebarItem-$title'))).top -
+          HomeSidebar.pillVerticalInset;
+
+      expect(offsetFrom('条目20'), closeTo(0, 0.5), reason: '起始：框贴在被选中那行上');
+      final rowTopBefore = tester
+          .getRect(find.byKey(const Key('homeSidebarItem-条目20')))
+          .top;
+
+      // 滚下去（幅度小于到可视区底边的距离，保证那一行还在屏幕上）。
+      await tester.drag(
+        find.byKey(const Key('homeSidebar')),
+        const Offset(0, -40),
+      );
+      await tester.pumpAndSettle();
+
+      final rowTopAfter = tester
+          .getRect(find.byKey(const Key('homeSidebarItem-条目20')))
+          .top;
+      expect(
+        rowTopAfter,
+        lessThan(rowTopBefore - 10),
+        reason: '前提：这一滚真的把那行挪上去了（实测 $rowTopBefore → $rowTopAfter）',
+      );
+      // ⚠ 真因之一：框画在**栏坐标系**里，行的全局位置随滚动变 —— 不重新量就是
+      // "列表在滚、框钉在原地"，看起来完全不对。所以滚完必须仍然贴着那一行。
+      expect(
+        offsetFrom('条目20'),
+        closeTo(0, 0.5),
+        reason: '滚过之后框必须仍然贴在被选中那一行上'
+            '（实测偏离 ${offsetFrom('条目20')}）',
+      );
+    });
+
+    testWidgets('★ 选中行滚出可视区时，框不许糊到底部固定区上', (tester) async {
+      final many = [
+        for (var i = 0; i < 40; i++)
+          entry('条目$i', HomeServiceGroup.info, accent: const Color(0xFF536DFE)),
+      ];
+      tester.view.physicalSize = const Size(1200, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await pumpSidebar(
+        tester,
+        many,
+        selectedTitle: '条目0',
+        onSelect: (_) {},
+        footer: Column(
+          children: [
+            HomeSidebarFooterRow(
+              key: homeSidebarProfileKey,
+              leading: const SizedBox.shrink(),
+              label: '我的',
+              onTap: () {},
+            ),
+            HomeSidebarFooterRow(
+              key: homeSidebarSettingsKey,
+              leading: const SizedBox.shrink(),
+              label: '设置',
+              onTap: () {},
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final footerTop = tester
+          .getRect(find.byKey(homeSidebarProfileKey))
+          .top;
+
+      // 把被选中的第一行滚到看不见。
+      await tester.drag(
+        find.byKey(const Key('homeSidebar')),
+        const Offset(0, -600),
+      );
+      await tester.pumpAndSettle();
+
+      final pill = find.byKey(const Key('homeSidebarFlyingPill'));
+      // 框可以整个藏起来（`SizedBox.shrink()`），但**只要还在画**就不许越界。
+      if (pill.evaluate().isNotEmpty) {
+        final rect = tester.getRect(pill);
+        if (rect.height > 0) {
+          expect(
+            rect.bottom,
+            lessThanOrEqualTo(footerTop + 0.5),
+            reason: '★ 框不许画到不滚动的底部固定区上（那里是头像 / 设置两行）',
+          );
+        }
+      }
+    });
+
     testWidgets('时长与侧栏其它补间同档（200ms 级，不是几十毫秒的闪）', (tester) async {
       expect(
         HomeSidebar.pillDuration.inMilliseconds,

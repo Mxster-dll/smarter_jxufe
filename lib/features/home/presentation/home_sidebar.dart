@@ -567,21 +567,82 @@ class _HomeSidebarState extends State<HomeSidebar>
           // `ScrollConfiguration` 改的是**滚动区自己的行为**（鼠标滚轮 / 拖拽照旧），
           // 不是全局开关。
           Expanded(
-            child: ScrollConfiguration(
-              behavior: const _NoScrollbarBehavior(),
-              child: ListView(
-                padding: const EdgeInsets.only(bottom: 12),
-                children: [
-                  if (widget.onOverview != null) _overviewRow(context, scheme),
-                  // 顶部固定项：紧贴「数据一览」下方**不分节**（用户 2026-09-19：
-                  // 「电脑端AI助手在侧边栏放到和"数据一览"下方紧贴」）——
-                  // 中间不插分组标题、不加分割线，两行同高（HomeSidebar.rowHeight）直接相接。
-                  for (final item in homePinnedSidebarEntries(widget.entries))
-                    _row(context, item),
-                  for (final group in HomeServiceGroup.values)
-                    ..._group(context, scheme, group),
-                ],
-              ),
+            // ⚠ **高亮框和滚动区关在同一个 `Stack` 里**（三十一轮 · 用户报「动画好奇怪」）：
+            // 框画在栏坐标系里，而下面还有一块**不滚动**的固定区 —— 选中行滚出可视区时，
+            // 量出来的 top 会落到滚动区之外，不裁就糊到底部那两行上。
+            // 关进 `Stack` + `ClipRect` 之后，它天然只出现在滚动区内，
+            // 且**不参与滚动内容布局**（只跟着量出来的 top 走，所以观感是"钉在行上"）。
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: ScrollConfiguration(
+                    behavior: const _NoScrollbarBehavior(),
+                    // ⚠ **滚一下就要重新量**（真因之一）：行的全局位置随滚动变，
+                    // 不监听就变成"列表在滚、框钉在原地不动"。
+                    child: NotificationListener<ScrollNotification>(
+                      onNotification: (notification) {
+                        // 度量要等这一帧的布局落定（滚动位置刚变），所以挂到帧末。
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          _retarget();
+                        });
+                        return false;
+                      },
+                      child: ListView(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        children: [
+                          if (widget.onOverview != null)
+                            _overviewRow(context, scheme),
+                          // 顶部固定项：紧贴「数据一览」下方**不分节**（用户 2026-09-19：
+                          // 「电脑端AI助手在侧边栏放到和"数据一览"下方紧贴」）——
+                          // 中间不插分组标题、不加分割线，两行同高（HomeSidebar.rowHeight）直接相接。
+                          for (final item in homePinnedSidebarEntries(
+                            widget.entries,
+                          ))
+                            _row(context, item),
+                          for (final group in HomeServiceGroup.values)
+                            ..._group(context, scheme, group),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // 会飞的高亮框：**唯一一个**，画在滚动内容之上。
+                // ⚠ `IgnorePointer`：它只是观感，不许吃点击（行自己的 `InkWell` 照旧收事件）。
+                // ⚠ 宽度用 `LayoutBuilder` 现拿**这一帧真正在用的栏宽**（见 [_pillVertical]）：
+                // 收起动画的每一帧都能跟上，不必等"量"出来的下一帧。
+                if (_pillVertical != null)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final v = _pillVertical!;
+                          if (v.top + v.height <= 0 ||
+                              v.top >= constraints.maxHeight) {
+                            return const SizedBox.shrink();
+                          }
+                          return Stack(
+                            children: [
+                              Positioned(
+                                left: HomeSidebar.pillInset,
+                                right: HomeSidebar.pillInset,
+                                top: v.top,
+                                height: v.height,
+                                child: DecoratedBox(
+                                  key: const Key('homeSidebarFlyingPill'),
+                                  decoration: sidebarPillDecoration(
+                                    context,
+                                    _currentAccent ?? scheme.primary,
+                                    selected: true,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
           // 底部固定区：不随列表滚动（超长服务列表也压不到它）。
@@ -603,38 +664,6 @@ class _HomeSidebarState extends State<HomeSidebar>
           ],
         ],
           ),
-          // 会飞的高亮框：**唯一一个**，画在内容之上（`Stack` 里排在后面）。
-          // ⚠ `IgnorePointer`：它只是观感，不许吃点击（行自己的 `InkWell` 照旧收事件）。
-          // ⚠ `LayoutBuilder` 拿的是**这一帧真正在用的栏宽**（见 [_pillVertical] 的说明）：
-          // 收起动画的每一帧都能跟上，不必等"量"出来的下一帧。
-          if (_pillVertical != null)
-            Align(
-              alignment: Alignment.topLeft,
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final v = _pillVertical!;
-                  return Padding(
-                    padding: EdgeInsets.only(top: v.top),
-                    child: IgnorePointer(
-                      child: DecoratedBox(
-                        key: const Key('homeSidebarFlyingPill'),
-                        decoration: sidebarPillDecoration(
-                          context,
-                          _currentAccent ?? scheme.primary,
-                          selected: true,
-                        ),
-                        child: SizedBox(
-                          width: (constraints.maxWidth -
-                                  HomeSidebar.pillInset * 2)
-                              .clamp(0.0, double.infinity),
-                          height: v.height,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
         ],
       ),
     );
