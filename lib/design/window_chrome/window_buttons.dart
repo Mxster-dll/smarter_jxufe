@@ -36,9 +36,11 @@ class WindowButton extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // Win 视觉：方键底 + codicon 字形。
-            Opacity(
-              opacity: 1 - t,
+            // Win 视觉：方键底 + codicon 字形 —— 与圆点对称：只在「非 mac 或正在形变」时进树
+            // （mac 终态若还留着 Icon，守卫「形变中途两套视觉同时在」的收尾断言会红）。
+            if (!isMac || t < 1)
+              Opacity(
+                opacity: 1 - t,
               child: _WinKeyFace(
                 snapshot: snapshot,
                 button: button,
@@ -184,11 +186,16 @@ class WindowButtonsRow extends StatelessWidget {
           ),
       ],
     );
-    if (style != WindowButtonsStyle.mac) return row;
+    // ⚠ **结构必须恒定**：这里若写成 `if (style != mac) return row;`，换风格时树会从
+    // `Row` 变成 `Padding(Row)` → 按钮的 element 被重建 → `TweenAnimationBuilder`
+    // 从「起点」重来（`Tween(end:)` 的 begin 为 null → 直接取终值）→ 槽宽一步到位 ✗
+    // （守卫「换风格：槽宽 46 ↔ 20 是补间」实测就是这么红的）。Win 风格只是 padding 为零。
     return Padding(
-      padding: macClusterOnLeft
-          ? const EdgeInsets.only(left: kWindowTitleBarMacClusterInset)
-          : const EdgeInsets.only(right: kWindowTitleBarMacClusterInset),
+      padding: style == WindowButtonsStyle.mac
+          ? (macClusterOnLeft
+              ? const EdgeInsets.only(left: kWindowTitleBarMacClusterInset)
+              : const EdgeInsets.only(right: kWindowTitleBarMacClusterInset))
+          : EdgeInsets.zero,
       child: row,
     );
   }

@@ -219,7 +219,7 @@ class _WindowTitleBarState extends ConsumerState<WindowTitleBar> {
           maximize: maximize,
           close: close,
           // ⚠ 这里**必须逐个列出**：原生只把上报名单里的矩形当客户区，其余一律
-          // `HTCAPTION`（拖窗口）。漏一个 = 那一簇按钮点不动。
+          // ignore: avoid_print
           interactive: <Rect>[
             ?_regions[_actionsToken],
             ?_regions[_leadingToken],
