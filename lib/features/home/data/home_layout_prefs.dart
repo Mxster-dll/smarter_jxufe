@@ -1,4 +1,4 @@
-﻿/// 主页布局偏好的持久化（Hive `homePrefs` 单 key）。
+/// 主页布局偏好的持久化（Hive `homePrefs` 单 key）。
 ///
 /// 与 `my_campus_prefs.dart` / `calendar_prefs.dart` 同款：`ChangeNotifier`
 /// 而非 `AsyncNotifier` —— 设置页改完要**立刻**反映到主页（切换布局不该等
@@ -45,6 +45,13 @@ const homeCardGapKey = 'homeCardGap';
 /// 阈值与夹取见 `features/home/domain/home_card_radius.dart`。
 const homeCardRadiusKey = 'homeCardRadius';
 
+/// 窄窗口**自动收起侧栏** key（值为 'true' / 'false'，缺省 = **开**）。
+///
+/// 用户 2026-10-10：「加一个在 900 时，侧边栏自动收起的设置项，默认开启」——
+/// 阈值常量 = `home_layout.dart` 的 [homeSidebarAutoCollapseWidth]（900）。
+/// 语义是「跨过那条线时收一次」，之后用户手动展开仍然算数。
+const homeAutoCollapseSidebarKey = 'homeAutoCollapseSidebar';
+
 /// 主页布局偏好存储（内存缓存 + Hive 落盘）。
 ///
 /// 落盘「尽力而为」：Hive 打开失败时仅本次会话生效，不抛异常、不影响界面。
@@ -54,6 +61,7 @@ class HomeLayoutStore extends ChangeNotifier with BoxReloadWatcher {
   HomeCardStyle _cardStyle = HomeCardStyle.none;
   double _cardGap = kCardGapDefault;
   double _cardRadius = kCardRadiusDefault;
+  bool _autoCollapseSidebar = true;
   Box<String>? _box;
   Future<void>? _loading;
 
@@ -69,6 +77,9 @@ class HomeLayoutStore extends ChangeNotifier with BoxReloadWatcher {
   /// 区域卡片的圆角（逻辑像素，默认 [kCardRadiusDefault]，夹在
   /// [kCardRadiusMin] ~ [kCardRadiusMax]）。
   double get cardRadius => _cardRadius;
+
+  /// 窄窗口是否**自动收起**侧栏（默认 true）。
+  bool get autoCollapseSidebar => _autoCollapseSidebar;
 
   /// 首次读取落盘值（幂等：并发调用共用同一个 Future）。
   Future<void> ensureLoaded() => _loading ??= _load();
@@ -98,17 +109,21 @@ class HomeLayoutStore extends ChangeNotifier with BoxReloadWatcher {
     final parsedCard = HomeCardStyle.fromName(box.get(homeCardStyleKey));
     final parsedGap = parseCardGap(box.get(homeCardGapKey));
     final parsedRadius = parseCardRadius(box.get(homeCardRadiusKey));
+    // 缺省 = true（用户 2026-10-10 指定「默认开启」）：只有显式写过 ''false'' 才是关。
+    final parsedAutoCollapse = box.get(homeAutoCollapseSidebarKey) != 'false';
 
     if (parsed == _layout &&
         parsedCard == _cardStyle &&
         parsedGap == _cardGap &&
-        parsedRadius == _cardRadius) {
+        parsedRadius == _cardRadius &&
+        parsedAutoCollapse == _autoCollapseSidebar) {
       return;
     }
     _layout = parsed;
     _cardStyle = parsedCard;
     _cardGap = parsedGap;
     _cardRadius = parsedRadius;
+    _autoCollapseSidebar = parsedAutoCollapse;
     notifyListeners();
   }
 
@@ -138,6 +153,15 @@ class HomeLayoutStore extends ChangeNotifier with BoxReloadWatcher {
     _cardGap = clamped;
     notifyListeners();
     await _write(homeCardGapKey, formatCardGap(clamped));
+  }
+
+  /// 写入「窄窗口自动收起侧栏」。绝不抛异常。
+  Future<void> saveAutoCollapseSidebar(bool next) async {
+    await ensureLoaded();
+    if (next == _autoCollapseSidebar) return;
+    _autoCollapseSidebar = next;
+    notifyListeners();
+    await _write(homeAutoCollapseSidebarKey, next ? 'true' : 'false');
   }
 
   /// 写入新的卡片圆角（超范围一律夹回，绝不抛异常）。

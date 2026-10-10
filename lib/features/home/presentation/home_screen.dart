@@ -67,6 +67,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// 一枚展开按钮，右栏自动占满腾出来的宽度（`Row` + `Expanded` 天然如此）。
   bool _sidebarCollapsed = false;
 
+  /// 「窄窗口自动收起」本次跨线是否已处理过（见 build 里的注释）。
+  bool _autoCollapsedOnce = false;
+
   /// 标题栏那枚侧栏开关现在发不发布（避免每帧 notify 祖先）。
   bool? _sidebarToggleShown;
 
@@ -133,7 +136,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   !useSidebar && (ModalRoute.of(context)?.isCurrent ?? true),
             );
       // 侧栏视图才发布「展开 / 收起」（宫格视图没有侧栏）。
-      _publishSidebarToggle(show: useSidebar);
+      // 窄窗口**自动收起**侧栏（用户 2026-10-10：「加一个在 900 时，侧边栏自动收起的
+      // 设置项，默认开启」）。⚠ 只在**跨过那条线**的那一刻收一次：之后用户手动展开
+      // 仍然算数（否则窄窗口里想看一眼完整侧栏都做不到），线一回到上面就复位。
+      final autoCollapseSidebar = layoutStore.autoCollapseSidebar;
+      if (autoCollapseSidebar) {
+        final narrowNow = constraints.maxWidth < homeSidebarAutoCollapseWidth;
+        if (narrowNow && !_autoCollapsedOnce) {
+          _autoCollapsedOnce = true;
+          if (!_sidebarCollapsed) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) setState(() => _sidebarCollapsed = true);
+            });
+          }
+        } else if (!narrowNow) {
+          _autoCollapsedOnce = false;
+        }
+      }      _publishSidebarToggle(show: useSidebar);
             return useSidebar
                 ? _buildSidebarBody(
                       context,
