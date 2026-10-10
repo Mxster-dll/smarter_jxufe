@@ -37,12 +37,15 @@ final wxcalDioProvider = Provider<Dio>((ref) {
 
 /// 全部学期官方安排（实时优先，离线兜底）。
 ///
-/// GUID 未配置（[platformGuidProvider] 为 null）或实时请求失败时回退内置快照。
+/// 实时需要**两样都齐**：用户在设置里填的平台 GUID（[platformGuidProvider]）
+/// 与构建期注入的平台 appSecret（`--dart-define=BN_APP_SECRET=…`）。缺任何一样
+/// 都回退内置快照 —— 后者是正常路径，不是降级异常（离线快照覆盖 2017 秋 ~ 2026 秋）。
 final wxArrangementsProvider = FutureProvider<List<WxSemesterArrangement>>(
   (ref) async {
     final guid = await ref.watch(platformGuidProvider.future);
     final repo = WxcalRepository(
       guid: guid,
+      secret: bnAppSecret,
       live: WxcalRemoteDataSource(ref.watch(wxcalDioProvider)),
     );
     return repo.fetchAll();

@@ -12,6 +12,8 @@
 // 口径请看 assets/images/splash/ 下留下的 SVG + geometry.json。
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart'
+    show debugDefaultTargetPlatformOverride;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -550,19 +552,145 @@ void main() {
     });
   });
 
-  group('尺寸自适应', () {
-    test('窄窗口按宽度收缩，并留出两侧 24 的边距', () {
+  group('尺寸自适应（2026-10-10 = 纯比例 + PC 比例更小）', () {
+    test('★ 宽度就是可用宽 × 比例，没有像素封顶', () {
+      // 用户 2026-10-10 口径：「图片改用比例大小，而非固定大小」。
+      // 之前夹在 110~300，900 与 1500 宽的窗口会算出同一个 300 —— 那不叫比例。
+      for (final double w in <double>[
+        320,
+        390,
+        768,
+        900,
+        1280,
+        1500,
+        1920,
+        2560,
+      ]) {
+        for (final TargetPlatform p in <TargetPlatform>[
+          TargetPlatform.android,
+          TargetPlatform.iOS,
+          TargetPlatform.windows,
+          TargetPlatform.macOS,
+          TargetPlatform.linux,
+        ]) {
+          final width = SplashFlowLightStage.responsiveWidth(
+            w,
+            availableHeight: w * 0.7,
+            platform: p,
+          );
+          expect(
+            width,
+            closeTo(w * SplashFlowLightStage.widthRatioFor(p), 0.001),
+            reason:
+                '$p 可用宽 $w 时应得到 ${w * SplashFlowLightStage.widthRatioFor(p)}，'
+                '不该被任何固定值截断',
+          );
+        }
+      }
+    });
+
+    test('★ PC 端的比例必须比移动端小（用户 2026-10-10 要求）', () {
       expect(
-        SplashFlowLightStage.responsiveWidth(360, availableHeight: 800),
-        closeTo(360 - 48, 0.001),
+        SplashFlowLightStage.widthRatioDesktop,
+        lessThan(SplashFlowLightStage.widthRatioMobile),
+      );
+      // 三个桌面平台都算 PC
+      for (final TargetPlatform p in <TargetPlatform>[
+        TargetPlatform.windows,
+        TargetPlatform.macOS,
+        TargetPlatform.linux,
+      ]) {
+        expect(
+          SplashFlowLightStage.widthRatioFor(p),
+          SplashFlowLightStage.widthRatioDesktop,
+          reason: '$p 应判为桌面',
+        );
+      }
+      // 移动端两个平台都算移动
+      for (final TargetPlatform p in <TargetPlatform>[
+        TargetPlatform.android,
+        TargetPlatform.iOS,
+      ]) {
+        expect(
+          SplashFlowLightStage.widthRatioFor(p),
+          SplashFlowLightStage.widthRatioMobile,
+          reason: '$p 应判为移动端',
+        );
+      }
+      // 同一个窗口宽度下，PC 的图必须更小
+      double wOn(TargetPlatform p) => SplashFlowLightStage.responsiveWidth(
+        1200,
+        availableHeight: 800,
+        platform: p,
+      );
+      expect(
+        wOn(TargetPlatform.windows),
+        lessThan(wOn(TargetPlatform.android)),
+        reason: '同样 1200 宽的可用空间，PC 的主视觉必须比移动端小',
       );
     });
 
-    test('宽窗口封顶 520（桌面端不会摊成一面墙）', () {
-      expect(
-        SplashFlowLightStage.responsiveWidth(1920, availableHeight: 1080),
-        520,
+    test('默认取当前平台（不传 platform 时用 defaultTargetPlatform）', () {
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      final onWin = SplashFlowLightStage.responsiveWidth(
+        1200,
+        availableHeight: 800,
       );
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      final onAndroid = SplashFlowLightStage.responsiveWidth(
+        1200,
+        availableHeight: 800,
+      );
+      expect(onWin, lessThan(onAndroid));
+      expect(
+        onWin,
+        closeTo(1200 * SplashFlowLightStage.widthRatioDesktop, 0.001),
+      );
+      expect(
+        onAndroid,
+        closeTo(1200 * SplashFlowLightStage.widthRatioMobile, 0.001),
+      );
+    });
+
+    test('★ 更宽的窗口必须得到更大的图（比例的意义）', () {
+      double widthAt(double w, TargetPlatform p) =>
+          SplashFlowLightStage.responsiveWidth(
+            w,
+            availableHeight: w * 0.7,
+            platform: p,
+          );
+      // 这条就是「900 与 1500 一样大」那个坑的回归守卫。
+      expect(
+        widthAt(1500, TargetPlatform.windows),
+        greaterThan(widthAt(900, TargetPlatform.windows)),
+      );
+      expect(
+        widthAt(900, TargetPlatform.windows),
+        greaterThan(widthAt(390, TargetPlatform.windows)),
+      );
+      // 两倍宽 → 两倍图
+      expect(
+        widthAt(1800, TargetPlatform.windows) /
+            widthAt(900, TargetPlatform.windows),
+        closeTo(2, 0.001),
+      );
+    });
+
+    test('手机宽度 → 屏宽的 41%', () {
+      expect(
+        SplashFlowLightStage.responsiveWidth(390, availableHeight: 844),
+        closeTo(390 * SplashFlowLightStage.widthRatio, 0.001),
+      );
+    });
+
+    test('窄得离谱也要给两侧留边（不贴屏幕边）', () {
+      const double w = 120;
+      final width = SplashFlowLightStage.responsiveWidth(
+        w,
+        availableHeight: 800,
+      );
+      expect(width, lessThanOrEqualTo(w - 32));
     });
 
     test('矮窗口由高度反算（宽而扁时图不竖向溢出）', () {
@@ -599,21 +727,30 @@ void main() {
         availableHeight: h,
         showTitle: false,
       );
-      expect(withoutTitle, greaterThan(withTitle));
+      expect(withoutTitle, greaterThanOrEqualTo(withTitle));
     });
 
-    test('极小窗口托底 150（宁可小而完整，也不溢出）', () {
+    test('极窄窗口：比例值本身就够小，留边约束兜底', () {
+      // 120 宽：0.41×120 = 49.2，小于留边上限 120−32=88 ⇒ **49.2**（比例说了算）
       expect(
         SplashFlowLightStage.responsiveWidth(120, availableHeight: 200),
-        150,
+        closeTo(120 * SplashFlowLightStage.widthRatio, 0.001),
+        reason: '纯比例口径下，极窄窗口也按比例缩，不再有像素下限把它抬回去。',
+      );
+      // 留边仍是硬约束：可用宽再小也只给 `可用宽 − 2×sidePadding`
+      expect(
+        SplashFlowLightStage.responsiveWidth(30, availableHeight: 200),
+        lessThanOrEqualTo(30),
+        reason: '装不下时让位给边距，绝不溢出。',
       );
       expect(
         SplashFlowLightStage.responsiveWidth(600, availableHeight: 40),
-        150,
+        greaterThanOrEqualTo(0),
+        reason: '高度极扁时不再硬托底，但也不该算出 NaN / 负数',
       );
     });
 
-    test('任何输入都给出有限的合法宽度', () {
+    test('任何输入都给出有限、非负、且不超过可用宽度的值', () {
       for (final double w in <double>[0, 50, 320, 414, 1024, 3840]) {
         for (final double h in <double>[0, 120, 640, 2160]) {
           final width = SplashFlowLightStage.responsiveWidth(
@@ -621,8 +758,14 @@ void main() {
             availableHeight: h,
           );
           expect(width.isFinite, isTrue, reason: 'w=$w h=$h 算出了非有限值');
-          expect(width, greaterThanOrEqualTo(150));
-          expect(width, lessThanOrEqualTo(520));
+          expect(width, greaterThanOrEqualTo(0), reason: 'w=$w h=$h 算出了负值');
+          expect(width, lessThanOrEqualTo(w), reason: 'w=$w h=$h 超出了可用宽度');
+          // 只做防溢出，不做像素封顶：宽度绝不该超过比例值
+          expect(
+            width,
+            lessThanOrEqualTo(w * SplashFlowLightStage.widthRatio + 0.001),
+            reason: 'w=$w h=$h 超过了比例值（说明又被夹取了）',
+          );
         }
       }
     });

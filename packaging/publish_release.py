@@ -1,8 +1,13 @@
 # -*- coding: utf-8 -*-
-"""创建 GitHub Release 并上传三个产物（APK / Windows 安装包 / 源码包）。
+"""创建 GitHub Release 并上传**两个安装包**（APK / Windows 安装包）。
+
+⚠ **源码包不再手工上传**（2026-10-10 用户裁定）：直接让 GitHub 为 tag 生成
+「Source code (zip / tar.gz)」。理由与代价见 `packaging/RELEASE.md` §3「源码包口径」。
+本脚本顶部的 `TAG` / `ASSETS` / `BODY` 是**逐版硬编码**的（当前 = v2.0.0 那次发布的内容，
+作模板留档）；发新版时按 RELEASE.md §4 改这几处，别指望它自动跟随版本号。
 
 token 从 git credential manager 读取，绝不打印到输出。
-用法：python %TEMP%\\_rel_publish.py
+用法：python packaging/publish_release.py
 """
 import hashlib
 import json
@@ -136,6 +141,8 @@ print('release id:', rel_id, '|', rel['html_url'])
 
 for name, ctype in ASSETS:
     p = os.path.join(DIST, name)
+    if not os.path.exists(p):
+        sys.exit(f'缺少产物: {p}')
     with open(p, 'rb') as f:
         up = S.post(f'{upload_url}?name={name}', headers={**H, 'Content-Type': ctype}, data=f, timeout=1800, verify=VERIFY)
     print(f'  upload {name}: {up.status_code}', up.json().get('browser_download_url') if up.status_code < 300 else up.text[:200])

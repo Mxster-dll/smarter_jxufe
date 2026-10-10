@@ -24,9 +24,15 @@ class LeaveApiException extends AppException {
 /// - 详情：getApplicationForLeaveInfo（按 instanceId 取单条）
 /// - 审批：getHiProcessCommentsFlow（按 instanceId 取审批历史）
 class LeaveRemoteDataSource {
-  LeaveRemoteDataSource(this._dio);
+  LeaveRemoteDataSource(this._dio, {this.secret});
 
   final Dio _dio;
+
+  /// 平台 appSecret（不传则用构建参数 `BN_APP_SECRET`，见校历数据源文件头）。
+  ///
+  /// 与校历共用同一套 bn 签名，因此**同一个密钥**；它不再硬编码在仓库里，
+  /// 缺了就会在 [bnSignedBody] 当场抛错（调用方应据此回退/提示）。
+  final String? secret;
 
   static const String _host = 'https://wxcourse.jxufe.edu.cn';
   static const String _interface = '$_host/interface/api/interface';
@@ -49,6 +55,7 @@ class LeaveRemoteDataSource {
     final body = bnSignedBody(
       guid: guid,
       appid: _appid,
+      secret: secret,
       params: <String, dynamic>{
         'callback': _callback,
         'flag': _flagCommon,
@@ -99,6 +106,7 @@ class LeaveRemoteDataSource {
     final body = bnSignedBody(
       guid: guid,
       appid: _appid,
+      secret: secret,
       params: <String, dynamic>{
         'defId': _defId,
         'instanceId': instanceId,
@@ -137,6 +145,7 @@ class LeaveRemoteDataSource {
     final body = bnSignedBody(
       guid: guid,
       appid: _appid,
+      secret: secret,
       params: <String, dynamic>{
         'callback': _callback,
         'flag': _flagCommon,

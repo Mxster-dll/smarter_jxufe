@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/platform_guid/data/providers/guid_providers.dart';
 import 'package:smarter_jxufe/features/platform_guid/presentation/guid_guide_screen.dart';
+import 'package:smarter_jxufe/features/school_calendar/data/datasources/wxcal_remote_datasource.dart'
+    show canUseLiveSource;
 import 'package:smarter_jxufe/features/school_calendar/data/providers/calendar_prefs_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/school_calendar_providers.dart';
 import 'package:smarter_jxufe/features/school_calendar/data/providers/school_time_providers.dart';
@@ -435,7 +437,10 @@ class _SchoolCalendarScreenState extends ConsumerState<SchoolCalendarScreen> {
   ) {
     final textTheme = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
-    final live = guid != null && guid.trim().isNotEmpty;
+    // ⚠ 判据是「实时能不能真走通」，不是「填没填 GUID」：本构建若没注入平台
+    // appSecret（--dart-define=BN_APP_SECRET=…），拿到的其实是内置快照 ——
+    // 这里再写 GUID 就变成「离线数据配实时角标」，会误导读的人。
+    final live = canUseLiveSource(guid);
 
     return _WhiteCard(
       child: Column(

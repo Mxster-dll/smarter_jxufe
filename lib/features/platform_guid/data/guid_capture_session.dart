@@ -236,7 +236,8 @@ class GuidCaptureSession extends ChangeNotifier {
         }
       }
     }
-    path ??= (Platform.environment['ProgramFiles'] ?? r'C:\Program Files') + r'\Tencent\Weixin\Weixin.exe';
+    // 兜底：按环境变量拼默认安装路径（⚠ `%ProgramFiles%` 这种 %VAR% 形式 Dart 不会展开，必须自己查 env）
+    path ??= _defaultWeixinPath() ?? r'Weixin.exe';
     if (!File(path).existsSync()) return false;
     try {
       await Process.start(path, const []);
@@ -244,5 +245,16 @@ class GuidCaptureSession extends ChangeNotifier {
     } catch (_) {
       return false;
     }
+  }
+
+  /// 微信默认安装位置的兜底候选（找不到就回 null，交给上层的 PATH 兜底）。
+  static String? _defaultWeixinPath() {
+    for (final key in const ['ProgramFiles', 'ProgramW6432', 'ProgramFiles(x86)']) {
+      final root = Platform.environment[key];
+      if (root == null || root.isEmpty) continue;
+      final candidate = '$root\\Tencent\\Weixin\\Weixin.exe';
+      if (File(candidate).existsSync()) return candidate;
+    }
+    return null;
   }
 }

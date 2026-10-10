@@ -146,7 +146,22 @@ flutter:
     # 圆角不烘死在资源里，由 UI 的 ClipRRect 负责），生成脚本
     # `logos/new/icon-from-png/make_icons.py`（与桌面图标同一枚源图，取景不同）。
     - assets/images/brand/
-    - assets/capture_certs/
+    # ⚠ 必须**逐个列文件**，绝不能写成目录 `assets/capture_certs/`（2026-10-10 立）。
+    # 目录写法会把同目录下的 `*.key` 一起打进 APK / Windows 安装包：`.gitignore` 只挡得住
+    # 「入库」，**挡不住打包**。实测 v1.0.0 / v2.0.0 两个 APK 里
+    # `assets/flutter_assets/assets/capture_certs/leaf.key` 与本地私钥逐字节相同。
+    # 这三个都是**公开证书**，可正常分发：
+    #   ca.cer  → 装进系统 Root（`CaInstaller` 用，`guid_capture_session.dart`）
+    #   ca.crt / ca.crt+leaf.crt → 给本机 MITM 代理作证书链（`_buildServerContext()`）
+    # ⚠ 例外与已知边界：**`leaf.key` 目前仍必须随包分发** —— `_buildServerContext()` 要
+    # `ctx.usePrivateKeyBytes(...)`，dart:io 要求私钥与证书匹配，去掉它「平台标识」抓包直接不可用。
+    # 也就是说这个自签服务端私钥**仍然在安装包里**（有意的既有取舍，不是遗漏）。
+    # 正解 = 首次使用时在设备上现场生成 leaf 密钥对并自签（需 pointycastle 做 PKCS#8→PEM）；
+    # 在那之前，别把这里的「只列证书」误解成「包里没有私钥」。
+    # 未列出的 `ca.key` = 死文件（全仓零引用：CA 证书已自签、`ca.cer` 本身即自签名证书）→ 不再随包分发。
+    - assets/capture_certs/ca.cer
+    - assets/capture_certs/ca.crt
+    - assets/capture_certs/leaf.crt
     # 通识课程库（毕业学分页「这门通识课属于哪个模块」的唯一口径）。
     # 源 xlsx 不入库，由 `tool/make_ge_catalog.py` 转成本 JSON 后入库 ——
     # 学校改版时重跑那个脚本即可，守卫见 test/general_education_catalog_test.dart。

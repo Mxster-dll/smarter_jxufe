@@ -1,4 +1,4 @@
-﻿# ---- 本地敏感与临时（绝不入库）----
+# ---- 本地敏感与临时（绝不入库）----
 tmp.txt
 sensitive.txt
 app_data/
@@ -30,6 +30,13 @@ captures/
 
 # MITM 证书私钥（本地生成，构建时仍会打包进 APK）
 assets/capture_certs/*.key
+
+# 本机构建参数（含第三方平台 appSecret，绝不入库）
+# 用法：flutter run --dart-define-from-file=config.local.json
+# 模板见 config.local.example.json（后者入库，只有键名没有值）。
+# 为什么用「外部文件」而不是仓库内的 dart 常量：lib/ 下的源码**必须入库**
+# （repo_hygiene_test 明令 .gitignore 不得吞掉 lib/ 源码），所以密文只能放在仓库外。
+config.local.json
 
 # 本地发布产物（走 GitHub Release 分发）
 /dist/

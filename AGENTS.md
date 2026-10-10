@@ -1,4 +1,4 @@
-﻿# SmarterJxUFE · 智慧er江财（Flutter 客户端）— 会话级约定
+# SmarterJxUFE · 智慧er江财（Flutter 客户端）— 会话级约定
 
 > 本文件只对本工作区 `<仓库根>` 有效。跨工作区通用的纪律（提问纪律、安装路径、沙箱网络经验）在 `~/.dsh/AGENTS.md`，不重复。
 > **本文件是「薄入口」**（维护规则见全局 `~/.dsh/AGENTS.md` 的「自觉维护」节）：只放 §1–§3 常驻纪律 + 分册索引；**细节结论一律写分册，这里只留指针**。唯一硬约束 = 65536 字节指令预算 —— 超了整份文件任何 agent 都读不到。
@@ -22,6 +22,12 @@ $env:FLUTTER_ALREADY_LOCKED='true'
 $dart = "$env:FLUTTER_ROOT\bin\cache\dart-sdk\bin\dart.exe"
 $snap = "$env:FLUTTER_ROOT\bin\cache\flutter_tools.snapshot"
 ```
+
+> **本机路径占位（2026-10-11 立 · 用户「本机痕迹也洗一下」）**：本文件与各分册里的
+> `<FLUTTER_ROOT>` / `<PYTHON>` / `<INNO>` / `<7ZIP>` / `<仓库根>` / `<仓库外>` / `<下载目录>` / `<参考材料目录>` / `<仓库外的密钥目录>`
+> 都是**占位符**，按本机实际路径替换；`%TEMP%` / `%USERPROFILE%` / `%LOCALAPPDATA%` / `%APPDATA%` 是通用环境变量写法，直接用。
+> 解析办法：`<FLUTTER_ROOT>` = `where.exe flutter`（或 `$env:FLUTTER_ROOT`）；`<PYTHON>` = `where.exe python`；其余按名字代入。
+> 守卫有「本机路径」判据（§34.5 判据 ③）盯着这条：公开仓库里**不许出现「盘符 + 本机目录」**。
 
 | 目的 | 命令 |
 |---|---|
@@ -112,7 +118,7 @@ python ge_calc_probe.py "ws://127.0.0.1:<port>/<token>=/ws"
     - **仅限畅想之星**：`lib/core/navigation/page_auto_refresh.dart`（`PageAutoRefresher` / `invalidateIfLoaded`）**没动**，蛟湖阅读页的 `_refreshAll()` 行为不变。
     - 守卫 = `test/cxstar_auto_refresh_test.dart` 的「再次进入 / 从子页面返回 / 手动下拉 / 回前台」四例 + 真实流程镜像（用 `_FakeClock` 注入时钟才能推进 1 分钟窗口：真实 `DateTime.now()` 在 widget 测试里推不动）。
 - **学校时间（学年 / 学期 / 假期）的唯一出处 = `lib/features/school_calendar/`**（2026-09-27 · 用户要求「独立出来被所有模块复用」）：领域 `domain/school_time.dart`（`SchoolYear` / `SchoolBreak` / `SchoolTimeTable` + 学期标识归一 + 兜底 `schoolYearFallback` / `schoolYearOrFallback` / `schoolYearStartOf` / `schoolDayText`）；其它模块**只经** `data/providers/school_time_providers.dart` 的 `schoolTimeTableProvider` 取数；**学年 = 第一学期第一天 ~ 下学年第一天前一天，取不到就 null**；「当下学期」仍旧走 `domain/school_term.dart`；校历页有「学年时间」卡；zongce / 志愿时长的学年窗口已收上来（转发别名）；口径与实测台账见 **§36**。**课表侧另有一层「校历效应」（假期不排课 / 补课日改上被补那天的课 / 隐藏周六周日只在没课时生效），唯一实现 = `school_calendar/domain/calendar_day_effect.dart` + `ims/schedule/domain/schedule_board.dart`，取数入口 = `school_calendar/data/providers/calendar_effect_providers.dart` 的 `calendarDayEffectIndexProvider`，口径全文见 §39。**
-- **跨模块「地基件」的唯一实现（2026-09-20 · 架构审查后收敛）**：Cookie 罐 = `lib/core/network/cookie_jar.dart` 的 `SessionCookieJar`（**认 `Domain`**，超星系 / 图书馆用）与 `HostCookieJar`（**按 host 分桶**，单域换证站点用；7 个站点的私有三件套已迁完 4 个）+ `setCookieNames`（trace 打 `Set-Cookie` 的**唯一出口**，只出名字 —— 手写 `c.split(';').first` 打的是 `name=value`，会把凭据写进日志）；自动刷新闸门 = `lib/core/navigation/refresh_gate.dart` 的 `RefreshGate`（各模块只准继承）；教务会话失效 = `lib/core/network/jw_page_decoding.dart` 的 `jwSessionExpired` / `jwSessionExpiredPrefix` / `JwSessionExpiredException` / `isJwSessionExpiredError`（**数据层不许拿文案当类型**）；SSO 登录页判据（判**正文**）= `lib/core/network/sso_login_page.dart` 的 `ssoLoginPage` / `ssoLoginPageBytes`；CAS 打回登录页判据（判 **URL**）= `lib/core/network/cas_redirect.dart` 的 `isCasLoginRedirect`（精确到路径末段、先剥 `;jsessionid=`、兼容相对写法）；日志截断 = `lib/core/network/trace_text.dart` 的 `clipForTrace` / `clipForTrace200`；**统一认证换证「逐跳循环」** = `lib/core/network/cas_walk.dart` 的 `walkCasRedirects<T>` / `CasWalkSpec{maxHops, traceUrlMax, traceLocationMax}` / `CasWalkStep` / `CasWalkOutcome<T>` / 钩子动作 `CasHopGoto`·`CasHopFinish`（返回 `null` = 按 `Location` 继续）/ `casDioSender(dio, {responseType, extraHeaders, refererIsCurrentUrl})` —— **6 条 CAS 链已迁 5 条**（read_credit / cxstar / chaoxing / libsp / tsgxs：循环机制收进 core，站点只留自己的错误文案、跳数上限、取 token 的姿势、网关桥接、JS 跳转兜底；`dzj` 是 1(+1) 跳**无循环**故不迁，口径见 §33.3）；**异常基类** = `lib/core/errors/app_exception.dart` 的 `AppException`（**全仓 35 个具体异常类**的基类，契约 = `message` 是「能直接说给用户听的一句话」+ `toString()` 恒等于 `message`）/ `SessionExpiredException`（**会话失效标记**，9 个成员，界面按类型分支）+ `friendlyErrorText(e)`（**异常 → 上屏文案的唯一出口**，剥掉 `Exception: ` 前缀；此前这个手法在 lib 里手写了 11 处）；**内嵌网页（可带登录态）** = `lib/core/web/web_session.dart` 的 `WebSessionCookie` / `EmbeddedWebRequest`（要写进浏览器 Cookie 罐的凭据 + 要开的页面）+ `lib/core/network/cas_browser_session.dart` 的 `kCasHost` / `kTgcCookieName` / `casTgcCookie(tgc)`（**把统一认证 TGC 交给浏览器的唯一口径**）+ **`lib/core/web/in_app_web_screen.dart` = 全平台唯一内嵌实现**（Android WebView / Windows WebView2，统一走 `flutter_inappwebview`；口径「**Cookie 先写、页面后开**」+ 唯一跳转缝 `webViewScreenBuilderProvider`，⚠ `inAppWebViewSupported` 的 `windows` 2026-10-08 起为 true，Windows 前置 = nuget + WebView2 运行时，见 §40）；`Failure`（`Either` 侧，`lib/core/errors/failures.dart`）与它**刻意并存、不要互相转换**。守卫 = `test/core_conventions_test.dart`（**全仓只有该文件允许 `implements Exception`**，且禁止再手写 `.replaceFirst('Exception: ', '')`；裸 `throw Exception(` **已清零、禁止再出现**（起点 128 处）；`★ 每个 `*Exception` 类的根都是 `AppException`` 是**自维护**守卫 —— 扫全 `lib/` 建「类名 → 超类名」表，断言超类必是 `AppException` 或本仓另一个异常类，新增站点自动受管，不必手抄类名）+ `test/repo_hygiene_test.dart`（生成物入库）+ 异常行为 = `test/app_exception_test.dart`，口径与「哪些重复其实不该统一」见 **§33**（异常体系与迁移台账详见 §33.5）。
+- **跨模块「地基件」的唯一实现（2026-09-20 立）**：Cookie 罐 / 自动刷新闸门 / 教务会话失效 / SSO 与 CAS 登录页判据 / 统一认证逐跳循环 / 异常基类 `AppException` / 内嵌网页会话 —— 逐件正文见 **§33.1 表**与 **§40**。
 - **依赖纪律（2026-09-20 立 · 架构审查 ① 工程卫生）**：`pubspec.yaml` 只保留**真的被 import 的包**。本轮删掉 20 个零引用运行期依赖（`pubspec.lock` 包数 **215 → 158**，连带传递依赖共减 57），**唯一白名单例外 = `json_annotation`**（freezed 注解层：生成的 `*.freezed.dart` 里写着 `@JsonSerializable()`，注解由 `freezed_annotation.dart` 以 `export` 转发；用 `part of` 的 `.g.dart` 不算 import，**纯 import 统计必漏判**）。三个坑：① `http` 的唯一「命中」是 `package:http_parser/…` 的**子串**误匹配（`http_parser` 要留）；② `cupertino_icons` 可删 —— `CupertinoPageTransitionsBuilder` 是 Material 自带类、全仓 `CupertinoIcons.` 命中 0；③ `provider` 的 445 处命中全是 **Riverpod 自己 export 的** `ChangeNotifierProvider`。`ACCESS_NETWORK_STATE` 权限**原样保留**（曾是 `connectivity_plus` 的天然声明方，权限本身仍可能被原生侧用到）。⚠ CRLF 坑：`pubspec.yaml` 是 CRLF，按 `split('\n')` 切行时空行会剩成 `'\r'` → 被当成「块已结束」→ 只解析出 `flutter`。守卫 = `test/repo_hygiene_test.dart`「依赖都被真的 import」3 例（**自维护**：判据是 `^\s*(?:import|export)\s+'package:<名字>/` **指令**而非子串，故 `http_parser` 不会带出 `http`、白名单理由里写包名也不会自证自话；另两例守「白名单不许陈旧」「理由非空壳」）。
   - ⚠ **`.gitignore` 的目录规则必须锚定仓库根（2026-09-27 事故）**：`tools/` 会**在任意深度**匹配 → `lib/features/ai/tools/`（整个 AI 工具层 10 个 `.dart`）被静默忽略、`git ls-files` 为空（本地全绿、全新克隆缺一层源码）。已改 `/tools/`；守卫 = `test/repo_hygiene_test.dart`「★ 源码不被 .gitignore 吞掉」。
 - **三态组件（加载 / 空 / 错误）的唯一实现 = `lib/design/app_states.dart`（2026-09-20 立 · 架构审查 ⑤）**：
@@ -170,13 +176,14 @@ Failed assertion: '!semantics.parentDataDirty': is not true.   ← 随后每帧�
 表现为弹窗永不渲染 → `await showDialog` 永不返回 → 调用方 loading 标志永远为 true（曾导致「从课表导入」**一直转圈**，误判成网络问题）。
 **替代**：`AlertDialog(scrollable: true, content: Column(children: [ for (...) ListTile(dense: true, contentPadding: EdgeInsets.zero, …) ])))`，行直接展开，超出交给外层滚动。
 
-### 3.2 提交前隐私闸门（公开仓库，必做 · 2026-09-22 立）
+### 3.2 提交前隐私闸门（必做 · 2026-09-22 立 · 2026-10-11 扩口径）
 
-仓库是 **public**（`https://github.com/Mxster-dll/smarter_jxufe.git`），2026-09-21 已做过一轮全历史脱敏改写（299 提交）。
+2026-09-21 已做过一轮全历史脱敏改写（299 提交）。
 **提交前**（不是发版前）走三步，细则与成因见 **§34 提交前隐私纪律**：
 
 1. **跑守卫测试**（~30 秒）：`& $dart $snap test test\privacy_guard_test.dart` —— **红了不许提交**（判据与维护见 §34.5；跑前先停运行中的 `flutter run`，否则争构建目录会挂死）。
-2. **眼睛过一遍本次范围**：`git status --porcelain` + `git diff --cached --stat`。`app_data/`、`*.hive`、真机抓包（`*.mitm` / `*.flows` / `captures/`）、`key.properties`、`*.jks`、含明文的扫描/脱敏脚本 **一律不许入库**（清单 §34.3）。
+   ⚠ 2026-10-11 起**守卫扫仓库根**且**零豁免**，往常驻文档粘真值会被拦（§34.5）。
+2. **眼睛过一遍本次范围**：`git status --porcelain` + `git diff --cached --stat`。**不许入库**：`app_data/`、`*.hive`、真机抓包（`*.mitm` / `*.flows` / `captures/`）、`key.properties`、`*.jks`、含明文的脱敏脚本、本地挖掘产物（`dianfei_work/`、`dorm_sheet_*`）；清单见 §34.3。
 3. **写入新值一律用合成值**：姓名 `同学甲` / `同学乙`…、学号 `2202500001…`、学籍号 `201600000000…`、身份证 `110101200001010010`、手机 `13800000001…`、地址「江西省南昌市示例区示例路1号示例小区1栋101室」、口令 `Test123456`、票据 `<REDACTED>`（完整映射 §34.4）。
    ⚠ **最容易犯的一条 = 把真机抓包整段粘成 fixture** —— 那是 2026-09-21 泄漏的**唯一入口**（`test/network_service_data_test.dart` 的 `const String _dashboardHtml`、`test/my_mail_test.dart` 的回包）；另外**改测试输入要重算派生期望**（DES 对拍值按学号算），掩码 / 截断字面量（`110****0010`、`01234567`）要跟着换。
 4. **钩子**：`.githooks/pre-commit`（已入库）自动做「文件名检查 + 跑守卫测试」。**新克隆先启用一次**：`git config core.hooksPath .githooks`。逃生口 = `SKIP_PRIVACY_GUARD=1 git commit …`（只跳守卫测试）/ `git commit --no-verify`（全跳）。

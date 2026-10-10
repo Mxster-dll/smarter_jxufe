@@ -41,6 +41,7 @@ import 'package:smarter_jxufe/features/library_sync/data/libsp_payload.dart';
 import 'package:smarter_jxufe/features/library_sync/data/libsp_sync_service.dart';
 import 'package:smarter_jxufe/features/library_sync/domain/libsp_remote.dart';
 
+/// app_data 相对**仓库根**（本工具在仓库根目录跑，别写死本机绝对路径）。
 const String _appData = r'app_data';
 const String _account = '2000000000';
 

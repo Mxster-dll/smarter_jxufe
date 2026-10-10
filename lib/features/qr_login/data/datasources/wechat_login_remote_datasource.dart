@@ -27,8 +27,11 @@ class WechatLoginRemoteDataSource {
   /// 初始化：访问校方联邦重定向页面，提取微信 uuid
   Future<String> initAndGetUuid() async {
     try {
+      // 查询串由下面的 `data` 生成：这里**不要**再写死 sessionToken。
+      // （旧代码从浏览器地址栏整条粘下来，夹带了一个 32 位令牌字面量；它既不被使用
+      //   ——服务端取的是 data 里的同名参数——又让公开仓库多背一条疑似令牌。2026-10-11 删。）
       final response = await _dio.get(
-        'https://ssl.jxufe.edu.cn/cas/federatedRedirect?service=http://ehall.jxufe.edu.cn/amp-auth-adapter/loginSuccess?sessionToken%3DTESTSESSIONTOKEN0000000000000002&federatedName=openweixin',
+        'https://ssl.jxufe.edu.cn/cas/federatedRedirect',
         data: {
           'service': 'http://ehall.jxufe.edu.cn/amp-auth-adapter/loginSuccess',
           'federatedName': 'openweixin',

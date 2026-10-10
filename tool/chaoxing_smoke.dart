@@ -47,6 +47,7 @@ import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_snapshot.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_text.dart';
 import 'package:smarter_jxufe/features/chaoxing/domain/chaoxing_work.dart';
 
+/// app_data 相对**仓库根**（本工具的用法就要求「在仓库根目录跑」，别写死本机绝对路径）。
 const String _authBox = r'app_data\auth.hive';
 
 /// 逐课取作业的并发度（与 `ChaoxingRepository` 默认值同口径）。

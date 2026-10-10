@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 
 import 'package:smarter_jxufe/design/status_palette.dart';
@@ -78,34 +80,75 @@ class SplashFlowLightStage extends StatefulWidget {
   /// [responsiveWidth] 在不显示标题时预留的竖向空间（只留底边距）。
   static const double bodyReserveHeight = 32;
 
+  /// 主视觉宽度占**可用宽度**的比例 —— **移动端**。
+  ///
+  /// ⚠ 2026-10-10 用户口径：**「图片改用比例大小，而非固定大小」** ——
+  /// 所以**没有**像素级的 min/max 夹取（曾经夹在 110~300，导致 900 与 1500 宽的
+  /// 窗口算出同一个 300，看着像没适配）。现在只有比例，加上「高度」
+  /// 与「两侧留边」两条防溢出约束 —— 宽度是多少，图就按比例跟着变。
+  static const double widthRatioMobile = 0.41;
+
+  /// 主视觉宽度占**可用宽度**的比例 —— **桌面 / PC**。
+  ///
+  /// ⚠ 用户 2026-10-10 追加：「**PC 端的比例要比移动端小**」。
+  /// 桌面窗口本来就宽得多，同一个比例算出来的绝对尺寸会大得离谱
+  /// （41% × 1920 = 787 逻辑像素，占掉小半个屏幕），而且桌面还有自绘标题栏
+  /// 压掉 40 高。所以桌面单独给一个更小的比例。
+  static const double widthRatioDesktop = 0.30;
+
+  /// 按平台取比例。
+  ///
+  /// 判据用 `defaultTargetPlatform`（桌面 = Windows / macOS / Linux，其余算移动端），
+  /// **不用** `Theme.platform` —— 后者要求有 `BuildContext`，而本函数是纯静态计算，
+  /// 守卫直接调它做断言（测试里用 `debugDefaultTargetPlatformOverride` 切平台）。
+  static double widthRatioFor(TargetPlatform platform) => switch (platform) {
+    TargetPlatform.windows ||
+    TargetPlatform.macOS ||
+    TargetPlatform.linux => widthRatioDesktop,
+    _ => widthRatioMobile,
+  };
+
+  /// 当前平台的宽度比例。
+  static double get widthRatio => widthRatioFor(defaultTargetPlatform);
+
+  /// 两侧至少留出的边距（防贴边 / 防溢出用的硬约束，不参与比例）。
+  static const double sidePadding = 16;
+
   /// 一个流光周期的时长。
   final Duration period;
 
   /// 是否在插画下方显示应用名。
   final bool showTitle;
 
-  /// 按可用空间算一个既不溢出、又有足够分量的宽度。
+  /// 按可用空间算主视觉宽度。
   ///
-  /// **同时受宽、高两重约束**：只按宽度算的话，宽而矮的窗口（桌面端把窗口拖扁）
-  /// 会把图竖向撑爆。宽度留 24 的两侧边距、不超过 520；高度按 [aspectRatio]
-  /// 反算并扣掉 [titleReserveHeight]（或 [bodyReserveHeight]）；下限 150
-  /// （宁可小而完整，也不要溢出）。
+  /// 口径（2026-10-10 定稿）：
+  ///   1. `可用宽 × 当前平台比例`（移动 [widthRatioMobile] 0.41 / 桌面 [widthRatioDesktop] 0.30）；
+  ///   2. 受**高度**约束：宽而矮的窗口（桌面把窗口拖扁）不能把图竖向撑爆 ——
+  ///      高度预算 = 可用高 − [titleReserveHeight]（或 [bodyReserveHeight]），
+  ///      再按 [aspectRatio] 反算成宽度；
+  ///   3. 受**两侧留边**约束：最多 `可用宽 − 2×sidePadding`。
+  ///
+  /// 即「比例优先，只做防溢出」，**不做像素区间夹取**。实测（桌面比例 0.30）：
+  ///   · 手机 390×844 → 160（41%）
+  ///   · 小窗 900×650 → 270（30%）
+  ///   · 大窗 1500×950 → 450（30%）
   static double responsiveWidth(
     double available, {
     double availableHeight = double.infinity,
     bool showTitle = true,
+    TargetPlatform? platform,
   }) {
-    const double maxWidth = 520;
-    const double sidePadding = 24;
     final double reservedHeight = showTitle
         ? titleReserveHeight
         : bodyReserveHeight;
-    double width = available - sidePadding * 2;
+    double width = available * widthRatioFor(platform ?? defaultTargetPlatform);
     final double heightBudget = availableHeight - reservedHeight;
     if (heightBudget.isFinite) {
       width = math.min(width, heightBudget * aspectRatio);
     }
-    return math.max(150, math.min(width, maxWidth));
+    // 留边是硬约束：宁可画得更小（极端情况下 0），也绝不贴边 / 溢出。
+    return math.max(0, math.min(width, available - sidePadding * 2));
   }
 
   @override

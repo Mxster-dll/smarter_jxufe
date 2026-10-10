@@ -1,0 +1,11 @@
+{
+  "_说明": [
+    "本机专用构建参数模板（入库，只有键名）。用法：",
+    "  1) 复制成 config.local.json（该文件已 gitignore，绝不入库）；",
+    "  2) 把 BN_APP_SECRET 填成平台 appSecret（校历/请假 bn 签名用）；",
+    "  3) flutter run --dart-define-from-file=config.local.json",
+    "不填也能跑：校历与请假会回退内置离线快照（正常路径，不是崩溃）。",
+    "⚠ 别把填好值的 config.local.json 提交、也別贴进聊天/日志 —— 它是第三方平台的签名密钥。"
+  ],
+  "BN_APP_SECRET": ""
+}

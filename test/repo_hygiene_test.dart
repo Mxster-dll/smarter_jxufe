@@ -252,6 +252,75 @@ void main() {
     expect(_ruleMatches('*.log', 'lib/a.dart'), isFalse);
   });
 
+  test('★ 敏感资产不得用目录通配声明（2026-10-10 · 实测踩过）', () {
+    // 实测事故：`pubspec.yaml` 写的是 `- assets/capture_certs/`（整个目录）。
+    // `.gitignore` 只挡得住「**入库**」（`assets/capture_certs/*.key`，git 侧确实干净），
+    // 却挡不住「**打包**」—— Flutter 会把该目录下所有文件塞进 asset bundle，
+    // 于是两个正式 APK 里都躺着 `assets/flutter_assets/assets/capture_certs/ca.key`
+    // 与 `leaf.key`（sha256 与本地私钥逐字节相同，已实证）。
+    // 同剂量的坑还害过源码：`.gitignore` 的裸 `tools/` 吞掉整个 AI 工具层（见上一例）。
+    // 故：凡是「目录里混着不该分发的东西」的资产，一律**逐个列文件**。
+    //
+    // ⚠ 口径：`leaf.key` 目前**仍必须随包分发**（`guid_capture_session.dart` 的
+    // `_buildServerContext()` 要 `ctx.usePrivateKeyBytes(...)`，去掉它「平台标识」抓包
+    // 直接不可用）—— 这个测试不假装包里没有私钥，只防止「无意中多带一个 `ca.key`」
+    // 与「用目录写法把新加的文件悄悄带进去」这两类**回归**。
+    final lines = File('pubspec.yaml').readAsStringSync().split(RegExp(r'\r?\n'));
+    var inAssets = false;
+    final dirEntries = <String>[];
+    final certEntries = <String>[];
+    for (final line in lines) {
+      // 顶层 `assets:`（两个空格缩进）开块；遇到下一个顶层键即离开该块。
+      if (RegExp(r'^  assets:\s*$').hasMatch(line)) {
+        inAssets = true;
+        continue;
+      }
+      if (!inAssets) continue;
+      if (line.isNotEmpty && !line.startsWith('    ')) break;
+      final m = RegExp(r'^    - (\S+)\s*$').firstMatch(line);
+      if (m == null) continue; // 注释与更深缩进天然不匹配
+      final entry = m.group(1)!;
+      if (entry.startsWith('assets/capture_certs/')) certEntries.add(entry);
+      if (entry.endsWith('/')) dirEntries.add(entry);
+    }
+    // ① capture_certs 必须逐个列文件。
+    expect(
+      certEntries,
+      isNotEmpty,
+      reason: '`pubspec.yaml` 的 assets 里找不到任何 `assets/capture_certs/<文件>` 条目 —— '
+          '要么整段被删（「平台标识」抓包会挂），要么又被写回目录形式。',
+    );
+    expect(
+      certEntries.every((e) => !e.endsWith('/')),
+      isTrue,
+      reason: 'capture_certs 又用目录通配了：${certEntries.where((e) => e.endsWith('/')).toList()}\n'
+          '目录写法会把同目录的 `*.key` 一起打进 APK / Windows 安装包。',
+    );
+    // ② 任何 assets 目录条目都不得回溯命中 `*.key`（当前只有 capture_certs 有这风险）。
+    final offenders = <String>[];
+    for (final entry in dirEntries) {
+      if (!entry.startsWith('assets/')) continue;
+      final dir = Directory(entry.substring(0, entry.length - 1));
+      if (!dir.existsSync()) continue;
+      for (final e in dir.listSync(recursive: true, followLinks: false)) {
+        if (e is File && e.path.replaceAll('\\', '/').endsWith('.key')) {
+          offenders.add('$entry → ${e.path}');
+        }
+      }
+    }
+    expect(
+      offenders,
+      isEmpty,
+      reason: '这些 assets 目录条目会连带把 `.key` 打进安装包（实测两个 APK 都中过）：\n'
+          '  ${offenders.join('\n  ')}\n'
+          '改成逐个列公开证书文件（见 `pubspec.yaml` 该段的注释）。',
+    );
+    // ③ 反向自检：解析器本身不许空转 —— 目录写法必须被判成「以 / 结尾」。
+    final probe = RegExp(r'^    - (\S+)\s*$').firstMatch('    - assets/capture_certs/');
+    expect(probe?.group(1), 'assets/capture_certs/');
+    expect(probe!.group(1)!.endsWith('/'), isTrue);
+  });
+
   group('依赖都被真的 import（2026-09-20 · 架构审查 ①）', () {
     final deps = _runtimeDependencies();
     final hits = {for (final d in deps) d: _importsOf(d)};

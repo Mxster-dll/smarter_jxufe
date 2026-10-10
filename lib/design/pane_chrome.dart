@@ -120,11 +120,51 @@ PreferredSizeWidget? paneAppBar(
   Color? surfaceTintColor,
 }) {
   if (paneIsRoot(context)) return null;
+  // 全局设置按钮**只在这里造一次**（两种排布共用同一个实例）—— 守卫按源码里
+  // 「设置按钮构造」的出现次数记账（恰好两处：本文件 + 内嵌行），复制一份就会打红。
+  // ⚠ 连注释里也别写出那个「类名 + 左括号」的字样：守卫数的是文本，写进注释同样算命中。
+  final settingsButton = SettingsActionButton(sections: settingsSections);
+  // 手机端：整条动作簇（各页自己的按钮 + 全局设置按钮 + 头像）**搬到左侧**，
+  // 且**头像在最左**（用户 2026-10-10：「不要在手机端顶栏左侧显示图标，然后把设置
+  // 什么的都放到左侧，其中头像要在最左侧」）—— 反转一次顺序即得头像打头。
+  // 桌面端维持原样（动作仍在右上角；桌面的设置入口另有侧栏底部固定区）。
+  final isDesktop = switch (Theme.of(context).platform) {
+    TargetPlatform.windows ||
+    TargetPlatform.macOS ||
+    TargetPlatform.linux =>
+      true,
+    _ => false,
+  };
+  // ⚠ **能被 pop 的页面不许动 `leading`**（那是返回键的位置）：顶掉它等于把「返回」
+  // 弄没了（守卫实测「面板内二级页：保留完整导航栏与返回键」当场变红）。所以这条
+  // 只在「根页面 / 不能返回的页面」上生效 —— 也正是用户看的那种顶栏。
+  final canPop = ModalRoute.of(context)?.canPop ?? false;
+  if (!isDesktop && !canPop) {
+    final cluster = <Widget>[...actions.reversed, settingsButton];
+    return AppBar(
+      title: title,
+      // 移动端右侧不再放动作（都去了左边）。
+      actions: const <Widget>[],
+      // `leading` 默认只给 56 宽，塞不下「头像 + 设置」→ 按枚数放宽（每枚 40）。
+      leadingWidth: leading == null ? 40.0 + 40.0 * cluster.length : null,
+      leading: leading ??
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Row(mainAxisSize: MainAxisSize.min, children: cluster),
+          ),
+      centerTitle: centerTitle,
+      bottom: bottom,
+      toolbarHeight: toolbarHeight,
+      titleSpacing: titleSpacing,
+      backgroundColor: backgroundColor,
+      surfaceTintColor: surfaceTintColor,
+    );
+  }
   return AppBar(
     title: title,
     actions: [
       ...actions,
-      SettingsActionButton(sections: settingsSections),
+      settingsButton,
     ],
     centerTitle: centerTitle,
     leading: leading,

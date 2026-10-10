@@ -25,8 +25,8 @@ namespace {
 
 void Trace(const char* format, ...) {
   FILE* file = nullptr;
-  if (fopen_s(&file, ".probe\\window_chrome.log",
-              "a") != 0 ||
+  // 相对路径：探针脚本按约定在**仓库根目录**跑（公开仓库不写本机绝对路径）。
+  if (fopen_s(&file, ".probe\\window_chrome.log", "a") != 0 ||
       file == nullptr) {
     return;
   }

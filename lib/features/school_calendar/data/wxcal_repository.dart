@@ -41,17 +41,31 @@ WxArrangementStyle _styleOf(String s) => switch (s) {
 class WxcalRepository {
   /// 平台 GUID（用户设置）；为空则仅用离线快照。
   final String? guid;
+
+  /// 平台 appSecret（构建参数注入，见 [bnSecretConfigured]）。
+  ///
+  /// 为空 = 签名算不出来 → 实时源不可用。2026-10-10 起它不再硬编码在仓库里，
+  /// 因此「本地跑起来没有实时校历」是**预期行为**，不是 bug（离线快照照常用）。
+  final String? secret;
+
   final WxcalRemoteDataSource live;
 
-  const WxcalRepository({required this.guid, required this.live});
+  const WxcalRepository({required this.guid, required this.live, this.secret});
 
   bool get hasGuid => guid != null && guid!.trim().isNotEmpty;
 
+  /// 实时源是否可用 = **GUID 与 appSecret 都齐**（判据收在 [canUseLiveSource]）。
+  ///
+  /// 只看 [hasGuid] 是不够的：缺密钥时请求必然被服务端判「签名篡改」，
+  /// 白跑一趟网络还多一条错误。**界面也用同一个判据**显示「实时 / 内置」角标。
+  bool get hasLive => canUseLiveSource(guid);
+
   /// 拉取全部学期安排；实时失败自动回退离线（调用方可在 UI 提示源）。
   Future<List<WxSemesterArrangement>> fetchAll() async {
-    if (hasGuid) {
+    if (hasLive) {
       try {
-        return await live.fetchAll(guid: guid!.trim());
+        // 密钥显式传下去：仓库手里的这份才是「本构建的 appSecret」。
+        return await live.fetchAll(guid: guid!.trim(), secret: secret);
       } catch (_) {
         // 实时失败静默回退内置快照。
       }
