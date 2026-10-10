@@ -65,7 +65,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// 与 [_selectedService] 同口径：**只活在页面 State 里、不进 Hive** —— 切走再
   /// 回来是展开的。收起时侧栏只剩一条 [HomeSidebar.collapsedWidth] 的窄轨 +
   /// 一枚展开按钮，右栏自动占满腾出来的宽度（`Row` + `Expanded` 天然如此）。
-  bool _sidebarCollapsed = false;
+  /// **手动意愿**（三态）：`null` = 没表态（跟随自动那半）、`true` = 手动收起、
+  /// `false` = 手动展开。
+  ///
+  /// ⚠ 为什么必须是三态而不是「手动收起」一个布尔（用户 2026-10-10：
+  /// 「我希望自动折叠时，点击展开按钮是可以直接展开的」）：只有 `收起 = 手动 || 自动`
+  /// 时，窄窗口里自动收起之后**点展开也展不开** ✗（自动那半立刻又把它按住）。
+  /// 现在 `false` 表示「用户明确要展开」，**压过自动** ✓；用户再点一下就是 `true`（手动收起，
+  /// 宽度变宽也不弹开 ✓）。
+  bool? _sidebarManual;
 
   /// 「窄窗口自动收起」本次跨线是否已处理过（见 build 里的注释）。
   /// 「窄窗口自动收起」的**派生**结果（每次 build 重新算，不锁存；见 build 里的注释）。
@@ -140,7 +148,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       // 侧栏「收起」的两半**互相独立**（用户 2026-10-10：「自动折叠与手动折叠独立，自动
       // 折叠等窗口宽度足够会自动展开，而手动折叠则不会」）：
       // - **自动**：由宽度**派生**（不锁存）—— 窄于 900 就收、回到 900 以上**自己展开**；
-      // - **手动**：状态 `_sidebarCollapsed`，只有点标题栏那枚开关才变，宽度再宽也不会自己展开。
+      // - **手动**：三态 `_sidebarManual`（null 跟随自动 / true 收起 / false 展开）——
+      //   点一下就是「表态」，`false`（要展开）**压过自动**，所以窄窗口里点展开能真的展开 ✓；
+      //   而 `true`（要收起）宽度再宽也不会自己弹开 ✓。
       // 实际是否收起 = 两者取或。
       //
       // ⚠ 这里把派生结果记在 `_autoCollapsedNow` 上，由两个 `_build*Body` 读取 ——
@@ -255,7 +265,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // 用它们自己的名字当 id（与目录标题天然不会撞）。
     final paneKey =
         footer?.name ?? selected?.title ?? homeSidebarOverviewTitle;
-    final collapsed = _sidebarCollapsed || _autoCollapsedNow;
+    final collapsed = _sidebarManual ?? _autoCollapsedNow;
     final sidebarCard = cardStyle.sidebarIsCard;
     final contentCard = cardStyle.contentIsCard;
     // 间距口径：卡片↔卡片 = a、卡片↔窗口左/右/底边 = a（十七轮起同值；顶边贴标题栏不受限）。
@@ -295,7 +305,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               radius: cardRadius,
               collapsed: collapsed,
               onToggleCollapsed: () =>
-                  setState(() => _sidebarCollapsed = !collapsed),
+                  // 翻转的是**当前实际状态**，并记为手动意愿（点击即表态，压过自动）。
+          setState(() => _sidebarManual = !collapsed),
               width: homeSidebarWidth,
               selectedTitle: selected?.title,
               // 底部固定区选中时「数据一览」不许跟着高亮（它不是 null 就等于概览）。
@@ -600,7 +611,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   ///
   /// ⚠ `context` 是标题栏的（在 Navigator 之上）—— 状态一律改本 State，先判 `mounted`。
   Widget _buildSidebarToggle(BuildContext context) {
-    final collapsed = _sidebarCollapsed || _autoCollapsedNow;
+    final collapsed = _sidebarManual ?? _autoCollapsedNow;
     return IconButton(
       key: homeSidebarTitleBarToggleKey,
       tooltip: collapsed ? '展开侧边栏' : '收起侧边栏',
@@ -613,7 +624,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       visualDensity: VisualDensity.compact,
       onPressed: () {
         if (!mounted) return;
-        setState(() => _sidebarCollapsed = !_sidebarCollapsed);
+        setState(() => _sidebarManual = !collapsed);
       },
     );
   }
