@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/card_frame.dart';
 import 'package:smarter_jxufe/features/home/data/home_grid_prefs.dart';
 import 'package:smarter_jxufe/features/home/data/home_layout_prefs.dart';
@@ -184,6 +185,62 @@ void main() {
     addTearDown(reloaded.dispose);
     await reloaded.ensureLoaded();
     expect(reloaded.sidebarCardShadow, isFalse, reason: '只认 "true"');
+  });
+
+  // ---------------------------------------------------------------------------
+  // ★ 拨阴影开关**只许动阴影**（用户 2026-10-10 三十七轮：
+  // 「为什么内容卡片阴影关闭后，数据一览的背景色都变了」）。
+  //
+  // 把卡片渲染出来，在**同一棵树上**把 `shadow` 从开到关翻一次，逐字段比 decoration：
+  // 底色 / 描边 / 圆角**一个都不许变**（`CardFrame` 的 decoration 本来 `color` 就是 null，
+  // 底色来自子件 —— 这条守卫把"阴影开关顺手改了底色"这种回归钉死）。
+  // ---------------------------------------------------------------------------
+  testWidgets('★ 阴影开关只动 boxShadow：底色 / 描边 / 圆角逐字段不许变', (tester) async {
+    tester.view.physicalSize = const Size(400, 300);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    Future<BoxDecoration> deco(bool shadow, ThemeData theme) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 200,
+                height: 150,
+                child: CardFrame(
+                  card: true,
+                  radius: 8,
+                  shadow: shadow,
+                  child: const ColoredBox(color: Color(0xFF202020)),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return tester
+              .widget<Container>(find.byKey(cardFrameContainerKey))
+              .decoration!
+          as BoxDecoration;
+    }
+
+    for (final entry in [('浅色', appLightTheme), ('深色', appDarkTheme)]) {
+      final (label, theme) = entry;
+      final on = await deco(true, theme);
+      final off = await deco(false, theme);
+      final where = '（$label）';
+
+      expect(on.color, off.color, reason: '★ 底色不许变$where');
+      expect(on.color, isNull, reason: '卡片底色本来就该是透明的（由子件画）$where');
+      expect(on.border, off.border, reason: '★ 描边不许变$where');
+      expect(on.borderRadius, off.borderRadius, reason: '★ 圆角不许变$where');
+
+      expect(on.boxShadow, isNotNull, reason: '开着要有阴影$where');
+      expect(off.boxShadow, isNull, reason: '关掉要真的没有阴影$where');
+    }
   });
 
   // ---------------------------------------------------------------------------
