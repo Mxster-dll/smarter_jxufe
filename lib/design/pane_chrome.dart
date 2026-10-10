@@ -126,10 +126,10 @@ PreferredSizeWidget? paneAppBar(
   // 「设置按钮构造」的出现次数记账（恰好两处：本文件 + 内嵌行），复制一份就会打红。
   // ⚠ 连注释里也别写出那个「类名 + 左括号」的字样：守卫数的是文本，写进注释同样算命中。
   final settingsButton = SettingsActionButton(sections: settingsSections);
-  // 手机端：整条动作簇（各页自己的按钮 + 全局设置按钮 + 头像）**搬到左侧**，
-  // 且**头像在最左**（用户 2026-10-10：「不要在手机端顶栏左侧显示图标，然后把设置
-  // 什么的都放到左侧，其中头像要在最左侧」）—— 反转一次顺序即得头像打头。
-  // 桌面端维持原样（动作仍在右上角；桌面的设置入口另有侧栏底部固定区）。
+  // 窄屏（手机 / 电脑拖窄）：整条动作簇（各页自己的按钮 + 全局设置按钮 + 头像）
+  // **搬到左侧**（用户 2026-10-10：「不要在手机端顶栏左侧显示图标，然后把设置什么的
+  // 都放到左侧，其中头像要在最左侧」+「电脑端窄屏显示时也要使用和移动端一样的策略」）。
+  // 桌面宽屏维持原样（动作仍在右上角；桌面的设置入口另有侧栏底部固定区）。
   final isDesktop = switch (Theme.of(context).platform) {
     TargetPlatform.windows ||
     TargetPlatform.macOS ||
@@ -148,7 +148,9 @@ PreferredSizeWidget? paneAppBar(
   final isNarrow =
       MediaQuery.sizeOf(context).width < Breakpoints.sidebarLayout;
   if ((!isDesktop || isNarrow) && !canPop) {
-    final cluster = <Widget>[...actions.reversed, settingsButton];
+    // ⚠ 顺序**原样**（不反转）：调用方给的就是「头像在前、设置在后」——
+    // 顺序的唯一出处 = `home_screen.dart` 的 `_buildTitleBarActions`。
+    final cluster = <Widget>[...actions, settingsButton];
     return AppBar(
       title: title,
       // 移动端右侧不再放动作（都去了左边）。

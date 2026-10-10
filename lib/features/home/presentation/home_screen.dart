@@ -626,18 +626,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        IconButton(
-          tooltip: '设置',
-          icon: const Icon(Icons.settings_outlined, size: 18),
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints.tightFor(width: 32, height: 32),
-          visualDensity: VisualDensity.compact,
-          onPressed: () {
-            if (!mounted) return;
-            openSettings(this.context);
-          },
-        ),
-        const SizedBox(width: 2),
+        // ⚠ **头像在前、设置在后**（用户 2026-10-10：窄屏顶栏要「头像在最左侧」）。
+        // 消费方（标题栏的窄屏排布 / `paneAppBar` 的窄屏排布）都是**原样**摆这串，
+        // 不再自己反转 —— 顺序的唯一出处就是这里。
         // 个人入口：本地头像（未设置则姓名首字，再退通用图标）。
         AccountAvatar(
           radius: 13,
@@ -648,6 +639,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             final build = serviceScreenBuilder(kServiceStudentInfo);
             if (build == null) return;
             _pushPage(this.context, build());
+          },
+        ),
+        const SizedBox(width: 2),
+        IconButton(
+          tooltip: '设置',
+          icon: const Icon(Icons.settings_outlined, size: 18),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+          visualDensity: VisualDensity.compact,
+          onPressed: () {
+            if (!mounted) return;
+            openSettings(this.context);
           },
         ),
         const SizedBox(width: 2),

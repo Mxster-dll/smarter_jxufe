@@ -23,6 +23,8 @@ import 'dart:async';
 import 'package:smarter_jxufe/core/navigation/route_history.dart';
 import 'package:smarter_jxufe/core/web/browser_nav.dart';
 import 'package:flutter/material.dart';
+
+import 'package:smarter_jxufe/design/breakpoints.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -220,11 +222,17 @@ class _WindowTitleBarState extends ConsumerState<WindowTitleBar> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < kWindowTitleBarCompactWidth;
+        // 窄屏（= 页面已经换成手机那种形态）= 顶栏也该换成手机那套排布（用户 2026-10-10：
+        // 「电脑端窄屏显示时，也要使用和移动端一样的策略」）：品牌（logo + 应用名）隐掉、
+        // 动作簇（头像 + 设置）贴左 —— 这正是手机端那条顶栏的样子。
+        final narrow = constraints.maxWidth < Breakpoints.sidebarLayout;
         // 品牌只留「logo + 应用名」—— 侧栏开关与路由历史已搬到**栏中间**（见下）。
-        final brand = Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: _brand(context, compact: compact),
-        );
+        final brand = narrow
+            ? const SizedBox.shrink()
+            : Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: _brand(context, compact: compact),
+              );
 
         // 栏**中间**那一组（用户 2026-10-10：「我希望顶部的侧边栏展开收起按钮、
         // 历史控制的三个按钮，都要放到标题栏中间」）—— 与品牌、三键都各自独立，
@@ -266,7 +274,8 @@ class _WindowTitleBarState extends ConsumerState<WindowTitleBar> {
           child: Stack(
             children: <Widget>[
               AnimatedAlign(
-                alignment: buttonsOnLeft
+                // 窄屏时动作簇一律贴左（跟手机端一致）；宽屏照旧跟着三键在的那一侧。
+                alignment: (narrow || buttonsOnLeft)
                     ? Alignment.centerLeft
                     : Alignment.centerRight,
                 duration: kWindowTitleBarSwitchDuration,
