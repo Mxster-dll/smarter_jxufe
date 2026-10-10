@@ -300,7 +300,10 @@ void main() {
         'lib/features/ims/schedule/presentation/schedule_grid_view.dart',
         'lib/features/ims/schedule/presentation/schedule_horizontal_view.dart',
       ]) {
-        final src = File(path).readAsStringSync();
+        // ⚠ 先归一换行：本仓 `core.autocrlf=true`（工作区是 CRLF、仓库里是 LF），
+        // 下面那条 needle 是**多行**的 —— 不归一就永远匹配不上（实测踩过：单跑
+        // 会红，且与代码是否真的改坏无关）。
+        final src = File(path).readAsStringSync().replaceAll('\r\n', '\n');
         expect(
           src.contains('final colorIndices = scheduleColorIndices(entries);'),
           isTrue,

@@ -355,10 +355,16 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('横版矮列与同行空格子同底色：工作日行不涂色', (tester) async {
+    testWidgets('★ 横版矮列与同行空格子同底色，判据 = 这一列有没有课（用户 2026-10-09）', (
+      tester,
+    ) async {
       // 用户 2026-09-17：「矮行颜色要与其他格子颜色一致」。横版把矮行转成矮【列】，
-      // 规则与同一行的空格子相同：工作日透明，只有周末（分区底）才上色。
-      // 关掉周六周日 → 7 行都是工作日 → 除表头那颗（红底）外全都不许有底色。
+      // 规则与同一行的空格子相同。
+      // ⚠ 2026-10-09 改判据：**不再按「周末」涂色，改按「这一列有没有课」**
+      // （用户：「不是固定周一-周五红色、周末灰色，而是按校历来，如果上课或补课
+      // 则红色、假期或不补课的周末灰色」）。本例一门课都没有 → 5 个可见列全是
+      // 「没课列」→ 矮列与空格子一起铺分区底（`AppColors.fill`）。
+      // 表头那颗是**节次表头**的补格（不是某一天的列），恒为有课档的深红。
       tester.view.physicalSize = const Size(1400, 900);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
@@ -379,6 +385,7 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
+        final ctx = tester.element(find.byType(ScheduleHorizontalView));
         final cells = find.byKey(const Key('scheduleGapColumnAfter-5'));
         // 1 个表头格 + 5 个工作日行格（周六周日已隐藏）
         expect(cells, findsNWidgets(6), reason: 'dark=$dark');
@@ -391,13 +398,73 @@ void main() {
           } else {
             expect(
               box.color,
-              isNull,
-              reason: '第 $i 个矮列（工作日行）又被涂了底色 dark=$dark',
+              AppColors.fill(ctx),
+              reason: '第 $i 个矮列（这一天没课）应与同行空格子同为分区底 dark=$dark',
             );
           }
         }
         expect(tester.takeException(), isNull);
       }
+    });
+
+    testWidgets('★ 有课的列：矮列透明（不许铺分区底）', (tester) async {
+      // 只有周一有课 → 周一那列透明（与页面底同色），其余没课的列仍是分区底。
+      // 这条守的是「改了判据之后，**有课的日子**不许被涂成灰列」。
+      tester.view.physicalSize = const Size(1400, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: appLightTheme,
+          home: Scaffold(
+            body: ScheduleHorizontalView(
+              entries: [
+                ScheduleEntry(
+                  classCode: 'M1-01',
+                  className: '高等数学(01)',
+                  courseCode: 'M1',
+                  courseName: '高等数学',
+                  totalHours: 48,
+                  credits: 3,
+                  studyNature: '必修',
+                  teacherCode: 'T1',
+                  teacherName: '张三',
+                  selectionStatus: '已选',
+                  isCrossMajor: false,
+                  hasTextbook: true,
+                  classTimes: const [
+                    ClassTime(
+                      startWeek: 1,
+                      endWeek: 16,
+                      weekParity: WeekParity.every,
+                      dayOfWeek: DayOfWeek.monday,
+                      startPeriod: 1,
+                      endPeriod: 2,
+                      classroom: '麦三教101',
+                    ),
+                  ],
+                ),
+              ],
+              periods: full,
+              showToggle: false,
+              showSaturday: false,
+              showSunday: false,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final cells = find.byKey(const Key('scheduleGapColumnAfter-5'));
+      expect(cells, findsNWidgets(6));
+      BoxDecoration boxAt(int i) =>
+          tester.widget<Container>(cells.at(i)).decoration! as BoxDecoration;
+      expect(boxAt(0).color, ScheduleTone.headerRed, reason: '节次表头的补格');
+      expect(boxAt(1).color, isNull, reason: '周一是**有课列** → 矮列透明');
+      for (var i = 2; i < 6; i++) {
+        expect(boxAt(i).color, isNotNull, reason: '第 $i 列没课 → 分区底');
+      }
+      expect(tester.takeException(), isNull);
     });
   });
 }
