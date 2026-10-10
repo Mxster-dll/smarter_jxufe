@@ -15,6 +15,8 @@ library;
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+
+import 'package:smarter_jxufe/design/breakpoints.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -266,5 +268,34 @@ void main() {
       expect(isHighlighted('课程'), isTrue);
     });
   });
-}
 
+  group('窄屏阈值唯一（2026-10-10 方案 B）', () {
+    test('★ 页面侧栏阈值 == 顶栏窄屏阈值 == 600（两处必须同值）', () {
+      // 用户先看到「两个阈值各变一次」的怪象：页面 900 换宫格、顶栏 600 换排布。
+      // 方案 B 把两条合成一条 —— 这条守卫就是钉住「合成」这件事。
+      final layout = File(
+        'lib/features/home/domain/home_layout.dart',
+      ).readAsStringSync();
+      expect(layout, contains('const double homeSidebarMinWidth = 600;'));
+      expect(Breakpoints.narrow, 600);
+      // 自动收起那条线另有其人（900），别混用。
+      expect(layout, contains('const double homeSidebarAutoCollapseWidth = 900;'));
+    });
+
+    test('设置页「主页布局」卡有「窄窗口自动收起侧栏」开关（默认开）', () {
+      final card = File(
+        'lib/features/settings/presentation/widgets/settings_cards_display.dart',
+      ).readAsStringSync();
+      expect(card, contains('homeAutoCollapseSidebarSwitch'));
+      expect(card, contains('saveAutoCollapseSidebar'));
+      final prefs = File(
+        'lib/features/home/data/home_layout_prefs.dart',
+      ).readAsStringSync();
+      expect(
+        prefs,
+        contains('bool _autoCollapseSidebar = true;'),
+        reason: '用户 2026-10-10：默认开启',
+      );
+    });
+  });
+}

@@ -207,7 +207,25 @@ class SettingsHomeLayoutCard extends ConsumerWidget {
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
-          for (final value in HomeLayout.values)
+          // 「窄窗口自动收起侧栏」（用户 2026-10-10：「加一个在 900 时，侧边栏自动收起的
+          // 设置项，默认开启」）。⚠ 只在选了**侧栏布局**时才显示 —— 宫格视图下这条线
+          // 本来就不生效，摆一个按不动的开关只会让人困惑。
+          if (store.layout == HomeLayout.sidebar)
+            SwitchListTile(
+              key: const Key('homeAutoCollapseSidebarSwitch'),
+              value: store.autoCollapseSidebar,
+              onChanged: (next) =>
+                  unawaited(store.saveAutoCollapseSidebar(next)),
+              title: const Text(
+                '窄窗口自动收起侧栏',
+                style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
+              ),
+              subtitle: Text(
+                '窗口宽度小于 900 时侧栏自动收成窄轨（之后仍可手动展开）',
+                style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+              ),
+              contentPadding: const EdgeInsets.fromLTRB(16, 2, 16, 2),
+            ),          for (final value in HomeLayout.values)
             InkWell(
               key: Key('homeLayoutOption-${value.name}'),
               onTap: () => store.save(value),
