@@ -1067,7 +1067,8 @@ final bar = [
 
   group('整块 chrome 的 Overlay（用户 2026-10-09：「悬浮显示被标题栏边界裁切了」）', () {
     test('Overlay 罩的是「标题栏 + 页面内容」，不是那 40 高的带子', () {
-      final src = File('lib/design/window_title_bar.dart').readAsStringSync();
+      // 2026-10-10 重构后 Overlay 在 app_window_chrome.dart（旧路径只剩桶文件）。
+      final src = File('lib/design/window_chrome/app_window_chrome.dart').readAsStringSync();
       // Tooltip 是以 overlay entry 的形式画出来的 —— Overlay 只罩带子时它会被
       // Overlay 的边界裁掉（实测就是这么报的）。判据：Overlay 的 initialEntries
       // 里那棵 Column 同时含带子（SizedBox + kWindowTitleBarHeight）与 Expanded(child)。
