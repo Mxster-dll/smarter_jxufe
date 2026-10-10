@@ -46,11 +46,13 @@ class WindowButton extends StatelessWidget {
                     (kWindowTitleBarButtonWidth - kWindowTitleBarMacSlot) * (1 - t),
               ),
             ),
-            // mac 视觉：圆点。
-            Opacity(
-              opacity: t,
-              child: _MacDotFace(snapshot: snapshot, button: button),
-            ),
+            // mac 视觉：圆点 —— **只在 mac 风格或正在形变时进树**：纯 Win 时它不该存在
+            // （守卫「形变中途两套视觉同时在」先在起始帧断言它不存在，再在中途断言它出现）。
+            if (isMac || t > 0)
+              Opacity(
+                opacity: t,
+                child: _MacDotFace(snapshot: snapshot, button: button),
+              ),
           ],
         ),
       ),
