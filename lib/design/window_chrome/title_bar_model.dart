@@ -43,15 +43,18 @@ class TitleBarLayoutModel {
   /// 页面发布的动作簇（头像 + 设置）。窄屏时它还**捎带着中间组**（见 [center]）。
   final TitleBarSlot actions;
 
-  /// 中间组：侧栏开关 + 路由历史。
+  /// 中间组（宽屏）：侧栏开关 + 路由历史。
   ///
-  /// - 宽屏：恒 `center`（用户 2026-10-09：「都要放到标题栏中间」）；
-  /// - 窄屏：**并入 [actions]**（用户 2026-10-10：「center 在窄屏和 actions 合并」）
-  ///   → 本槽位 `hidden`，由 [actions] 那一侧一起承载。
+  /// 用户 2026-10-10：「我希望顶部标题栏显示 logo 的区域改成显示侧边栏按钮、路由按钮那些，
+  /// 然后 logo 显示区彻底删除」—— 品牌区没了，这一组**占原来 logo 的位置**
+  /// （= 三键的对侧；三键换边时它也跟着换 ✓，不再恒居中）。
+  /// 窄屏：**并入 [actions]**（用户 2026-10-10）→ 本槽位 `hidden`，由那一侧一起承载。
   final TitleBarSlot center;
 
-  /// 品牌（logo + 应用名）：宽屏摆在三键**对侧**；窄屏 `hidden`
-  /// （用户 2026-10-10：「brand 在窄屏不显示」）。
+  /// 品牌（logo + 应用名）—— **已删除**（用户 2026-10-10：「logo 显示区彻底删除」）。
+  ///
+  /// 保留这个槽位只为兼容既有调用方与测试读数；**恒为 [TitleBarSlot.hidden]**，
+  /// 栏本体也不再画它（`_brand` / `kWindowTitleBarCompactWidth` 一并作废）。
   final TitleBarSlot brand;
 
   /// mac 风格且三键在左侧时，顺序要倒成「关闭 / 最小化 / 最大化」（mac 惯例）。
@@ -95,6 +98,7 @@ class TitleBarLayoutModel {
         center: hasActions
             ? TitleBarSlot.hidden
             : (hasCenter ? opposite : TitleBarSlot.hidden),
+        // 品牌区已删除（恒 hidden）。
         brand: TitleBarSlot.hidden,
         macOrderReversed: style == WindowButtonsStyle.mac && buttonsOnLeft,
       );
@@ -105,8 +109,10 @@ class TitleBarLayoutModel {
       controls: controls,
       // 宽屏：动作簇与三键**同侧紧挨**（桌面上它俩都是窗口级操作）。
       actions: hasActions ? controls : TitleBarSlot.hidden,
-      center: hasCenter ? TitleBarSlot.center : TitleBarSlot.hidden,
-      brand: hasBrand ? opposite : TitleBarSlot.hidden,
+      // 中间组（侧栏开关 + 路由历史）占**原来 logo 的位置** = 三键对侧。
+      center: hasCenter ? opposite : TitleBarSlot.hidden,
+      // 品牌区已删除（恒 hidden）。
+      brand: TitleBarSlot.hidden,
       macOrderReversed: style == WindowButtonsStyle.mac && buttonsOnLeft,
     );
   }

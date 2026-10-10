@@ -99,20 +99,20 @@ void main() {
     test('默认（Win 在右）', () {
       final m = compute();
       expect(m.actions, TitleBarSlot.right, reason: '与三键同侧紧挨');
-      expect(m.center, TitleBarSlot.center);
-      expect(m.brand, TitleBarSlot.left);
+      expect(m.center, TitleBarSlot.left, reason: '中间组占原来 logo 的位置（三键对侧）');
+      expect(m.brand, TitleBarSlot.hidden, reason: 'logo 显示区已彻底删除（用户 2026-10-10）');
     });
 
     test('交换后在左：品牌去右、动作簇跟着三键', () {
       final m = compute(swapSides: true);
       expect(m.actions, TitleBarSlot.left);
-      expect(m.center, TitleBarSlot.center);
-      expect(m.brand, TitleBarSlot.right);
+      expect(m.center, TitleBarSlot.left, reason: '中间组占原来 logo 的位置（三键对侧）');
+      expect(m.brand, TitleBarSlot.hidden);
     });
 
     test('没有动作 / 没有品牌 / 什么都没有时逐项 hidden', () {
       expect(compute(hasActions: false).actions, TitleBarSlot.hidden);
-      expect(compute(hasBrand: false).brand, TitleBarSlot.hidden);
+      expect(compute().brand, TitleBarSlot.hidden, reason: '恒 hidden（品牌区已删除）');
       final bare = compute(hasActions: false, hasBrand: false, hasHistory: false);
       expect(bare.center, TitleBarSlot.hidden);
     });
