@@ -77,6 +77,11 @@ log=$(mktemp 2>/dev/null || echo /tmp/privacy_guard.$$.log)
 runner=''
 if command -v timeout >/dev/null 2>&1; then runner='timeout 300'; fi
 
+if [ -z "${PRIVACY_GUARD_SALT:-}" ]; then
+  echo '· ⚠ 未设置 PRIVACY_GUARD_SALT：本次**跳过**姓名 / 地址两条摘要表判据（形状类判据照跑）。' >&2
+  echo '  本机设一次即可：setx PRIVACY_GUARD_SALT <盐>（盐在仓库外，见 §34.5）' >&2
+fi
+
 echo '· 跑隐私守卫测试（约 10–30 秒：扫描面已扩到仓库根，递归时按跳过表剪枝）…' >&2
 # shellcheck disable=SC2086
 $runner "$dart" "$snap" test test/privacy_guard_test.dart >"$log" 2>&1
