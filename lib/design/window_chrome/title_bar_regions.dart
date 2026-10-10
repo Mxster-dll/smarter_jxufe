@@ -11,12 +11,16 @@ import 'package:flutter/rendering.dart';
 class TitleBarRegion extends SingleChildRenderObjectWidget {
   const TitleBarRegion({
     super.key,
+    required this.barKey,
     required this.token,
     required this.sink,
     required this.enabled,
     required this.onMeasured,
     super.child,
   });
+
+  /// 标题栏根节点的 key —— 上报矩形时以**它的坐标系**为准（见 `paint` 里的注释）。
+  final GlobalKey barKey;
 
   final Object token;
   final Map<Object, Rect> sink;
@@ -25,6 +29,7 @@ class TitleBarRegion extends SingleChildRenderObjectWidget {
 
   @override
   RenderObject createRenderObject(BuildContext context) => RenderTitleBarRegion(
+        barKey: barKey,
         token: token,
         sink: sink,
         enabled: enabled,
@@ -34,6 +39,7 @@ class TitleBarRegion extends SingleChildRenderObjectWidget {
   @override
   void updateRenderObject(BuildContext context, RenderTitleBarRegion renderObject) {
     renderObject
+      ..barKey = barKey
       ..token = token
       ..sink = sink
       ..enabled = enabled
@@ -43,12 +49,14 @@ class TitleBarRegion extends SingleChildRenderObjectWidget {
 
 class RenderTitleBarRegion extends RenderProxyBox {
   RenderTitleBarRegion({
+    required this.barKey,
     required this.token,
     required this.sink,
     required this.enabled,
     required this.onMeasured,
   });
 
+  GlobalKey barKey;
   Object token;
   Map<Object, Rect> sink;
   bool enabled;
@@ -58,7 +66,13 @@ class RenderTitleBarRegion extends RenderProxyBox {
   @override
   void paint(PaintingContext context, Offset offset) {
     if (enabled) {
-      final rect = offset & size;
+      // ⚠ 一律折算到**标题栏的坐标系**再上报：各区挂在不同的父级（`AnimatedAlign`）下，
+      // 父级相对坐标彼此不同源、全局坐标在测试里又会被窗口原点带偏 ✗ —— 而原生按这份
+      // 名单判命中，必须**同一个坐标系**（2026-10-10 重构后实测：两个交互区被报成完全重叠）。
+      final barBox = barKey.currentContext?.findRenderObject() as RenderBox?;
+      final rect = barBox == null
+          ? (offset & size)
+          : (localToGlobal(Offset.zero, ancestor: barBox) & size);
       if (rect != _last) {
         _last = rect;
         sink[token] = rect;

@@ -50,6 +50,9 @@ class _WindowTitleBarState extends ConsumerState<WindowTitleBar> {
   final Map<Object, Rect> _regions = <Object, Rect>{};
   bool _syncQueued = false;
 
+  /// 标题栏根节点 —— 所有交互区都折算到**它的坐标系**再上报（见 `title_bar_regions.dart`）。
+  final GlobalKey _barKey = GlobalKey();
+
   static const Object _minimizeToken = 'minimize';
   static const Object _maximizeToken = 'maximize';
   static const Object _closeToken = 'close';
@@ -102,7 +105,6 @@ class _WindowTitleBarState extends ConsumerState<WindowTitleBar> {
               ),
               const SizedBox(width: 6),
             ],
-            if (!history.isEmpty)
               _region(_historyToken, const WindowTitleBarHistory(), enabled: true),
           ],
         );
@@ -110,6 +112,7 @@ class _WindowTitleBarState extends ConsumerState<WindowTitleBar> {
         _queueLayoutSync();
 
         return Container(
+          key: _barKey,
           height: kWindowTitleBarHeight,
           // ⚠ **不画底部分隔线**（用户 2026-10-09 六轮：「标题栏底部不要显示那根框线，
           // 从而让标题栏可以和侧边栏视觉上连续」）。
@@ -182,6 +185,7 @@ class _WindowTitleBarState extends ConsumerState<WindowTitleBar> {
   Widget _region(Object token, Widget child, {required bool enabled}) =>
       TitleBarRegion(
         key: ValueKey<Object>(token),
+        barKey: _barKey,
         token: token,
         sink: _regions,
         enabled: enabled,
@@ -201,6 +205,7 @@ class _WindowTitleBarState extends ConsumerState<WindowTitleBar> {
   }
 
   void _syncLayout() {
+
     final controller = ref.read(windowChromeProvider.notifier);
     final minimize = _regions[_minimizeToken];
     final maximize = _regions[_maximizeToken];
@@ -208,6 +213,7 @@ class _WindowTitleBarState extends ConsumerState<WindowTitleBar> {
     if (minimize == null || maximize == null || close == null) {
       // 还没量到（首帧之前 / 本组件被折叠）→ 上报「没有标题栏」：宁可少一个拖动区，
       // 也不要让一条看不见的带子把点击吃掉（原生侧 enabled=false = 整窗都是客户区）。
+
       unawaited(controller.syncLayout(null));
       return;
     }
@@ -219,7 +225,6 @@ class _WindowTitleBarState extends ConsumerState<WindowTitleBar> {
           maximize: maximize,
           close: close,
           // ⚠ 这里**必须逐个列出**：原生只把上报名单里的矩形当客户区，其余一律
-          // ignore: avoid_print
           interactive: <Rect>[
             ?_regions[_actionsToken],
             ?_regions[_leadingToken],

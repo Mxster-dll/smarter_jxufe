@@ -95,18 +95,18 @@ void main() {
     });
   });
 
-  group('宽屏：品牌在三键对侧、动作簇与三键同侧、中间组居中', () {
+  group('宽屏：中间组占原 logo 位（三键对侧）、动作簇与三键同侧、品牌恒 hidden', () {
     test('默认（Win 在右）', () {
       final m = compute();
       expect(m.actions, TitleBarSlot.right, reason: '与三键同侧紧挨');
-      expect(m.center, TitleBarSlot.left, reason: '中间组占原来 logo 的位置（三键对侧）');
+      expect(m.center, TitleBarSlot.left, reason: '三键在右 → 中间组占原来 logo 的位置（左）');
       expect(m.brand, TitleBarSlot.hidden, reason: 'logo 显示区已彻底删除（用户 2026-10-10）');
     });
 
     test('交换后在左：品牌去右、动作簇跟着三键', () {
       final m = compute(swapSides: true);
       expect(m.actions, TitleBarSlot.left);
-      expect(m.center, TitleBarSlot.left, reason: '中间组占原来 logo 的位置（三键对侧）');
+      expect(m.center, TitleBarSlot.right, reason: '交换后三键在左 → 中间组占原来 logo 的位置（右）');
       expect(m.brand, TitleBarSlot.hidden);
     });
 
@@ -118,7 +118,7 @@ void main() {
     });
   });
 
-  group('窄屏：品牌隐藏、center 并入 actions（同摆三键对侧）', () {
+  group('窄屏：无品牌、center 并入 actions（同摆三键对侧）', () {
     test('有动作时：actions 在三键对侧，center 让位', () {
       final m = compute(width: 560);
       expect(m.brand, TitleBarSlot.hidden);
@@ -142,7 +142,7 @@ void main() {
       final m = compute(width: 1400, desktop: false);
       // 1400 宽在桌面上是「宽屏」，但手机上永远按窄屏那套（品牌不画、中间组并左/右）。
       expect(m.narrow, isFalse, reason: 'narrow 只看宽度');
-      expect(m.brand, TitleBarSlot.left, reason: '平台不影响槽位规则，只影响要不要自绘');
+      expect(m.brand, TitleBarSlot.hidden, reason: '自己绘标题栏时才画；且品牌区已删除');
     });
   });
 }

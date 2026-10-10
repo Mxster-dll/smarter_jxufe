@@ -262,7 +262,17 @@ void main() {
     testWidgetsWindows('页面动作进 interactive，且与三键不重叠；收回后不再上报', (
       tester,
     ) async {
+      // ⚠ 先把「三键左右互换」归零：Hive box 在用例之间共用，前一条用例可能把它设成 true，
+      // 那样三键与动作簇都跑到左边、两个交互区会真的重叠（实测就是这么红的）。
       await tester.pumpWidget(host());
+      await tester.pumpAndSettle();
+      // ⚠ 先把「三键左右互换」归零：Hive box 在用例之间共用，前一条用例可能把它设成
+      // true，那样三键与动作簇都跑到左边、两个交互区会真的重叠（实测就是这么红的）。
+      final prefsForReset = ProviderScope.containerOf(
+        tester.element(find.byType(WindowTitleBar)),
+        listen: false,
+      ).read(windowBarPrefsProvider);
+      await tester.runAsync(() => prefsForReset.saveSwapSides(false));
       await tester.pumpAndSettle();
 
       final container = ProviderScope.containerOf(
@@ -282,22 +292,45 @@ void main() {
       // 2026-10-09：interactive 里现在恒有「路由历史」那一簇 + 本次发布的页面动作
       // （漏登记 = 点不动，用户实测过「三个按钮都按不动」）。页面动作那一条按
       // 「最靠右 / 与历史不重叠」找，别再用 single（历史那一簇也在列表里）。
-      final interactive = (layout['interactive']! as List).cast<List>();
+      // 先滤掉**零面积**矩形：某一簇首帧还没量到时会报 0,0,0,0（按 paint 上报），
+      // 算进来会让「最靠左/最靠右」的排序失真。
+      final interactive = (layout['interactive']! as List)
+          .cast<List>()
+          .map((r) => r.cast<num>().toList())
+          .where((r) => (r[2] - r[0]) > 0 && (r[3] - r[1]) > 0)
+          .toList();
       expect(interactive.length, greaterThanOrEqualTo(2),
           reason: '路由历史那一簇 + 页面动作');
-      final rows = interactive.map((r) => r.cast<num>().toList()).toList()
-        ..sort((a, b) => a[0].compareTo(b[0]));
-      final history = rows.first;
-      final actions = rows.last;
-      expect(history[2], lessThanOrEqualTo(actions[0]),
-          reason: '历史簇与页面动作不许重叠');
+      // ⚠ 比「与三键不重叠」而不是比「历史簇在动作簇左边」：各区现在挂在不同的
+  // `AnimatedAlign` 下，**只有三键与动作簇的矩形都走全局坐标**（见 title_bar_regions.dart），
+  // 拿左右顺序去断言会被父级坐标系带偏。
+
+      // 契约（与坐标系无关）：interactive 里的任意两条**互不重叠**，且都不压住三键
+      // —— 重叠处原生会判成标题栏（点不动），这正是「三个按钮都按不动」那类 bug 的根。
+      // ⚠ 别断言「谁在谁左边」：品牌区删除后动作簇改与三键同侧紧挨，左右关系本来就会变。
+      final rows = interactive.map((r) => r.cast<num>().toList()).toList();
+      bool overlaps(List<num> a, List<num> b) =>
+          a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
+      for (var i = 0; i < rows.length; i++) {
+        for (var j = i + 1; j < rows.length; j++) {
+          expect(
+            overlaps(rows[i], rows[j]),
+            isFalse,
+            reason: 'interactive 第 $i 与第 $j 条重叠：$rows',
+          );
+        }
+      }
       final close = rectOf(layout, 'close')!;
-      expect(
-        actions[2],
-        lessThanOrEqualTo(close[0]),
-        reason: '动作区在三键左边，二者不重叠（重叠处原生判成标题栏 → 点不动）',
-      );
-      expect(actions[2] - actions[0], greaterThan(0));
+      for (final rect in rows) {
+        expect(
+          overlaps(rect, close),
+          isFalse,
+          reason: '交互区不许压住关闭键（压住就点不动）：$rect vs $close',
+        );
+      }
+      for (final rect in rows) {
+        expect(rect[2] - rect[0], greaterThan(0));
+      }
 
       // 收回后再上报：interactive 又空（render object 卸载时要把 token 撤掉）。
       container.read(windowTitleBarActionsProvider).clear();
@@ -828,7 +861,8 @@ void main() {
       await tester.pumpWidget(host());
       await tester.pumpAndSettle();
       expect(find.byType(WindowTitleBar), findsOneWidget);
-      expect(find.text('智慧er江财'), findsOneWidget);
+      expect(find.text('智慧er江财'), findsNothing,
+          reason: '品牌区已彻底删除（用户 2026-10-10：logo 显示区彻底删除）');
       expect(find.text('内容'), findsOneWidget);
       expect(
         tester.getSize(find.byType(WindowTitleBar)).height,
