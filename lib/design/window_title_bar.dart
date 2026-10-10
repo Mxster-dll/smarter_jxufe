@@ -295,9 +295,17 @@ class _WindowTitleBarState extends ConsumerState<WindowTitleBar> {
                   ),
                 ),
               ),
-              // 窄屏：动作簇（头像 + 设置）单独贴左 —— 跟手机端那条顶栏一致。
+              // 窄屏：动作簇（头像 + 设置）单独摆到**三键的对侧**（用户 2026-10-10：
+              // 「我希望交换三键位置时，头像也要移动到对侧」）—— 默认三键在右 → 头像贴左；
+              // 一旦把三键换到左边，头像就跟着去右边。头像在三键同侧会挤在一起，也说不清
+              // 哪边是「窗口级操作」。
               if (narrow && actionsRow != null)
-                Align(alignment: Alignment.centerLeft, child: actionsRow),
+                Align(
+                  alignment: buttonsOnLeft
+                      ? Alignment.centerRight
+                      : Alignment.centerLeft,
+                  child: actionsRow,
+                ),
               AnimatedAlign(
                 alignment: buttonsOnLeft
                     ? Alignment.centerRight
