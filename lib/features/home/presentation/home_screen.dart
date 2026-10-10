@@ -624,7 +624,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       visualDensity: VisualDensity.compact,
       onPressed: () {
         if (!mounted) return;
-        setState(() => _sidebarManual = !collapsed);
+        // ⚠ 取**当下**的实际状态（闭包捕获的 `collapsed` 是外层旧值 → 「点展开后再也收不起来」）。
+        setState(() => _sidebarManual = !(_sidebarManual ?? _autoCollapsedNow));
       },
     );
   }
