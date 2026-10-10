@@ -75,6 +75,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// 宽度变宽也不弹开 ✓）。
   bool? _sidebarManual;
 
+  /// 手动切换侧栏时自增 —— 标题栏那枚开关是**经插槽发布**的，而插槽只在可见性变化时
+  /// 通知 ✗，所以不 tick 一下的话，点了开关图标不会跟着变（用户 2026-10-10：「我点击的
+  /// 时候也要切换」）。发布的 builder 里裹一层 `ValueListenableBuilder` 听它。
+  final ValueNotifier<int> _toggleTick = ValueNotifier<int>(0);
+
   /// 「窄窗口自动收起」本次跨线是否已处理过（见 build 里的注释）。
   /// 「窄窗口自动收起」的**派生**结果（每次 build 重新算，不锁存；见 build 里的注释）。
   bool _autoCollapsedNow = false;
@@ -606,7 +611,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         visible: actions.visible,
         builder: actions.builder,
         leadingVisible: show,
-        leadingBuilder: show ? _buildSidebarToggle : null,
+        leadingBuilder: show
+          ? (ctx) => ValueListenableBuilder<int>(
+                valueListenable: _toggleTick,
+                builder: (_, __, ___) => _buildSidebarToggle(ctx),
+              )
+          : null,
       );
     });
   }
