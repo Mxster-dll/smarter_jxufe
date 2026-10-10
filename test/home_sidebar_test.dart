@@ -263,7 +263,7 @@ void main() {
       // 而这条框线**只有上边**。只按"在侧栏范围里"筛会把卡片描边一起捞进来
       // （实测踩过：报出 `top=4.0` 那条就是卡片的上边框）。
       final footerTop = tester.getRect(find.byKey(homeSidebarProfileKey)).top;
-      final topOnly = <(Rect, BorderSide)>[];
+      final topOnly = <(Rect, BoxDecoration)>[];
       void collect(Element el) {
         final widget = el.widget;
         if (widget is DecoratedBox) {
@@ -275,7 +275,7 @@ void main() {
             if (!hasOthers && b.top.width > 0 && b.top.color.a > 0) {
               final ro = el.renderObject;
               if (ro is RenderBox && ro.hasSize) {
-                topOnly.add((ro.localToGlobal(Offset.zero) & ro.size, b.top));
+                topOnly.add((ro.localToGlobal(Offset.zero) & ro.size, d));
               }
             }
           }
@@ -291,12 +291,44 @@ void main() {
         reason: '侧栏里"只有一条上边框"的装饰件**有且只有一个** —— 就是底部固定区上沿那道'
             '（实测 ${topOnly.map((e) => e.$1.top).toList()}）$where',
       );
-      final (lineRect, side) = topOnly.single;
+      final (lineRect, decoration) = topOnly.single;
+      final side = (decoration.border! as Border).top;
+      // ⚠ 那条线画在一个**比内容高出 `bleed` 的盒子**的上沿（`bleed` = 阴影最大 blur，
+      // 留给影子往上露；见 `_footerShadowBleed`）→ 线的 top 比固定区第一行**高** `bleed`。
+      final bleed = lineRect.top == footerTop
+          ? 0.0
+          : footerTop - lineRect.top;
       expect(
-        lineRect.top,
-        closeTo(footerTop, 2.5),
-        reason: '那道线必须在底部固定区上沿'
-            '（实测 top=${lineRect.top}，固定区 top=$footerTop）$where',
+        bleed,
+        greaterThan(0),
+        reason: '那道线应当在固定区**上沿之上**留出阴影的余量'
+            '（实测 line=${lineRect.top}，固定区 top=$footerTop）$where',
+      );
+      expect(
+        bleed,
+        lessThanOrEqualTo(30),
+        reason: '阴影余量不该夸张（实测 $bleed）$where',
+      );
+
+      // ★ 三十三轮：「除了上框线，还在在上边加一个外阴影」——
+      // 那道影子的偏移必须**朝上**（dy < 0），否则就是往内容里糊。
+      final shadows = decoration.boxShadow ?? const <BoxShadow>[];
+      expect(shadows, isNotEmpty, reason: '固定区上沿必须有外阴影$where');
+      expect(
+        shadows.every((s) => s.offset.dy < 0),
+        isTrue,
+        reason: '★ 影子的 offset.dy 必须为负（往上投）—— 实测 '
+            '${shadows.map((s) => s.offset).toList()}',
+      );
+      expect(
+        shadows.any((s) => s.blurRadius > 0),
+        isTrue,
+        reason: '要有模糊，不是又画一条线$where',
+      );
+      expect(
+        shadows.every((s) => s.color.a > 0),
+        isTrue,
+        reason: '影子颜色得看得见$where',
       );
       expect(
         lineRect.width,
