@@ -150,6 +150,7 @@ class CardFrame extends StatelessWidget {
     required this.card,
     required this.child,
     this.radius = kCardFrameRadius,
+    this.shadow = false,
   });
 
   /// 是否画成卡片；false = 原样返回 [child]。
@@ -158,9 +159,18 @@ class CardFrame extends StatelessWidget {
   /// 圆角大小（逻辑像素）。默认 [kCardFrameRadius]（= 页面小卡口径）；
   /// 设置页可调，取值见 `features/home/domain/home_card_radius.dart`。
   ///
-  /// ⚠ 它**只影响圆角**：描边与阴影不随它变（圆角 0 时就是"直角卡片"，
-  /// 观感 = 纯色块 + 投影，这是允许的一档 —— [kCardRadiusMin] 就是 0）。
+  /// ⚠ 它**只影响圆角**：描边不随它变（圆角 0 时就是"直角卡片"）。
   final double radius;
+
+  /// **要不要阴影**（用户 2026-10-10 三十六轮：「我希望侧边栏内容卡片的阴影是可选的」）。
+  ///
+  /// ⚠ **默认 `false`**（用户当面选定「默认没有阴影」）：卡片只靠 1px 描边与底色分界。
+  /// 侧栏 / 内容区**各自一个开关**，取值见
+  /// `features/home/domain/home_card_shadow.dart` 与 `HomeLayoutStore`。
+  ///
+  /// ⚠ 拨这个开关**只改 decoration**（元素原地复用）——不许换组件类型 / 换 key，
+  /// 否则整棵子树重挂、内嵌页滚动归零（见 [build] 的教训）。
+  final bool shadow;
 
   final Widget child;
 
@@ -175,7 +185,13 @@ class CardFrame extends StatelessWidget {
     // `ValueKey(card ? 'Card…' : 'Plain…')` —— 换 key + 换组件类型 = **整棵子树重新
     // 挂载**，内嵌的设置页（以及它的 `ListView`）一起重建 → 滚动位置归零
     // （实测 `pixels 1386 → 0`）。现在只补间 decoration，元素原地复用。
-    return _cardTween(context, card: card, radius: radius, child: child);
+    return _cardTween(
+      context,
+      card: card,
+      radius: radius,
+      shadow: shadow,
+      child: child,
+    );
   }
 }
 
@@ -186,13 +202,18 @@ class CardFrame extends StatelessWidget {
 /// 用 `find.byType(Container)` 会 `Bad state: Too many elements`（实测踩过）。
 const Key cardFrameContainerKey = Key('cardFrameContainer');
 
-/// 卡片形态的 decoration（t = 1 的终态）：圆角 + 描边 + 阴影。
+/// 卡片形态的 decoration（t = 1 的终态）：圆角 + 描边 +（可选）阴影。
 ///
-/// [radius] 由 [CardFrame.radius] 传下来（设置页可调）；描边与阴影**不随圆角变**。
-BoxDecoration _cardDecoration(BuildContext context, double radius) => BoxDecoration(
+/// [radius] 由 [CardFrame.radius] 传下来（设置页可调）；描边不随圆角变。
+/// [shadow] 决定这一圈投影画不画（默认不画，见 [CardFrame.shadow]）。
+BoxDecoration _cardDecoration(
+  BuildContext context,
+  double radius, {
+  required bool shadow,
+}) => BoxDecoration(
   borderRadius: BorderRadius.circular(radius),
   border: cardFrameBorder(context),
-  boxShadow: cardFrameShadows(context),
+  boxShadow: shadow ? cardFrameShadows(context) : null,
 );
 
 /// 「不是卡片」的占位 decoration：形状与终态一致，但圆角 0、无描边无阴影。
@@ -203,8 +224,19 @@ BoxDecoration _plainDecoration() =>
     BoxDecoration(borderRadius: BorderRadius.circular(0));
 
 /// 在「不是卡片」与「是卡片」之间插值。
-BoxDecoration _lerpCardDecoration(BuildContext context, double t, double radius) =>
-    BoxDecoration.lerp(_plainDecoration(), _cardDecoration(context, radius), t)!;
+///
+/// ⚠ 阴影那一段也走 `BoxDecoration.lerp` —— 开关拨过去是**淡入 / 淡出**的，
+/// 不是"啪"地出现（与圆角 / 描边同一套观感）。
+BoxDecoration _lerpCardDecoration(
+  BuildContext context,
+  double t,
+  double radius, {
+  required bool shadow,
+}) => BoxDecoration.lerp(
+  _plainDecoration(),
+  _cardDecoration(context, radius, shadow: shadow),
+  t,
+)!;
 
 /// [CardFrame] 的补间体：把 `card` 的有无补成 0→1。
 ///
@@ -225,6 +257,7 @@ Widget _cardTween(
   BuildContext context, {
   required bool card,
   required double radius,
+  required bool shadow,
   required Widget child,
 }) => _CardTween(
   card: card,
@@ -234,8 +267,8 @@ Widget _cardTween(
     return Container(
       key: cardFrameContainerKey,
       decoration: t >= 1
-          ? _cardDecoration(context, radius)
-          : _lerpCardDecoration(context, t, radius),
+          ? _cardDecoration(context, radius, shadow: shadow)
+          : _lerpCardDecoration(context, t, radius, shadow: shadow),
       // 不是卡片时圆角为 0，裁剪是空操作。
       clipBehavior: Clip.antiAlias,
       // ⚠⚠ **孩子要按「比外框小 1px」的圆角再裁一层**（用户 2026-10-09 二十轮：

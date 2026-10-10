@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -74,6 +74,7 @@ void main() {
     bool collapsed = false,
     VoidCallback? onToggleCollapsed,
     double radius = kCardFrameRadius,
+    bool cardShadow = false,
     Size size = const Size(1200, 900),
     Brightness? brightness,
   }) async {
@@ -99,6 +100,7 @@ void main() {
                 entries: entries,
                 card: card,
                 radius: radius,
+                cardShadow: cardShadow,
                 collapsed: collapsed,
                 onToggleCollapsed: onToggleCollapsed,
                 selectedTitle: selectedTitle,
@@ -1246,11 +1248,22 @@ void main() {
         BorderRadius.circular(20),
         reason: '传进去的 radius 必须落到 decoration 上（不许被常量吃掉）',
       );
-      // 描边 / 阴影不随圆角变。
+      // 描边不随圆角变（阴影看开关，见下一条用例）。
       expect(decorationOf(tester).border, isNotNull);
-      expect(decorationOf(tester).boxShadow, isNotNull);
+      expect(
+        decorationOf(tester).boxShadow,
+        isNull,
+        reason: '★ 默认**没有**阴影（2026-10-10 三十六轮当面选定）',
+      );
 
-      await pumpSidebar(tester, stubEntries(), card: true, radius: 0);
+      // 显式开阴影：圆角 0 也照样有（阴影不吃圆角）。
+      await pumpSidebar(
+        tester,
+        stubEntries(),
+        card: true,
+        radius: 0,
+        cardShadow: true,
+      );
       expect(
         decorationOf(tester).borderRadius,
         BorderRadius.circular(0),
@@ -1263,9 +1276,29 @@ void main() {
       );
     });
 
-    testWidgets('card=true：**有阴影**（用户明确要求「要阴影」）', (tester) async {
+    testWidgets('★ 阴影是**可选的**：默认关、显式开才有（用户 2026-10-10 三十六轮）', (
+      tester,
+    ) async {
+      // ① 默认（不传 cardShadow）→ 没有阴影。
       await pumpSidebar(tester, stubEntries(), card: true);
+      expect(
+        decorationOf(tester).boxShadow,
+        isNull,
+        reason: '★ 默认没有阴影（当面选定的口径）',
+      );
+      expect(
+        decorationOf(tester).border,
+        isNotNull,
+        reason: '关阴影**不影响描边**（卡片形态照旧分得出来）',
+      );
 
+      // ② 显式开 → 两层，峰值够（口径与从前一致）。
+      await pumpSidebar(
+        tester,
+        stubEntries(),
+        card: true,
+        cardShadow: true,
+      );
       final shadows = decorationOf(tester).boxShadow;
       expect(shadows, isNotNull);
       // 两层（Material elevation 那套规模）：小 blur 勾边 + 大 blur 扩散。
@@ -1278,6 +1311,14 @@ void main() {
         reason: '峰值强度不够就测不出阴影（实测 0.14 单层在大 blur 下只有 ~0.7%）',
       );
       expect(shadows.map((s) => s.blurRadius), containsAll(<double>[3, 12]));
+
+      // ③ 关掉之后**又没有**了（开关是双向的，不是一次性）。
+      await pumpSidebar(tester, stubEntries(), card: true);
+      expect(
+        decorationOf(tester).boxShadow,
+        isNull,
+        reason: '★ 关掉之后必须真的没有阴影',
+      );
     });
 
     testWidgets('card=true：内容按圆角裁掉（内嵌页的底色不许盖住圆角）', (tester) async {
@@ -1416,13 +1457,16 @@ void main() {
     // 而在**调用方** `home_screen.dart`：从前传的是 `card: sidebarCard && !collapsed`
     // （收起 = 不算卡片），留下的 `a` 也跟着 `!collapsed` 一起没了 ——
     // 所以这条守卫既测渲染、也钉住那个装配（见上面那组源码守卫）。
-    testWidgets('★ 收起 + 卡片：窄轨仍画圆角 / 描边 / 阴影，且左边留 a', (tester) async {
+    testWidgets('★ 收起 + 卡片：窄轨仍画圆角 / 描边，且左边留 a', (tester) async {
       await pumpSidebar(
         tester,
         stubEntries(),
         collapsed: true,
         card: true,
         radius: 8,
+        // ⚠ 阴影现在是**可选**的（2026-10-10 三十六轮，默认关）—— 要验"收起也是卡片、
+        // 阴影照样在"就得显式把它打开；不传只说明默认口径是关的（那是另一条用例）。
+        cardShadow: true,
         onToggleCollapsed: () {},
       );
       final decoration = tester
@@ -1434,7 +1478,11 @@ void main() {
         reason: '收起后窄轨仍按设置里的圆角画',
       );
       expect(decoration.border, isNotNull, reason: '十八轮：收起也是卡片，描边要在');
-      expect(decoration.boxShadow, isNotNull, reason: '十八轮：收起也是卡片，阴影要在');
+      expect(
+        decoration.boxShadow,
+        isNotNull,
+        reason: '十八轮：收起也是卡片；开了阴影时窄轨也要有',
+      );
       expect(
         tester.getSize(find.byKey(const Key('homeSidebar'))).width,
         HomeSidebar.collapsedWidth,

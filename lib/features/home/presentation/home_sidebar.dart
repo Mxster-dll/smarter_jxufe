@@ -43,6 +43,7 @@ import 'package:flutter/material.dart';
 import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/design/card_frame.dart';
+import 'package:smarter_jxufe/features/home/domain/home_card_shadow.dart';
 import 'package:smarter_jxufe/features/home/domain/home_layout.dart';
 import 'package:smarter_jxufe/features/home/presentation/home_service_catalog.dart';
 
@@ -265,6 +266,13 @@ class HomeSidebar extends StatefulWidget {
   /// 这里只负责透传给 [CardFrame]。
   final double radius;
 
+  /// 卡片阴影开关（用户 2026-10-10 三十六轮：「我希望侧边栏内容卡片的阴影是可选的」）。
+  ///
+  /// 默认 [kCardShadowDefault] = **关**（用户当面选定「默认没有阴影」）；
+  /// 由设置页「主页布局 → 卡片样式」下面那两行开关控制，落盘在 `homePrefs`。
+  /// 这里只负责透传给 [CardFrame]。
+  final bool cardShadow;
+
   /// 是否**收起**（用户 2026-10-09 七轮：「我希望侧边栏可收起」）。
   ///
   /// 收起 = **同一条侧栏变窄到 [collapsedWidth]**、文本不画、**图标与选中胶囊照旧**
@@ -292,6 +300,7 @@ class HomeSidebar extends StatefulWidget {
     this.footer,
     this.card = false,
     this.radius = kCardFrameRadius,
+    this.cardShadow = kCardShadowDefault,
     this.collapsed = false,
     this.onToggleCollapsed,
   });
@@ -822,7 +831,12 @@ class _HomeSidebarState extends State<HomeSidebar>
     // ⚠ **不挂 key**（2026-10-09 九轮）：`CardFrame` 两种形态返回的是同一个
     // `AnimatedContainer`，就地补间即可；挂一个「随 card 变」的 Key 会让整棵子树
     // 重新挂载（侧栏不内含设置页，但同一份口径要一致）。
-    return CardFrame(card: widget.card, radius: widget.radius, child: body);
+    return CardFrame(
+      card: widget.card,
+      radius: widget.radius,
+      shadow: widget.cardShadow,
+      child: body,
+    );
   }
 
   /// 顶部「数据一览」：右侧面板的默认内容，也是唯一的「返回概览」入口。

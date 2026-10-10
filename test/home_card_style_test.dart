@@ -9,6 +9,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:smarter_jxufe/design/card_frame.dart';
 import 'package:smarter_jxufe/features/home/data/home_grid_prefs.dart';
 import 'package:smarter_jxufe/features/home/data/home_layout_prefs.dart';
+import 'package:smarter_jxufe/features/home/domain/home_card_shadow.dart';
 import 'package:smarter_jxufe/design/fluent/fluent_surfaces.dart';
 import 'package:smarter_jxufe/design/fluent/fluent_tokens.dart';
 import 'package:smarter_jxufe/features/home/domain/home_card_gap.dart';
@@ -129,6 +130,60 @@ void main() {
     await reloaded.ensureLoaded();
     expect(reloaded.cardStyle, HomeCardStyle.none);
     expect(reloaded.layout, HomeLayout.grid, reason: '两个 key 互不影响');
+  });
+
+  // ---------------------------------------------------------------------------
+  // 卡片阴影（用户 2026-10-10 三十六轮：「我希望侧边栏内容卡片的阴影是可选的」；
+  // 当面选定：两块**各自**一个开关、**默认没有阴影**）。
+  // 渲染侧那一半（CardFrame 画不画）在 `test/home_sidebar_test.dart` 的「卡片形态」组。
+  // ---------------------------------------------------------------------------
+  test('卡片阴影：两块各自独立、默认关、各自落盘', () async {
+    final store = HomeLayoutStore();
+    addTearDown(store.dispose);
+    await store.ensureLoaded();
+
+    expect(kCardShadowDefault, isFalse, reason: '★ 默认没有阴影（当面选定）');
+    expect(store.sidebarCardShadow, isFalse, reason: '缺省 = kCardShadowDefault');
+    expect(store.contentCardShadow, isFalse, reason: '缺省 = kCardShadowDefault');
+
+    var notified = 0;
+    store.addListener(() => notified++);
+
+    // 只开侧栏 —— **不许**把内容区一起带上（"两块各自的开关"就是这一条）。
+    await store.saveSidebarCardShadow(true);
+    expect(store.sidebarCardShadow, isTrue);
+    expect(store.contentCardShadow, isFalse, reason: '★ 两块各自独立');
+    expect(notified, 1);
+    expect(
+      homeBox.get(homeSidebarCardShadowKey),
+      'true',
+      reason: '要真的落盘（重启后仍生效）',
+    );
+    expect(
+      homeBox.get(homeContentCardShadowKey),
+      isNull,
+      reason: '没动过的那一个不该被顺带写盘',
+    );
+
+    await store.saveContentCardShadow(true);
+    expect(store.contentCardShadow, isTrue);
+    expect(homeBox.get(homeContentCardShadowKey), 'true');
+
+    // 同值再存：不重复通知。
+    await store.saveSidebarCardShadow(true);
+    expect(notified, 2);
+
+    // 关掉是双向的。
+    await store.saveSidebarCardShadow(false);
+    expect(store.sidebarCardShadow, isFalse);
+    expect(homeBox.get(homeSidebarCardShadowKey), 'false');
+
+    // 脏值 → 回落默认（关），不崩。
+    await homeBox.put(homeSidebarCardShadowKey, 'yes-please');
+    final reloaded = HomeLayoutStore();
+    addTearDown(reloaded.dispose);
+    await reloaded.ensureLoaded();
+    expect(reloaded.sidebarCardShadow, isFalse, reason: '只认 "true"');
   });
 
   // ---------------------------------------------------------------------------

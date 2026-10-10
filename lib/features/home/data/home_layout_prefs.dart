@@ -1,4 +1,4 @@
-/// 主页布局偏好的持久化（Hive `homePrefs` 单 key）。
+﻿/// 主页布局偏好的持久化（Hive `homePrefs` 单 key）。
 ///
 /// 与 `my_campus_prefs.dart` / `calendar_prefs.dart` 同款：`ChangeNotifier`
 /// 而非 `AsyncNotifier` —— 设置页改完要**立刻**反映到主页（切换布局不该等
@@ -14,6 +14,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:smarter_jxufe/core/storage/box_reload_watcher.dart';
 import 'package:smarter_jxufe/features/home/domain/home_card_gap.dart';
 import 'package:smarter_jxufe/features/home/domain/home_card_radius.dart';
+import 'package:smarter_jxufe/features/home/domain/home_card_shadow.dart';
 import 'package:smarter_jxufe/features/home/domain/home_card_style.dart';
 import 'package:smarter_jxufe/features/home/domain/home_layout.dart';
 
@@ -52,6 +53,16 @@ const homeCardRadiusKey = 'homeCardRadius';
 /// 语义是「跨过那条线时收一次」，之后用户手动展开仍然算数。
 const homeAutoCollapseSidebarKey = 'homeAutoCollapseSidebar';
 
+/// **侧栏卡片阴影** key（值为 'true' / 'false'，缺省 = [kCardShadowDefault] = **关**）。
+///
+/// 用户 2026-10-10 三十六轮：「我希望侧边栏内容卡片的阴影是可选的」。
+const homeSidebarCardShadowKey = 'homeSidebarCardShadow';
+
+/// **内容卡片阴影** key（值为 'true' / 'false'，缺省 = [kCardShadowDefault] = **关**）。
+///
+/// 与侧栏那个**各自独立**（用户当面选定的口径：两块各自的开关）。
+const homeContentCardShadowKey = 'homeContentCardShadow';
+
 /// 主页布局偏好存储（内存缓存 + Hive 落盘）。
 ///
 /// 落盘「尽力而为」：Hive 打开失败时仅本次会话生效，不抛异常、不影响界面。
@@ -62,6 +73,8 @@ class HomeLayoutStore extends ChangeNotifier with BoxReloadWatcher {
   double _cardGap = kCardGapDefault;
   double _cardRadius = kCardRadiusDefault;
   bool _autoCollapseSidebar = true;
+  bool _sidebarCardShadow = kCardShadowDefault;
+  bool _contentCardShadow = kCardShadowDefault;
   Box<String>? _box;
   Future<void>? _loading;
 
@@ -80,6 +93,12 @@ class HomeLayoutStore extends ChangeNotifier with BoxReloadWatcher {
 
   /// 窄窗口是否**自动收起**侧栏（默认 true）。
   bool get autoCollapseSidebar => _autoCollapseSidebar;
+
+  /// 侧栏那张卡要不要阴影（默认 [kCardShadowDefault] = false）。
+  bool get sidebarCardShadow => _sidebarCardShadow;
+
+  /// 内容区那张卡要不要阴影（默认 [kCardShadowDefault] = false，与侧栏各自独立）。
+  bool get contentCardShadow => _contentCardShadow;
 
   /// 首次读取落盘值（幂等：并发调用共用同一个 Future）。
   Future<void> ensureLoaded() => _loading ??= _load();
@@ -109,14 +128,22 @@ class HomeLayoutStore extends ChangeNotifier with BoxReloadWatcher {
     final parsedCard = HomeCardStyle.fromName(box.get(homeCardStyleKey));
     final parsedGap = parseCardGap(box.get(homeCardGapKey));
     final parsedRadius = parseCardRadius(box.get(homeCardRadiusKey));
-    // 缺省 = true（用户 2026-10-10 指定「默认开启」）：只有显式写过 ''false'' 才是关。
+    // 缺省 = true（用户 2026-10-10 指定「默认开启」）：只有显式写过 'false' 才是关。
     final parsedAutoCollapse = box.get(homeAutoCollapseSidebarKey) != 'false';
+    // 阴影：缺省 = kCardShadowDefault（= false，用户 2026-10-10 选定「默认没有阴影」）
+    // —— 只有显式写过 'true' 才开。
+    final parsedSidebarShadow =
+        box.get(homeSidebarCardShadowKey) == 'true';
+    final parsedContentShadow =
+        box.get(homeContentCardShadowKey) == 'true';
 
     if (parsed == _layout &&
         parsedCard == _cardStyle &&
         parsedGap == _cardGap &&
         parsedRadius == _cardRadius &&
-        parsedAutoCollapse == _autoCollapseSidebar) {
+        parsedAutoCollapse == _autoCollapseSidebar &&
+        parsedSidebarShadow == _sidebarCardShadow &&
+        parsedContentShadow == _contentCardShadow) {
       return;
     }
     _layout = parsed;
@@ -124,6 +151,8 @@ class HomeLayoutStore extends ChangeNotifier with BoxReloadWatcher {
     _cardGap = parsedGap;
     _cardRadius = parsedRadius;
     _autoCollapseSidebar = parsedAutoCollapse;
+    _sidebarCardShadow = parsedSidebarShadow;
+    _contentCardShadow = parsedContentShadow;
     notifyListeners();
   }
 
@@ -172,6 +201,24 @@ class HomeLayoutStore extends ChangeNotifier with BoxReloadWatcher {
     _cardRadius = clamped;
     notifyListeners();
     await _write(homeCardRadiusKey, formatCardRadius(clamped));
+  }
+
+  /// 写入「侧栏卡片阴影」。绝不抛异常。
+  Future<void> saveSidebarCardShadow(bool next) async {
+    await ensureLoaded();
+    if (next == _sidebarCardShadow) return;
+    _sidebarCardShadow = next;
+    notifyListeners();
+    await _write(homeSidebarCardShadowKey, next ? 'true' : 'false');
+  }
+
+  /// 写入「内容卡片阴影」。绝不抛异常。
+  Future<void> saveContentCardShadow(bool next) async {
+    await ensureLoaded();
+    if (next == _contentCardShadow) return;
+    _contentCardShadow = next;
+    notifyListeners();
+    await _write(homeContentCardShadowKey, next ? 'true' : 'false');
   }
 
   /// 落盘一个 key（存储不可用 / 写失败 → 仅本次会话生效，不影响界面）。

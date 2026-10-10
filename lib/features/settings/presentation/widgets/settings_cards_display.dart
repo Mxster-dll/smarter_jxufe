@@ -359,6 +359,52 @@ class SettingsHomeLayoutCard extends ConsumerWidget {
               ),
             ),
           const Divider(height: 1),
+          // 卡片阴影（用户 2026-10-10 三十六轮：「我希望侧边栏内容卡片的阴影是可选的」；
+          // 当面选定：**两块各自一个开关**、**默认没有阴影**）。
+          // ⚠ 这两行只在**至少有一块是卡片**时才有意义（没有卡片就没有阴影可关）；
+          // 但那样写会让设置页的分节随选择跳动，所以照旧常驻、只是把说明写清楚。
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Text(
+              '卡片阴影',
+              style: TextStyle(
+                fontSize: 14.5,
+                fontWeight: FontWeight.w600,
+                color: scheme.onSurface,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+            child: Text(
+              '给上面对应的那张卡加一圈投影；关掉只影响阴影，'
+              '圆角与描边照旧（卡片仍然分得出来）。默认关。',
+              style: TextStyle(
+                fontSize: 12.5,
+                height: 1.3,
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          _cardShadowSwitch(
+            context,
+            scheme,
+            key: const Key('homeSidebarCardShadowSwitch'),
+            title: '侧栏卡片阴影',
+            subtitle: '左侧导航栏那张卡的投影',
+            value: store.sidebarCardShadow,
+            onChanged: store.saveSidebarCardShadow,
+          ),
+          _cardShadowSwitch(
+            context,
+            scheme,
+            key: const Key('homeContentCardShadowSwitch'),
+            title: '内容卡片阴影',
+            subtitle: '右侧内容区那张卡的投影',
+            value: store.contentCardShadow,
+            onChanged: store.saveContentCardShadow,
+          ),
+          const Divider(height: 1),
           // 卡片间距（用户 2026-10-09 三轮原话：「我希望卡片与卡片之间的距离为 2a、
           // 卡片与窗口之间（卡片与标题栏之间的距离不受此限制）的距离为 a；
           // 然后 a 可以通过设置调」）。滑杆按 `kCardGapStops` 吸附，落盘整数文本。
@@ -449,6 +495,58 @@ class SettingsHomeLayoutCard extends ConsumerWidget {
       ),
     );
   }
+
+  /// 「卡片阴影」那一行（一行开关）。
+  ///
+  /// 用户 2026-10-10 三十六轮：「我希望侧边栏内容卡片的阴影是可选的」——
+  /// 两块**各自的**开关、**默认关**（口径见 `features/home/domain/home_card_shadow.dart`）。
+  ///
+  /// ⚠ 与 [_cardGapRow] 不同，这里**不**按"有没有卡片"禁用：给一张暂时不是卡片的区域
+  /// 先开好阴影是合理的（回头把卡片样式选上就生效），禁用反而要多解释一句。
+  Widget _cardShadowSwitch(
+    BuildContext context,
+    ColorScheme scheme, {
+    required Key key,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) => InkWell(
+    key: key,
+    onTap: () => onChanged(!value),
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    height: 1.25,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Switch(value: value, onChanged: onChanged),
+        ],
+      ),
+    ),
+  );
 
   /// 「卡片间距」那一行（滑杆 + 当前派生量）。只在**有卡片**时才有意义，所以
   /// 「都不显示」时压暗并禁用（不是藏起来：藏了用户会以为这功能不存在）。

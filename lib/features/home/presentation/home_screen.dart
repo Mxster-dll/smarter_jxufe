@@ -169,12 +169,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       _publishSidebarToggle(show: useSidebar);
             return useSidebar
                 ? _buildSidebarBody(
-                      context,
-                      entries,
-                      cardStyle,
-                      cardGap,
-                      cardRadius,
-                    )
+                    context,
+                    entries,
+                    cardStyle,
+                    cardGap,
+                    cardRadius,
+                    layoutStore.sidebarCardShadow,
+                    layoutStore.contentCardShadow,
+                  )
                 : _buildGridBody(context, entries, gridStore);
           },
         ),
@@ -265,6 +267,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     HomeCardStyle cardStyle,
     double cardGap,
     double cardRadius,
+    bool sidebarCardShadow,
+    bool contentCardShadow,
   ) {
     final footer = _selectedFooter;
     final selected = footer == null ? _selectedEntry(entries) : null;
@@ -307,9 +311,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             child: HomeSidebar(
               entries: entries,
               // ⚠ **卡片形态与"收没收起"无关**（十八轮改）：收起后那条窄轨**仍然是卡片**
-              // （圆角 / 描边 / 阴影都在），只是变窄了。所以这里不再带 `&& !collapsed`。
+              // （圆角 / 描边都在），只是变窄了。所以这里不再带 `&& !collapsed`。
               card: sidebarCard,
               radius: cardRadius,
+              // 侧栏卡片的阴影：**可关**（用户 2026-10-10 三十六轮，默认关）。
+              cardShadow: sidebarCardShadow,
               collapsed: collapsed,
               onToggleCollapsed: () =>
                   // 翻转的是**当前实际状态**，并记为手动意愿（点击即表态，压过自动）。
@@ -390,6 +396,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: CardFrame(
                 card: contentCard,
                 radius: cardRadius,
+                // 内容卡片的阴影：**可关**（用户 2026-10-10 三十六轮
+                // 「我希望侧边栏内容卡片的阴影是可选的」，默认关）。
+                shadow: contentCardShadow,
                 // 滑入的内容按卡片的圆角裁掉（内嵌页的 Scaffold 会自己铺满整块）。
                 child: _paneSwitcher(
                   paneKey: paneKey,
