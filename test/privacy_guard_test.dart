@@ -97,39 +97,95 @@ const Set<String> _okMacs = <String>{
   '00-11-22-33-44-55', '66-77-88-99-AA-BB',
 };
 
-/// 扫描范围：用户裁定「lib/ test/ docs/ reverse_engineering/」+ 根目录说明文档与 tool/packaging。
-const List<String> _roots = <String>[
-  'lib', 'test', 'docs', 'reverse_engineering', 'tool', 'packaging',
+/// 扫描范围 = **仓库根递归**（`.`）。
+/// ⚠ 2026-10-11 落地：此前 `_roots` 只有 6 个子目录 —— `AGENTS.md` / `README.md` / `TODO.md`
+/// 与各平台目录（android / ios / macos / linux / windows / web）**一个文件都不扫**，
+/// 而根上正是最容易被粘进真值的常驻文档。守卫自己的「扫描面契约」用例会钉住这一条。
+const List<String> _roots = <String>['.'];
+
+/// 取文件用**后缀白名单**，不是黑名单：非白名单后缀一律不看。
+/// 好处：① 二进制（png / pdf / hive / 字体 / dll）天然排除；
+/// ② 不会因为「新出现的后缀没被加进黑名单」而静默漏扫；
+/// ③ 顺带躲掉两类结构性误报 —— `pubspec.lock` 的 10 位数字（学号判据）与 `.pbxproj` 的
+///    `2147483647`（同一条判据对「以 2 开头的 10 位整数」普遍误报，见 §34.5）。
+const Set<String> _scanExt = <String>{
+  '.dart', '.md', '.txt', '.json', '.yaml', '.yml', '.http', '.kt', '.kts', '.java', '.swift',
+  '.xml', '.html', '.properties', '.plist', '.gradle', '.py', '.sh', '.bat', '.ps1',
+  '.cc', '.cpp', '.h', '.cmake', '.iss', '.css', '.js', '.ts', '.svg', '.toml', '.ini',
+  '.xcconfig', '.entitlements', '.rc',
+};
+
+/// 跳过表按「**仓库根相对路径**」锚定，不用裸目录名 —— 裸名 `app_data` 会连
+/// `lib/features/*/app_data/` 这种**同名源码目录**一起误跳。
+/// 三类条目：① 以 `/` 结尾 = 跳整棵子树；② 含 `*` = 只按文件名匹配（单层）；③ 精确路径。
+/// 跳过的都是**构建产物 / 依赖缓存 / 已 gitignore 的本地数据**（本来就不入库，扫进来只会常年红）。
+const List<String> _skipPaths = <String>[
+  // 构建产物与依赖缓存
+  '.git/', 'build/', '.dart_tool/', 'dist/', 'design_preview/', 'node_modules/',
+  'android/build/', 'android/.gradle/', 'android/.cxx/', 'ios/Pods/',
+  'ios/Flutter/ephemeral/', 'macos/Flutter/ephemeral/',
+  'linux/flutter/ephemeral/', 'windows/flutter/ephemeral/',
+  // 本地数据 / 本地工具（含明文脚本与探针残骸）
+  'app_data/', 'dianfei_work/', 'captures/', 'tools/', '.probe/', '.scratch/', '.venv/',
+  'reverse_engineering/saikang_tice/captures/', 'test/failures/', 'logos/',
+  // ⚠ 含真学生姓名（学号 / 姓名 / 联系电话）：绝不能扫（扫了守卫常年红），更不能入库
+  'dorm_sheet_*.json', 'dorm_sheet_*.txt',
+  // ⚠ 含明文的脱敏规则/口令（§34.3）：同理跳过（`.gitignore` 也排除了它们）
+  'tmp.txt', 'sensitive.txt',
 ];
 
-const Set<String> _skipDirs = <String>{
-  '.git', 'build', '.dart_tool', 'app_data', 'failures',
-};
-
-const Set<String> _skipExt = <String>{
-  '.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.ttf', '.otf', '.woff', '.woff2',
-  '.hive', '.lock', '.so', '.dll', '.exe', '.zip', '.gz', '.xlsx', '.docx', '.pdf',
-};
+bool _skipped(String rel) {
+  for (final rule in _skipPaths) {
+    if (rule.endsWith('/')) {
+      if (rel.startsWith(rule)) return true;
+    } else if (rule.contains('*')) {
+      final rx = RegExp('^${RegExp.escape(rule).replaceAll(r'\*', '[^/]*')}\$');
+      if (rx.hasMatch(rel)) return true;
+    } else if (rel == rule) {
+      return true;
+    }
+  }
+  return false;
+}
 
 String _digest(String value) =>
     sha256.convert(utf8.encode('$_salt\u001f$value')).toString();
 
+/// 递归取文件：**边走边剪枝**（命中 `_skipPaths` 的目录不再往下走）——
+/// 根递归若直接 `listSync(recursive: true)`，会白白枚举 build/ 与 .probe/ 里几万个文件。
 List<File> _files() {
   final out = <File>[];
-  for (final root in _roots) {
-    final dir = Directory(root);
-    if (!dir.existsSync()) continue;
-    for (final e in dir.listSync(recursive: true, followLinks: false)) {
-      if (e is! File) continue;
-      final path = e.path.replaceAll('\\', '/');
-      if (path.split('/').any(_skipDirs.contains)) continue;
-      if (_skipExt.contains(path.substring(path.lastIndexOf('.')))) continue;
-      // 守卫自己豁免：白名单/摘要表/注释里必然会写出这些形状与词的「反面样本」。
-      if (path.endsWith('test/privacy_guard_test.dart') || path.endsWith('privacy_guard_test.dart')) {
+  final seen = <String>{};
+
+  void walk(Directory dir, String prefix) {
+    List<FileSystemEntity> entries;
+    try {
+      entries = dir.listSync(followLinks: false);
+    } on FileSystemException {
+      return; // 权限 / 竞态：跳过该目录，别让守卫自己崩
+    }
+    for (final e in entries) {
+      final name = e.path.split(RegExp(r'[\\/]')).last;
+      final rel = prefix.isEmpty ? name : '$prefix/$name';
+      if (_skipped(rel)) continue;
+      if (e is Directory) {
+        walk(e, rel);
         continue;
       }
+      if (e is! File) continue; // Link 等一律不看
+      if (!seen.add(rel)) continue;
+      final dot = rel.lastIndexOf('.');
+      final ext = dot <= 0 ? '' : rel.substring(dot).toLowerCase();
+      if (!_scanExt.contains(ext)) continue;
+      // 守卫自己豁免：白名单/摘要表/注释里必然会写出这些形状与词的「反面样本」。
+      if (rel.endsWith('privacy_guard_test.dart')) continue;
       out.add(e);
     }
+  }
+
+  for (final root in _roots) {
+    final dir = Directory(root);
+    if (dir.existsSync()) walk(dir, '');
   }
   return out;
 }
@@ -202,7 +258,8 @@ List<String> _nameHits(Map<String, String> texts) {
         for (var len = 2; len <= 4 && i + len <= s.length; len++) {
           final d = _digest(s.substring(i, i + len));
           // 两个与常用词同形的名字只在「贴到中文串边缘」时才算：
-          // 「任何东西」「课程进行」是词，不是人名（glue_review.py 实测贴字处 0 命中）。
+          // 某些普通词组里恰好连着这两个字，那种位置是词、不是人名（glue_review.py 实测 0 命中）。
+          // ⚠ 这里**刻意不举那两个词组当例子** —— 举例就等于把名字以子串形式又写回公开仓库。
           final standalone =
               _nameStandaloneDigests.contains(d) && (i == 0 || i + len == s.length);
           if (_nameDigests.contains(d) || standalone) {
@@ -289,11 +346,42 @@ void main() {
   final files = _files();
   final texts = <String, String>{for (final f in files) f.path: _read(f)};
 
-  test('守卫自己别空转（扫到的文件与语料量级）', () {
-    expect(files.length, greaterThan(300));
-    expect(texts.values.where((t) => t.isNotEmpty).length, greaterThan(300));
+  // 名字里带上扫描面规模：守卫的前提就是「扫得够宽」，规模掉下来要一眼看见。
+  test('守卫自己别空转（扫到 ${files.length} 个文件 / ${texts.length} 条语料）+ 扫描面契约', () {
+    expect(files.length, greaterThan(800));
+    expect(texts.values.where((t) => t.isNotEmpty).length, greaterThan(800));
     expect(_nameDigests.length, greaterThan(50));
     expect(_phraseDigests, isNotEmpty);
+
+    // ★ 扫描面契约（2026-10-11 立）：根目录与各平台目录必须真的在扫描面内 ——
+    //   这几条是防止 `_roots` 又被改回那 6 个子目录（改回去 = 根文件与平台目录一个都不扫，
+    //   而 2026-09-21 那轮的漏网恰恰就在这些位置）。
+    final scanned = files
+        .map((f) => f.path.replaceAll('\\', '/').replaceFirst(RegExp(r'^\./'), ''))
+        .toSet();
+    for (final must in <String>[
+      'AGENTS.md',
+      'README.md',
+      'CLAUDE.md',
+      'android/app/build.gradle.kts',
+      'windows/runner/window_chrome.cpp',
+      'assets/rules/meta/rules_catalog.json',
+      'lib/main.dart',
+    ]) {
+      expect(scanned, contains(must), reason: '扫描面漏了 $must（`_roots` 是不是又被改回子目录了？）');
+    }
+    // ★ 反向契约：本地数据 / 构建产物 / 结构性误报源必须**不在**扫描面内。
+    for (final mustNot in <String>[
+      'dorm_sheet_dump.json', // 含真学生姓名，跳过（§34.3）
+      'dorm_sheet_grouped.txt',
+      'tmp.txt', // 含明文的脱敏规则/口令
+      'sensitive.txt',
+      'pubspec.lock', // 后缀不在白名单：里面的 10 位数字会被「学号」判据误报
+      'android/build/reports/problems/problems-report.html', // 构建产物（2147483647 误报源）
+    ]) {
+      expect(scanned.any((p) => p == mustNot || p.endsWith('/$mustNot')), isFalse,
+          reason: '$mustNot 不该被扫（本地数据 / 构建产物 / 结构性误报源）');
+    }
   });
 
   test('结构类：证件号 / 手机号 / 票据 / 会话 / 令牌 / 学籍号 / 学号 / 通知书号 / MAC 全为零命中', () {

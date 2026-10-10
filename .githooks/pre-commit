@@ -24,6 +24,9 @@ fail() {
 blocked='^(app_data/|\.env|\.env\..*)'
 blocked="$blocked"'|.*\.(hive|mitm|flows|pcap|pcapng|har|jks|keystore|p12|pfx|mobileprovision|pem|key)$'
 blocked="$blocked"'|.*(key\.properties|secrets?\.(json|ya?ml|txt))$'
+# 根目录上「含明文的脱敏规则 / 口令」的两个老文件（§34.3）：此前只靠 .gitignore 保命，
+# 2026-10-11 起文件名层也拦一道（万一 .gitignore 被改坏，钩子仍然挡住）。
+blocked="$blocked"'|.*(tmp\.txt|sensitive\.txt)$'
 blocked="$blocked"'|.*(_rel_scan\.py|_rel_scrub\.py|_scrub_rules[0-9]*\.txt|gen_guard\.py|desensitize\.py|replace_text\.txt|replace_message\.txt)$'
 blocked="$blocked"'|.*/(captures?)/'
 
@@ -74,7 +77,7 @@ log=$(mktemp 2>/dev/null || echo /tmp/privacy_guard.$$.log)
 runner=''
 if command -v timeout >/dev/null 2>&1; then runner='timeout 300'; fi
 
-echo '· 跑隐私守卫测试（约 30 秒）…' >&2
+echo '· 跑隐私守卫测试（约 10–30 秒：扫描面已扩到仓库根，递归时按跳过表剪枝）…' >&2
 # shellcheck disable=SC2086
 $runner "$dart" "$snap" test test/privacy_guard_test.dart >"$log" 2>&1
 code=$?
