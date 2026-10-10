@@ -87,7 +87,9 @@ void main() {
   });
 
   testWidgets('只给一节 → 只渲染该节，标题栏用节名', (tester) async {
-    tester.view.physicalSize = const Size(1000, 2000);
+    // ⚠ 宽度要 ≥900 **逻辑**像素：否则新口径（<900 自动收起侧栏，默认开）会把侧栏收成窄轨，
+    // 本文件按「展开态」找控件的用例就会红（DPR=2 时 1000 物理 = 500 逻辑 ✗）。
+    tester.view.physicalSize = const Size(2400, 2000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
@@ -108,7 +110,7 @@ void main() {
   });
 
   testWidgets('多节 → 只渲染这几节，标题仍为「设置」', (tester) async {
-    tester.view.physicalSize = const Size(1000, 2400);
+    tester.view.physicalSize = const Size(2400, 2400);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
@@ -142,7 +144,9 @@ void main() {
   });
 
   testWidgets('设置按钮：点一下进设置页，并按 sections 过滤', (tester) async {
-    tester.view.physicalSize = const Size(1000, 2000);
+    // ⚠ 宽度要 ≥900 **逻辑**像素：否则新口径（<900 自动收起侧栏，默认开）会把侧栏收成窄轨，
+    // 本文件按「展开态」找控件的用例就会红（DPR=2 时 1000 物理 = 500 逻辑 ✗）。
+    tester.view.physicalSize = const Size(2400, 2000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
