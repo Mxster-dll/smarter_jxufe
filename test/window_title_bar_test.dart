@@ -1045,7 +1045,18 @@ void main() {
       );
 
       // 三键图标只许走 codicon，不许退回自绘（旧实现被用户指出与原生不一致）。
-      final bar = File('lib/design/window_title_bar.dart').readAsStringSync();
+      // 2026-10-10 重构：标题栏拆成 lib/design/window_chrome/ 下多件，旧路径只剩桶文件
+// —— 源码守卫一律读**整族并集**（照仓库里 data_center / grades 那几处的既有做法）。
+final bar = [
+        'lib/design/window_title_bar.dart',
+        'lib/design/window_chrome/window_title_bar.dart',
+        'lib/design/window_chrome/window_buttons.dart',
+        'lib/design/window_chrome/app_window_chrome.dart',
+        'lib/design/window_chrome/title_bar_regions.dart',
+        'lib/design/window_chrome/title_bar_history.dart',
+        'lib/design/window_chrome/title_bar_model.dart',
+        'lib/design/window_chrome/history_graph_painter.dart',
+      ].map((p) => File(p).readAsStringSync()).join('\n');
       expect(bar, contains('Codicons.chromeMinimize'));
       expect(bar, contains('Codicons.chromeMaximize'));
       expect(bar, contains('Codicons.chromeRestore'));
