@@ -145,7 +145,18 @@ class _WindowTitleBarState extends ConsumerState<WindowTitleBar> {
                 ),
               // 宽屏的中间组（窄屏时它已在上面那一坨里）。
               if (model.center != TitleBarSlot.hidden)
-                _zone(model.center, centerRow),
+                _zone(
+                  model.center,
+                  // 用户 2026-10-10：「此部分距离左右边缘的距离（具体看是在哪边），要与与上下
+                  // 边界的距离相同」—— 与 mac 三键那条「整组留白」同口径：按所在那一侧补
+                  // kWindowTitleBarEdgeInset(14)，于是离侧边 = 离上下边；三键换边时留白也跟着换。
+                  Padding(
+                    padding: model.center == TitleBarSlot.left
+                        ? const EdgeInsets.only(left: kWindowTitleBarEdgeInset)
+                        : const EdgeInsets.only(right: kWindowTitleBarEdgeInset),
+                    child: centerRow,
+                  ),
+                ),
               // 品牌：宽屏在三键对侧；窄屏 hidden（模型保证）。
               if (model.brand != TitleBarSlot.hidden)
                 _zone(
