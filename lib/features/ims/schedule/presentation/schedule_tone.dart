@@ -195,6 +195,33 @@ abstract final class ScheduleTone {
   /// 两侧自动择白。浅色侧本来就返回原值 → **逐像素不变**。
   static Color headerFill(BuildContext context, Color light) => light;
 
+  /// 表头实心底的**判据 = 「这一天有没有课」**，不按星期几（用户 2026-10-09）。
+  ///
+  /// 原话：「我希望课表的标题不是固定周一-周五红色、周末灰色，而是按校历来，
+  /// **如果上课或补课则红色、假期或不补课的周末灰色**」。于是：
+  ///
+  /// - `hasClass == true`（含补课日 —— 补课日上的是被补那天的课，本来就有课次）
+  ///   → [headerRed]；
+  /// - `hasClass == false` → [weekendHeader]（蓝灰）：**假期的工作日**（国庆里的
+  ///   周一，课被校历抑制掉了）与**没课的工作日**都落这一档；
+  /// - 判据由 `ScheduleColumn.hasClass`（= `courseCount > 0`，已含假期抑制与补课
+  ///   取源）提供，两个视图都必须走本函数 —— 别再自己写 `day >= 5`。
+  static Color headerFillOf(BuildContext context, {required bool hasClass}) =>
+      headerFill(context, hasClass ? headerRed : weekendHeader);
+
+  /// 「有课的列 / 没课的列」的分区底色（横版的列底、行首标签底）。
+  ///
+  /// 与 [headerFillOf] 同一判据（原来按 `day >= 5` 分周末）：没课的列深一档，
+  /// 有课的列淡一档 —— 深色下方向相反，所以走 `fill` 对 `fillSoft` 保持层级。
+  static Color columnFillOf(BuildContext context, {required bool hasClass}) =>
+      hasClass ? AppColors.fillSoft(context) : AppColors.fill(context);
+
+  /// 空格子 / 矮行格子的底色：**没课的列**才铺分区底，有课的列与页面底同色（null）。
+  static Color? emptyCellFillOf(
+    BuildContext context, {
+    required bool hasClass,
+  }) => hasClass ? null : AppColors.fill(context);
+
   static int _index(int seed) {
     final n = courseFills.length;
     final i = seed % n;

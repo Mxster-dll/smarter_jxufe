@@ -406,7 +406,7 @@ class ScheduleGridView extends StatelessWidget {
                       for (final day in days)
                         _buildDayHeader(
                           context,
-                          columns[day].plan,
+                          columns[day],
                           colWidth: colWidth,
                           compact: compact,
                         ),
@@ -694,7 +694,7 @@ class ScheduleGridView extends StatelessWidget {
     // 表头（分页模式下表头被提到静态行走，这里传 includeHeader: false）
     if (includeHeader) {
       widgets.add(
-        _buildDayHeader(context, column.plan, colWidth: colWidth, compact: compact),
+        _buildDayHeader(context, column, colWidth: colWidth, compact: compact),
       );
     }
 
@@ -805,21 +805,27 @@ class ScheduleGridView extends StatelessWidget {
 
   Widget _buildDayHeader(
     BuildContext context,
-    ScheduleDayPlan plan, {
+    ScheduleColumn column, {
     required double colWidth,
     required bool compact,
   }) {
     const names = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+    final plan = column.plan;
     final day = plan.dayIndex;
-    final isWeekend = day >= 5;
     final date = plan.date;
     // 表头是**实心底**：深浅两档都用原深色（[ScheduleTone.headerFill]）。
     // 深色下**不许**按「文字色」提亮 —— 提亮成 `#D96363` 后白字只剩 3.55:1，
     // [AppColors.onAccent] 会择近黑字，用户 2026-09-17 当场报
     // 「顶部周几的文本不要用深灰，太暗」。深红 `#C62828` 白字 5.62:1 ✓。
-    final headerColor = ScheduleTone.headerFill(
+    //
+    // ⚠ 红 / 蓝灰的判据 = **这一天有没有课**（含补课日），**不是星期几**
+    // （用户 2026-10-09：「不是固定周一-周五红色、周末灰色，而是按校历来，
+    // 如果上课或补课则红色、假期或不补课的周末灰色」）。判据走
+    // `ScheduleColumn.hasClass`（已含假期抑制与补课取源），口径在
+    // [ScheduleTone.headerFillOf]。
+    final headerColor = ScheduleTone.headerFillOf(
       context,
-      isWeekend ? ScheduleTone.weekendHeader : ScheduleTone.headerRed,
+      hasClass: column.hasClass,
     );
     // 表头前景色按**实测对比度**择白 / 近黑（浅色恒为白 → 逐像素不变）。
     final foreground = AppColors.onAccent(context, headerColor);

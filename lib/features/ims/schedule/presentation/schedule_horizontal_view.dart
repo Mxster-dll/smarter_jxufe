@@ -390,7 +390,10 @@ class ScheduleHorizontalView extends StatelessWidget {
   }) {
     final day = column.dayIndex;
     final dayData = column.slots;
-    final isWeekend = day >= 5;
+    // ⚠ 「周末列有分区底」2026-10-09 起改成「**没课的列**有分区底」：判据 = 这一天
+    // 有没有课（含补课日），与竖版表头同一口径（用户：「不是固定周一-周五红色、
+    // 周末灰色，而是按校历来，如果上课或补课则红色、假期或不补课的周末灰色」）。
+    final hasClass = column.hasClass;
 
     // 配色下标（**每门课一个不同的色**，用户 2026-09-17：「优先保证每门课程的颜色
     // 都不同，实在不行再重复」）：按整学期课程表算一份，本行的每个课格共用。
@@ -415,8 +418,8 @@ class ScheduleHorizontalView extends StatelessWidget {
             height: rowHeight,
             decoration: BoxDecoration(
               // 与同一行的空格子同底色（用户 2026-09-17：「矮行颜色要与其他
-              // 格子颜色一致，不显示内容文本」）—— 工作日透明、周末列有分区底。
-              color: isWeekend ? AppColors.fill(context) : null,
+              // 格子颜色一致，不显示内容文本」）—— 有课的列透明、没课的列有分区底。
+              color: ScheduleTone.emptyCellFillOf(context, hasClass: hasClass),
               border: Border(
                 right: _line(AppColors.fillStrong(context)),
                 bottom: _line(AppColors.fillStrong(context)),
@@ -437,7 +440,7 @@ class ScheduleHorizontalView extends StatelessWidget {
             context,
             day: day,
             period: period,
-            isWeekend: isWeekend,
+            hasClass: hasClass,
             height: rowHeight,
             cellWidth: cellWidth,
           ),
@@ -474,8 +477,7 @@ class ScheduleHorizontalView extends StatelessWidget {
         children: [
           _buildDayLabel(
             context,
-            column.plan,
-            isWeekend,
+            column,
             height: rowHeight,
           ),
           ...cells,
@@ -488,11 +490,11 @@ class ScheduleHorizontalView extends StatelessWidget {
 
   Widget _buildDayLabel(
     BuildContext context,
-    ScheduleDayPlan plan,
-    bool isWeekend, {
+    ScheduleColumn column, {
     required double height,
   }) {
     const names = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+    final plan = column.plan;
     final day = plan.dayIndex;
     final date = plan.date;
     // 校历标记（口径同竖版表头）：假期名 = 红，补课 = 绿（与校历页「假 / 班」同色）。
@@ -504,11 +506,9 @@ class ScheduleHorizontalView extends StatelessWidget {
       height: height,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        // 周末列比工作日深一档（原来 `blueGrey.shade50` / `grey.shade50`）——
-        // 深色下方向相反，故用 fill（分区）对 fillSoft（极淡）保持同一层级关系。
-        color: isWeekend
-            ? AppColors.fill(context)
-            : AppColors.fillSoft(context),
+        // 有课的列淡一档、**没课的列（假期 / 不补课的周末）深一档**（原来按
+        // `day >= 5` 分周末）—— 深色下方向相反，故走 fill 对 fillSoft。
+        color: ScheduleTone.columnFillOf(context, hasClass: column.hasClass),
         border: Border(
           right: _line(AppColors.stroke(context)),
           bottom: _line(AppColors.fillStrong(context)),
@@ -523,7 +523,11 @@ class ScheduleHorizontalView extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: AppColors.textMuted(context),
+              // 星期名的颜色也按「有没有课」：有课 = 主题红，没课（假期 / 不补课的
+              // 周末）= 灰（2026-10-09，与竖版表头的红 / 蓝灰同一判据）。
+              color: column.hasClass
+                  ? Theme.of(context).colorScheme.primary
+                  : AppColors.textMuted(context),
             ),
           ),
           if (date != null)
@@ -573,7 +577,7 @@ class ScheduleHorizontalView extends StatelessWidget {
     BuildContext context, {
     required int day,
     required int period,
-    required bool isWeekend,
+    required bool hasClass,
     required double height,
     required double cellWidth,
   }) {
@@ -585,7 +589,7 @@ class ScheduleHorizontalView extends StatelessWidget {
           right: _line(AppColors.fillStrong(context)),
           bottom: _line(AppColors.fillStrong(context)),
         ),
-        color: isWeekend ? AppColors.fill(context) : null,
+        color: ScheduleTone.emptyCellFillOf(context, hasClass: hasClass),
       ),
     );
     if (onTapEmptySlot == null) return cell;
