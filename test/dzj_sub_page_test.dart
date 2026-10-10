@@ -622,7 +622,7 @@ void main() {
             ),
             rows: [
               [MapEntry('课程名', '体育1'), MapEntry('任课教师', '教师乙')],
-              [MapEntry('课程名', '军事理论'), MapEntry('任课教师', '[TEACHER_N]')],
+              [MapEntry('课程名', '军事理论'), MapEntry('任课教师', '教师寅')],
             ],
           ),
         ],

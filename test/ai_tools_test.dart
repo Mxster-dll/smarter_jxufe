@@ -292,7 +292,7 @@ void main() {
       credits: 4,
       studyNature: '初修',
       teacherCode: '1200000001',
-      teacherName: '[TEACHER_P]',
+      teacherName: '教师辰',
       selectionStatus: '选中',
       isCrossMajor: false,
       hasTextbook: true,

@@ -207,7 +207,11 @@ SelectedCourse? selectedCourseFromCells(List<String> rawCells) {
       campus = campus.isEmpty ? cell : campus;
       continue;
     }
-    if (RegExp(r'[周]|\[\d+-\d+\]|教\d*|\d+-\d+周').hasMatch(cell)) {
+    // ⚠ `教\d*` 里的 `*` 是坑：它匹配「教」+ **零个**数字，于是任何以「教」开头的教师名
+    // （`教师甲` / `教师乙`…，脱敏后的合成教师名就是这个形状）都会被当成「上课地点」
+    // 而被这一支吃掉 → `teacher` 恒为空。收紧成 `\d+`：教室名（`麦三教3407`）照旧命中，
+    // 教师名不再被误判。2026-10-10 实测：`course_selection_parser_test` 的 `english.teacher` 由空转正确。
+    if (RegExp(r'[周]|\[\d+-\d+\]|教\d+|\d+-\d+周').hasMatch(cell)) {
       timePlace = timePlace.isEmpty ? cell : timePlace;
       continue;
     }

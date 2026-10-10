@@ -71,7 +71,7 @@ void main() {
     });
 
     test('对象名 = 教师姓名，描述块带部门与职称', () {
-      expect(table.owner, '[TEACHER_A]');
+      expect(table.owner, '教师甲');
       expect(table.fieldOf('部门'), '外国语学院');
       expect(table.fieldOf('职称'), '讲师');
     });

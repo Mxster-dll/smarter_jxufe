@@ -61,7 +61,7 @@ ScheduleEntry entry({int startWeek = 1, int endWeek = 2}) => ScheduleEntry(
   credits: 4,
   studyNature: '初修',
   teacherCode: '1200000001',
-  teacherName: '[TEACHER_P]',
+  teacherName: '教师辰',
   selectionStatus: '选中',
   isCrossMajor: false,
   hasTextbook: true,
@@ -246,7 +246,7 @@ void main() {
       // 非本学期默认按整学期列（「今天」对别的学期没有意义）
       expect(r.content, contains('范围：整学期'));
       expect(r.content, contains('大学英语II'));
-      expect(r.content, contains('[TEACHER_P]'));
+      expect(r.content, contains('教师辰'));
     });
 
     test('不传学期 → 当下学期 + 默认「今天」（旧行为回归）', () async {

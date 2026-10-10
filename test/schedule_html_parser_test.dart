@@ -59,7 +59,7 @@ void main() {
       // 列 2 = [课程代码]课程名，列 10 = 上课时间地点。
       final rows = List.generate(12, (i) => '<td>c$i</td>').toList();
       rows[2] = '<td>[1014300174]计算机网络</td>';
-      rows[6] = '<td>[1200000001][TEACHER_P]</td>';
+      rows[6] = '<td>[1200000001]教师辰</td>';
       rows[10] = '<td>2-17周 三[3-4] 麦三教3407(70)(麦庐园校区)</td>';
       final html = '<table><tr class="H">${'<td>h</td>' * 2}</tr>'
           '<tr>${rows.join()}</tr></table>';

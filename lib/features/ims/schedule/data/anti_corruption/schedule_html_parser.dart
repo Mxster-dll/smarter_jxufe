@@ -31,7 +31,7 @@ class ScheduleHtmlParser {
   /// 匹配课程代码+名称，如 `[1004600282]大学英语II`
   static final RegExp _courseRegex = RegExp(r'^\[([^\]]+)\](.+)$');
 
-  /// 匹配教师代码+姓名，如 `[1200000001][TEACHER_P]`
+  /// 匹配教师代码+姓名，如 `[1200000001]教师辰`
   static final RegExp _teacherRegex = RegExp(r'^\[([^\]]+)\](.+)$');
 
   // ─── 公开方法 ─────────────────────────────────────────────────

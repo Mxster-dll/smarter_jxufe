@@ -139,7 +139,7 @@ Map<String, dynamic> courseJson(String name, {int createdAt = 1000}) => {
     },
   ],
   'finalScore': null,
-  'note': '教师：[TEACHER_A]',
+  'note': '教师：教师甲',
   'memo': {'text': '要背的东西很多', 'images': <dynamic>[]},
   'deadlines': <dynamic>[],
   'createdAt': createdAt,

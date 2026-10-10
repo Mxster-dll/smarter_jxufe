@@ -102,15 +102,15 @@ void main() {
       const body =
           '<data>'
           '<info><filtrateCount>2</filtrateCount><value>101599</value>'
-          '<filtrateInfo0>[TEACHER_A]</filtrateInfo0>'
-          '<name>[TEACHER_A](外国语学院)</name><fillName>[TEACHER_A](外国语学院)</fillName></info>'
+          '<filtrateInfo0>教师甲</filtrateInfo0>'
+          '<name>教师甲(外国语学院)</name><fillName>教师甲(外国语学院)</fillName></info>'
           '<info><filtrateCount>2</filtrateCount><value>102465</value>'
-          '<name>[TEACHER_B](信息管理与数学学院)</name></info>'
+          '<name>教师乙(信息管理与数学学院)</name></info>'
           '</data>';
       final options = parseComboBoxXml(body);
       expect(options.length, 2);
       expect(options.first.code, '101599');
-      expect(options.first.name, '[TEACHER_A](外国语学院)');
+      expect(options.first.name, '教师甲(外国语学院)');
       expect(options.last.code, '102465');
     });
 

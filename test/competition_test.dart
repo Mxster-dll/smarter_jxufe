@@ -76,7 +76,7 @@ void main() {
     test('字段：学号 / 姓名 / 学院 / 班级 / 比赛 / 类型 / 时间', () {
       final first = items.first;
       expect(first.studentId, '2202500003');
-      expect(first.studentName, '[STUDENT_A]');
+      expect(first.studentName, '同学甲');
       expect(first.college, '计算机与人工智能学院');
       expect(first.className, '25计算机4班');
       expect(first.gameName, '全国大学生数学建模竞赛');
@@ -162,7 +162,7 @@ void main() {
       final detail = parseCompetitionDetail(
         _fixture('_competition_publicity_detail.html'),
       );
-      expect(detail.valueOf('申请人姓名'), '[STUDENT_B]');
+      expect(detail.valueOf('申请人姓名'), '同学乙');
       expect(detail.valueOf('学号'), '2000000001');
       expect(detail.valueOf('行政班级'), '25人工智能1班');
       expect(detail.fields, isNotEmpty);
@@ -181,9 +181,9 @@ void main() {
           .toList();
       expect(members, hasLength(3));
       expect(members.first.label, '团队成员 1');
-      expect(members.first.value, contains('[STUDENT_P]'));
+      expect(members.first.value, contains('学生己'));
       expect(members.first.value, contains('2202400004'));
-      expect(members[1].value, contains('[STUDENT_A]'));
+      expect(members[1].value, contains('同学甲'));
     });
 
     test('解析不到表单时不抛异常', () {

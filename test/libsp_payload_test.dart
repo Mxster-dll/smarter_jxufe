@@ -32,7 +32,7 @@ String _noise(int seed, int length) {
 
 Map<String, dynamic> course({
   String name = '计算机网络',
-  String note = '教师：[TEACHER_A] · 学分 2',
+  String note = '教师：教师甲 · 学分 2',
   int createdAt = 1000,
   int partCount = 2,
   int deadlineCount = 0,
@@ -122,7 +122,7 @@ void main() {
       expect(out['courseCode'], '1004606732');
       expect(out['dailyPercent'], 30.0);
       expect(out['credits'], 2.0);
-      expect(out['note'], '教师：[TEACHER_A] · 学分 2');
+      expect(out['note'], '教师：教师甲 · 学分 2');
       expect((out['parts'] as List).length, 2);
       expect((out['deadlines'] as List).length, 2);
       for (final p in out['parts'] as List) {

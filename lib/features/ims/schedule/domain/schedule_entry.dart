@@ -29,7 +29,7 @@ class ScheduleEntry {
   /// 任课教师代码，如 "1200000001"
   final String teacherCode;
 
-  /// 任课教师姓名，如 "[TEACHER_P]"
+  /// 任课教师姓名，如 "教师辰"
   final String teacherName;
 
   /// 选课状态，如 "选中"

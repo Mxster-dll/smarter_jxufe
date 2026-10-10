@@ -39,7 +39,7 @@ const _apply2 = CompetitionApply(
 const _publicity = CompetitionPublicity(
   id: 202354,
   studentId: '2202500003',
-  studentName: '[STUDENT_A]',
+  studentName: '同学甲',
   college: '计算机与人工智能学院',
   className: '25计算机4班',
   gameName: '全国大学生数学建模竞赛',
@@ -170,7 +170,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text(_publicity.gameName), findsOneWidget);
-    expect(find.text('[STUDENT_A] · 2202500003'), findsOneWidget);
+    expect(find.text('同学甲 · 2202500003'), findsOneWidget);
     expect(find.text('计算机与人工智能学院 · 25计算机4班'), findsOneWidget);
     expect(find.text('第 1 / 13 页'), findsOneWidget);
     // 公示页没有「申请竞赛」FAB。

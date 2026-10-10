@@ -131,7 +131,7 @@ void main() {
       );
       expect(english.courseCode, '1004606732');
       expect(english.credits, 2.0);
-      expect(english.teacher, '[TEACHER_A]');
+      expect(english.teacher, '教师甲');
       expect(english.classCode, '1004606732-066');
       expect(english.status, '选中');
       expect(english.enrolled, '45/0');
