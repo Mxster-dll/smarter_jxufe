@@ -1198,7 +1198,10 @@ void main() {
         'lib/features/school_calendar/presentation/school_calendar_screen.dart',
         'lib/features/site_nav/presentation/site_nav_screen.dart',
       ];
-      final bar = RegExp(r'width: 3,\n[ \t]*height: 1[345],');
+      // ⚠ 换行必须写成 `\r?\n`：本仓源码是 **CRLF**，而 `\n` 在 Dart 正则里
+      // **不匹配 `\r\n`** —— 写成裸 `\n` 时这条守卫在 CRLF 工作树上会得到**空清单**
+      // 而误报"竖条实现不见了"（实测：三个白名单文件其实都在）。
+      final bar = RegExp(r'width: 3,\r?\n[ \t]*height: 1[345],');
       final found = <String>[
         for (final e in _sources().entries)
           if (bar.hasMatch(e.value)) e.key,

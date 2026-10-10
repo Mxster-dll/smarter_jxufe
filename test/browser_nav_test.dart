@@ -90,7 +90,13 @@ void main() {
 
   group('接线守卫（源码）', () {
     final web = File('lib/core/web/in_app_web_screen.dart').readAsStringSync();
-    final bar = File('lib/design/window_title_bar.dart').readAsStringSync();
+    // ⚠ 顶部那三枚（后退 / 前进 / 历史下拉）**已从 `window_title_bar.dart` 拆到
+    // `window_chrome/title_bar_history.dart`**（2026-10-10 并行会话的拆分）。
+    // 守卫必须读**实现所在的那一份**：读旧路径会拿到空字符串 → 接线明明在却假红
+    // （实测：`browserNavService` 在那份里命中 5 次，守卫却报 false）。
+    final bar = File(
+      'lib/design/window_chrome/title_bar_history.dart',
+    ).readAsStringSync();
 
     test('★ 网页内部跳转**不再**手动记进路由历史', () {
       expect(
