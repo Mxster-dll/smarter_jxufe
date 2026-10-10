@@ -311,7 +311,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               collapsed: collapsed,
               onToggleCollapsed: () =>
                   // 翻转的是**当前实际状态**，并记为手动意愿（点击即表态，压过自动）。
-          setState(() => _sidebarManual = !collapsed),
+          setState(() {
+            _sidebarManual = !collapsed;
+            _toggleTick.value++;
+          }),
               width: homeSidebarWidth,
               selectedTitle: selected?.title,
               // 底部固定区选中时「数据一览」不许跟着高亮（它不是 null 就等于概览）。
@@ -651,7 +654,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       onPressed: () {
         if (!mounted) return;
         // ⚠ 取**当下**的实际状态（闭包捕获的 `collapsed` 是外层旧值 → 「点展开后再也收不起来」）。
-        setState(() => _sidebarManual = !(_sidebarManual ?? _autoCollapsedNow));
+        setState(() {
+          _sidebarManual = !(_sidebarManual ?? _autoCollapsedNow);
+          _toggleTick.value++;
+        });
       },
     );
   }
