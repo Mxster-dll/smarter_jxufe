@@ -1313,9 +1313,20 @@ void main() {
           ),
         ),
       );
+      await tester.pumpAndSettle();
 
-      final divider = tester.widget<Divider>(find.byType(Divider));
-      final color = divider.color!;
+      // ⚠ 2026-10-10 三十二轮起这条线**不是 `Divider`**，改成
+      // `DecoratedBox` + `Border(top:)`：收起态的窄轨里 `Divider` 会横向溢出，
+      // 而且用户要的是"固定区上沿那一条框线"（见 `home_sidebar.dart` 的注释）。
+      // 判据仍然只认颜色 —— 也就是这一册在守的那件事（`withValues` 是替换不是相乘）。
+      final decoration = tester
+          .widgetList<DecoratedBox>(find.byType(DecoratedBox))
+          .map((d) => d.decoration)
+          .whereType<BoxDecoration>()
+          .map((d) => d.border)
+          .whereType<Border>()
+          .firstWhere((b) => b.top.width > 0);
+      final color = decoration.top.color;
       expect(
         color,
         AppLadder.darkOutlineVariant,

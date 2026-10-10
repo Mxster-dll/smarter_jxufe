@@ -8,6 +8,7 @@ import 'package:smarter_jxufe/design/app_card.dart';
 import 'package:smarter_jxufe/design/card_frame.dart';
 import 'package:smarter_jxufe/features/home/domain/home_layout.dart';
 import 'package:smarter_jxufe/features/home/presentation/home_service_catalog.dart';
+import 'package:smarter_jxufe/design/app_theme.dart';
 import 'package:smarter_jxufe/features/home/presentation/home_sidebar.dart';
 
 /// 左侧导航栏守卫。
@@ -74,12 +75,23 @@ void main() {
     VoidCallback? onToggleCollapsed,
     double radius = kCardFrameRadius,
     Size size = const Size(1200, 900),
+    Brightness? brightness,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       MaterialApp(
+        // ⚠ 默认不传 theme（旧用例的逐像素口径不变）；要验"深色下的取值"时显式给亮度 ——
+        // 光设 `platformBrightnessTestValue` 不够：本 harness 的 `MaterialApp` 没有
+        // `darkTheme`，系统亮度影响不到 `Theme.of(context)`（实测踩过）。
+        theme: brightness == null
+            ? null
+            : (brightness == Brightness.dark ? appDarkTheme : appLightTheme)
+                  // ⚠ 本仓 `_themeOf` 只设 `colorScheme`，没设 `ThemeData.brightness`
+                  // → 深色主题里 `Theme.of(context).brightness` 仍是 light（自相矛盾）。
+                  // 这里显式对齐，免得守卫量到"假亮度"。
+                  .copyWith(brightness: brightness),
         home: Scaffold(
           body: Row(
             children: [
@@ -170,50 +182,141 @@ void main() {
     });
   });
 
-  testWidgets('整个侧栏一条分割线都没有（2026-09-17 第 4 条 + 2026-10-09 十三轮）', (tester) async {
-    // 用户 2026-09-17 原话：「我希望桌面端主页的侧边导航栏里，顶部"数据一览"和教务系统
-    // 之间不要显示分割线」；2026-10-09 十三轮又补一刀：「侧边栏不要有边框线」——
-    // **底部固定区上方那条也撤了**，所以现在侧栏里 `Divider` 数量应当是 0。
-    await pumpSidebar(
-      tester,
-      stubEntries(),
-      onOverview: () {},
-      selectedTitle: null,
-      // 给一个真的 footer 行：确认"一条线都没有"不是因为压根没渲染底部固定区。
-      footer: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          HomeSidebarFooterRow(
-            key: homeSidebarProfileKey,
-            leading: const Icon(Icons.person_outline, size: 18),
-            label: '我的',
-            onTap: () {},
-          ),
-        ],
-      ),
-    );
+  /// 侧栏框线口径的守卫 —— **浅色 + 深色各跑一遍**。
+  ///
+  /// 2026-09-17：「顶部"数据一览"和教务系统之间不要显示分割线」；
+  /// 2026-10-09 十三轮：「侧边栏不要有边框线」（把底部那条也撤了）；
+  /// **2026-10-10 三十二轮（现行）**：「我希望侧边栏底部固定部分要有一个顶部框线，
+  /// 但是不要有别的框线」—— 于是底部那一条**回来**，其余仍然一条不许有。
+  ///
+  /// ⚠ 为什么必须两种亮度都跑：`AppColors.hairline` 与裸
+  /// `outlineVariant.withValues(alpha: 0.6)` 在**浅色下逐值相同**（实测：只跑浅色时
+  /// 把线色换回裸写法，守卫照样绿 —— 等于没测），差别只出现在深色侧
+  /// （`outlineVariant` 深色下自带 10% alpha，`withValues` 是替换不是相乘）。
+  testWidgets('★ 侧栏只有底部固定区上沿那一条框线，别处一条都没有（浅 / 深各一遍）', (
+    tester,
+  ) async {
+    for (final brightness in [Brightness.light, Brightness.dark]) {
+      await pumpSidebar(
+        tester,
+        stubEntries(),
+        onOverview: () {},
+        selectedTitle: null,
+        brightness: brightness,
+        // 给一个真的 footer 行：确认那条线是"固定区上沿"而不是别处冒出来的。
+        footer: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            HomeSidebarFooterRow(
+              key: homeSidebarProfileKey,
+              leading: const Icon(Icons.person_outline, size: 18),
+              label: '我的',
+              onTap: () {},
+            ),
+          ],
+        ),
+      );
 
-    final overview = tester.getRect(
-      find.byKey(const Key('homeSidebarOverview')),
-    );
-    final firstGroupTitle = tester.getRect(
-      find.text(HomeServiceGroup.values.first.title),
-    );
-    expect(
-      HomeServiceGroup.values.first.title,
-      '教务系统',
-      reason: '第一个分组应当就是教务系统（这条守卫的前提）',
-    );
-    expect(firstGroupTitle.top, greaterThanOrEqualTo(overview.bottom - 0.5));
+      final where = '（$brightness 亮度）';
+      // ⚠ **必须 `pumpAndSettle`**：`MaterialApp` 换 theme 是**补间**的，
+      // 紧接着那一帧量到的还是上一轮的主题（实测：`[light, dark]` 循环里第二轮
+      // 读出来仍是 light —— 白折腾了半天，真因就在这一行）。
+      await tester.pumpAndSettle();
 
-    expect(
-      find.byType(Divider),
-      findsNothing,
-      reason: '侧栏里一条分割线都不该有（十三轮把底部固定区上方那条也撤了）',
-    );
-    // 底部固定区确实在（没有线是取舍，不是没渲染）。
-    expect(find.byKey(homeSidebarProfileKey), findsOneWidget);
+      // 判据用 `colorScheme.brightness`（= `AppColors.isDark` 用的那个），
+      // **不是** `Theme.of(...).brightness`（本仓 `_themeOf` 不设后者，虽已显式对齐）。
+      expect(
+        Theme.of(
+          tester.element(find.byKey(homeSidebarProfileKey)),
+        ).colorScheme.brightness,
+        brightness,
+        reason: '用例前提：这一轮真的跑在 $brightness 下$where',
+      );
+
+      final overview = tester.getRect(
+        find.byKey(const Key('homeSidebarOverview')),
+      );
+      final firstGroupTitle = tester.getRect(
+        find.text(HomeServiceGroup.values.first.title),
+      );
+      expect(
+        HomeServiceGroup.values.first.title,
+        '教务系统',
+        reason: '第一个分组应当就是教务系统（这条守卫的前提）',
+      );
+      expect(
+        firstGroupTitle.top,
+        greaterThanOrEqualTo(overview.bottom - 0.5),
+        reason: '「数据一览」与教务系统之间不许有线$where',
+      );
+
+      // ① **不再用 `Divider` 实现**：侧栏里一个 `Divider` 都不该有。
+      expect(
+        find.byType(Divider),
+        findsNothing,
+        reason: '底部那条线不该是 Divider（收起态的窄轨里它会横向溢出）$where',
+      );
+
+      // ② 底部固定区上沿**必须**有那条线。
+      //
+      // ⚠ 判据要能把它与**卡片形态那圈描边**区分开：卡片描边是"四条边都有"，
+      // 而这条框线**只有上边**。只按"在侧栏范围里"筛会把卡片描边一起捞进来
+      // （实测踩过：报出 `top=4.0` 那条就是卡片的上边框）。
+      final footerTop = tester.getRect(find.byKey(homeSidebarProfileKey)).top;
+      final topOnly = <(Rect, BorderSide)>[];
+      void collect(Element el) {
+        final widget = el.widget;
+        if (widget is DecoratedBox) {
+          final d = widget.decoration;
+          if (d is BoxDecoration && d.border is Border) {
+            final b = d.border! as Border;
+            final hasOthers =
+                b.bottom.width > 0 || b.left.width > 0 || b.right.width > 0;
+            if (!hasOthers && b.top.width > 0 && b.top.color.a > 0) {
+              final ro = el.renderObject;
+              if (ro is RenderBox && ro.hasSize) {
+                topOnly.add((ro.localToGlobal(Offset.zero) & ro.size, b.top));
+              }
+            }
+          }
+        }
+        el.visitChildren(collect);
+      }
+
+      collect(tester.binding.rootElement!);
+
+      expect(
+        topOnly.length,
+        1,
+        reason: '侧栏里"只有一条上边框"的装饰件**有且只有一个** —— 就是底部固定区上沿那道'
+            '（实测 ${topOnly.map((e) => e.$1.top).toList()}）$where',
+      );
+      final (lineRect, side) = topOnly.single;
+      expect(
+        lineRect.top,
+        closeTo(footerTop, 2.5),
+        reason: '那道线必须在底部固定区上沿'
+            '（实测 top=${lineRect.top}，固定区 top=$footerTop）$where',
+      );
+      expect(
+        lineRect.width,
+        closeTo(tester.getSize(find.byKey(const Key('homeSidebar'))).width, 0.5),
+        reason: '那道线要左右顶满（跟着 pillInset 缩进就成了悬空短线）$where',
+      );
+      expect(side.width, 1, reason: '1px 细线$where');
+      expect(
+        side.color,
+        AppColors.hairline(tester.element(find.byKey(homeSidebarProfileKey))),
+        reason: '★ 线色 = `AppColors.hairline` —— 换成裸 '
+            '`outlineVariant.withValues(alpha: 0.6)` 在深色下会变成 60% 白（"太亮"，'
+            '2026-09-17 实测过）$where',
+      );
+
+      // ③ 底部固定区确实在（有线是要求，不是没渲染）。
+      expect(find.byKey(homeSidebarProfileKey), findsOneWidget, reason: where);
+    }
   });
+
 
   testWidgets('按分组列出全部条目，且分组顺序 = 枚举顺序', (tester) async {
     await pumpSidebar(tester, stubEntries());

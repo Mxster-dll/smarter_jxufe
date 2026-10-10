@@ -481,7 +481,6 @@ class _HomeSidebarState extends State<HomeSidebar>
     if (anchor == null) return null;
     final rowBox = anchor.currentContext?.findRenderObject();
     final scrollBox = _ctxOfKey(_measureScrollKey)?.findRenderObject();
-    print('PROBE m ctx=${anchor.currentContext != null} el=${anchor.currentContext.runtimeType} rowBox=${rowBox.runtimeType} scroll=${scrollBox.runtimeType} footer=${widget.footerSelected}');
     if (rowBox is! RenderBox || scrollBox is! RenderBox) return null;
     if (!rowBox.hasSize || !scrollBox.hasSize) return null;
     final topLeft = scrollBox.globalToLocal(rowBox.localToGlobal(Offset.zero));
@@ -725,24 +724,43 @@ class _HomeSidebarState extends State<HomeSidebar>
             ),
           ),
           // 底部固定区：不随列表滚动（超长服务列表也压不到它）。
-          // ⚠ **上面那条分割线已去掉**（用户 2026-10-09 十三轮：「侧边栏不要有边框线」）：
-          // 侧栏本来就靠底色与内容分界（宫格页那一侧也一样），再压一根线只是噪点。
-          // 历史：2026-09-17 用户曾报「底部固定项最顶部的分割线太亮」→ 当时把
-          // `outlineVariant.withValues(alpha: 0.6)` 换成 `hairline`；现在整条撤掉。
+          //
+          // ⚠ **只在它上沿画一条框线**（用户 2026-10-10 三十二轮：「我希望侧边栏底部固定
+          // 部分要有一个顶部框线，但是不要有别的框线」）—— 本轮**推翻了**
+          // 2026-10-09 十三轮那句「侧边栏不要有边框线」在**这一条线上**的适用：
+          // 现在要的就是"固定区与上面那串会滚的列表分得开"这一根。
+          // 除此之外侧栏里**一条线都不许再加**：分组之间没有、概览与教务系统之间没有
+          // （用户 2026-09-17 那条仍然有效）、左右与底部也不描边。
+          //
+          // 颜色用 `AppColors.hairline`（**不是**裸 `outlineVariant.withValues(alpha: 0.6)`）：
+          // 2026-09-17 那次实测的坑 —— `outlineVariant` 在深色下**自带 alpha**
+          // （10% 白），`withValues` 是**替换**不是相乘，写成 0.6 会变成 60% 白，
+          // 在 #1A1A1A 上混出 `#A3A3A3` 那种刺眼的亮线（用户原话「太亮」）。
           if (widget.footer != null) ...[
             // ⚠ 那两行（[HomeSidebarFooterRow]）**不自带左右外边距** —— 缩进由这里给，
             // 这样它们的圆角胶囊与目录行的胶囊**左右对齐**（十轮口径）。
             // ⚠ 外面这层 `ClipRect` 是给**收起动画**用的：那 200ms 里文本还在画、
             // 轨道已经收窄 → 不裁就是 `RenderFlex overflowed`（见 [body] 的注释）。
-            ClipRect(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: HomeSidebar.pillInset),
-                // ⚠ 底部那两行**自己归侧栏管**，可调用方给的是裸 `Column`（没有 key）——
-                // 所以这里替它们套上测量锚点：**按 child 的顺序**（头像是「我的」、
-                // 齿轮是「设置」，见 `home_screen.dart` 的装配口径）。
-                // 这样高亮框才能飞到它们身上（否则点这两行时框整个消失 = 用户报的
-                // 「位置会闪动」）。
-                child: _footerWithAnchors(widget.footer!),
+            // ⚠ 那道线画在 `ClipRect` **外面**、且**左右顶满**（不跟着 `pillInset` 缩进）：
+            // 它分的是"整块区域"，缩进会变成一条悬空的短线。
+            DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(color: AppColors.hairline(context)),
+                ),
+              ),
+              child: ClipRect(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: HomeSidebar.pillInset,
+                  ),
+                  // ⚠ 底部那两行**自己归侧栏管**，可调用方给的是裸 `Column`（没有 key）——
+                  // 所以这里替它们套上测量锚点：**按 child 的顺序**（头像是「我的」、
+                  // 齿轮是「设置」，见 `home_screen.dart` 的装配口径）。
+                  // 这样高亮框才能飞到它们身上（否则点这两行时框整个消失 = 用户报的
+                  // 「位置会闪动」）。
+                  child: _footerWithAnchors(widget.footer!),
+                ),
               ),
             ),
           ],
