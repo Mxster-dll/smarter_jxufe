@@ -256,11 +256,16 @@ class _WindowTitleBarState extends ConsumerState<WindowTitleBar> {
 
         // ⚠ 两组各自 `AnimatedAlign` 在两端之间滑动（不是 Row + Spacer）—— 换位置
         // 那一帧若直接改 Row 的顺序就是**瞬移**；这里两组反向对滑，看着才是「交换」。
-        // 动作区永远跟着三键那一组（同一头的窗口级操作）。
+        // 动作区平时跟着三键那一组（同一头的窗口级操作）。
+        //
+        // ⚠⚠ **窄屏时动作簇要单独摆**（用户 2026-10-10：「我希望右上角三键位置不要漂移，
+        // 你现在导致右上角三键在窄屏下也移动到左端」）：把动作簇和三键留在同一个
+        // `AnimatedAlign` 里，一移就整坨一起移，三键跟着漂 ✗。三键的位置**只由
+        // 「三键左右互换」这一项偏好决定**，任何宽度下都不许动。
         final controlsChildren = <Widget>[
           if (buttonsOnLeft) buttons,
-          if (buttonsOnLeft && actionsRow != null) actionsRow,
-          if (!buttonsOnLeft && actionsRow != null) actionsRow,
+          if (buttonsOnLeft && actionsRow != null && !narrow) actionsRow,
+          if (!buttonsOnLeft && actionsRow != null && !narrow) actionsRow,
           if (!buttonsOnLeft) buttons,
         ];
 
@@ -274,8 +279,9 @@ class _WindowTitleBarState extends ConsumerState<WindowTitleBar> {
           child: Stack(
             children: <Widget>[
               AnimatedAlign(
-                // 窄屏时动作簇一律贴左（跟手机端一致）；宽屏照旧跟着三键在的那一侧。
-                alignment: (narrow || buttonsOnLeft)
+                // 三键：**只**看「三键左右互换」这一项偏好 —— 窄屏也不动它
+                // （用户 2026-10-10：「我希望右上角三键位置不要漂移」）。
+                alignment: buttonsOnLeft
                     ? Alignment.centerLeft
                     : Alignment.centerRight,
                 duration: kWindowTitleBarSwitchDuration,
@@ -289,6 +295,9 @@ class _WindowTitleBarState extends ConsumerState<WindowTitleBar> {
                   ),
                 ),
               ),
+              // 窄屏：动作簇（头像 + 设置）单独贴左 —— 跟手机端那条顶栏一致。
+              if (narrow && actionsRow != null)
+                Align(alignment: Alignment.centerLeft, child: actionsRow),
               AnimatedAlign(
                 alignment: buttonsOnLeft
                     ? Alignment.centerRight
