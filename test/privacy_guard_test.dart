@@ -140,19 +140,9 @@ String _read(File f) {
   return utf8.decode(bytes, allowMalformed: true);
 }
 
-void main() {
-  final files = _files();
-  final texts = <String, String>{for (final f in files) f.path: _read(f)};
-
-  test('守卫自己别空转（扫到的文件与语料量级）', () {
-    expect(files.length, greaterThan(300));
-    expect(texts.values.where((t) => t.isNotEmpty).length, greaterThan(300));
-    expect(_nameDigests.length, greaterThan(50));
-    expect(_phraseDigests, isNotEmpty);
-  });
-
-  test('结构类：证件号 / 手机号 / 票据 / 会话 / 令牌 / 学籍号 / 学号 / 通知书号 / MAC 全为零命中', () {
-    final patterns = <String, (RegExp, Set<String> Function())>{
+/// 结构类判据（形状 + 白名单）—— **文件与提交信息共用这一份**，别在两处各写一套。
+Map<String, (RegExp, Set<String> Function())> _structPatterns() =>
+    <String, (RegExp, Set<String> Function())>{
       // 身份证（含末位 X）
       '证件号': (RegExp(r'\b\d{17}[\dXx]\b'), () => _okIdCards),
       // 手机号
@@ -183,90 +173,172 @@ void main() {
           () => _okMacs),
     };
 
-    final bad = <String>[];
-    patterns.forEach((label, spec) {
-      final (rx, allowed) = spec;
-      final ok = allowed();
-      for (final entry in texts.entries) {
-        for (final m in rx.allMatches(entry.value)) {
-          final hit = m.group(0)!;
-          if (ok.any(hit.contains)) continue;
-          final line = entry.value.substring(0, m.start).split('\n').length;
-          bad.add('$label  ${entry.key}:$line  →  ${hit.length > 40 ? hit.substring(0, 40) : hit}');
+/// 逐条语料跑结构类判据 → 「标识  路径:行  →  命中值」清单。
+List<String> _structHits(Map<String, String> texts) {
+  final bad = <String>[];
+  _structPatterns().forEach((label, spec) {
+    final (rx, allowed) = spec;
+    final ok = allowed();
+    for (final entry in texts.entries) {
+      for (final m in rx.allMatches(entry.value)) {
+        final hit = m.group(0)!;
+        if (ok.any(hit.contains)) continue;
+        final line = entry.value.substring(0, m.start).split('\n').length;
+        bad.add('$label  ${entry.key}:$line  →  ${hit.length > 40 ? hit.substring(0, 40) : hit}');
+      }
+    }
+  });
+  return bad;
+}
+
+/// 真人姓名（加盐摘要黑名单 · 2~4 字 CJK 窗口）。
+List<String> _nameHits(Map<String, String> texts) {
+  final bad = <String>[];
+  final rx = RegExp(r'[\u4e00-\u9fa5]+');
+  for (final entry in texts.entries) {
+    for (final run in rx.allMatches(entry.value)) {
+      final s = run.group(0)!;
+      for (var i = 0; i < s.length; i++) {
+        for (var len = 2; len <= 4 && i + len <= s.length; len++) {
+          final d = _digest(s.substring(i, i + len));
+          // 两个与常用词同形的名字只在「贴到中文串边缘」时才算：
+          // 「任何东西」「课程进行」是词，不是人名（glue_review.py 实测贴字处 0 命中）。
+          final standalone =
+              _nameStandaloneDigests.contains(d) && (i == 0 || i + len == s.length);
+          if (_nameDigests.contains(d) || standalone) {
+            final line = entry.value.substring(0, run.start + i).split('\n').length;
+            bad.add('${entry.key}:$line  →  ${s.substring(i, i + len)}');
+          }
         }
       }
-    });
+    }
+  }
+  return bad;
+}
+
+/// 真实地址（加盐摘要黑名单 · 8 字 CJK 窗口）。
+List<String> _addrHits(Map<String, String> texts) {
+  final bad = <String>[];
+  final rx = RegExp(r'[\u4e00-\u9fa5]+');
+  for (final entry in texts.entries) {
+    for (final run in rx.allMatches(entry.value)) {
+      final s = run.group(0)!;
+      for (var i = 0; i + 8 <= s.length; i++) {
+        if (_phraseDigests.contains(_digest(s.substring(i, i + 8)))) {
+          final line = entry.value.substring(0, run.start + i).split('\n').length;
+          bad.add('${entry.key}:$line  →  ${s.substring(i, i + 8)}…');
+        }
+      }
+    }
+  }
+  return bad;
+}
+
+/// 抓包凭据（会话令牌 / 设备指纹 / CAS execution）。
+/// ⚠ 2026-10-11 两处修正，都来自实测漏网：
+///   ① CAS 的 execution 在**抓包整页**里是 `<input value="<uuid>_<base64>">`，
+///      命令行式 `execution=…` 的判据看不见它（`reverse_engineering/login.html` 漏网）；
+///   ② 它在**源码**里可能是单引号或裸串（`auth_remote_datasource.dart` 的 `const execution = '…'`），
+///      所以判据**只看令牌本体**、不假定两侧引号（第一版要求双引号 → 历史里 8 个 blob 漏网）。
+List<String> _credentialHits(Map<String, String> texts) {
+  final rx = RegExp(r'sessionToken(?:%3D|=)[0-9a-fA-F]{32}'
+      r'|fpVisitorId"\s+value="[^"]{8,}"'
+      r'|execution=[0-9a-f-]{20,}_[A-Za-z0-9_+/.=%\-]{40,}'
+      r'|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}_[A-Za-z0-9+/=_\-]{100,}');
+  final bad = <String>[];
+  for (final entry in texts.entries) {
+    for (final m in rx.allMatches(entry.value)) {
+      final hit = m.group(0)!;
+      // 合成值放行（TESTVISITORID / TESTSESSIONTOKEN / <REDACTED> 是清洗后的占位）
+      if (hit.contains('TESTVISITORID') ||
+          hit.contains('TESTSESSIONTOKEN') ||
+          hit.contains('<REDACTED>')) {
+        continue;
+      }
+      final line = entry.value.substring(0, m.start).split('\n').length;
+      bad.add('${entry.key}:$line');
+    }
+  }
+  return bad;
+}
+
+/// 全部提交信息（`git log --all`）→ {「短 SHA · 主题行」: 正文}。
+/// 非 git 检出（例如源码 zip）返回空表，调用方据此跳过。
+Map<String, String> _commitMessages() {
+  ProcessResult r;
+  try {
+    r = Process.runSync('git', <String>['log', '--all', '--format=%H%x1f%B%x1e'],
+        stdoutEncoding: utf8);
+  } on ProcessException {
+    return <String, String>{};
+  }
+  if (r.exitCode != 0) return <String, String>{};
+  final out = <String, String>{};
+  for (final rec in (r.stdout as String).split('\u001e')) {
+    if (rec.trim().isEmpty) continue;
+    final parts = rec.split('\u001f');
+    final sha = parts.first.trim();
+    final body = parts.length > 1 ? parts[1] : '';
+    final subject = body.split('\n').first.replaceAll('\ufeff', '');
+    out['${sha.length >= 10 ? sha.substring(0, 10) : sha} $subject'] = body;
+  }
+  return out;
+}
+
+void main() {
+  final files = _files();
+  final texts = <String, String>{for (final f in files) f.path: _read(f)};
+
+  test('守卫自己别空转（扫到的文件与语料量级）', () {
+    expect(files.length, greaterThan(300));
+    expect(texts.values.where((t) => t.isNotEmpty).length, greaterThan(300));
+    expect(_nameDigests.length, greaterThan(50));
+    expect(_phraseDigests, isNotEmpty);
+  });
+
+  test('结构类：证件号 / 手机号 / 票据 / 会话 / 令牌 / 学籍号 / 学号 / 通知书号 / MAC 全为零命中', () {
+    final bad = _structHits(texts);
     expect(bad, isEmpty, reason: '疑似真实个人信息：\n${bad.take(20).join('\n')}');
   });
 
   test('自由文本类：真人姓名（加盐摘要黑名单）零命中', () {
-    final bad = <String>[];
-    final rx = RegExp(r'[\u4e00-\u9fa5]+');
-    for (final entry in texts.entries) {
-      for (final run in rx.allMatches(entry.value)) {
-        final s = run.group(0)!;
-        for (var i = 0; i < s.length; i++) {
-          for (var len = 2; len <= 4 && i + len <= s.length; len++) {
-            final d = _digest(s.substring(i, i + len));
-            // 两个与常用词同形的名字只在「贴到中文串边缘」时才算：
-            // 「任何东西」「课程进行」是词，不是人名（glue_review.py 实测贴字处 0 命中）。
-            final standalone =
-                _nameStandaloneDigests.contains(d) && (i == 0 || i + len == s.length);
-            if (_nameDigests.contains(d) || standalone) {
-              final line = entry.value.substring(0, run.start + i).split('\n').length;
-              bad.add('${entry.key}:$line  →  ${s.substring(i, i + len)}');
-            }
-          }
-        }
-      }
-    }
+    final bad = _nameHits(texts);
     expect(bad, isEmpty, reason: '疑似真实姓名：\n${bad.take(20).join('\n')}');
   });
 
   test('自由文本类：真实地址（加盐摘要黑名单 · 8 字窗口）零命中', () {
-    final bad = <String>[];
-    final rx = RegExp(r'[\u4e00-\u9fa5]+');
-    for (final entry in texts.entries) {
-      for (final run in rx.allMatches(entry.value)) {
-        final s = run.group(0)!;
-        for (var i = 0; i + 8 <= s.length; i++) {
-          if (_phraseDigests.contains(_digest(s.substring(i, i + 8)))) {
-            final line = entry.value.substring(0, run.start + i).split('\n').length;
-            bad.add('${entry.key}:$line  →  ${s.substring(i, i + 8)}…');
-          }
-        }
-      }
-    }
+    final bad = _addrHits(texts);
     expect(bad, isEmpty, reason: '疑似真实地址：\n${bad.take(20).join('\n')}');
   });
 
   test('抓包凭据：sessionToken / fpVisitorId / CAS execution 零命中', () {
     // 2026-09-21 第 4 轮才发现的类别：reverse_engineering/ 里存着整页抓下来的 CAS 登录页，
     // 里面夹着 sessionToken（会话令牌）与 fpVisitorId（浏览器指纹）。
-    // 唯一豁免：lib/features/qr_login/.../wechat_login_remote_datasource.dart 把联邦登录 URL 连
-    // 同 sessionToken 写死在代码里 —— 那是**功能常量**（学校服务侧令牌，非个人信息），
-    // 动它会打断微信登录链路；已单独报给项目所有者决定，不在这里静默改。
-    const String exemptPath =
-        'lib/features/qr_login/data/datasources/wechat_login_remote_datasource.dart';
-    final rx = RegExp(r'sessionToken(?:%3D|=)[0-9a-fA-F]{32}'
-        r'|fpVisitorId"\s+value="[^"]{8,}"'
-        r'|execution=[0-9a-f-]{20,}_[A-Za-z0-9_+/.=%\-]{40,}');
-    final bad = <String>[];
-    for (final entry in texts.entries) {
-      if (entry.key.replaceAll('\\', '/').endsWith(exemptPath)) continue;
-      for (final m in rx.allMatches(entry.value)) {
-        final hit = m.group(0)!;
-        // 合成值放行（TESTVISITORID / TESTSESSIONTOKEN / <REDACTED> 是清洗后的占位）
-        if (hit.contains('TESTVISITORID') ||
-            hit.contains('TESTSESSIONTOKEN') ||
-            hit.contains('<REDACTED>')) {
-          continue;
-        }
-        final line = entry.value.substring(0, m.start).split('\n').length;
-        bad.add('${entry.key}:$line');
-      }
-    }
+    // ⚠ 2026-10-11：判据搬进 _credentialHits() 并与提交信息共用；同时补上「整页里的
+    // execution」形态 —— CAS 登录页是 `<input value="<uuid>_<base64>">`，原先那条
+    // `execution=…` 判据看不见它（reverse_engineering/login.html 实测漏网）。
+    final bad = _credentialHits(texts);
     expect(bad, isEmpty, reason: '疑似抓包凭据（会话令牌 / 设备指纹 / CAS execution）：\n${bad.take(20).join('\n')}');
+  });
+
+  test('提交信息类：真人姓名 / 真实地址 / 结构类形状零命中（message 是守卫的老盲区）', () {
+    // 2026-10-11 立。为什么单列一条：守卫只读**工作树文件**、钩子只看 index，**没有任何一层
+    // 看提交信息**。2026-09-21 那轮清洗也只覆盖文件内容，于是 message 里长期挂着：
+    // 两个与常用词同形的真人姓名（两条提交作为举例写出来）、一个 10 位数字占位、
+    // 真机设备序列号（2026-09-29 的 message 把换掉的值原文写了出来）、
+    // 以及四条令牌/指纹的前 8 位与第三方密钥前 9 位（2026-10-10 的 message 同样写了原文）。
+    // 这些值**随 push 永久公开**，而文件侧守卫一个都拦不住 —— 故补上这条。
+    final messages = _commitMessages();
+    if (messages.isEmpty) return; // 非 git 检出（源码 zip）→ 无从扫描
+    expect(messages.length, greaterThan(50), reason: '没扫到提交信息 → 判据空转');
+    final struct = _structHits(messages);
+    final names = _nameHits(messages);
+    final addrs = _addrHits(messages);
+    final creds = _credentialHits(messages);
+    expect(names, isEmpty, reason: '提交信息里的真人姓名：\n${names.take(20).join('\n')}');
+    expect(struct, isEmpty, reason: '提交信息里的结构类真值：\n${struct.take(20).join('\n')}');
+    expect(addrs, isEmpty, reason: '提交信息里的真实地址：\n${addrs.take(20).join('\n')}');
+    expect(creds, isEmpty, reason: '提交信息里的抓包凭据：\n${creds.take(20).join('\n')}');
   });
 
   test('脱敏后的合成值确实还在（守卫没把清洗成果一起删掉）', () {
