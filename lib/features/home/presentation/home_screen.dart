@@ -311,6 +311,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               selectedTitle: selected?.title,
               // 底部固定区选中时「数据一览」不许跟着高亮（它不是 null 就等于概览）。
               overviewSelected: footer == null && selected == null,
+              // 高亮框要能飞到「我的 / 设置」那两行上去（2026-10-10：
+              // 认不出它们时框会直接消失，点这两行就是"啪"地一闪）。
+              footerSelected: footer != null,
+              settingsSelected: footer == HomeSidebarFooter.settings,
               onOverview: () => _select(null),
               onSelect: (entry) => _select(entry.title),
               // 底部固定区：头像在上、设置在下（用户 2026-09-16 裁定 —— 桌面端这两个

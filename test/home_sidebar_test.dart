@@ -811,6 +811,152 @@ void main() {
       }
     });
 
+    testWidgets('★ 飞行是**单调**的：逐帧采样不许往回跳 / 不许跳空', (tester) async {
+      tester.view.physicalSize = const Size(1200, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      await pumpWithSelection(tester, '课程');
+      await tester.pumpAndSettle();
+      final start = pillRect(tester).top;
+
+      // 跨好几个分组（长距离飞行，最容易看出跳变）。
+      await pumpWithSelection(tester, '校历');
+      await tester.pump();
+
+      final tops = <double>[start];
+      // ⚠ **飞一半时再换一次目标** —— 用户报的「位置会闪动」就出在这条路上
+      // （目标在半途变了）。只换一次的话这条守卫抓不到任何东西：
+      // 实测把起点改回旧写法（`_from = _target`）它照样绿。
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        tops.add(pillRect(tester).top);
+        if (i == 2) {
+          await pumpWithSelection(tester, '宿舍电费');
+        }
+      }
+      for (var i = 0; i < 14; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        tops.add(pillRect(tester).top);
+      }
+      await tester.pumpAndSettle();
+      tops.add(pillRect(tester).top);
+
+      // ① 相邻两帧不许"跳空"：位移不许超过全程的一大半（那就是瞬移 / 闪）。
+      final span = tops.reduce((a, b) => a > b ? a : b) -
+          tops.reduce((a, b) => a < b ? a : b);
+      expect(span, greaterThan(40), reason: '用例前提：这一跳确实有距离');
+      for (var i = 1; i < tops.length; i++) {
+        expect(
+          (tops[i] - tops[i - 1]).abs(),
+          lessThanOrEqualTo(span * 0.6),
+          reason: '★ 第 $i 帧跳空了：${tops[i - 1]} → ${tops[i]}'
+              '（整串 $tops）',
+        );
+      }
+      // ② 中途必须出现过"在两端之间"的帧（说明真是一格格挪过去的）。
+      final lowest = tops.reduce((a, b) => a < b ? a : b);
+      final highest = tops.reduce((a, b) => a > b ? a : b);
+      expect(
+        tops.any((t) => t > lowest + 1 && t < highest - 1),
+        isTrue,
+        reason: '★ 中途必须出现过中间位置（整串 $tops）',
+      );
+    });
+
+    testWidgets('★ 点底部固定区：框会飞过去（不是"啪"地消失）', (tester) async {
+      tester.view.physicalSize = const Size(1200, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      Future<void> pumpFooterSelected(bool settingsSelected) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Row(
+                children: [
+                  HomeSidebar(
+                    entries: stubEntries(),
+                    // 选中底部那两行时 `selectedTitle` 也是 null（概览同样为 null）→
+                    // 由 `overviewSelected: false` 把它与概览区分开。
+                    selectedTitle: null,
+                    footerSelected: true,
+                    overviewSelected: false,
+                    onSelect: (_) {},
+                    onOverview: () {},
+                    footer: Column(
+                      children: [
+                        HomeSidebarFooterRow(
+                          key: homeSidebarProfileKey,
+                          selected: !settingsSelected,
+                          leading: const SizedBox.shrink(),
+                          label: '我的',
+                          onTap: () {},
+                        ),
+                        HomeSidebarFooterRow(
+                          key: homeSidebarSettingsKey,
+                          selected: settingsSelected,
+                          leading: const SizedBox.shrink(),
+                          label: '设置',
+                          onTap: () {},
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+
+      // 起始：选中目录里的「课程」。
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Row(
+              children: [
+                HomeSidebar(
+                  entries: stubEntries(),
+                  selectedTitle: '课程',
+                  onSelect: (_) {},
+                  onOverview: () {},
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pumpAndSettle();
+      final startTop = pillRect(tester).top;
+
+      // 切到「设置」（底部固定区）。
+      await pumpFooterSelected(true);
+      await tester.pump();
+
+      final tops = <double>[startTop];
+      for (var i = 0; i < 14; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        final pill = find.byKey(const Key('homeSidebarFlyingPill'));
+        tops.add(pill.evaluate().isEmpty ? double.nan : pillRect(tester).top);
+      }
+
+      // ⚠ 用户 2026-10-10：「位置会闪动」。若底部那两行**不参与高亮**，
+      // 点它们时 `_measure()` 返回 null → 框直接消失（`SizedBox.shrink()`），
+      // 观感就是"啪"地一闪；再点回目录条目又"啪"地出现。
+      expect(
+        tops.every((t) => !t.isNaN),
+        isTrue,
+        reason: '★ 点底部固定区时框不该整个消失（那一下就是闪）：$tops',
+      );
+      expect(
+        tops.last,
+        greaterThan(startTop),
+        reason: '应当飞到底部那一行去（实测 $tops）',
+      );
+    });
+
     testWidgets('时长与侧栏其它补间同档（200ms 级，不是几十毫秒的闪）', (tester) async {
       expect(
         HomeSidebar.pillDuration.inMilliseconds,

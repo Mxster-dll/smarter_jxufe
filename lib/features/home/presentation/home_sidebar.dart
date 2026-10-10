@@ -223,6 +223,19 @@ class HomeSidebar extends StatefulWidget {
   /// 高亮」（用户 2026-10-09 五轮报的那个 bug）。
   final bool? overviewSelected;
 
+  /// 底部固定区那两行**是不是当前选中项**（默认 false）。
+  ///
+  /// 为什么要这两个参数：那两行不是目录条目，`selectedTitle` 也是 null，
+  /// 光靠"目录里没选中"分不出「选中了底部那两行」和「选中了概览」。
+  ///
+  /// ⚠ 2026-10-10 起因**高亮框**需要它们：框要能飞到那两行上去。从前认不出它们 →
+  /// `_selectedRowKey()` 返回 null → 框直接消失，用户点「我的 / 设置」时看到"啪"地一闪
+  /// （原话：「位置会闪动」）。
+  final bool footerSelected;
+
+  /// 底部固定区选中的是「设置」还是「我的」（仅在 [footerSelected] 为 true 时有意义）。
+  final bool settingsSelected;
+
   /// 点击服务条目。为 null 时回落到条目自带的 [HomeServiceEntry.onTap]。
   final ValueChanged<HomeServiceEntry>? onSelect;
 
@@ -272,6 +285,8 @@ class HomeSidebar extends StatefulWidget {
     this.width = homeSidebarWidth,
     this.selectedTitle,
     this.overviewSelected,
+    this.footerSelected = false,
+    this.settingsSelected = false,
     this.onSelect,
     this.onOverview,
     this.footer,
@@ -361,13 +376,30 @@ class _HomeSidebarState extends State<HomeSidebar>
   /// 侧栏的测量锚点。
   static const Key _measureBarKey = Key('homeSidebar_pillAnchor');
 
-  /// 选中行的 key（直接复用既有的行 key，不必另挂一套）。
-  Key? _selectedRowKey() {
+  /// 滚动区的测量锚点（高亮框画在**滚动区**的坐标系里，见 [_measure]）。
+  static const Key _measureScrollKey = Key('homeSidebar_scrollAnchor');
+
+  /// 每一行自己的测量锚点（`GlobalKey` + `currentContext` 取 RenderBox）。
+  ///
+  /// ⚠ **别退回"遍历 element 树按 `Key` 找"**：那样**底部固定区那两行找不到**
+  /// （实测：`find.byKey(homeSidebarProfileKey)` 明明能定位，自己自上而下遍历却拿不到）
+  /// → `_measure()` 返回 null → 点「我的 / 设置」时高亮框整个消失，用户看到"啪"地一闪
+  /// （原话：「位置会闪动」）。`GlobalKey` 是确定性的。
+  final GlobalKey _overviewAnchor = GlobalKey();
+  final GlobalKey _profileAnchor = GlobalKey();
+  final GlobalKey _settingsAnchor = GlobalKey();
+  final Map<String, GlobalKey> _itemAnchors = <String, GlobalKey>{};
+
+  /// 选中行此刻的测量锚点。
+  GlobalKey? _selectedAnchor() {
+    if (widget.footerSelected) {
+      return widget.settingsSelected ? _settingsAnchor : _profileAnchor;
+    }
     final overview = widget.overviewSelected ?? widget.selectedTitle == null;
-    if (overview) return const Key('homeSidebarOverview');
+    if (overview) return _overviewAnchor;
     final title = widget.selectedTitle;
     if (title == null) return null;
-    return Key('homeSidebarItem-$title');
+    return _itemAnchors.putIfAbsent(title, () => GlobalKey());
   }
 
   @override
@@ -386,8 +418,14 @@ class _HomeSidebarState extends State<HomeSidebar>
     super.didUpdateWidget(old);
     if (old.selectedTitle != widget.selectedTitle ||
         old.overviewSelected != widget.overviewSelected ||
+        old.footerSelected != widget.footerSelected ||
+        old.settingsSelected != widget.settingsSelected ||
         old.collapsed != widget.collapsed) {
-      // 换行 / 收起态变化都要重新量：目标可能变了，也可能只是宽度变了。
+      // ⚠ **必须挂到帧末**，不能同步量（本轮实测的关键一条）：
+      // 父级重建有可能让 `HomeSidebar` 的 State **整个重建**，此时
+      // `didUpdateWidget` 之后紧跟的那次 build 还没跑，锚点的 `currentContext` 仍是
+      // null（实测 `ctx=false → rowBox=Null`）→ 量出 null → 框直接消失。
+      // 挂到帧末，量与画用的是同一份布局。
       WidgetsBinding.instance.addPostFrameCallback((_) => _retarget());
     }
   }
@@ -403,19 +441,50 @@ class _HomeSidebarState extends State<HomeSidebar>
     setState(() {});
   }
 
+  /// 给底部固定区那两行套上测量锚点（顺序与 `home_screen.dart` 的装配一致：
+  /// 头像 = 「我的」，齿轮 = 「设置」）。
+  ///
+  /// 调用方给的是两行的 `Column`（见 `home_screen.dart`）—— 这里按 **child 下标**套锚点：
+  /// 下标 0 = 我的、1 = 设置。万一将来底部区换了形状，最坏只是框飞的位置偏一点，不会崩。
+  Widget _footerWithAnchors(Widget footer) {
+    if (footer is! Column) {
+      // 不是 `Column`（旧调用点 / 测试里的自定义 footer）：整块套一个锚点，
+      // 框仍然会飞向它，只是不区分是哪一行。
+      return KeyedSubtree(key: _profileAnchor, child: footer);
+    }
+    final children = footer.children;
+    return Column(
+      key: footer.key,
+      mainAxisAlignment: footer.mainAxisAlignment,
+      crossAxisAlignment: footer.crossAxisAlignment,
+      mainAxisSize: footer.mainAxisSize,
+      textDirection: footer.textDirection,
+      verticalDirection: footer.verticalDirection,
+      textBaseline: footer.textBaseline,
+      children: [
+        for (var i = 0; i < children.length; i++)
+          KeyedSubtree(
+            key: i == 0 ? _profileAnchor : _settingsAnchor,
+            child: children[i],
+          ),
+      ],
+    );
+  }
+
   /// 量一次「选中行」在**本栏坐标系**里的胶囊矩形。
   ///
   /// ⚠ 用 `globalToLocal` 相减而不是累加行高：滚动、分组标题、收起态宽度全都自动跟上。
   /// ⚠ 外面那圈留白在这里让掉（[HomeSidebar.pillInset] / [HomeSidebar.pillVerticalInset]），
   /// 所以量出来的就是**胶囊**的矩形（与从前每行自己画的那个一致）。
   Rect? _measure() {
-    final rowKey = _selectedRowKey();
-    if (rowKey == null) return null;
-    final rowBox = _ctxOfKey(rowKey)?.findRenderObject();
-    final barBox = _ctxOfKey(_measureBarKey)?.findRenderObject();
-    if (rowBox is! RenderBox || barBox is! RenderBox) return null;
-    if (!rowBox.hasSize || !barBox.hasSize) return null;
-    final topLeft = barBox.globalToLocal(rowBox.localToGlobal(Offset.zero));
+    final anchor = _selectedAnchor();
+    if (anchor == null) return null;
+    final rowBox = anchor.currentContext?.findRenderObject();
+    final scrollBox = _ctxOfKey(_measureScrollKey)?.findRenderObject();
+    print('PROBE m ctx=${anchor.currentContext != null} el=${anchor.currentContext.runtimeType} rowBox=${rowBox.runtimeType} scroll=${scrollBox.runtimeType} footer=${widget.footerSelected}');
+    if (rowBox is! RenderBox || scrollBox is! RenderBox) return null;
+    if (!rowBox.hasSize || !scrollBox.hasSize) return null;
+    final topLeft = scrollBox.globalToLocal(rowBox.localToGlobal(Offset.zero));
     final rowRect = topLeft & rowBox.size;
     return Rect.fromLTWH(
       rowRect.left + HomeSidebar.pillInset,
@@ -462,18 +531,40 @@ class _HomeSidebarState extends State<HomeSidebar>
       return;
     }
     if (_target == next) return; // 没变，别打断正在跑的补间
+    // ⚠ **起点必须是"此刻画着的位置"，而不是上一帧的目标**（用户报「位置会闪动」）：
+    // 补间途中目标变了（收起动画每帧都在改宽度、滚动也在改位置）时，如果保留旧的
+    // `_from` 而让控制器继续跑，下一帧就会把**已经跑了一半的 t** 重新作用到
+    // "旧起点 → 新终点"上 —— 位置"啪"地跳一下，看起来就是闪。
+    // 正确做法：先把当前**实际画出来的**矩形固化成新起点，再从头补间到新终点。
+    final current = _rectNow;
     setState(() {
-      // ⚠ 补间途中目标变了（收起动画每帧都在改宽度）：**保留起点**，只换终点 ——
-      // 若把 `_from` 也改成新量到的值，框会"粘"在当前位置不再飞。
-      _from ??= next;
+      _from = current ?? next;
       _target = next;
-      // 颜色只在**真的换了条目**时才重设起点（宽度变化不该让颜色重跑一遍）。
+      // 颜色同理：从"此刻的颜色"接着走，而不是从上一帧的目标色。
+      final currentAccent = _currentAccent;
       if (nextAccent != _accent) {
-        _fromAccent = _currentAccent ?? nextAccent;
+        _fromAccent = currentAccent ?? nextAccent;
         _accent = nextAccent;
         _anim.forward(from: 0);
+      } else {
+        _fromAccent = currentAccent ?? _fromAccent;
+        // 位置变了（滚动 / 收起）也要重跑，且从此刻的位置起。
+        if (_from != next) _anim.forward(from: 0);
       }
     });
+  }
+
+  /// 此刻**实际画出来**的矩形（未捕获到目标时就是目标本身）。
+  ///
+  /// ⚠ **补间跑完必须精确落在目标上**：`AnimationController` 的最后一帧不保证
+  /// `value == 1`（实测停在 0.99 附近 → 框离那一行差 1px，然后下一帧才对齐 ——
+  /// 那 1px 的"蠕动"看起来就是闪）。所以 `isCompleted` 时直接给目标。
+  Rect? get _rectNow {
+    final from = _from;
+    final target = _target;
+    if (target == null) return null;
+    if (from == null || _anim.isCompleted) return target;
+    return Rect.lerp(from, target, Curves.easeOutCubic.transform(_anim.value));
   }
 
   /// 当前选中项该用的 accent（概览 = 主题色；条目 = 自己的 accent）。
@@ -487,23 +578,17 @@ class _HomeSidebarState extends State<HomeSidebar>
     return Theme.of(context).colorScheme.primary;
   }
 
-  /// 此刻该画出来的**胶囊纵向位置与高度**（把 t 缓动后在 `_from` 与 `_target`
-  /// 之间插值）。
+  /// 此刻该画出来的**胶囊纵向位置与高度**（= [_rectNow] 的纵向部分）。
   ///
-  /// ⚠ **只取纵向**：横向（左右退让 / 宽度）一律由 `LayoutBuilder` 现拿栏的宽度算
-  /// —— 收起侧栏时栏宽自己也在补间，而"量"出来的宽度永远是**上一帧**的
-  /// （实测：`_measure()` 在收起动画里一路读到 232，框纹丝不动地停在展开态宽度）。
-  /// 布局阶段拿到的宽度才是这一帧真正在用的那个。
+  /// ⚠ **只取纵向**：横向（左右退让 / 宽度）一律由 `Positioned` 的 `left`/`right`
+  /// 现拿这一帧的栏宽算 —— 收起侧栏时栏宽自己也在补间，而"量"出来的宽度永远是
+  /// **上一帧**的（实测：`_measure()` 在收起动画里一路读到 232，
+  /// 框纹丝不动地停在展开态宽度）。布局阶段拿到的宽度才是这一帧真正在用的那个。
   ({double top, double height})? get _pillVertical {
-    final from = _from;
-    final target = _target;
-    if (target == null) return null;
-    final rect = from == null
-        ? target
-        : Rect.lerp(from, target, Curves.easeOutCubic.transform(_anim.value))!;
+    final rect = _rectNow;
+    if (rect == null) return null;
     return (top: rect.top, height: rect.height);
   }
-
   /// 此刻该画出来的 accent（旧色 → 新色）。
   Color? get _currentAccent {
     final base = _accent ?? _fromAccent;
@@ -580,6 +665,7 @@ class _HomeSidebarState extends State<HomeSidebar>
                     // ⚠ **滚一下就要重新量**（真因之一）：行的全局位置随滚动变，
                     // 不监听就变成"列表在滚、框钉在原地不动"。
                     child: NotificationListener<ScrollNotification>(
+                      key: _measureScrollKey,
                       onNotification: (notification) {
                         // 度量要等这一帧的布局落定（滚动位置刚变），所以挂到帧末。
                         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -608,37 +694,30 @@ class _HomeSidebarState extends State<HomeSidebar>
                 ),
                 // 会飞的高亮框：**唯一一个**，画在滚动内容之上。
                 // ⚠ `IgnorePointer`：它只是观感，不许吃点击（行自己的 `InkWell` 照旧收事件）。
-                // ⚠ 宽度用 `LayoutBuilder` 现拿**这一帧真正在用的栏宽**（见 [_pillVertical]）：
-                // 收起动画的每一帧都能跟上，不必等"量"出来的下一帧。
+                // ⚠ 纵向位置**相对滚动区**算（见 [_measure]）：这一层 Stack 的原点在滚动区
+                // 左上角。目标落在底部固定区时，量出来的 top 会**超出滚动区高度** ——
+                // 那正是我们要的：框往那个方向飞出去、被滚动区裁掉，交接给底部那一行
+                // 自己的高亮；而不是"啪"地整个消失（用户报的「位置会闪动」）。
                 if (_pillVertical != null)
                   Positioned.fill(
                     child: IgnorePointer(
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          final v = _pillVertical!;
-                          if (v.top + v.height <= 0 ||
-                              v.top >= constraints.maxHeight) {
-                            return const SizedBox.shrink();
-                          }
-                          return Stack(
-                            children: [
-                              Positioned(
-                                left: HomeSidebar.pillInset,
-                                right: HomeSidebar.pillInset,
-                                top: v.top,
-                                height: v.height,
-                                child: DecoratedBox(
-                                  key: const Key('homeSidebarFlyingPill'),
-                                  decoration: sidebarPillDecoration(
-                                    context,
-                                    _currentAccent ?? scheme.primary,
-                                    selected: true,
-                                  ),
-                                ),
+                      child: Stack(
+                        children: [
+                          Positioned(
+                            left: HomeSidebar.pillInset,
+                            right: HomeSidebar.pillInset,
+                            top: _pillVertical!.top,
+                            height: _pillVertical!.height,
+                            child: DecoratedBox(
+                              key: const Key('homeSidebarFlyingPill'),
+                              decoration: sidebarPillDecoration(
+                                context,
+                                _currentAccent ?? scheme.primary,
+                                selected: true,
                               ),
-                            ],
-                          );
-                        },
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -658,7 +737,12 @@ class _HomeSidebarState extends State<HomeSidebar>
             ClipRect(
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: HomeSidebar.pillInset),
-                child: widget.footer!,
+                // ⚠ 底部那两行**自己归侧栏管**，可调用方给的是裸 `Column`（没有 key）——
+                // 所以这里替它们套上测量锚点：**按 child 的顺序**（头像是「我的」、
+                // 齿轮是「设置」，见 `home_screen.dart` 的装配口径）。
+                // 这样高亮框才能飞到它们身上（否则点这两行时框整个消失 = 用户报的
+                // 「位置会闪动」）。
+                child: _footerWithAnchors(widget.footer!),
               ),
             ),
           ],
@@ -683,19 +767,22 @@ class _HomeSidebarState extends State<HomeSidebar>
   Widget _overviewRow(BuildContext context, ColorScheme scheme) {
     final selected = widget._overviewSelected;
     final accent = scheme.primary;
-    return InkWell(
-      key: const Key('homeSidebarOverview'),
-      onTap: widget.onOverview,
-      hoverColor: accent.withValues(alpha: 0.06),
-      child: _rowShell(
-        context,
-        selected: selected,
-        accent: accent,
-        child: _iconAndLabel(
-          icon: Icon(Icons.dashboard_outlined, size: 18, color: accent),
-          label: homeSidebarOverviewTitle,
-          scheme: scheme,
+    return KeyedSubtree(
+      key: _overviewAnchor,
+      child: InkWell(
+        key: const Key('homeSidebarOverview'),
+        onTap: widget.onOverview,
+        hoverColor: accent.withValues(alpha: 0.06),
+        child: _rowShell(
+          context,
           selected: selected,
+          accent: accent,
+          child: _iconAndLabel(
+            icon: Icon(Icons.dashboard_outlined, size: 18, color: accent),
+            label: homeSidebarOverviewTitle,
+            scheme: scheme,
+            selected: selected,
+          ),
         ),
       ),
     );
@@ -751,26 +838,29 @@ class _HomeSidebarState extends State<HomeSidebar>
   Widget _row(BuildContext context, HomeServiceEntry item) {
     final scheme = Theme.of(context).colorScheme;
     final selected = item.title == widget.selectedTitle;
-    return InkWell(
-      key: Key('homeSidebarItem-${item.title}'),
-      onTap: () {
-        final select = widget.onSelect;
-        if (select != null) {
-          select(item);
-        } else {
-          item.onTap();
-        }
-      },
-      hoverColor: item.accent.withValues(alpha: 0.06),
-      child: _rowShell(
-        context,
-        selected: selected,
-        accent: item.accent,
-        child: _iconAndLabel(
-          icon: Icon(item.icon, size: 18, color: item.accent),
-          label: item.title,
-          scheme: scheme,
+    return KeyedSubtree(
+      key: _itemAnchors.putIfAbsent(item.title, () => GlobalKey()),
+      child: InkWell(
+        key: Key('homeSidebarItem-${item.title}'),
+        onTap: () {
+          final select = widget.onSelect;
+          if (select != null) {
+            select(item);
+          } else {
+            item.onTap();
+          }
+        },
+        hoverColor: item.accent.withValues(alpha: 0.06),
+        child: _rowShell(
+          context,
           selected: selected,
+          accent: item.accent,
+          child: _iconAndLabel(
+            icon: Icon(item.icon, size: 18, color: item.accent),
+            label: item.title,
+            scheme: scheme,
+            selected: selected,
+          ),
         ),
       ),
     );
