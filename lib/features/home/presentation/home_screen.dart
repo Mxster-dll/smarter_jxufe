@@ -621,14 +621,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       tooltip: collapsed ? '展开侧边栏' : '收起侧边栏',
       // 用户 2026-10-10 自绘的两个图标：源文件 `design/icons/侧边栏展开|收起.svg`，
       // Inkscape 导出到 `assets/images/icons/`（见 design/icons/README 的归置规矩）。
-      // 图标表达**这个按钮会做什么**：收起态显示「展开」、展开态显示「收起」——
-      // 与 tooltip 的措辞一致。
+      // 图标**跟着侧栏状态走**（用户 2026-10-10：「两个图标我希望随侧边栏状态转换」）：
+      // 收起态显示「收起」那枚、展开态显示「展开」那枚（tooltip 说的是动作，两者刻意不同）。
       // ⚠ `Image.asset` 不跟 IconButton 的 color 走，用 `color` + `BlendMode.srcIn`
       // 染色（按 alpha 当遮罩），深浅色主题都跟着前景色。
       icon: Image.asset(
         collapsed
-            ? 'assets/images/icons/sidebar_expand.png'
-            : 'assets/images/icons/sidebar_collapse.png',
+            ? 'assets/images/icons/sidebar_collapse.png'
+            : 'assets/images/icons/sidebar_expand.png',
         width: 18,
         height: 18,
         filterQuality: FilterQuality.medium,
