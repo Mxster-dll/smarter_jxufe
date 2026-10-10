@@ -50,6 +50,14 @@ class _WindowTitleBarState extends ConsumerState<WindowTitleBar> {
   final Map<Object, Rect> _regions = <Object, Rect>{};
   bool _syncQueued = false;
 
+  /// 「侧栏开关 + 路由历史」这一组的**外侧留白**。
+  ///
+  /// ⚠ 按**图标墨迹**算，不是按按钮外框（用户 2026-10-10：「距离最边缘的距离还是大了点」）：
+  /// 图标在 30×30 的按钮里居中，外框到墨迹还有 `(30 − 18) / 2 = 6` 的死区，
+  /// 所以外框只补 `kWindowTitleBarEdgeInset(14) − 6 = 8`，**墨迹**才恰好离侧边 14 = 离上下边
+  /// —— 与 mac 三键那条「整组留白」同一个口径（那边是 20 的槽减圆点 12）。
+  static const double kTitleBarClusterInset = kWindowTitleBarEdgeInset - 6;
+
   /// 标题栏根节点 —— 所有交互区都折算到**它的坐标系**再上报（见 `title_bar_regions.dart`）。
   final GlobalKey _barKey = GlobalKey();
 
@@ -152,8 +160,8 @@ class _WindowTitleBarState extends ConsumerState<WindowTitleBar> {
                   // kWindowTitleBarEdgeInset(14)，于是离侧边 = 离上下边；三键换边时留白也跟着换。
                   Padding(
                     padding: model.center == TitleBarSlot.left
-                        ? const EdgeInsets.only(left: kWindowTitleBarEdgeInset)
-                        : const EdgeInsets.only(right: kWindowTitleBarEdgeInset),
+                        ? const EdgeInsets.only(left: kTitleBarClusterInset)
+                        : const EdgeInsets.only(right: kTitleBarClusterInset),
                     child: centerRow,
                   ),
                 ),
