@@ -146,6 +146,8 @@ flutter:
     # 圆角不烘死在资源里，由 UI 的 ClipRRect 负责），生成脚本
     # `logos/new/icon-from-png/make_icons.py`（与桌面图标同一枚源图，取景不同）。
     - assets/images/brand/
+    # 标题栏侧栏开关的自绘图标（源文件在 design/icons/，Inkscape 导出；见该目录 README）
+    - assets/images/icons/
     # ⚠ 必须**逐个列文件**，绝不能写成目录 `assets/capture_certs/`（2026-10-10 立）。
     # 目录写法会把同目录下的 `*.key` 一起打进 APK / Windows 安装包：`.gitignore` 只挡得住
     # 「入库」，**挡不住打包**。实测 v1.0.0 / v2.0.0 两个 APK 里
