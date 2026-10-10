@@ -163,13 +163,15 @@ class _WindowTitleBarState extends ConsumerState<WindowTitleBar> {
   }
 
   /// 把一个区摆到模型给的槽位上（`hidden` 不该走到这里 —— 调用方已判过）。
-  Widget _zone(TitleBarSlot slot, Widget child) => Align(
+  Widget _zone(TitleBarSlot slot, Widget child) => AnimatedAlign(
         alignment: switch (slot) {
           TitleBarSlot.left => Alignment.centerLeft,
           TitleBarSlot.center => Alignment.center,
           TitleBarSlot.right => Alignment.centerRight,
           TitleBarSlot.hidden => Alignment.center,
         },
+        duration: kWindowTitleBarSwitchDuration,
+        curve: kWindowTitleBarSwitchCurve,
         child: child,
       );
 

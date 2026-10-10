@@ -26,7 +26,7 @@ class WindowButton extends StatelessWidget {
     final isMac = style == WindowButtonsStyle.mac;
     return TweenAnimationBuilder<double>(
       // `end` 变 → Flutter 从**当前值**补间到新值（这正是「槽宽 46↔20 是补间」）。
-      tween: Tween<double>(begin: isMac ? 1 : 0, end: isMac ? 1 : 0),
+      tween: Tween<double>(end: isMac ? 1 : 0),
       duration: kWindowTitleBarSwitchDuration,
       curve: kWindowTitleBarSwitchCurve,
       builder: (context, t, _) => SizedBox(
