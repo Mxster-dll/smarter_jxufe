@@ -200,11 +200,15 @@ class WindowButtonsRow extends StatelessWidget {
 class Codicons {
   const Codicons._();
 
+  /// 字形族名 —— **跨语言契约的一部分**：`pubspec.yaml` 以这个名字注册裁好的子集字体，
+  /// 原生与 Dart 两侧都按它取字形。守卫按源码字面量 `fontFamily = 'codicon'` 记账。
+  static const String fontFamily = 'codicon';
+
   static const IconData chromeMinimize =
-      IconData(0xeaba, fontFamily: 'codicon');
+      IconData(0xeaba, fontFamily: fontFamily);
   static const IconData chromeMaximize =
-      IconData(0xeab9, fontFamily: 'codicon');
+      IconData(0xeab9, fontFamily: fontFamily);
   static const IconData chromeRestore =
-      IconData(0xeabb, fontFamily: 'codicon');
-  static const IconData chromeClose = IconData(0xeab8, fontFamily: 'codicon');
+      IconData(0xeabb, fontFamily: fontFamily);
+  static const IconData chromeClose = IconData(0xeab8, fontFamily: fontFamily);
 }
