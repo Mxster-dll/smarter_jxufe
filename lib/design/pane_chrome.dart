@@ -16,6 +16,8 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'package:smarter_jxufe/design/breakpoints.dart';
+
 import 'package:smarter_jxufe/design/settings_section.dart';
 import 'package:smarter_jxufe/design/settings_entry.dart';
 
@@ -139,7 +141,13 @@ PreferredSizeWidget? paneAppBar(
   // 弄没了（守卫实测「面板内二级页：保留完整导航栏与返回键」当场变红）。所以这条
   // 只在「根页面 / 不能返回的页面」上生效 —— 也正是用户看的那种顶栏。
   final canPop = ModalRoute.of(context)?.canPop ?? false;
-  if (!isDesktop && !canPop) {
+  // 「窄」= 拖到手机上那种形态。判据取**宽度**而不是平台（用户 2026-10-10：
+  // 「电脑端窄屏显示时，也要使用和移动端一样的策略，而不是把这个显示逻辑只影响
+  // 移动端」）—— 桌面窗口拖窄到 `Breakpoints.sidebarLayout` 以下时，页面本身就已经
+  // 换成手机那套布局了，顶栏没理由还留着桌面排布。
+  final isNarrow =
+      MediaQuery.sizeOf(context).width < Breakpoints.sidebarLayout;
+  if ((!isDesktop || isNarrow) && !canPop) {
     final cluster = <Widget>[...actions.reversed, settingsButton];
     return AppBar(
       title: title,

@@ -21,4 +21,13 @@ abstract final class Breakpoints {
 
   /// 超宽：目录 + 正文两栏（规章制度阅读器）。
   static const double extraWide = 1000;
+
+  /// 宫格 ⇄ 侧栏的分界（宽 ≥ 它才是「桌面侧栏布局」，窄于它就是手机那种形态）。
+  ///
+  /// ⚠ 与 `features/home/domain/home_layout.dart` 里决定侧栏布局的那个 900 **同值** ——
+  /// 那边是页面布局、这里是 chrome（见 `pane_chrome.dart` 的顶栏动作簇排布），
+  /// 用户看到的必须是同一个「宽 / 窄」：拖窄到手机上那种形态时，顶栏也要跟着换成
+  /// 手机端那套排布（用户 2026-10-10：「电脑端窄屏显示时，也要使用和移动端一样的策略，
+  /// 而不是把这个显示逻辑只影响移动端」）。改一处要一起改。
+  static const double sidebarLayout = 900;
 }
